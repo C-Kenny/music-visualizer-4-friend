@@ -1,3 +1,9 @@
+/*
+
+Diamonds and circles intersect to form a Celtic Cross
+
+*/
+
 BezierPoint bezierPoint1;
 BezierPoint bezierPoint2;
 BezierPoint bezierPoint3;
@@ -130,10 +136,6 @@ void draw() {
   ellipse(width/2.0, height/2.0, 100, 100);
   
 
-  
-  //line(width/2, height/2, width, height);
-  println("Canvas width: " + width);
-  println("Canvas height: " + height);
   /*
   // draw the inner circle with a "fat" stroke
   strokeWeight(20);
