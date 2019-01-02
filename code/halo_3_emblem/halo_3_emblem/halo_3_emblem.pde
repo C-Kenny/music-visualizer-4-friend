@@ -1,4 +1,4 @@
-/*
+/* //<>//
 
 Diamonds and circles intersect to form a Celtic Cross
 
@@ -13,6 +13,7 @@ Ratio 1:6
 
 void setup() {
   size(420, 420);
+  smooth();
   //size(1420, 1420);
 
   /*
@@ -128,11 +129,18 @@ void drawBezierFins() {
   stroke(255, 0, 0);
   strokeWeight(6);
   
+  int fins = 8;
+  float xOffset = -20;
+  float yOffset = -50;
   // we encapsulate the Beziers in a shape, so can be filled
-  for (int i=0; i<8; i++) {
+  for (int i=0; i<fins; i++) {
     println("Drawing bezier: " + i);
     pushMatrix();
     
+    float rotationAmount = 2 * i / fins * PI;
+    
+    translate(210, 210);
+    rotate(rotationAmount);
     beginShape();
     /*
     .
@@ -144,10 +152,10 @@ void drawBezierFins() {
     // from Inkscape trace
     // M 26,6 C 26,6 37,8 43,17
     bezier(
-      156,36,
-      156,36,
-      222,48,
-      258,102
+      -36 + xOffset,-126 + yOffset,
+      -36 + xOffset,-126 + yOffset,
+      32 + xOffset,-118 + yOffset,
+      68 + xOffset,-52 + yOffset
     );
     
     /*
@@ -160,10 +168,10 @@ void drawBezierFins() {
     // From Inkscape
     // M 26,6 C 26,6 30,13 28,17
     bezier(
-      156,36,
-      156,36,
-      180,78,
-      168,102
+      -36 + xOffset,-126 + yOffset,
+      -36 + xOffset,-126 + yOffset,
+      -10 + xOffset,-88 + yOffset,
+      -22 + xOffset,-52 + yOffset
     );
     
     /*
@@ -175,17 +183,14 @@ void drawBezierFins() {
     // From Inkscape
     // M 28,17 C 28,17 35,14 43,17
     bezier(
-      168,102,
-      168,102,
-      210,84,
-      258,102
+      -22 + xOffset,-52 + yOffset,
+      -22 + xOffset,-52 + yOffset,
+      20 + xOffset,-74 + yOffset,
+      68 + xOffset,-52 + yOffset
     );
       
     
     endShape();
-    translate(width/2, height/2);
-    float rotationAmount = 0.25 * PI;
-    rotate(rotationAmount);
 
     popMatrix();
   }
@@ -207,32 +212,6 @@ void draw() {
   // red circle, of which the bezier shapes touch
   drawInnerCircle();
   
-  drawBezierFins(); //<>//
-
-
-  /*
-  // draw the inner circle with a "fat" stroke
-  strokeWeight(20);
-  // assuming center mode
-  ellipse(width/2, height/2, 100, 100);
-
-  // reset that stroke fatness
-  strokeWeight(1);
-  // make sure we'll be rotating about the center of the sketch
-  translate(width/2, height/2);
-  // and then start drawing eight 'teeth'
-  for (int i=0; i<8; i++) {
-    beginShape();
-    // we know where p1, p2, and p3 are.
-    vertex(bezierPoint1.x, bezierPoint1.y);
-    // and we "guessed" at c1, c2, c3, and c4.
-    bezierVertex(c1.x, c1.y, c2.y, c2.y, bezierPoint2.x, bezierPoint2.y);
-    bezierVertex(c3.x, c3.y, c4.y, c4.y, bezierPoint3.x, bezierPoint3.y);
-    // We leave the shape "open" in case you want both stroke and fill
-    endShape();
-    // we're drawing eight teeth, so we need to rotate by 2*PI/8 each time
-    rotate(0.25 * PI);
-  }
-  */
+  drawBezierFins();
  
 }
