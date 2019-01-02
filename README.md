@@ -7,8 +7,7 @@ The repo also holds my learnings of Processing and graphics, for historical sake
 
 ### Current State?
 
-![CurrentEmblemAsCode](/code/halo_3_emblem/halo_3_emblem/output/current_state_halo_3_emblem.png)
-
+![CurrentAnimatedEmblem](/output/current_output_animated.webm)
 
 ### Why?
 
