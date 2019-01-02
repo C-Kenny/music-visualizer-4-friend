@@ -2,15 +2,19 @@
 
 Diamonds and circles intersect to form a Celtic Cross
 
+Source image dimensions: 70x70 px
+Output image dimensions: 420x420 px
+
+Ratio 1:6
+
 */
 
-BezierPoint bezierPoint1;
-BezierPoint bezierPoint2;
-BezierPoint bezierPoint3;
 
 
 void setup() {
   size(420, 420);
+  //size(1420, 1420);
+
   /*
   Ascii version
   
@@ -57,22 +61,10 @@ void setup() {
   
     
   */
-  bezierPoint1 = new BezierPoint(17, 42);
-  bezierPoint2 = new BezierPoint(4, 24);
-  bezierPoint3 = new BezierPoint(16, 27);
-
 }
 
-class BezierPoint {
-  float x;
-  float y;
-  BezierPoint (float tempX, float tempY) {
-    x = tempX;
-    y = tempY;
-  }
-}
 
-void drawDiamonds() {
+void drawDiamond() {
   /*
   Coordinate System
   
@@ -80,36 +72,30 @@ void drawDiamonds() {
       0 1 2 3 4 5
   y  0 
   |  1
-  v  2
-     3
+  |  2
+  v  3
      4
      5
   */
 
   // bottom right diamond
   quad(
-  240,240,
-  390,300,
-  420,420,
-  312,390
-  );
-  
+    240,240,
+    390,300,
+    420,420,
+    312,390
+  );  
 }
-void draw() {
-  // reset drawing params
-  stroke(0);
-  noStroke();
-  fill(255);
-  
-  // bottom right diamond
-  drawDiamonds();
+
+void drawDiamonds() {
+
   
   // bottom left diamond
   pushMatrix();
   fill(255);
   scale(-1,1);
   translate(-width, 0);
-  drawDiamonds();
+  drawDiamond();
   popMatrix();
   
   // top left diamond
@@ -117,7 +103,7 @@ void draw() {
   fill(255);
   scale(-1,-1);
   translate(-width, -height);
-  drawDiamonds();
+  drawDiamond();
   popMatrix();
   
   // top right diamond
@@ -125,16 +111,104 @@ void draw() {
   fill(255);
   scale(1,-1);
   translate(0, -height);
-  drawDiamonds();
+  drawDiamond();
   popMatrix();
-  
+}
+
+void drawInnerCircle() {
   // red inner circle
   ellipseMode(RADIUS);
   stroke(255, 0, 0);
-  strokeWeight(10);
+  strokeWeight(8);
   noFill();
-  ellipse(width/2.0, height/2.0, 100, 100);
+  ellipse(width/2.0, height/2.0, 110, 110);
+}
+
+void drawBezierFins() {
+  stroke(255, 0, 0);
+  strokeWeight(6);
   
+  // we encapsulate the Beziers in a shape, so can be filled
+  for (int i=0; i<8; i++) {
+    println("Drawing bezier: " + i);
+    pushMatrix();
+    
+    beginShape();
+    /*
+    .
+      .
+        .
+         .
+          .
+    */
+    // from Inkscape trace
+    // M 26,6 C 26,6 37,8 43,17
+    bezier(
+      156,36,
+      156,36,
+      222,48,
+      258,102
+    );
+    
+    /*
+      .
+       .
+       .
+      .
+    */
+    
+    // From Inkscape
+    // M 26,6 C 26,6 30,13 28,17
+    bezier(
+      156,36,
+      156,36,
+      180,78,
+      168,102
+    );
+    
+    /*
+             
+     ,......,
+    .        .
+    */
+    
+    // From Inkscape
+    // M 28,17 C 28,17 35,14 43,17
+    bezier(
+      168,102,
+      168,102,
+      210,84,
+      258,102
+    );
+      
+    
+    endShape();
+    translate(width/2, height/2);
+    float rotationAmount = 0.25 * PI;
+    rotate(rotationAmount);
+
+    popMatrix();
+  }
+  
+}
+
+void draw() {
+  // reset drawing params
+  stroke(0);
+  noStroke();
+  fill(255);
+  
+  // bottom right diamond
+  drawDiamond();
+  
+  // draw rest of diamonds, by rotating canvas
+  drawDiamonds();
+  
+  // red circle, of which the bezier shapes touch
+  drawInnerCircle();
+  
+  drawBezierFins(); //<>//
+
 
   /*
   // draw the inner circle with a "fat" stroke
