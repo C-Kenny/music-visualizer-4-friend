@@ -7,7 +7,7 @@ The repo also holds my learnings of Processing and graphics, for historical sake
 
 ### Current State?
 
-![CurrentAnimatedEmblem](/output/current_output_animated.webm)
+![CurrentAnimatedEmblem](/output/current_output_animated.gif)
 
 ### Why?
 
