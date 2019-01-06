@@ -19,14 +19,11 @@ FFT fft;
 
 // GLOBALS
 boolean FIN_REDNESS_ANGRY = true;
-boolean ANIMATED = false;
-
-String LAST_BLENDMODE = "EXCLUSION"; // refactor lol TODO
-
+boolean ANIMATED = true;
 
 int[] modes = new int[]{
-  BLEND, ADD, SUBTRACT, // OK: ADD, SUBRACT
-  EXCLUSION, // OK: EXLCUSION
+  BLEND, ADD, SUBTRACT, 
+  EXCLUSION,
 };
 
 int CURRENT_BLEND_MODE_INDEX = 0;
@@ -39,14 +36,13 @@ String[] modeNames = new String[]{
 float FINS = 8.0;
 float rad = 70; 
 
-int  r = 200;
 int FIN_REDNESS = 1;
 
 // the number of bands per octave
 int bandsPerOctave = 4;
  
-// the spacing between bars
-int barSpacing = 3;
+boolean finRotationClockWise = true;
+
 
 
 void setup() {
@@ -148,6 +144,7 @@ void drawDiamond() {
 }
  
 void drawDiamonds() {
+  // Diamonds are drawn by transforming the canvas 
  
   
   // bottom left diamond
@@ -176,7 +173,7 @@ void drawDiamonds() {
 }
  
 void drawInnerCircle() {
-  // red inner circle
+  // red inner circle, is used to make the fins look smooth internally
   ellipseMode(RADIUS);
   stroke(FIN_REDNESS, 0, 0);
   strokeWeight(8);
@@ -184,7 +181,8 @@ void drawInnerCircle() {
   ellipse(width/2.0, height/2.0, 110, 110);
 }
  
-void drawBezierFins(float redness, float fins) {
+void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
+  println("Fins are rotating clockwise? " + finRotationClockWise);
   stroke(redness, 0, 0);
   strokeWeight(4);
   
@@ -194,7 +192,12 @@ void drawBezierFins(float redness, float fins) {
 
     pushMatrix();
     
-    float rotationAmount = 2 * (i / fins) * PI;
+    float rotationAmount = (2 * (i / fins) * PI);
+    
+    
+    if (finRotationClockWise == true) {
+      rotationAmount = 0 - rotationAmount;
+    }
     
     translate(width/2, height/2);
     rotate(rotationAmount);
@@ -239,7 +242,7 @@ void drawBezierFins(float redness, float fins) {
       68 + xOffset,-52 + yOffset
     );
       
-        popMatrix();
+    popMatrix();
   }
   
 }
@@ -248,11 +251,10 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
   FIN_REDNESS_ANGRY = true;
   
   // To reduce eye sore, only change blend mode on RNG
-  
   float randomNumber = random(0, 10);
+  
   if (intensityOutOfTen > randomNumber) {
     println("Changing blendMode. From: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
-    //blendMode(frameCount%modes.length);
     blendMode(modes[int(randomNumber)]);
     println("Changed blendMode to: " + modeNames[int(randomNumber)]); //<>//
   }  
@@ -268,10 +270,21 @@ void changeBlendMode() {
   blendMode(CURRENT_BLEND_MODE_INDEX);
   println("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 }
+
+void changeFinRotation() {
+  if (finRotationClockWise == true) {
+    finRotationClockWise = false;
+  } else {
+    finRotationClockWise = true;
+  }
+}
     
 void keyPressed() {
   if (key == 'b' || key == 'B') {
     changeBlendMode();
+  }
+  if (key == 'f' || key == 'F') {
+    changeFinRotation();
   }
 }
 
@@ -294,35 +307,18 @@ void draw() {
  
   int blendModeIntensity = 4;
   //println("MAX specSize: " + fft.specSize());
+  
+  // Blend Mode changes on any loud volume
   for(int i = 0; i < fft.specSize(); i++)
   {
     //line(i, height, i, height - fft.getBand(i)*4);
     if (fft.getBand(i)*4 > 1000.0) {
-      //println("Found loud volume, appling drop. " + fft.getBand(i)*4);
       applyBlendModeOnDrop(blendModeIntensity);
     }
       
-    
   }
   strokeWeight(2);
 
- 
-  stroke(255);
-  /*
-  // I draw the waveform by connecting 
-  // neighbor values with a line. I multiply 
-  // each of the values by 50 
-  // because the values in the buffers are normalized
-  // this means that they have values between -1 and 1. 
-  // If we don't scale them up our waveform 
-  // will look more or less like a straight line.
-  for(int i = 0; i < player.left.size() - 1; i++)
-  {
-    line(i, 50 + player.left.get(i)*50, i+1, 50 + player.left.get(i+1)*50);
-    //line(i, 150 + player.right.get(i)*50, i+1, 150 + player.right.get(i+1)*50);
-  }
-  */
-  
   stroke(255);
   
   // draw the waveforms
@@ -333,57 +329,17 @@ void draw() {
   {
     float x1 = map( i, 0, player.bufferSize(), 0, width );
     float x2 = map( i+1, 0, player.bufferSize(), 0, width );
-    //line( x1, 50 + player.left.get(i)*50, x2, 50 + player.left.get(i+1)*50 );
     line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
   }
   
   // draw a line to show where in the player playback is currently located
   // located at the bottom of the output screen
+  // uses custom style, so doesn't alter other strokes
   float posx = map(player.position(), 0, player.length(), 0, width);
-  stroke(0,200,0, 20);
-  line(posx, height, posx, height-20);
-  
-  /*
-   
-  float t = map(mouseX, 0, width, 0, 1);
-  beat.detect(player.mix);
-  fill(#1A1F18, 20);
-  noStroke();
-  rect(0, 0, width, height);
-  noFill();
-  fill(-1, 10);
-  if (beat.isOnset()) rad = rad*0.9;
-  else rad = 70;
-  ellipse(0, 0, 2*rad, 2*rad);
-  stroke(-1, 50);
-  int bsize = player.bufferSize();
-  for (int i = 0; i < bsize - 1; i+=5)
-  {
-    float x = (r)*cos(i*2*PI/bsize);
-    float y = (r)*sin(i*2*PI/bsize);
-    float x2 = (r + player.left.get(i)*100)*cos(i*2*PI/bsize);
-    float y2 = (r + player.left.get(i)*100)*sin(i*2*PI/bsize);
-    line(x, y, x2, y2);
-  }
-  beginShape();
-  noFill();
-  stroke(-1, 50);
-  for (int i = 0; i < bsize; i+=30)
-  {
-    float x2 = (r + player.left.get(i)*100)*cos(i*2*PI/bsize);
-    float y2 = (r + player.left.get(i)*100)*sin(i*2*PI/bsize);
-    vertex(x2, y2);
-    pushStyle();
-    stroke(-1);
-    strokeWeight(2);
-    point(x2, y2);
-    popStyle();
-  }
-  endShape();
- // if (flag)
-// showMeta();
-
-  */
+  pushStyle();
+  stroke(0,200,0);
+  line(posx, height, posx, height-15);
+  popStyle();
    
   // bottom right diamond
   fill(255);
@@ -403,17 +359,17 @@ void draw() {
   if (ANIMATED) {  
     if (FIN_REDNESS_ANGRY) {
       FIN_REDNESS += 1;
-      FINS += 0.05;
+      FINS += 0.04;
     } else {
       FIN_REDNESS -= 1;
-      FINS -= 0.05;
+      FINS -= 0.04;
     }
   }
   
   // red circle, of which the bezier shapes touch
   drawInnerCircle();
   
-  drawBezierFins(FIN_REDNESS, FINS);
+  drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
 }
 
 void mouseClicked() {
