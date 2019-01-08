@@ -6,6 +6,15 @@ Source image dimensions: 70x70 px
 Output image dimensions: 420x420 px
  
 Ratio 1:6
+
+Keyboard Layout:
+
+b = blend mode iterate
+f = change direction of fins
+
+TODO:
+
+- split up music into frequencies. change different shapes on ranges. 
  
 */
 
@@ -43,8 +52,6 @@ int bandsPerOctave = 4;
  
 boolean finRotationClockWise = true;
 
-
-
 void setup() {
   size(420, 420);
   smooth();
@@ -52,8 +59,10 @@ void setup() {
   surface.setTitle("(Click) animates ");
   
   minim = new Minim(this);
-  //player = minim.loadFile("song.mp3");
-  player = minim.loadFile("Salmonella Dub - For the Love of It (Pitch Black Version).mp3");
+  //player = minim.loadFile("Salmonella Dub - For the Love of It (Pitch Black Version).mp3");
+  player = minim.loadFile("Alison Wonderland - Awake (KRANE Remix Audio).mp3");
+
+
   
   player.play();
   beat = new BeatDetect();
@@ -69,7 +78,7 @@ void setup() {
   
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
-  //fft.logAverages(22, bandsPerOctave);
+  fft.logAverages(22, bandsPerOctave);
  
   /*
   Ascii version
@@ -288,6 +297,34 @@ void keyPressed() {
   }
 }
 
+void splitFrequencyIntoLogBands() {
+  fft.avgSize();
+  
+  for(int i = 0; i < fft.avgSize(); i++ ){
+    // get amplitude of frequency band
+    float amplitude = fft.getAvg(i);
+    
+    // convert the amplitude to a DB value. 
+    // this means values will range roughly from 0 for the loudest
+    // bands to some negative value.
+    float bandDB = 20 * log(2 * amplitude / fft.timeSize());
+   
+    /*
+    println("i: " + i);
+    println("bandDB: " + bandDB);
+    */
+    
+    if (i >= 0 && i <= 5 && bandDB > -0) {
+      // bass
+      changeBlendMode();
+    } else if (i >10 && i < 15 && bandDB > -5) {
+      changeFinRotation();
+        
+    }
+  }
+}
+  
+  
 void draw() {
   // reset drawing params
   stroke(0);
@@ -303,6 +340,8 @@ void draw() {
   // draw the spectrum as a series of vertical lines
   // I multiple the value of getBand by 4 
   // so that we can see the lines better
+  
+  splitFrequencyIntoLogBands();
  
  
   int blendModeIntensity = 4;
