@@ -11,10 +11,15 @@ Keyboard Layout:
 
 b = blend mode iterate
 f = change direction of fins
+d = diamond closer to center
+D = diamond closer to outside
 
 TODO:
 
 - split up music into frequencies. change different shapes on ranges. 
+- fix diamond center point. Currently it's modulo half way. But this means
+it glitches back, once it reaches max. Have a look at the diamond incrementer,
+logic doesn't appear to be reducing it.
  
 */
 
@@ -30,9 +35,16 @@ FFT fft;
 boolean FIN_REDNESS_ANGRY = true;
 boolean ANIMATED = true;
 
+int DIAMOND_DISTANCE_FROM_CENTER = 30;
+
+int MAX_DIAMOND_DISTANCE = 240;
+int MIN_DIAMOND_DISTANCE = -240;
+
+boolean INCREMENT_DIAMOND_DISTANCE = true;
+
 int[] modes = new int[]{
   BLEND, ADD, SUBTRACT, 
-  EXCLUSION,
+  
 };
 
 int CURRENT_BLEND_MODE_INDEX = 0;
@@ -61,8 +73,6 @@ void setup() {
   minim = new Minim(this);
   //player = minim.loadFile("Salmonella Dub - For the Love of It (Pitch Black Version).mp3");
   player = minim.loadFile("Alison Wonderland - Awake (KRANE Remix Audio).mp3");
-
-
   
   player.play();
   beat = new BeatDetect();
@@ -129,7 +139,7 @@ void setup() {
 }
  
  
-void drawDiamond() {
+void drawDiamond(int distanceFromCenter) {
   /*
   Coordinate System
   
@@ -142,10 +152,13 @@ void drawDiamond() {
      4
      5
   */
+  int innerDiamondCoordinate = (420/2) + (DIAMOND_DISTANCE_FROM_CENTER%240);
+  //println("innerDiamond: " + innerDiamondCoordinate);
  
   // bottom right diamond
   quad(
-    240,240,
+    innerDiamondCoordinate, innerDiamondCoordinate,
+    //240, 240,
     390,300,
     420,420,
     312,390
@@ -154,14 +167,13 @@ void drawDiamond() {
  
 void drawDiamonds() {
   // Diamonds are drawn by transforming the canvas 
- 
-  
+   
   // bottom left diamond
   pushMatrix();
   fill(255);
   scale(-1,1);
   translate(-width, 0);
-  drawDiamond();
+  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
   
   // top left diamond
@@ -169,7 +181,7 @@ void drawDiamonds() {
   fill(255);
   scale(-1,-1);
   translate(-width, -height);
-  drawDiamond();
+  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
   
   // top right diamond
@@ -177,7 +189,7 @@ void drawDiamonds() {
   fill(255);
   scale(1,-1);
   translate(0, -height);
-  drawDiamond();
+  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
 }
  
@@ -191,7 +203,7 @@ void drawInnerCircle() {
 }
  
 void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
-  println("Fins are rotating clockwise? " + finRotationClockWise);
+  //println("Fins are rotating clockwise? " + finRotationClockWise);
   stroke(redness, 0, 0);
   strokeWeight(4);
   
@@ -202,7 +214,6 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
     pushMatrix();
     
     float rotationAmount = (2 * (i / fins) * PI);
-    
     
     if (finRotationClockWise == true) {
       rotationAmount = 0 - rotationAmount;
@@ -266,7 +277,16 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
     println("Changing blendMode. From: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
     blendMode(modes[int(randomNumber)]);
     println("Changed blendMode to: " + modeNames[int(randomNumber)]); //<>//
-  }  
+    
+    //modifyDiamondCenterPoint(true);
+  } 
+  
+  /*
+  else {
+    modifyDiamondCenterPoint(false);
+  }
+  */
+  
   
 }
  //<>//
@@ -287,18 +307,45 @@ void changeFinRotation() {
     finRotationClockWise = true;
   }
 }
+
+void modifyDiamondCenterPoint(boolean closerToCenter) {
+  if (closerToCenter) {
+    DIAMOND_DISTANCE_FROM_CENTER++;
+  } else {
+    DIAMOND_DISTANCE_FROM_CENTER--;
+  }
+}
     
 void keyPressed() {
+  // blend
   if (key == 'b' || key == 'B') {
     changeBlendMode();
   }
+  
+  // fins
   if (key == 'f' || key == 'F') {
     changeFinRotation();
   }
+  
+  // diamonds
+  if (key == 'd') {
+    modifyDiamondCenterPoint(false);
+  }
+  if (key == 'D') {
+    modifyDiamondCenterPoint(true);
+  }
+  
+  // logging / debug
+  if (key == 'l' || key == 'L') {
+    // dump log file
+  }
+    
 }
 
 void splitFrequencyIntoLogBands() {
   fft.avgSize();
+  
+  boolean alreadyChangedFinDirection = false;
   
   for(int i = 0; i < fft.avgSize(); i++ ){
     // get amplitude of frequency band
@@ -309,17 +356,35 @@ void splitFrequencyIntoLogBands() {
     // bands to some negative value.
     float bandDB = 20 * log(2 * amplitude / fft.timeSize());
    
-    /*
-    println("i: " + i);
-    println("bandDB: " + bandDB);
-    */
     
-    if (i >= 0 && i <= 5 && bandDB > -0) {
+    //println("i: " + i);
+    //println("bandDB: " + bandDB);
+    
+    if ((i >= 0 && i <= 5) && bandDB > -10) {
       // bass
       changeBlendMode();
-    } else if (i >10 && i < 15 && bandDB > -5) {
-      changeFinRotation();
-        
+    } 
+    
+    // TODO diamond inner point, changes on beat
+    if ((i >=6 && i<= 15) && bandDB >-27) {
+        println("DIAMOND DISTANCE: " + DIAMOND_DISTANCE_FROM_CENTER);
+        if (INCREMENT_DIAMOND_DISTANCE == true) {
+          //modifyDiamondCenterPoint(closerToCenter=true);
+          println("Moving center diamond point INWARDS");
+          modifyDiamondCenterPoint(true); 
+        } else {
+          println("Moving center diamond point OUTWARDS");
+          modifyDiamondCenterPoint(false);
+        }
+    }
+    
+    if (alreadyChangedFinDirection == false) {
+      if ((i >=20 && i <= 35) && bandDB > -10) {
+        changeFinRotation();
+        println("About to change fin rotation");
+        alreadyChangedFinDirection = true;
+          
+      }
     }
   }
 }
@@ -352,7 +417,7 @@ void draw() {
   {
     //line(i, height, i, height - fft.getBand(i)*4);
     if (fft.getBand(i)*4 > 1000.0) {
-      applyBlendModeOnDrop(blendModeIntensity);
+      //applyBlendModeOnDrop(blendModeIntensity);
     }
       
   }
@@ -379,10 +444,21 @@ void draw() {
   stroke(0,200,0);
   line(posx, height, posx, height-15);
   popStyle();
+  
+  // DIAMONDS
+  
+  // check if should be incrementing diamond distance from center
+  if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
+    println("Too far from center. ");
+    INCREMENT_DIAMOND_DISTANCE = true;
+  } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
+    INCREMENT_DIAMOND_DISTANCE = false;
+  }
+  
    
   // bottom right diamond
   fill(255);
-  drawDiamond();
+  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   
   // draw rest of diamonds, by rotating canvas
   drawDiamonds();
