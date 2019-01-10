@@ -61,18 +61,41 @@ int FIN_REDNESS = 1;
 
 // the number of bands per octave
 int bandsPerOctave = 4;
+
+String SONG_TO_VISUALIZE = "";
  
 boolean finRotationClockWise = true;
 
+String fileSelected(File selection) {
+  if (selection == null) {
+    println("No file selected. Window might have been closed/cancelled");
+    return "";
+  } else {
+    println("File selected: " + selection.getAbsolutePath());
+    SONG_TO_VISUALIZE = selection.getAbsolutePath();
+  }
+  return selection.getAbsolutePath();
+}
+
+
 void setup() {
+  // Visualizer only begins once a song has been selected
+  selectInput("Select song to visualize", "fileSelected");
+  
+  while (SONG_TO_VISUALIZE == "") {
+    delay(1);
+  }
+  
+  // Setup the display frame
   size(420, 420);
   smooth();
   frameRate(60);
-  surface.setTitle("(Click) animates ");
+  surface.setTitle("(Click) animates ::)");
   
   minim = new Minim(this);
   //player = minim.loadFile("Salmonella Dub - For the Love of It (Pitch Black Version).mp3");
-  player = minim.loadFile("Alison Wonderland - Awake (KRANE Remix Audio).mp3");
+  //player = minim.loadFile("Alison Wonderland - Awake (KRANE Remix Audio).mp3");
+  player = minim.loadFile(SONG_TO_VISUALIZE);
   
   player.play();
   beat = new BeatDetect();
@@ -312,7 +335,7 @@ void modifyDiamondCenterPoint(boolean closerToCenter) {
   if (closerToCenter) {
     DIAMOND_DISTANCE_FROM_CENTER++;
   } else {
-    DIAMOND_DISTANCE_FROM_CENTER--;
+    DIAMOND_DISTANCE_FROM_CENTER--; //<>//
   }
 }
     
@@ -339,7 +362,6 @@ void keyPressed() {
   if (key == 'l' || key == 'L') {
     // dump log file
   }
-    
 }
 
 void splitFrequencyIntoLogBands() {
@@ -391,7 +413,7 @@ void splitFrequencyIntoLogBands() {
   
   
 void draw() {
-  // reset drawing params
+  // reset drawing params when redrawing frame
   stroke(0);
   noStroke();
   background(200);
@@ -408,8 +430,6 @@ void draw() {
   
   splitFrequencyIntoLogBands();
  
- 
-  int blendModeIntensity = 4;
   //println("MAX specSize: " + fft.specSize());
   
   // Blend Mode changes on any loud volume
