@@ -10,7 +10,7 @@ Ratio 1:6
 Keyboard Layout:
 
 b = blend mode iterate
-f = change direction of fins
+f = change direction of fins (requires ability to change fins i.e. timeotus)
 d = diamond closer to center
 D = diamond closer to outside
 
@@ -32,9 +32,19 @@ BeatDetect beat;
 FFT fft;
 
 // GLOBALS
+
+// FINS
 boolean FIN_REDNESS_ANGRY = true;
 boolean ANIMATED = true;
 
+int LAST_FIN_CHECK; // last time fin was checked, to be changed
+float FINS = 8.0;
+int FIN_REDNESS = 1;
+
+boolean canChangeFinDirection = true;
+boolean finRotationClockWise = false;
+
+// DIAMONDS
 int DIAMOND_DISTANCE_FROM_CENTER = 30;
 
 int MAX_DIAMOND_DISTANCE = 240;
@@ -42,9 +52,9 @@ int MIN_DIAMOND_DISTANCE = -240;
 
 boolean INCREMENT_DIAMOND_DISTANCE = true;
 
+// BLEND MODES
 int[] modes = new int[]{
   BLEND, ADD, SUBTRACT, 
-  
 };
 
 int CURRENT_BLEND_MODE_INDEX = 0;
@@ -54,17 +64,13 @@ String[] modeNames = new String[]{
   "EXLCUSION"  
 };
 
-float FINS = 8.0;
-float rad = 70; 
-
-int FIN_REDNESS = 1;
-
 // the number of bands per octave
 int bandsPerOctave = 4;
 
+// Visualize song passed to
 String SONG_TO_VISUALIZE = "";
  
-boolean finRotationClockWise = true;
+
 
 String fileSelected(File selection) {
   if (selection == null) {
@@ -93,8 +99,6 @@ void setup() {
   surface.setTitle("(Click) animates ::)");
   
   minim = new Minim(this);
-  //player = minim.loadFile("Salmonella Dub - For the Love of It (Pitch Black Version).mp3");
-  //player = minim.loadFile("Alison Wonderland - Awake (KRANE Remix Audio).mp3");
   player = minim.loadFile(SONG_TO_VISUALIZE);
   
   player.play();
@@ -112,53 +116,6 @@ void setup() {
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
- 
-  /*
-  Ascii version
-  
-  o++ossyhyhhyhhyyyhyyyyhhyyhhyyyyhhyyyyyyyyyyyhyyyyyyyyyyyhyyyhyyyhyyyyyysso+/::y
-  +.```..-:/+ossyyhyyhyyhhyyyyhhhhyyyhhyyyyyyyyyhhyyyyyyhhyhyyyyyyso++/:-.``````:y
-  y-```````````.--:/+ossyyhyhhhhyyyhhyyyyyyyyyyyhhyyyyyyhyyso/::-.`````````````-oy
-  y+.``````````````````./yhyhhhhhhhhyyyyyyyyyyyyyyyyyyyhhho.```````````````````:yy
-  yy-````````````````````/yhyyyhhhhhhhhhyyyyyyyyyyhyyyhhhho.``````````````````-oyy
-  hh+.````````````````````oyyyyyhhhhhhhhhhhyyyyyyhyyhhyyyhh+.`````````````````/yyh
-  hys:````````````````````.syyyyyhhhhhhhhhhhhyyhyyyyyyyyyhhh/````````````````-+yhy
-  yhy/.````````````````````-syyyyhhhhhhhhhhhhhhyyyhyyyyyhhhhs-```````````````/yyhh
-  yhhs:`````````````````````:oyyyhhhhhhhhhhhhhhhhyyyhhhhhhhhh/``````````````.oyyyy
-  yyyy+`````````````...---:::oyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhho-`````````````/syyhy
-  yyyyo:`````..:/+ossyyyyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhs:````````````.oyyyyy
-  yyyyys/-:+oyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhy/`````````.:+syhhhhy
-  yhyyyhhhhhhhyhhhhhhhhhhhhhhhhhhhhhhhhyyyyyyhhhhhhhhhhhhhhhhh+````.:/oyyhyhhyyhyh
-  yyyyyhyhhyyyyyyyhhhhhhhhhhhhhs+ohyyyyyyyhhyyyyhy:+shhhhhhhhho::+syyyyyyyhhhyyyyy
-  yyyyyyyyyyyyyyyyhhhhhhhhhhhs/.`.syyyyyhyhhyyyyy/``./shhhhhhhhyyyyyyyyyhhhhhyyyyy
-  hyyyyyyyyyyyhhhhyyhhhhhhhho-````.syyyyyyyhhhyy+`````:shhhhhhhhyhhhhhhhhhhhyyyhyy
-  yyyyyyyhhyyyyyyyhhhhhhhhhhhys+:-`:syyyyyhyyyyo..:+syyyhhhhhhhhhhhhhhhhhhhhyyyyyy
-  yyyyyyyyyyyyyyyhhhhhhhhhhhhyyyyysoyyyyhhhyyhyysyyyhhhyyhhhhhhhhhhhhhhhhhyyyhhyyh
-  yhyyyyhhyyyyyhhhhhhhhhhhhyyyyyyyyyyyyyyhhyhyyyyhyyyyhyyhhhhhhhhhhhhhhhhhyyyhyyyy
-  yyyhyyyyyhyhhhhhhhhhhhhhyyhhyyyyyyyyyyyyyyyyyhhyhyyyhhyyhhhhhhhhhhhhhhhyyyyyyyyy
-  hyhhhyhhyyhhhhhhhhhhhhhhyyhhyyyyyhhyyyyyyyyyyhhyyhhyyhyyhhhhhhhhhhhhhyyhyyyyyyyy
-  yyyhhhyyyhhhhhhhhhhhhhhhhyyhhhyhhyhhhyyyyyhhyyyyyyyhhyyhhhhhhhhhhhhyyhhyyyyyyyyy
-  yyyyhhyyhhhhhhhhhhhhhhhhhhyyhyyyysyyyyyhyhhyyyssyyyhhyyhhhhhhhhhhyyhhyyhyyyyyyyy
-  hyhyyhyhhhhhhhhhhhhhhhhhhhyyys+:..oyyyhhyyhyyo-.-/osyhhhhhhhhhhyhhyyyyhyyyyyyyyy
-  hhyhhhhhhhhhhhhhhyhhhhhhhhs:`````oyyyyyyhhyyyys.````-ohhhhhhhhyyyyhyyyyyyyyyyyyy
-  yyhhyhhhhhyyyyyyyyyhhhhhhhhs/.``+yhhyyhyyyhhhyyo``./shhhhhhhhhhyhyhhyyyyyyyyyyyy
-  hyhhhhhhyyhhyyys+::ohhhhhhhhhs+/yhyhhyhhhyyhyyyy++shhhhhhhhhhhhhyhyyyyyhhhhhyyyy
-  yhhhhhhyhyyo/:.````+hhhhhhhhhhhhhhhhhyyyyyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyyhyy
-  hhyhyys+:.`````````/yhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyo+::/syyyhh
-  hhhyyo`````````````:shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyyyysss+/:..`````/shhhy
-  hyyys:`````````````-ohhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyo:::---...````````````.+yyyy
-  yyyy+.``````````````/hhhhhhhhhyyyhhhhhhhhhhhhhhhhyyyo-`````````````````````/syhh
-  yyys:```````````````-shhhhhyyyyhyyhhhhhhhhhhhhhhhyyyyo.````````````````````.+yyy
-  hhy+.````````````````/hhhyyyyyyyyyyyyhhhhhhhhhhhhyyyyyo`````````````````````:shh
-  yhs:`````````````````.+hhyyyyyyyyhyhhyyhhhhhhhhhhyyyyhy+````````````````````-+yy
-  yy+-``````````````````.ohhhhyyyyyyhhhyhhyyhhhhhhhhhhyhhh:````````````````````:yh
-  yy:```````````````````.ohhyyyyyyyyyhyyyyyyyyyyhhhhhhhhhyy:.``````````````````.+y
-  y+.`````````````--::/osyhyyyyyyyyyyyyyyyyyyyhyyyyyhhhhyhyysso//:-..```````````:y
-  y-``````.-:/++ssyyyyhhhyhhhyyyyyyyyyyyyyyyyyyyyhyhhhyyyyhhyyyyhyyysso+/:-..```.o
-  y::/+ossyyhhyyhyyhyyhyyhyyhyyyyyyyyyyyyyyyyyyyyyyyyyyyyyhyhyyyyyyyyhyyhyyysso++o
-  
-    
-  */
 }
  
  
@@ -175,7 +132,12 @@ void drawDiamond(int distanceFromCenter) {
      4
      5
   */
-  int innerDiamondCoordinate = (420/2) + (DIAMOND_DISTANCE_FROM_CENTER%240);
+  
+  //int innerDiamondCoordinate = (420/2) + (DIAMOND_DISTANCE_FROM_CENTER%240);
+  // TODO: Fix, so it can come back to center also. Right now it resets
+  // back to original position
+  int innerDiamondCoordinate = ((420/2) + DIAMOND_DISTANCE_FROM_CENTER %240);
+
   //println("innerDiamond: " + innerDiamondCoordinate);
  
   // bottom right diamond
@@ -287,7 +249,6 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
       
     popMatrix();
   }
-  
 }
  
 void applyBlendModeOnDrop(int intensityOutOfTen) {
@@ -301,16 +262,7 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
     blendMode(modes[int(randomNumber)]);
     println("Changed blendMode to: " + modeNames[int(randomNumber)]); //<>//
     
-    //modifyDiamondCenterPoint(true);
   } 
-  
-  /*
-  else {
-    modifyDiamondCenterPoint(false);
-  }
-  */
-  
-  
 }
  //<>//
 void changeBlendMode() {
@@ -329,6 +281,8 @@ void changeFinRotation() {
   } else {
     finRotationClockWise = true;
   }
+  // once it has been changed, wait cooldown before changing again
+  canChangeFinDirection = false;
 }
 
 void modifyDiamondCenterPoint(boolean closerToCenter) {
@@ -359,16 +313,14 @@ void keyPressed() {
   }
   
   // logging / debug
+  // TODO: Implement valuable logging
   if (key == 'l' || key == 'L') {
-    // dump log file
   }
 }
 
 void splitFrequencyIntoLogBands() {
   fft.avgSize();
-  
-  boolean alreadyChangedFinDirection = false;
-  
+    
   for(int i = 0; i < fft.avgSize(); i++ ){
     // get amplitude of frequency band
     float amplitude = fft.getAvg(i);
@@ -399,13 +351,11 @@ void splitFrequencyIntoLogBands() {
           modifyDiamondCenterPoint(false);
         }
     }
-    
-    if (alreadyChangedFinDirection == false) {
-      if ((i >=20 && i <= 35) && bandDB > -10) {
+    //println("canChangeFinDirection: " + canChangeFinDirection);
+    if (canChangeFinDirection == true) {
+      if ((i >=16 && i <= 35) && bandDB > -150) {
+        println("About to change fin rotation");          
         changeFinRotation();
-        println("About to change fin rotation");
-        alreadyChangedFinDirection = true;
-          
       }
     }
   }
@@ -424,11 +374,18 @@ void draw() {
   stroke(255, 0, 0, 128);
   strokeWeight(8);
   
-  // draw the spectrum as a series of vertical lines
-  // I multiple the value of getBand by 4 
-  // so that we can see the lines better
+
+  // only change fin direction, if it has been more than 10s since last it was changed.
+  // otherwise eyes might hurt o_O
+  
+  int msSinceProgStart = millis();
+  if (msSinceProgStart > LAST_FIN_CHECK + 10000) {
+    canChangeFinDirection = true;
+    LAST_FIN_CHECK = millis();
+  }
   
   splitFrequencyIntoLogBands();
+  
  
   //println("MAX specSize: " + fft.specSize());
   
@@ -465,11 +422,12 @@ void draw() {
   line(posx, height, posx, height-15);
   popStyle();
   
-  // DIAMONDS
+  // DIAMONDS 
+  
   
   // check if should be incrementing diamond distance from center
   if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
-    println("Too far from center. ");
+    //println("Too far from center. ");
     INCREMENT_DIAMOND_DISTANCE = true;
   } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
     INCREMENT_DIAMOND_DISTANCE = false;
@@ -508,10 +466,58 @@ void draw() {
 }
 
 void mouseClicked() {
-  // toggles animated state
+  // toggles fin animated state on mouse click
   if (ANIMATED) {
     ANIMATED = false;
   } else {
     ANIMATED = true;
   }
 }
+
+/*
+Ascii version
+
+o++ossyhyhhyhhyyyhyyyyhhyyhhyyyyhhyyyyyyyyyyyhyyyyyyyyyyyhyyyhyyyhyyyyyysso+/::y
++.```..-:/+ossyyhyyhyyhhyyyyhhhhyyyhhyyyyyyyyyhhyyyyyyhhyhyyyyyyso++/:-.``````:y
+y-```````````.--:/+ossyyhyhhhhyyyhhyyyyyyyyyyyhhyyyyyyhyyso/::-.`````````````-oy
+y+.``````````````````./yhyhhhhhhhhyyyyyyyyyyyyyyyyyyyhhho.```````````````````:yy
+yy-````````````````````/yhyyyhhhhhhhhhyyyyyyyyyyhyyyhhhho.``````````````````-oyy
+hh+.````````````````````oyyyyyhhhhhhhhhhhyyyyyyhyyhhyyyhh+.`````````````````/yyh
+hys:````````````````````.syyyyyhhhhhhhhhhhhyyhyyyyyyyyyhhh/````````````````-+yhy
+yhy/.````````````````````-syyyyhhhhhhhhhhhhhhyyyhyyyyyhhhhs-```````````````/yyhh
+yhhs:`````````````````````:oyyyhhhhhhhhhhhhhhhhyyyhhhhhhhhh/``````````````.oyyyy
+yyyy+`````````````...---:::oyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhho-`````````````/syyhy
+yyyyo:`````..:/+ossyyyyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhs:````````````.oyyyyy
+yyyyys/-:+oyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhy/`````````.:+syhhhhy
+yhyyyhhhhhhhyhhhhhhhhhhhhhhhhhhhhhhhhyyyyyyhhhhhhhhhhhhhhhhh+````.:/oyyhyhhyyhyh
+yyyyyhyhhyyyyyyyhhhhhhhhhhhhhs+ohyyyyyyyhhyyyyhy:+shhhhhhhhho::+syyyyyyyhhhyyyyy
+yyyyyyyyyyyyyyyyhhhhhhhhhhhs/.`.syyyyyhyhhyyyyy/``./shhhhhhhhyyyyyyyyyhhhhhyyyyy
+hyyyyyyyyyyyhhhhyyhhhhhhhho-````.syyyyyyyhhhyy+`````:shhhhhhhhyhhhhhhhhhhhyyyhyy
+yyyyyyyhhyyyyyyyhhhhhhhhhhhys+:-`:syyyyyhyyyyo..:+syyyhhhhhhhhhhhhhhhhhhhhyyyyyy
+yyyyyyyyyyyyyyyhhhhhhhhhhhhyyyyysoyyyyhhhyyhyysyyyhhhyyhhhhhhhhhhhhhhhhhyyyhhyyh
+yhyyyyhhyyyyyhhhhhhhhhhhhyyyyyyyyyyyyyyhhyhyyyyhyyyyhyyhhhhhhhhhhhhhhhhhyyyhyyyy
+yyyhyyyyyhyhhhhhhhhhhhhhyyhhyyyyyyyyyyyyyyyyyhhyhyyyhhyyhhhhhhhhhhhhhhhyyyyyyyyy
+hyhhhyhhyyhhhhhhhhhhhhhhyyhhyyyyyhhyyyyyyyyyyhhyyhhyyhyyhhhhhhhhhhhhhyyhyyyyyyyy
+yyyhhhyyyhhhhhhhhhhhhhhhhyyhhhyhhyhhhyyyyyhhyyyyyyyhhyyhhhhhhhhhhhhyyhhyyyyyyyyy
+yyyyhhyyhhhhhhhhhhhhhhhhhhyyhyyyysyyyyyhyhhyyyssyyyhhyyhhhhhhhhhhyyhhyyhyyyyyyyy
+hyhyyhyhhhhhhhhhhhhhhhhhhhyyys+:..oyyyhhyyhyyo-.-/osyhhhhhhhhhhyhhyyyyhyyyyyyyyy
+hhyhhhhhhhhhhhhhhyhhhhhhhhs:`````oyyyyyyhhyyyys.````-ohhhhhhhhyyyyhyyyyyyyyyyyyy
+yyhhyhhhhhyyyyyyyyyhhhhhhhhs/.``+yhhyyhyyyhhhyyo``./shhhhhhhhhhyhyhhyyyyyyyyyyyy
+hyhhhhhhyyhhyyys+::ohhhhhhhhhs+/yhyhhyhhhyyhyyyy++shhhhhhhhhhhhhyhyyyyyhhhhhyyyy
+yhhhhhhyhyyo/:.````+hhhhhhhhhhhhhhhhhyyyyyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyyhyy
+hhyhyys+:.`````````/yhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyo+::/syyyhh
+hhhyyo`````````````:shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyyyysss+/:..`````/shhhy
+hyyys:`````````````-ohhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyo:::---...````````````.+yyyy
+yyyy+.``````````````/hhhhhhhhhyyyhhhhhhhhhhhhhhhhyyyo-`````````````````````/syhh
+yyys:```````````````-shhhhhyyyyhyyhhhhhhhhhhhhhhhyyyyo.````````````````````.+yyy
+hhy+.````````````````/hhhyyyyyyyyyyyyhhhhhhhhhhhhyyyyyo`````````````````````:shh
+yhs:`````````````````.+hhyyyyyyyyhyhhyyhhhhhhhhhhyyyyhy+````````````````````-+yy
+yy+-``````````````````.ohhhhyyyyyyhhhyhhyyhhhhhhhhhhyhhh:````````````````````:yh
+yy:```````````````````.ohhyyyyyyyyyhyyyyyyyyyyhhhhhhhhhyy:.``````````````````.+y
+y+.`````````````--::/osyhyyyyyyyyyyyyyyyyyyyhyyyyyhhhhyhyysso//:-..```````````:y
+y-``````.-:/++ssyyyyhhhyhhhyyyyyyyyyyyyyyyyyyyyhyhhhyyyyhhyyyyhyyysso+/:-..```.o
+y::/+ossyyhhyyhyyhyyhyyhyyhyyyyyyyyyyyyyyyyyyyyyyyyyyyyyhyhyyyyyyyyhyyhyyysso++o
+
+RIP Sam,
+CK
+*/
