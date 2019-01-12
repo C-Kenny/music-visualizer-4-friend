@@ -21,19 +21,6 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 
 ![Halo3Emblem](media/h3_emblem.jpg)
 
-### Directory Structure
-
-`code/`
-
-Processing 3 code. 
-
-`media/`
-
-Halo emblem used as inspiration for this visualizer.
-
-`output/`
-
-Preview of visualizer, without running it.
 
 ### Ideas?
 
