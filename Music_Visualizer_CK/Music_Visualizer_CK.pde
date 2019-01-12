@@ -255,13 +255,10 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
   FIN_REDNESS_ANGRY = true;
   
   // To reduce eye sore, only change blend mode on RNG
-  float randomNumber = random(0, 10);
+  float randomNumber = random(1, 10);
   
   if (intensityOutOfTen > randomNumber) {
-    println("Changing blendMode. From: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
-    blendMode(modes[int(randomNumber)]);
-    println("Changed blendMode to: " + modeNames[int(randomNumber)]); //<>//
-    
+    changeBlendMode();     //<>//
   } 
 }
  //<>//
@@ -388,13 +385,13 @@ void draw() {
   
  
   //println("MAX specSize: " + fft.specSize());
-  
+  int blendModeIntensity = 5;
   // Blend Mode changes on any loud volume
   for(int i = 0; i < fft.specSize(); i++)
   {
     //line(i, height, i, height - fft.getBand(i)*4);
     if (fft.getBand(i)*4 > 1000.0) {
-      //applyBlendModeOnDrop(blendModeIntensity);
+      applyBlendModeOnDrop(blendModeIntensity);
     }
       
   }

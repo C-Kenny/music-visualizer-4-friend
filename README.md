@@ -1,16 +1,47 @@
-# Music Visualizer 4 Friend
+# Music Visualizer for a Friend
 
 ### What?
-Music Visualizer, starting with a 2D representation. Written in Processing. [Main Processing file](/code/halo_3_emblem/halo_3_emblem/halo_3_emblem.pde)
+Music Visualizer, starting with a 2D representation. Written in Processing 3. 
 
-The repo also holds my learnings of Processing and graphics, for historical sake.
 
 ### Current State?
 
-![CurrentAnimatedEmblem](/output/current_output_animated.gif)
+With sound: https://streamable.com/cu2p3
+
+Without sound: 
+
+![MusicVisualizerCK](output/current_output_animated.gif)
+
+
+
 
 ### Why?
 
 One of my friends passed away, we used to play a lot of Halo together. This music visualizer is dedicated to him, and we use his Halo 3 Emblem as inspiration.
 
 ![Halo3Emblem](media/h3_emblem.jpg)
+
+### Directory Structure
+
+`code/`
+
+Processing 3 code. 
+
+`media/`
+
+Halo emblem used as inspiration for this visualizer.
+
+`output/`
+
+Preview of visualizer, without running it.
+
+### Ideas?
+
+- Feel free to submit pull requests of code improvements/features.
+- Create a GitHub issue, and I'll look into developing it.
+
+### Credits:
+
+- ttaM for the incredible help on the Bezier Curves (fins)!
+- [Minim, for audio library](http://code.compartmental.net/minim/)
+- [Processing 3, for providing a platform to create with](https://processing.org/)
