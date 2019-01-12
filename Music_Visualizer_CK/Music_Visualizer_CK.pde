@@ -190,7 +190,7 @@ void drawInnerCircle() {
 void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
   //println("Fins are rotating clockwise? " + finRotationClockWise);
   stroke(redness, 0, 0);
-  strokeWeight(4);
+  strokeWeight(2);
   
   float xOffset = -20;
   float yOffset = -50;
@@ -206,8 +206,8 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
     
     translate(width/2, height/2);
     rotate(rotationAmount);
-    noFill();
-    
+    //noFill();
+    fill(255,0,0, 100);
     /*
     .
       .
@@ -240,7 +240,7 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
      ,......,
     .        .
     */
-    bezier(
+  bezier(
       -22 + xOffset,-52 + yOffset,
       -22 + xOffset,-52 + yOffset,
       20 + xOffset,-74 + yOffset,
