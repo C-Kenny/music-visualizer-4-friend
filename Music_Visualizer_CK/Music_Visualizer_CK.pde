@@ -101,7 +101,7 @@ void setup() {
   minim = new Minim(this);
   player = minim.loadFile(SONG_TO_VISUALIZE);
   
-  player.play();
+  player.loop();
   beat = new BeatDetect();
   ellipseMode(CENTER);
   
