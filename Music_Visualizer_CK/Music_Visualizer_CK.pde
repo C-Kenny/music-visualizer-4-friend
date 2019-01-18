@@ -1,11 +1,6 @@
-/*
- 
-Diamonds and circles intersect to form a Celtic Cross
- 
-Source image dimensions: 70x70 px
-Output image dimensions: 420x420 px
- 
-Ratio 1:6
+/* //<>//
+
+Music Visualizer ♫ ♪♪
 
 Keyboard Layout:
 
@@ -14,17 +9,28 @@ f = change direction of fins (requires ability to change fins i.e. timeotus)
 d = diamond closer to center
 D = diamond closer to outside
 
+Metrics:
+
+Source image dimensions: 70x70 px
+Output image dimensions: 420x420 px
+
+Ratio 1:6
+
 TODO:
 
-- split up music into frequencies. change different shapes on ranges. 
 - fix diamond center point. Currently it's modulo half way. But this means
 it glitches back, once it reaches max. Have a look at the diamond incrementer,
 logic doesn't appear to be reducing it.
+
+Trivia:
+
+Diamonds and circles intersect to form a Celtic Cross
  
 */
 
 import ddf.minim.*;
 import ddf.minim.analysis.*;
+import org.gicentre.handy.*;
  
 Minim minim;
 AudioPlayer player;
@@ -33,7 +39,11 @@ FFT fft;
 
 // GLOBALS
 
-// FINS
+// Draw shapes like they are hand drawn (thanks to Handy)
+HandyRenderer h, h3,h4;
+boolean APPEAR_HAND_DRAWN = true;
+
+// FINS ------------------------------------------------------
 boolean FIN_REDNESS_ANGRY = true;
 boolean ANIMATED = true;
 
@@ -44,7 +54,7 @@ int FIN_REDNESS = 1;
 boolean canChangeFinDirection = true;
 boolean finRotationClockWise = false;
 
-// DIAMONDS
+// DIAMONDS --------------------------------------------------
 int DIAMOND_DISTANCE_FROM_CENTER = 30;
 
 int MAX_DIAMOND_DISTANCE = 240;
@@ -52,7 +62,7 @@ int MIN_DIAMOND_DISTANCE = -240;
 
 boolean INCREMENT_DIAMOND_DISTANCE = true;
 
-// BLEND MODES
+// BLEND MODES -----------------------------------------------
 int[] modes = new int[]{
   BLEND, ADD, SUBTRACT, 
 };
@@ -67,9 +77,13 @@ String[] modeNames = new String[]{
 // the number of bands per octave
 int bandsPerOctave = 4;
 
-// Visualize song passed to
+// Visualize song passed to, prog waits for this to be legit
 String SONG_TO_VISUALIZE = "";
- 
+
+
+int STATE = 0; // used to show loading screen
+
+float GLOBAL_REDNESS = 0.0;
 
 
 String fileSelected(File selection) {
@@ -91,12 +105,20 @@ void setup() {
   while (SONG_TO_VISUALIZE == "") {
     delay(1);
   }
+  STATE = 1;
   
+  // render shapes like they are hand drawn
+  h = new HandyRenderer(this);
+  h3 = HandyPresets.createWaterAndInk(this);
+  h4 = HandyPresets.createMarker(this);
+    
   // Setup the display frame
   size(420, 420);
+
   smooth();
   frameRate(60);
-  surface.setTitle("(Click) animates ::)");
+  surface.setTitle("press[b,f,d,h] d(-_-)b");
+
   
   minim = new Minim(this);
   player = minim.loadFile(SONG_TO_VISUALIZE);
@@ -116,8 +138,9 @@ void setup() {
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
+  
 }
- 
+
  
 void drawDiamond(int distanceFromCenter) {
   /*
@@ -141,9 +164,8 @@ void drawDiamond(int distanceFromCenter) {
   //println("innerDiamond: " + innerDiamondCoordinate);
  
   // bottom right diamond
-  quad(
+  h.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
-    //240, 240,
     390,300,
     420,420,
     312,390
@@ -152,10 +174,9 @@ void drawDiamond(int distanceFromCenter) {
  
 void drawDiamonds() {
   // Diamonds are drawn by transforming the canvas 
-   
+      
   // bottom left diamond
   pushMatrix();
-  fill(255);
   scale(-1,1);
   translate(-width, 0);
   drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
@@ -163,7 +184,6 @@ void drawDiamonds() {
   
   // top left diamond
   pushMatrix();
-  fill(255);
   scale(-1,-1);
   translate(-width, -height);
   drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
@@ -171,7 +191,6 @@ void drawDiamonds() {
   
   // top right diamond
   pushMatrix();
-  fill(255);
   scale(1,-1);
   translate(0, -height);
   drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
@@ -184,13 +203,15 @@ void drawInnerCircle() {
   stroke(FIN_REDNESS, 0, 0);
   strokeWeight(8);
   noFill();
-  ellipse(width/2.0, height/2.0, 110, 110);
+  h.ellipse(width/2.0, height/2.0, 110, 110);
 }
  
 void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
   //println("Fins are rotating clockwise? " + finRotationClockWise);
-  stroke(redness, 0, 0);
-  strokeWeight(2);
+  //stroke(redness, 0, 0);
+  stroke(0);
+
+  strokeWeight(3);
   
   float xOffset = -20;
   float yOffset = -50;
@@ -206,8 +227,11 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
     
     translate(width/2, height/2);
     rotate(rotationAmount);
-    //noFill();
-    fill(255,0,0, 100);
+    if (APPEAR_HAND_DRAWN) {
+      fill(255,0,0, 100);
+    } else {      
+      noFill();
+    }
     /*
     .
       .
@@ -258,10 +282,10 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
   float randomNumber = random(1, 10);
   
   if (intensityOutOfTen > randomNumber) {
-    changeBlendMode();     //<>//
+    changeBlendMode();    
   } 
 }
- //<>//
+
 void changeBlendMode() {
   if (CURRENT_BLEND_MODE_INDEX == modes.length - 1) { 
     CURRENT_BLEND_MODE_INDEX = 0;
@@ -286,14 +310,35 @@ void modifyDiamondCenterPoint(boolean closerToCenter) {
   if (closerToCenter) {
     DIAMOND_DISTANCE_FROM_CENTER++;
   } else {
-    DIAMOND_DISTANCE_FROM_CENTER--; //<>//
+    DIAMOND_DISTANCE_FROM_CENTER--;
   }
 }
+
+void toggleHandDrawn(){
+  APPEAR_HAND_DRAWN = !APPEAR_HAND_DRAWN;
+  h.setIsHandy(APPEAR_HAND_DRAWN);
+  //h3.setIsHandy(false);
+}
+
+void toggleHandDrawn3(){
+  APPEAR_HAND_DRAWN = !APPEAR_HAND_DRAWN;
+  h3.setIsHandy(APPEAR_HAND_DRAWN);
+  //h.setIsHandy(false);
+}
+
     
 void keyPressed() {
   // blend
   if (key == 'b' || key == 'B') {
     changeBlendMode();
+  }
+  
+  // appear hand drawn
+  if (key == 'h') {
+    toggleHandDrawn();
+  }
+  if (key == 'H') {
+    toggleHandDrawn3();
   }
   
   // fins
@@ -360,10 +405,26 @@ void splitFrequencyIntoLogBands() {
   
   
 void draw() {
+  if (STATE == 0) {
+    // show loading screen
+    textSize(48);
+    fill(0,255,0);
+    text("RIP Sam", width/2, height/2);
+  }
   // reset drawing params when redrawing frame
   stroke(0);
   noStroke();
+  
+  /*
+  if (GLOBAL_REDNESS >= 200)  GLOBAL_REDNESS=0;  else  GLOBAL_REDNESS=GLOBAL_REDNESS+0.5;
+  background(GLOBAL_REDNESS, 100, 10, 100);
+  */
   background(200);
+  
+  // stop redrawing the hand drawn everyframe aka jitters
+  h.setSeed(1234);
+  h3.setSeed(1234);
+
   
   // first perform a forward fft on one of song's mix buffers
   fft.forward(player.mix);
@@ -407,7 +468,7 @@ void draw() {
   {
     float x1 = map( i, 0, player.bufferSize(), 0, width );
     float x2 = map( i+1, 0, player.bufferSize(), 0, width );
-    line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
+    h.line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
   }
   
   // draw a line to show where in the player playback is currently located
@@ -431,8 +492,16 @@ void draw() {
   }
   
    
+
+  if (APPEAR_HAND_DRAWN) {
+    fill(255, 76, 52);
+    //background(50, 25, 200);
+  } else {
+    fill(255);
+    background(200);
+  }
+  
   // bottom right diamond
-  fill(255);
   drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   
   // draw rest of diamonds, by rotating canvas
@@ -460,6 +529,7 @@ void draw() {
   drawInnerCircle();
   
   drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
+
 }
 
 void mouseClicked() {
@@ -515,6 +585,17 @@ y+.`````````````--::/osyhyyyyyyyyyyyyyyyyyyyhyyyyyhhhhyhyysso//:-..```````````:y
 y-``````.-:/++ssyyyyhhhyhhhyyyyyyyyyyyyyyyyyyyyhyhhhyyyyhhyyyyhyyysso+/:-..```.o
 y::/+ossyyhhyyhyyhyyhyyhyyhyyyyyyyyyyyyyyyyyyyyyyyyyyyyyhyhyyyyyyyyhyyhyyysso++o
 
+I know we shared a love for visualizers. I remember Foobar's
+spectrum laying low on your secondary display, while 
+Battlefield was being played.
+
+When you held that party, I was drawn to your audio/visualizer
+setup. You gestured towards the PC. I navigated Foobar, kicked
+Milkdrop 2 off using Shpeck. Thanks, man.
+
 RIP Sam,
 CK
+
+PS: If anyone ever wants to talk, I'm open ears and don't be
+hesitant even if I have headphones on d(-_-)b
 */
