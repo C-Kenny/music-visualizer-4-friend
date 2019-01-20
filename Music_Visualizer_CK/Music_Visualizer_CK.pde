@@ -1,11 +1,11 @@
-/* //<>//
+/*
 
 Music Visualizer ♫ ♪♪
 
 Keyboard Layout:
 
 b = blend mode iterate
-f = change direction of fins (requires ability to change fins i.e. timeotus)
+f = change direction of fins (requires ability to change fins i.e. timeouts)
 d = diamond closer to center
 D = diamond closer to outside
 
@@ -25,13 +25,16 @@ logic doesn't appear to be reducing it.
 Trivia:
 
 Diamonds and circles intersect to form a Celtic Cross
- 
+
 */
 
+// minim is used for music analysis, fast Fourier transform and beat detection
 import ddf.minim.*;
 import ddf.minim.analysis.*;
+
+// handy is used for the alternative style where it looks "sketched".
 import org.gicentre.handy.*;
- 
+
 Minim minim;
 AudioPlayer player;
 BeatDetect beat;
@@ -55,23 +58,23 @@ boolean canChangeFinDirection = true;
 boolean finRotationClockWise = false;
 
 // DIAMONDS --------------------------------------------------
-int DIAMOND_DISTANCE_FROM_CENTER = 30;
+float DIAMOND_DISTANCE_FROM_CENTER = 30;
 
 int MAX_DIAMOND_DISTANCE = 240;
-int MIN_DIAMOND_DISTANCE = -240;
+int MIN_DIAMOND_DISTANCE = 10;
 
 boolean INCREMENT_DIAMOND_DISTANCE = true;
 
 // BLEND MODES -----------------------------------------------
 int[] modes = new int[]{
-  BLEND, ADD, SUBTRACT, 
+  BLEND, ADD, SUBTRACT,
 };
 
 int CURRENT_BLEND_MODE_INDEX = 0;
 
 String[] modeNames = new String[]{
   "BLEND", "ADD", "SUBTRACT",
-  "EXLCUSION"  
+  "EXLCUSION"
 };
 
 // the number of bands per octave
@@ -101,17 +104,17 @@ String fileSelected(File selection) {
 void setup() {
   // Visualizer only begins once a song has been selected
   selectInput("Select song to visualize", "fileSelected");
-  
+
   while (SONG_TO_VISUALIZE == "") {
     delay(1);
   }
   STATE = 1;
-  
+
   // render shapes like they are hand drawn
   h = new HandyRenderer(this);
   h3 = HandyPresets.createWaterAndInk(this);
   h4 = HandyPresets.createMarker(this);
-    
+
   // Setup the display frame
   size(420, 420);
 
@@ -119,76 +122,74 @@ void setup() {
   frameRate(60);
   surface.setTitle("press[b,f,d,h] d(-_-)b");
 
-  
+
   minim = new Minim(this);
   player = minim.loadFile(SONG_TO_VISUALIZE);
-  
+
   player.loop();
   beat = new BeatDetect();
   ellipseMode(CENTER);
-  
+
   blendMode(BLEND);
-  
-  // an FFT needs to know how 
+
+  // an FFT needs to know how
   // long the audio buffers it will be analyzing are
-  // and also needs to know 
+  // and also needs to know
   // the sample rate of the audio it is analyzing
   fft = new FFT(player.bufferSize(), player.sampleRate());
-  
+
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
-  
+
 }
 
- 
-void drawDiamond(int distanceFromCenter) {
+
+void drawDiamond(float distanceFromCenter) {
   /*
   Coordinate System
-  
+
   x -->
       0 1 2 3 4 5
-  y  0 
+  y  0
   |  1
   |  2
   v  3
      4
      5
   */
-  
+
   //int innerDiamondCoordinate = (420/2) + (DIAMOND_DISTANCE_FROM_CENTER%240);
   // TODO: Fix, so it can come back to center also. Right now it resets
   // back to original position
-  int innerDiamondCoordinate = ((420/2) + DIAMOND_DISTANCE_FROM_CENTER %240);
+  float innerDiamondCoordinate = ((420/2) + DIAMOND_DISTANCE_FROM_CENTER %240);
 
-  //println("innerDiamond: " + innerDiamondCoordinate);
- 
   // bottom right diamond
-  h.quad(
+  h3.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
     390,300,
     420,420,
     312,390
-  );  
+  );
 }
- 
+
 void drawDiamonds() {
-  // Diamonds are drawn by transforming the canvas 
-      
+  // Diamonds are drawn by transforming the canvas
+
   // bottom left diamond
   pushMatrix();
   scale(-1,1);
   translate(-width, 0);
   drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
-  
+
   // top left diamond
   pushMatrix();
   scale(-1,-1);
   translate(-width, -height);
   drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
-  
+
   // top right diamond
   pushMatrix();
   scale(1,-1);
@@ -196,7 +197,7 @@ void drawDiamonds() {
   drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
 }
- 
+
 void drawInnerCircle() {
   // red inner circle, is used to make the fins look smooth internally
   ellipseMode(RADIUS);
@@ -205,31 +206,30 @@ void drawInnerCircle() {
   noFill();
   h.ellipse(width/2.0, height/2.0, 110, 110);
 }
- 
+
 void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
-  //println("Fins are rotating clockwise? " + finRotationClockWise);
   //stroke(redness, 0, 0);
   stroke(0);
 
   strokeWeight(3);
-  
+
   float xOffset = -20;
   float yOffset = -50;
   for (int i=0; i<fins; i++) {
 
     pushMatrix();
-    
+
     float rotationAmount = (2 * (i / fins) * PI);
-    
+
     if (finRotationClockWise == true) {
       rotationAmount = 0 - rotationAmount;
     }
-    
+
     translate(width/2, height/2);
     rotate(rotationAmount);
     if (APPEAR_HAND_DRAWN) {
       fill(255,0,0, 100);
-    } else {      
+    } else {
       noFill();
     }
     /*
@@ -245,7 +245,7 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
       32 + xOffset,-118 + yOffset,
       68 + xOffset,-52 + yOffset
     );
-    
+
     /*
       .
        .
@@ -258,9 +258,9 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
       -10 + xOffset,-88 + yOffset,
       -22 + xOffset,-52 + yOffset
     );
-    
+
     /*
-             
+
      ,......,
     .        .
     */
@@ -270,24 +270,24 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
       20 + xOffset,-74 + yOffset,
       68 + xOffset,-52 + yOffset
     );
-      
+
     popMatrix();
   }
 }
- 
+
 void applyBlendModeOnDrop(int intensityOutOfTen) {
   FIN_REDNESS_ANGRY = true;
-  
+
   // To reduce eye sore, only change blend mode on RNG
   float randomNumber = random(1, 10);
-  
+
   if (intensityOutOfTen > randomNumber) {
-    changeBlendMode();    
-  } 
+    changeBlendMode();
+  }
 }
 
 void changeBlendMode() {
-  if (CURRENT_BLEND_MODE_INDEX == modes.length - 1) { 
+  if (CURRENT_BLEND_MODE_INDEX == modes.length - 1) {
     CURRENT_BLEND_MODE_INDEX = 0;
   } else {
     CURRENT_BLEND_MODE_INDEX += 1;
@@ -308,9 +308,9 @@ void changeFinRotation() {
 
 void modifyDiamondCenterPoint(boolean closerToCenter) {
   if (closerToCenter) {
-    DIAMOND_DISTANCE_FROM_CENTER++;
+    DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER + log(int(DIAMOND_DISTANCE_FROM_CENTER));
   } else {
-    DIAMOND_DISTANCE_FROM_CENTER--;
+    DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER - log(int(DIAMOND_DISTANCE_FROM_CENTER));
   }
 }
 
@@ -326,13 +326,13 @@ void toggleHandDrawn3(){
   //h.setIsHandy(false);
 }
 
-    
+
 void keyPressed() {
   // blend
   if (key == 'b' || key == 'B') {
     changeBlendMode();
   }
-  
+
   // appear hand drawn
   if (key == 'h') {
     toggleHandDrawn();
@@ -340,12 +340,12 @@ void keyPressed() {
   if (key == 'H') {
     toggleHandDrawn3();
   }
-  
+
   // fins
   if (key == 'f' || key == 'F') {
     changeFinRotation();
   }
-  
+
   // diamonds
   if (key == 'd') {
     modifyDiamondCenterPoint(false);
@@ -353,7 +353,7 @@ void keyPressed() {
   if (key == 'D') {
     modifyDiamondCenterPoint(true);
   }
-  
+
   // logging / debug
   // TODO: Implement valuable logging
   if (key == 'l' || key == 'L') {
@@ -362,48 +362,42 @@ void keyPressed() {
 
 void splitFrequencyIntoLogBands() {
   fft.avgSize();
-    
+
   for(int i = 0; i < fft.avgSize(); i++ ){
     // get amplitude of frequency band
     float amplitude = fft.getAvg(i);
-    
-    // convert the amplitude to a DB value. 
+
+    // convert the amplitude to a DB value.
     // this means values will range roughly from 0 for the loudest
     // bands to some negative value.
     float bandDB = 20 * log(2 * amplitude / fft.timeSize());
-   
-    
+
+
     //println("i: " + i);
     //println("bandDB: " + bandDB);
-    
+
     if ((i >= 0 && i <= 5) && bandDB > -10) {
       // bass
       changeBlendMode();
-    } 
-    
+    }
+
     // TODO diamond inner point, changes on beat
     if ((i >=6 && i<= 15) && bandDB >-27) {
-        println("DIAMOND DISTANCE: " + DIAMOND_DISTANCE_FROM_CENTER);
         if (INCREMENT_DIAMOND_DISTANCE == true) {
-          //modifyDiamondCenterPoint(closerToCenter=true);
-          println("Moving center diamond point INWARDS");
-          modifyDiamondCenterPoint(true); 
+          modifyDiamondCenterPoint(true);
         } else {
-          println("Moving center diamond point OUTWARDS");
           modifyDiamondCenterPoint(false);
         }
     }
-    //println("canChangeFinDirection: " + canChangeFinDirection);
     if (canChangeFinDirection == true) {
       if ((i >=16 && i <= 35) && bandDB > -150) {
-        println("About to change fin rotation");          
         changeFinRotation();
       }
     }
   }
 }
-  
-  
+
+
 void draw() {
   if (STATE == 0) {
     // show loading screen
@@ -414,37 +408,37 @@ void draw() {
   // reset drawing params when redrawing frame
   stroke(0);
   noStroke();
-  
+
   /*
   if (GLOBAL_REDNESS >= 200)  GLOBAL_REDNESS=0;  else  GLOBAL_REDNESS=GLOBAL_REDNESS+0.5;
   background(GLOBAL_REDNESS, 100, 10, 100);
   */
   background(200);
-  
+
   // stop redrawing the hand drawn everyframe aka jitters
   h.setSeed(1234);
   h3.setSeed(1234);
 
-  
+
   // first perform a forward fft on one of song's mix buffers
   fft.forward(player.mix);
- 
+
   stroke(255, 0, 0, 128);
   strokeWeight(8);
-  
+
 
   // only change fin direction, if it has been more than 10s since last it was changed.
   // otherwise eyes might hurt o_O
-  
+
   int msSinceProgStart = millis();
   if (msSinceProgStart > LAST_FIN_CHECK + 10000) {
     canChangeFinDirection = true;
     LAST_FIN_CHECK = millis();
   }
-  
+
   splitFrequencyIntoLogBands();
-  
- 
+
+
   //println("MAX specSize: " + fft.specSize());
   int blendModeIntensity = 5;
   // Blend Mode changes on any loud volume
@@ -454,12 +448,12 @@ void draw() {
     if (fft.getBand(i)*4 > 1000.0) {
       applyBlendModeOnDrop(blendModeIntensity);
     }
-      
+
   }
   strokeWeight(2);
 
   stroke(255);
-  
+
   // draw the waveforms
   // the values returned by left.get() and right.get() will be between -1 and 1,
   // so we need to scale them up to see the waveform
@@ -470,7 +464,7 @@ void draw() {
     float x2 = map( i+1, 0, player.bufferSize(), 0, width );
     h.line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
   }
-  
+
   // draw a line to show where in the player playback is currently located
   // located at the bottom of the output screen
   // uses custom style, so doesn't alter other strokes
@@ -479,19 +473,19 @@ void draw() {
   stroke(0,200,0);
   line(posx, height, posx, height-15);
   popStyle();
-  
-  // DIAMONDS 
-  
-  
+
+  // DIAMONDS
+
+
   // check if should be incrementing diamond distance from center
   if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
     //println("Too far from center. ");
-    INCREMENT_DIAMOND_DISTANCE = true;
-  } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
     INCREMENT_DIAMOND_DISTANCE = false;
+  } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
+    INCREMENT_DIAMOND_DISTANCE = true;
   }
-  
-   
+
+
 
   if (APPEAR_HAND_DRAWN) {
     fill(255, 76, 52);
@@ -500,22 +494,22 @@ void draw() {
     fill(255);
     background(200);
   }
-  
+
   // bottom right diamond
   drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
-  
+
   // draw rest of diamonds, by rotating canvas
   drawDiamonds();
   noFill();
-    
+
   // redness of fins, goes upto RED then back to BLACK
   if (FIN_REDNESS >= 255) {
     FIN_REDNESS_ANGRY = false;
   } else if (FIN_REDNESS <= 0) {
     FIN_REDNESS_ANGRY = true;
   }
-  
-  if (ANIMATED) {  
+
+  if (ANIMATED) {
     if (FIN_REDNESS_ANGRY) {
       FIN_REDNESS += 1;
       FINS += 0.04;
@@ -524,21 +518,24 @@ void draw() {
       FINS -= 0.04;
     }
   }
-  
+
   // red circle, of which the bezier shapes touch
   drawInnerCircle();
-  
+
   drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
 
 }
 
 void mouseClicked() {
   // toggles fin animated state on mouse click
+  ANIMATED = !ANIMATED;
+  /*
   if (ANIMATED) {
     ANIMATED = false;
   } else {
     ANIMATED = true;
   }
+  */
 }
 
 /*
@@ -586,7 +583,7 @@ y-``````.-:/++ssyyyyhhhyhhhyyyyyyyyyyyyyyyyyyyyhyhhhyyyyhhyyyyhyyysso+/:-..```.o
 y::/+ossyyhhyyhyyhyyhyyhyyhyyyyyyyyyyyyyyyyyyyyyyyyyyyyyhyhyyyyyyyyhyyhyyysso++o
 
 I know we shared a love for visualizers. I remember Foobar's
-spectrum laying low on your secondary display, while 
+spectrum laying low on your secondary display, while
 Battlefield was being played.
 
 When you held that party, I was drawn to your audio/visualizer
