@@ -48,10 +48,20 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 
   `:make`
 
+### Create video recording (.mp4) of Visualizer using OBS
+```
+$ obs --startrecording
+```
+
+Given that the scene + window capture is setup, this will boot the OBS GUI with
+recording started. Use the output (usually in ~/videos) to create a .gif
+of the Visualizer.
+
+
 ### Convert OBS captured .mp4 to .gif
 
 ```
-ffmpeg \
+$ ffmpeg \
   -i music_visualizer_preview.mp4 \
   -r 60 \
   -vf scale=420:-1 \
