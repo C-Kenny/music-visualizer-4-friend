@@ -48,3 +48,14 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 
   `:make`
 
+### Convert OBS captured .mp4 to .gif
+
+```
+ffmpeg \
+  -i music_visualizer_preview.mp4 \
+  -r 60 \
+  -vf scale=420:-1 \
+  music_visualizer_preview.gif
+```
+
+
