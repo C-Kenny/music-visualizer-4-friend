@@ -88,6 +88,15 @@ int STATE = 0; // used to show loading screen
 
 float GLOBAL_REDNESS = 0.0;
 
+float circle = 200;
+float rot;
+float col;
+float freq = 0.000005;
+float cont = 0;
+float r;
+
+float t;
+
 
 String fileSelected(File selection) {
   if (selection == null) {
@@ -116,10 +125,14 @@ void setup() {
   h4 = HandyPresets.createMarker(this);
 
   // Setup the display frame
-  size(420, 420);
+  //fullScreen();
+
+  // P3D runs faster than JAVA2D
+  // https://forum.processing.org/beta/num_1115431708.html
+  size(420, 420, P3D);
 
   smooth();
-  frameRate(60);
+  frameRate(75);
   surface.setTitle("press[b,f,d,h] d(-_-)b");
 
 
@@ -405,6 +418,7 @@ void draw() {
     fill(0,255,0);
     text("RIP Sam", width/2, height/2);
   }
+
   // reset drawing params when redrawing frame
   stroke(0);
   noStroke();
@@ -523,6 +537,23 @@ void draw() {
   drawInnerCircle();
 
   drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
+
+    rotate(radians(rot));
+
+  //translate(width/2, height/2);
+
+  /*
+  ellipseMode(RADIUS);
+  for (float i=0; i<500; i ++) {
+    circle= 200 + 50*sin(millis()*freq*i);
+    col=map(circle,150,250,255,60);
+    r=map(circle,150,250,5,2);
+    fill(col,0,74);
+    noStroke();
+    ellipse(circle*cos(i), circle*sin(i),r,r);
+    rot=rot+0.00005;
+  }
+  */
 
 }
 
