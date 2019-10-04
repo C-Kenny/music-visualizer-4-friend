@@ -21,6 +21,7 @@ Trivia:
 Diamonds and circles intersect to form a Celtic Cross
 */
 
+
 // minim is used for music analysis, fast Fourier transform and beat detection
 import ddf.minim.*;
 import ddf.minim.analysis.*;
@@ -36,8 +37,18 @@ FFT fft;
 
 // GLOBALS
 
+// HANDY DRAWN STYLE ----------------------------------------
 // Draw shapes like they are hand drawn (thanks to Handy)
-HandyRenderer h, h3, h4;
+HandyRenderer h, h1, h2, h3, h4;
+HandyRenderer[] HANDY_RENDERERS = new HandyRenderer[5];
+
+int HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
+
+int MIN_HANDY_RENDERER_POSITION = 0;
+int MAX_HANDY_RENDERER_POSITION = HANDY_RENDERERS_COUNT;
+int CURRENT_HANDY_RENDERER_POSITION = 0;
+HandyRenderer CURRENT_HANDY_RENDERER;
+
 boolean APPEAR_HAND_DRAWN = true;
 
 // FINS ------------------------------------------------------
@@ -65,7 +76,7 @@ float MAX_DIAMOND_DISTANCE = width * 0.57;
 
 //int MIN_DIAMOND_DISTANCE = 10;
 //float MIN_DIAMOND_DISTANCE = height * 0.02;
-float MIN_DIAMOND_DISTANCE = height * 0.10;
+float MIN_DIAMOND_DISTANCE = height * 0.2;
 
 
 
@@ -90,20 +101,14 @@ int bandsPerOctave = 4;
 // Visualize song passed to, prog waits for this to be legit
 String SONG_TO_VISUALIZE = "";
 
-
 int STATE = 0; // used to show loading screen
 
 float GLOBAL_REDNESS = 0.0;
 
-float circle = 200;
+
 float rot;
-float col;
-float freq = 0.000005;
-float cont = 0;
-float r;
 
-float t;
-
+boolean EPILEPSY_MODE_ON = false;
 
 String fileSelected(File selection) {
   if (selection == null) {
@@ -130,8 +135,20 @@ void setup() {
 
   // render shapes like they are hand drawn
   h = new HandyRenderer(this);
+  h1 = HandyPresets.createPencil(this);
+  h2 = HandyPresets.createColouredPencil(this);
   h3 = HandyPresets.createWaterAndInk(this);
   h4 = HandyPresets.createMarker(this);
+  
+  // TODO: There's gotta be a better way to init array of objects..
+  HANDY_RENDERERS[0] = h;
+  HANDY_RENDERERS[1] = h1;
+  HANDY_RENDERERS[2] = h2;
+  HANDY_RENDERERS[3] = h3;
+  HANDY_RENDERERS[4] = h4;
+  
+  println("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
+  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
   // Setup the display frame
   //fullScreen();
@@ -147,7 +164,7 @@ void setup() {
 
   smooth();
   frameRate(75);
-  surface.setTitle("press[b,f,d,h,y] d(-_-)b");
+  surface.setTitle("press[b,d,f,h,s,y] d(-_-)b");
 
 
   minim = new Minim(this);
@@ -189,8 +206,11 @@ void drawDiamond(float distanceFromCenter) {
   //int innerDiamondCoordinate = (420/2) + (DIAMOND_DISTANCE_FROM_CENTER%240);
   float innerDiamondCoordinate = ((width/2) + DIAMOND_DISTANCE_FROM_CENTER % (height * 0.57) );
 
+  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION]; //<>//
+  
   // bottom right diamond
-  h3.quad(
+  //h3.quad(
+  CURRENT_HANDY_RENDERER.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
     //390,300,
     width*0.92, height*0.71,
@@ -249,9 +269,9 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
   */
   float xOffset = -20;
   float yOffset = -50;
-  
+
   yOffset = BEZIER_Y_OFFSET;
-  
+
   for (int i=0; i<fins; i++) {
 
     pushMatrix();
@@ -371,19 +391,23 @@ void toggleHandDrawn3(){
   //h.setIsHandy(false);
 }
 
-
 void keyPressed() {
   // blend
   if (key == 'b' || key == 'B') {
     changeBlendMode();
   }
 
-  // appear hand drawn
+  // cycle between drawing styles
   if (key == 'h') {
-    toggleHandDrawn();
+    //toggleHandDrawn();
+    CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
   }
+  
+  // toggle being hand-drawn or not
   if (key == 'H') {
-    toggleHandDrawn3();
+    APPEAR_HAND_DRAWN = !APPEAR_HAND_DRAWN;
+    CURRENT_HANDY_RENDERER.setIsHandy(APPEAR_HAND_DRAWN);
+    //toggleHandDrawn3();
   }
 
   // fins
@@ -403,13 +427,23 @@ void keyPressed() {
   // TODO: Implement valuable logging
   if (key == 'l' || key == 'L') {
   }
-  
+
   // change bezier y offset
   if (key == 'y') {
     BEZIER_Y_OFFSET -= 10;
   }
   if (key == 'Y') {
     BEZIER_Y_OFFSET += 10;
+  }
+  
+  if (key == 's' || key == 'S') {
+    EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
+  }
+    
+
+  // quit
+  if (key == 'q' || key == 'Q') {
+    exit();
   }
 }
 
@@ -464,15 +498,21 @@ void draw() {
   background(200);
 
   // stop redrawing the hand drawn everyframe aka jitters
-  h.setSeed(420);
-  h3.setSeed(322);
+  // TODO: Investigate seeds for more gpu intensive styles
+  
+  if (!EPILEPSY_MODE_ON) {
+    h.setSeed(117); 
+    h1.setSeed(322); // super intensive/slow
+    h2.setSeed(322);
+    h3.setSeed(420);
+    h4.setSeed(666);
+  }
 
   // first perform a forward fft on one of song's mix buffers
   fft.forward(player.mix);
 
   stroke(255, 0, 0, 128);
   strokeWeight(8);
-
 
   // only change fin direction, if it has been more than 10s since last it was changed.
   // otherwise eyes might hurt o_O
@@ -482,7 +522,7 @@ void draw() {
     canChangeFinDirection = true;
     LAST_FIN_CHECK = millis();
   }
-  println("Can change fin direction: " + canChangeFinDirection);
+  //println("Can change fin direction: " + canChangeFinDirection);
 
   splitFrequencyIntoLogBands();
 
