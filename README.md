@@ -6,7 +6,7 @@ Music Visualizer, starting with a 2D representation. Written in Processing 3.
 
 ### Current State?
 
-With sound: https://streamable.com/ydt0b
+With sound: https://streamable.com/dhv39
 
 Without sound:
 
