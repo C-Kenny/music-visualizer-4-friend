@@ -16,21 +16,15 @@ Output image dimensions: 420x420 px
 
 Ratio 1:6
 
-TODO:
-
-- fix diamond center point. Currently it's modulo half way. But this means
-it glitches back, once it reaches max. Have a look at the diamond incrementer,
-logic doesn't appear to be reducing it.
-
 Trivia:
 
 Diamonds and circles intersect to form a Celtic Cross
-
 */
 
 // minim is used for music analysis, fast Fourier transform and beat detection
 import ddf.minim.*;
 import ddf.minim.analysis.*;
+
 
 // handy is used for the alternative style where it looks "sketched".
 import org.gicentre.handy.*;
@@ -43,7 +37,7 @@ FFT fft;
 // GLOBALS
 
 // Draw shapes like they are hand drawn (thanks to Handy)
-HandyRenderer h, h3,h4;
+HandyRenderer h, h3, h4;
 boolean APPEAR_HAND_DRAWN = true;
 
 // FINS ------------------------------------------------------
@@ -57,24 +51,37 @@ int FIN_REDNESS = 1;
 boolean canChangeFinDirection = true;
 boolean finRotationClockWise = false;
 
-// DIAMONDS --------------------------------------------------
-float DIAMOND_DISTANCE_FROM_CENTER = 30;
+float BEZIER_Y_OFFSET = -50;
+float MAX_BEZIER_Y_OFFSET = 40;
+float MIN_BEZIER_Y_OFFSET = -140;
 
-int MAX_DIAMOND_DISTANCE = 240;
-int MIN_DIAMOND_DISTANCE = 10;
+// DIAMONDS --------------------------------------------------
+//float DIAMOND_DISTANCE_FROM_CENTER = 30;
+float DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
+
+
+//int MAX_DIAMOND_DISTANCE = 240;
+float MAX_DIAMOND_DISTANCE = width * 0.57;
+
+//int MIN_DIAMOND_DISTANCE = 10;
+//float MIN_DIAMOND_DISTANCE = height * 0.02;
+float MIN_DIAMOND_DISTANCE = height * 0.10;
+
+
 
 boolean INCREMENT_DIAMOND_DISTANCE = true;
 
 // BLEND MODES -----------------------------------------------
+// TODO: Possible refactor into enums for Blend Modes?
 int[] modes = new int[]{
-  BLEND, ADD, SUBTRACT,
+  BLEND, ADD, SUBTRACT, EXCLUSION
 };
 
 int CURRENT_BLEND_MODE_INDEX = 0;
 
 String[] modeNames = new String[]{
   "BLEND", "ADD", "SUBTRACT",
-  "EXLCUSION"
+  "EXCLUSION"
 };
 
 // the number of bands per octave
@@ -111,6 +118,8 @@ String fileSelected(File selection) {
 
 
 void setup() {
+  // Entry point, run once
+
   // Visualizer only begins once a song has been selected
   selectInput("Select song to visualize", "fileSelected");
 
@@ -129,11 +138,16 @@ void setup() {
 
   // P3D runs faster than JAVA2D
   // https://forum.processing.org/beta/num_1115431708.html
-  size(420, 420, P3D);
+  //size(420, 420, P3D);
+  size(840, 840, P3D);
+
+  surface.setResizable(true);
+  //fullScreen(P3D);
+
 
   smooth();
   frameRate(75);
-  surface.setTitle("press[b,f,d,h] d(-_-)b");
+  surface.setTitle("press[b,f,d,h,y] d(-_-)b");
 
 
   minim = new Minim(this);
@@ -162,7 +176,7 @@ void drawDiamond(float distanceFromCenter) {
   /*
   Coordinate System
 
-  x -->
+  x -------->
       0 1 2 3 4 5
   y  0
   |  1
@@ -173,16 +187,19 @@ void drawDiamond(float distanceFromCenter) {
   */
 
   //int innerDiamondCoordinate = (420/2) + (DIAMOND_DISTANCE_FROM_CENTER%240);
-  // TODO: Fix, so it can come back to center also. Right now it resets
-  // back to original position
-  float innerDiamondCoordinate = ((420/2) + DIAMOND_DISTANCE_FROM_CENTER %240);
+  float innerDiamondCoordinate = ((width/2) + DIAMOND_DISTANCE_FROM_CENTER % (height * 0.57) );
 
   // bottom right diamond
   h3.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
-    390,300,
-    420,420,
-    312,390
+    //390,300,
+    width*0.92, height*0.71,
+
+    //420,420,
+    width, height,
+
+    //312,390
+    width*0.74, height*0.92
   );
 }
 
@@ -226,8 +243,15 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
 
   strokeWeight(3);
 
+  /*
   float xOffset = -20;
   float yOffset = -50;
+  */
+  float xOffset = -20;
+  float yOffset = -50;
+  
+  yOffset = BEZIER_Y_OFFSET;
+  
   for (int i=0; i<fins; i++) {
 
     pushMatrix();
@@ -305,25 +329,33 @@ void changeBlendMode() {
   } else {
     CURRENT_BLEND_MODE_INDEX += 1;
   }
+
   blendMode(CURRENT_BLEND_MODE_INDEX);
   println("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 }
 
 void changeFinRotation() {
+  /*
   if (finRotationClockWise == true) {
     finRotationClockWise = false;
   } else {
     finRotationClockWise = true;
   }
+  */
+  finRotationClockWise = !finRotationClockWise;
+
   // once it has been changed, wait cooldown before changing again
   canChangeFinDirection = false;
 }
 
 void modifyDiamondCenterPoint(boolean closerToCenter) {
   if (closerToCenter) {
-    DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER + log(int(DIAMOND_DISTANCE_FROM_CENTER));
+    //DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER + log(int(DIAMOND_DISTANCE_FROM_CENTER));
+    DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER + (width * 0.02);
+
   } else {
-    DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER - log(int(DIAMOND_DISTANCE_FROM_CENTER));
+    //DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER - log(int(DIAMOND_DISTANCE_FROM_CENTER));
+    DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER - (width * 0.02);
   }
 }
 
@@ -371,6 +403,14 @@ void keyPressed() {
   // TODO: Implement valuable logging
   if (key == 'l' || key == 'L') {
   }
+  
+  // change bezier y offset
+  if (key == 'y') {
+    BEZIER_Y_OFFSET -= 10;
+  }
+  if (key == 'Y') {
+    BEZIER_Y_OFFSET += 10;
+  }
 }
 
 void splitFrequencyIntoLogBands() {
@@ -394,16 +434,14 @@ void splitFrequencyIntoLogBands() {
       changeBlendMode();
     }
 
-    // TODO diamond inner point, changes on beat
     if ((i >=6 && i<= 15) && bandDB >-27) {
-        if (INCREMENT_DIAMOND_DISTANCE == true) {
-          modifyDiamondCenterPoint(true);
-        } else {
-          modifyDiamondCenterPoint(false);
-        }
+      // mids
+      modifyDiamondCenterPoint(INCREMENT_DIAMOND_DISTANCE);
     }
+
     if (canChangeFinDirection == true) {
       if ((i >=16 && i <= 35) && bandDB > -150) {
+        // highs
         changeFinRotation();
       }
     }
@@ -423,16 +461,11 @@ void draw() {
   stroke(0);
   noStroke();
 
-  /*
-  if (GLOBAL_REDNESS >= 200)  GLOBAL_REDNESS=0;  else  GLOBAL_REDNESS=GLOBAL_REDNESS+0.5;
-  background(GLOBAL_REDNESS, 100, 10, 100);
-  */
   background(200);
 
   // stop redrawing the hand drawn everyframe aka jitters
-  h.setSeed(1234);
-  h3.setSeed(1234);
-
+  h.setSeed(420);
+  h3.setSeed(322);
 
   // first perform a forward fft on one of song's mix buffers
   fft.forward(player.mix);
@@ -449,6 +482,7 @@ void draw() {
     canChangeFinDirection = true;
     LAST_FIN_CHECK = millis();
   }
+  println("Can change fin direction: " + canChangeFinDirection);
 
   splitFrequencyIntoLogBands();
 
@@ -456,6 +490,7 @@ void draw() {
   //println("MAX specSize: " + fft.specSize());
   int blendModeIntensity = 5;
   // Blend Mode changes on any loud volume
+
   for(int i = 0; i < fft.specSize(); i++)
   {
     //line(i, height, i, height - fft.getBand(i)*4);
@@ -485,16 +520,17 @@ void draw() {
   float posx = map(player.position(), 0, player.length(), 0, width);
   pushStyle();
   stroke(0,200,0);
-  line(posx, height, posx, height-15);
+  line(posx, height, posx, (height * .95));
   popStyle();
 
   // DIAMONDS
 
-
   // check if should be incrementing diamond distance from center
   if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
-    //println("Too far from center. ");
+    println("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
+    println("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
     INCREMENT_DIAMOND_DISTANCE = false;
+
   } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
     INCREMENT_DIAMOND_DISTANCE = true;
   }
@@ -519,6 +555,7 @@ void draw() {
   // redness of fins, goes upto RED then back to BLACK
   if (FIN_REDNESS >= 255) {
     FIN_REDNESS_ANGRY = false;
+
   } else if (FIN_REDNESS <= 0) {
     FIN_REDNESS_ANGRY = true;
   }
@@ -527,6 +564,7 @@ void draw() {
     if (FIN_REDNESS_ANGRY) {
       FIN_REDNESS += 1;
       FINS += 0.04;
+
     } else {
       FIN_REDNESS -= 1;
       FINS -= 0.04;
@@ -534,39 +572,16 @@ void draw() {
   }
 
   // red circle, of which the bezier shapes touch
-  drawInnerCircle();
+  //drawInnerCircle();
 
   drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
 
-    rotate(radians(rot));
-
-  //translate(width/2, height/2);
-
-  /*
-  ellipseMode(RADIUS);
-  for (float i=0; i<500; i ++) {
-    circle= 200 + 50*sin(millis()*freq*i);
-    col=map(circle,150,250,255,60);
-    r=map(circle,150,250,5,2);
-    fill(col,0,74);
-    noStroke();
-    ellipse(circle*cos(i), circle*sin(i),r,r);
-    rot=rot+0.00005;
-  }
-  */
-
+  rotate(radians(rot));
 }
 
 void mouseClicked() {
   // toggles fin animated state on mouse click
   ANIMATED = !ANIMATED;
-  /*
-  if (ANIMATED) {
-    ANIMATED = false;
-  } else {
-    ANIMATED = true;
-  }
-  */
 }
 
 /*
