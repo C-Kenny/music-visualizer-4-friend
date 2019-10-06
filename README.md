@@ -27,6 +27,12 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 - Feel free to submit pull requests of code improvements/features.
 - Create a GitHub issue, and I'll look into developing it.
 
+### Required Libraries:
+
+- Handy
+- Game Control Plus
+- Minim
+
 ### Credits:
 
 - ttaM for the incredible help on the Bezier Curves (fins)!
