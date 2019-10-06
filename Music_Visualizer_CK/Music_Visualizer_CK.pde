@@ -30,6 +30,12 @@ import ddf.minim.analysis.*;
 // handy is used for the alternative style where it looks "sketched".
 import org.gicentre.handy.*;
 
+// game control plus from Quark's place
+import org.gamecontrolplus.gui.*;
+import org.gamecontrolplus.*;
+import net.java.games.input.*;
+
+
 Minim minim;
 AudioPlayer player;
 BeatDetect beat;
@@ -110,6 +116,18 @@ float rot;
 
 boolean EPILEPSY_MODE_ON = false;
 
+
+/* Gamepad setup thanks to http://www.lagers.org.uk/gamecontrol/index.html */
+ControlIO control;
+ControlDevice stick;
+
+float lx, ly; // left joystick position
+float rx, ry; // right joystick position
+
+boolean a_button, b_button, x_button, y_button;
+
+/* End of gamepad setup */
+
 String fileSelected(File selection) {
   if (selection == null) {
     println("No file selected. Window might have been closed/cancelled");
@@ -132,6 +150,7 @@ void setup() {
     delay(1);
   }
   STATE = 1;
+
 
   // render shapes like they are hand drawn
   h = new HandyRenderer(this);
@@ -158,13 +177,18 @@ void setup() {
   //size(420, 420, P3D);
   size(840, 840, P3D);
 
+  // Initialise the ControlIO
+  control = ControlIO.getInstance(this);
+  // Find a device that matches the configuration file
+  stick = control.getMatchedDevice("joystick");
+  
   surface.setResizable(true);
   //fullScreen(P3D);
 
 
   smooth();
   frameRate(75);
-  surface.setTitle("press[b,d,f,h,s,y] d(-_-)b");
+  surface.setTitle("press[b,d,f,h,s,y] | [x,y,a,b] on controller");
 
 
   minim = new Minim(this);
@@ -355,13 +379,6 @@ void changeBlendMode() {
 }
 
 void changeFinRotation() {
-  /*
-  if (finRotationClockWise == true) {
-    finRotationClockWise = false;
-  } else {
-    finRotationClockWise = true;
-  }
-  */
   finRotationClockWise = !finRotationClockWise;
 
   // once it has been changed, wait cooldown before changing again
@@ -482,6 +499,62 @@ void splitFrequencyIntoLogBands() {
   }
 }
 
+// Poll for user input called from the draw() method.
+public void getUserInput() {
+  /* joy sticks */
+  
+  lx = map(stick.getSlider("lx").getValue(), -1, 1, 0, width);
+  ly = map(stick.getSlider("ly").getValue(), -1, 1, 0, height);
+  
+  BEZIER_Y_OFFSET = (ly - (height/2)) - 12; // % (height / 2);
+  println("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
+  
+  rx = map(stick.getSlider("rx").getValue(), -1, 1, 0, width);
+  ry = map(stick.getSlider("ry").getValue(), -1, 1, 0, height);
+  
+  println("lx: " + lx + ", ly " + ly);
+  println("rx: " + rx + ", ry " + ry);
+  
+  /* buttons */
+  
+  a_button = stick.getButton("a").pressed();
+  b_button = stick.getButton("b").pressed();
+  x_button = stick.getButton("x").pressed();
+  y_button = stick.getButton("y").pressed();
+  
+  println("a button pressed: " + a_button);
+  println("b button pressed: " + b_button);
+  println("x button pressed: " + x_button);
+  println("y button pressed: " + y_button);
+  
+  if (b_button) {
+    changeBlendMode();
+  }
+  
+  if (a_button) {
+    CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
+  }
+  
+  if (y_button) {
+    changeFinRotation();
+  }
+
+  if (x_button) {
+    EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
+  }
+  
+   /*
+  if (y_button) {
+    // change bezier y offset
+    if (key == 'y') {
+      BEZIER_Y_OFFSET -= 10;
+    }
+    if (key == 'Y') {
+      BEZIER_Y_OFFSET += 10;
+    }
+  */
+
+}
 
 void draw() {
   if (STATE == 0) {
@@ -490,6 +563,9 @@ void draw() {
     fill(0,255,0);
     text("RIP Sam", width/2, height/2);
   }
+  
+  getUserInput(); // Polling
+
 
   // reset drawing params when redrawing frame
   stroke(0);
