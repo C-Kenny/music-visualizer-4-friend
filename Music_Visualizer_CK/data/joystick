@@ -1,0 +1,9 @@
+Music Visualizer with Xbox 360 Controller on Linux support
+a	a	1	BUTTON	A	0	0.0	0.0
+b	b	1	BUTTON	B	0	0.0	0.0
+x	x	1	BUTTON	X	0	0.0	0.0
+y	y	1	BUTTON	Y	0	0.0	0.0
+lx	lx	3	SLIDER	x	0	1.0	0.0
+ly	ly	3	SLIDER	y	0	1.0	0.0
+rx	rx	3	SLIDER	rx	0	1.0	0.0
+ry	ry	3	SLIDER	ry	0	1.0	0.0
