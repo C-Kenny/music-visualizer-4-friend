@@ -2,20 +2,6 @@
 
 Music Visualizer ♫ ♪♪
 
-Keyboard Layout:
-
-b = blend mode iterate
-f = change direction of fins (requires ability to change fins i.e. timeouts)
-d = diamond closer to center
-D = diamond closer to outside
-
-Metrics:
-
-Source image dimensions: 70x70 px
-Output image dimensions: 420x420 px
-
-Ratio 1:6
-
 Trivia:
 
 Diamonds and circles intersect to form a Celtic Cross
@@ -25,7 +11,6 @@ Diamonds and circles intersect to form a Celtic Cross
 // minim is used for music analysis, fast Fourier transform and beat detection
 import ddf.minim.*;
 import ddf.minim.analysis.*;
-
 
 // handy is used for the alternative style where it looks "sketched".
 import org.gicentre.handy.*;
@@ -46,7 +31,7 @@ FFT fft;
 // HANDY DRAWN STYLE ----------------------------------------
 // Draw shapes like they are hand drawn (thanks to Handy)
 HandyRenderer h, h1, h2, h3, h4;
-HandyRenderer[] HANDY_RENDERERS = new HandyRenderer[5];
+HandyRenderer[] HANDY_RENDERERS = new HandyRenderer[4];
 
 int HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
 
@@ -72,6 +57,10 @@ float BEZIER_Y_OFFSET = -50;
 float MAX_BEZIER_Y_OFFSET = 40;
 float MIN_BEZIER_Y_OFFSET = -140;
 
+// WAVE FORM -------------------------------------------------
+float WAVE_MULTIPLIER = 50.0;
+
+
 // DIAMONDS --------------------------------------------------
 //float DIAMOND_DISTANCE_FROM_CENTER = 30;
 float DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
@@ -89,16 +78,18 @@ float MIN_DIAMOND_DISTANCE = height * 0.2;
 boolean INCREMENT_DIAMOND_DISTANCE = true;
 
 // BLEND MODES -----------------------------------------------
-// TODO: Possible refactor into enums for Blend Modes?
 int[] modes = new int[]{
-  BLEND, ADD, SUBTRACT, EXCLUSION
+  BLEND, ADD, SUBTRACT, EXCLUSION,
+  DIFFERENCE, MULTIPLY, SCREEN,
+  REPLACE
 };
 
 int CURRENT_BLEND_MODE_INDEX = 0;
 
 String[] modeNames = new String[]{
-  "BLEND", "ADD", "SUBTRACT",
-  "EXCLUSION"
+  "BLEND", "ADD", "SUBTRACT", "EXCLUSION",
+  "DIFFERENCE", "MULTIPLY", "SCREEN",
+  "REPLACE"
 };
 
 // the number of bands per octave
@@ -111,10 +102,13 @@ int STATE = 0; // used to show loading screen
 
 float GLOBAL_REDNESS = 0.0;
 
-
 float rot;
 
 boolean EPILEPSY_MODE_ON = false;
+
+// SONG META DATA --------------------------------------------
+boolean SONG_PLAYING = false;
+String SONG_NAME = "";
 
 
 /* Gamepad setup thanks to http://www.lagers.org.uk/gamecontrol/index.html */
@@ -128,12 +122,16 @@ boolean a_button, b_button, x_button, y_button;
 
 /* End of gamepad setup */
 
+// Logging ---------------------------------------------------
+boolean LOGGING_ENABLED = false;
+
+
 String fileSelected(File selection) {
   if (selection == null) {
-    println("No file selected. Window might have been closed/cancelled");
+    log_to_stdo("No file selected. Window might have been closed/cancelled");
     return "";
   } else {
-    println("File selected: " + selection.getAbsolutePath());
+    log_to_stdo("File selected: " + selection.getAbsolutePath());
     SONG_TO_VISUALIZE = selection.getAbsolutePath();
   }
   return selection.getAbsolutePath();
@@ -150,51 +148,53 @@ void setup() {
     delay(1);
   }
   STATE = 1;
-
+  String[] file_name_parts = split(SONG_TO_VISUALIZE, "/");
+  SONG_NAME = file_name_parts[file_name_parts.length-1]; //<>//
 
   // render shapes like they are hand drawn
   h = new HandyRenderer(this);
-  h1 = HandyPresets.createPencil(this);
+  //h1 = HandyPresets.createPencil(this);
   h2 = HandyPresets.createColouredPencil(this);
   h3 = HandyPresets.createWaterAndInk(this);
   h4 = HandyPresets.createMarker(this);
   
   // TODO: There's gotta be a better way to init array of objects..
   HANDY_RENDERERS[0] = h;
-  HANDY_RENDERERS[1] = h1;
-  HANDY_RENDERERS[2] = h2;
-  HANDY_RENDERERS[3] = h3;
-  HANDY_RENDERERS[4] = h4;
+  //HANDY_RENDERERS[1] = h1;
+  HANDY_RENDERERS[1] = h2;
+  HANDY_RENDERERS[2] = h3;
+  HANDY_RENDERERS[3] = h4;
   
-  println("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
+  log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
-
-  // Setup the display frame
-  //fullScreen();
 
   // P3D runs faster than JAVA2D
   // https://forum.processing.org/beta/num_1115431708.html
-  //size(420, 420, P3D);
   size(840, 840, P3D);
 
   // Initialise the ControlIO
   control = ControlIO.getInstance(this);
-  // Find a device that matches the configuration file
+  
+  // Find a device that matches the configuration file i.e. a Xbox 360 controller
   stick = control.getMatchedDevice("joystick");
   
-  surface.setResizable(true);
-  //fullScreen(P3D);
-
+  // set title bar depending on what input device is found (controller or keyboard)
+  if (stick == null) {
+      surface.setTitle("(b,d,f,h,s,y) keyboard shortcuts");
+  } else {
+      surface.setTitle("(x,y,a,b) and joysticks!");
+  }
+    
+  surface.setResizable(false);
 
   smooth();
   frameRate(75);
-  surface.setTitle("press[b,d,f,h,s,y] | [x,y,a,b] on controller");
-
 
   minim = new Minim(this);
   player = minim.loadFile(SONG_TO_VISUALIZE);
 
   player.loop();
+  SONG_PLAYING = true;
   beat = new BeatDetect();
   ellipseMode(CENTER);
 
@@ -209,7 +209,6 @@ void setup() {
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
-
 }
 
 
@@ -230,19 +229,15 @@ void drawDiamond(float distanceFromCenter) {
   //int innerDiamondCoordinate = (420/2) + (DIAMOND_DISTANCE_FROM_CENTER%240);
   float innerDiamondCoordinate = ((width/2) + DIAMOND_DISTANCE_FROM_CENTER % (height * 0.57) );
 
+
+  log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION]; //<>//
   
   // bottom right diamond
-  //h3.quad(
   CURRENT_HANDY_RENDERER.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
-    //390,300,
     width*0.92, height*0.71,
-
-    //420,420,
     width, height,
-
-    //312,390
     width*0.74, height*0.92
   );
 }
@@ -287,10 +282,6 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
 
   strokeWeight(3);
 
-  /*
-  float xOffset = -20;
-  float yOffset = -50;
-  */
   float xOffset = -20;
   float yOffset = -50;
 
@@ -368,6 +359,8 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
 }
 
 void changeBlendMode() {
+  log_to_stdo("BlendMode before: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+
   if (CURRENT_BLEND_MODE_INDEX == modes.length - 1) {
     CURRENT_BLEND_MODE_INDEX = 0;
   } else {
@@ -375,7 +368,7 @@ void changeBlendMode() {
   }
 
   blendMode(CURRENT_BLEND_MODE_INDEX);
-  println("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+  log_to_stdo("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 }
 
 void changeFinRotation() {
@@ -439,10 +432,21 @@ void keyPressed() {
   if (key == 'D') {
     modifyDiamondCenterPoint(true);
   }
-
+  
+  // pause/play 
+  if (key == 'p' || key == 'P') {
+    if (SONG_PLAYING) {
+      player.pause();
+      SONG_PLAYING = false;
+    } else {
+      player.play();
+      SONG_PLAYING = true;
+    }
+  }
+  
   // logging / debug
-  // TODO: Implement valuable logging
   if (key == 'l' || key == 'L') {
+    LOGGING_ENABLED = !LOGGING_ENABLED;
   }
 
   // change bezier y offset
@@ -456,13 +460,30 @@ void keyPressed() {
   if (key == 's' || key == 'S') {
     EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
   }
+  
+  // exit nicely
+  if (key == 'x' || key == 'X') {
+    minim.stop();
+    exit();
+  }
     
-
   // quit
   if (key == 'q' || key == 'Q') {
     exit();
   }
 }
+
+void log_to_stdo(String message_to_log) {
+  if (LOGGING_ENABLED) {
+    println(message_to_log);
+  }
+}
+
+void exit() {
+  log_to_stdo("Exiting now :)");
+  super.exit();
+}
+
 
 void splitFrequencyIntoLogBands() {
   fft.avgSize();
@@ -477,8 +498,11 @@ void splitFrequencyIntoLogBands() {
     float bandDB = 20 * log(2 * amplitude / fft.timeSize());
 
 
-    //println("i: " + i);
-    //println("bandDB: " + bandDB);
+    //log_to_stdo("i: " + i);
+    //log_to_stdo("bandDB: " + bandDB);
+    
+    //log_to_stdo("BlendMode: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+
 
     if ((i >= 0 && i <= 5) && bandDB > -10) {
       // bass
@@ -507,25 +531,29 @@ public void getUserInput() {
   ly = map(stick.getSlider("ly").getValue(), -1, 1, 0, height);
   
   BEZIER_Y_OFFSET = (ly - (height/2)) - 12; // % (height / 2);
-  println("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
+  log_to_stdo("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
   
   rx = map(stick.getSlider("rx").getValue(), -1, 1, 0, width);
   ry = map(stick.getSlider("ry").getValue(), -1, 1, 0, height);
   
-  println("lx: " + lx + ", ly " + ly);
-  println("rx: " + rx + ", ry " + ry);
+  WAVE_MULTIPLIER = (ry % (height/5)) + 25;
   
-  /* buttons */
+  log_to_stdo("WAVE MULTIPLIER: " + WAVE_MULTIPLIER);
   
+  log_to_stdo("lx: " + lx + ", ly " + ly);
+  log_to_stdo("rx: " + rx + ", ry " + ry);
+  
+
+  /* buttons */  
   a_button = stick.getButton("a").pressed();
   b_button = stick.getButton("b").pressed();
   x_button = stick.getButton("x").pressed();
   y_button = stick.getButton("y").pressed();
   
-  println("a button pressed: " + a_button);
-  println("b button pressed: " + b_button);
-  println("x button pressed: " + x_button);
-  println("y button pressed: " + y_button);
+  log_to_stdo("a button pressed: " + a_button);
+  log_to_stdo("b button pressed: " + b_button);
+  log_to_stdo("x button pressed: " + x_button);
+  log_to_stdo("y button pressed: " + y_button);
   
   if (b_button) {
     changeBlendMode();
@@ -578,7 +606,7 @@ void draw() {
   
   if (!EPILEPSY_MODE_ON) {
     h.setSeed(117); 
-    h1.setSeed(322); // super intensive/slow
+    //h1.setSeed(322); // super intensive/slow
     h2.setSeed(322);
     h3.setSeed(420);
     h4.setSeed(666);
@@ -598,12 +626,12 @@ void draw() {
     canChangeFinDirection = true;
     LAST_FIN_CHECK = millis();
   }
-  //println("Can change fin direction: " + canChangeFinDirection);
+  //log_to_stdo("Can change fin direction: " + canChangeFinDirection);
 
   splitFrequencyIntoLogBands();
 
 
-  //println("MAX specSize: " + fft.specSize());
+  //log_to_stdo("MAX specSize: " + fft.specSize());
   int blendModeIntensity = 5;
   // Blend Mode changes on any loud volume
 
@@ -611,7 +639,7 @@ void draw() {
   {
     //line(i, height, i, height - fft.getBand(i)*4);
     if (fft.getBand(i)*4 > 1000.0) {
-      applyBlendModeOnDrop(blendModeIntensity);
+      //applyBlendModeOnDrop(blendModeIntensity);
     }
 
   }
@@ -627,7 +655,11 @@ void draw() {
   {
     float x1 = map( i, 0, player.bufferSize(), 0, width );
     float x2 = map( i+1, 0, player.bufferSize(), 0, width );
-    h.line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
+    
+    //h.line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
+    h.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+    //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+
   }
 
   // draw a line to show where in the player playback is currently located
@@ -636,15 +668,15 @@ void draw() {
   float posx = map(player.position(), 0, player.length(), 0, width);
   pushStyle();
   stroke(0,200,0);
-  line(posx, height, posx, (height * .95));
+  line(posx, height, posx, (height * .975));
   popStyle();
 
   // DIAMONDS
 
-  // check if should be incrementing diamond distance from center
+  // check if should be incrementing  distance from center
   if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
-    println("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
-    println("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
+    log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
+    log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
     INCREMENT_DIAMOND_DISTANCE = false;
 
   } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
@@ -692,7 +724,10 @@ void draw() {
 
   drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
 
-  rotate(radians(rot));
+  //rotate(radians(rot));
+  textSize(24);
+  textAlign(CENTER);
+  text("Song: " + SONG_NAME, width/2, height-5);
 }
 
 void mouseClicked() {
