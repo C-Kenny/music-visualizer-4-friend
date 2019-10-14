@@ -125,6 +125,9 @@ boolean a_button, b_button, x_button, y_button;
 // Logging ---------------------------------------------------
 boolean LOGGING_ENABLED = false;
 
+// Screen capture --------------------------------------------
+boolean SCREEN_RECORDING = false;
+
 
 String fileSelected(File selection) {
   if (selection == null) {
@@ -433,6 +436,11 @@ void keyPressed() {
     modifyDiamondCenterPoint(true);
   }
   
+  // record screen as pictures
+  if (key == 'r' || key == 'R') {
+    SCREEN_RECORDING = !SCREEN_RECORDING;
+  }
+  
   // pause/play 
   if (key == 'p' || key == 'P') {
     if (SONG_PLAYING) {
@@ -728,6 +736,10 @@ void draw() {
   textSize(24);
   textAlign(CENTER);
   text("Song: " + SONG_NAME, width/2, height-5);
+  
+  if (SCREEN_RECORDING) {
+    saveFrame("/tmp/output/frames####.png");
+  }
 }
 
 void mouseClicked() {
