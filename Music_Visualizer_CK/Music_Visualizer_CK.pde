@@ -73,15 +73,10 @@ float MAX_BEZIER_Y_OFFSET = 40;
 float MIN_BEZIER_Y_OFFSET = -140;
 
 // DIAMONDS --------------------------------------------------
-//float DIAMOND_DISTANCE_FROM_CENTER = 30;
 float DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
 
 
-//int MAX_DIAMOND_DISTANCE = 240;
 float MAX_DIAMOND_DISTANCE = width * 0.57;
-
-//int MIN_DIAMOND_DISTANCE = 10;
-//float MIN_DIAMOND_DISTANCE = height * 0.02;
 float MIN_DIAMOND_DISTANCE = height * 0.2;
 
 
@@ -126,11 +121,13 @@ float rx, ry; // right joystick position
 
 boolean a_button, b_button, x_button, y_button;
 
+boolean USING_CONTROLLER = false;
+
 /* End of gamepad setup */
 
 String fileSelected(File selection) {
   if (selection == null) {
-    println("No file selected. Window might have been closed/cancelled");
+    println("No file selected. Window might have been closed.");
     return "";
   } else {
     println("File selected: " + selection.getAbsolutePath());
@@ -170,21 +167,21 @@ void setup() {
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
   // Setup the display frame
-  //fullScreen();
 
   // P3D runs faster than JAVA2D
   // https://forum.processing.org/beta/num_1115431708.html
-  //size(420, 420, P3D);
   size(840, 840, P3D);
 
   // Initialise the ControlIO
   control = ControlIO.getInstance(this);
-  // Find a device that matches the configuration file
-  stick = control.getMatchedDevice("joystick");
   
-  surface.setResizable(true);
-  //fullScreen(P3D);
-
+  // Attempt to find a device that matches the configuration file
+  stick = control.getMatchedDevice("joystick");
+  if (stick != null) {
+    USING_CONTROLLER = true;
+  }
+  
+  surface.setResizable(false);
 
   smooth();
   frameRate(75);
@@ -209,6 +206,8 @@ void setup() {
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
+  //fft.linAverages(30);
+
 
 }
 
@@ -227,7 +226,6 @@ void drawDiamond(float distanceFromCenter) {
      5
   */
 
-  //int innerDiamondCoordinate = (420/2) + (DIAMOND_DISTANCE_FROM_CENTER%240);
   float innerDiamondCoordinate = ((width/2) + DIAMOND_DISTANCE_FROM_CENTER % (height * 0.57) );
 
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION]; //<>//
@@ -236,13 +234,10 @@ void drawDiamond(float distanceFromCenter) {
   //h3.quad(
   CURRENT_HANDY_RENDERER.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
-    //390,300,
     width*0.92, height*0.71,
 
-    //420,420,
     width, height,
 
-    //312,390
     width*0.74, height*0.92
   );
 }
@@ -281,16 +276,17 @@ void drawInnerCircle() {
   h.ellipse(width/2.0, height/2.0, 110, 110);
 }
 
+void stop() {
+  minim.stop();
+  super.stop();
+}
+
 void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
   //stroke(redness, 0, 0);
   stroke(0);
 
   strokeWeight(3);
 
-  /*
-  float xOffset = -20;
-  float yOffset = -50;
-  */
   float xOffset = -20;
   float yOffset = -50;
 
@@ -387,11 +383,9 @@ void changeFinRotation() {
 
 void modifyDiamondCenterPoint(boolean closerToCenter) {
   if (closerToCenter) {
-    //DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER + log(int(DIAMOND_DISTANCE_FROM_CENTER));
     DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER + (width * 0.02);
 
   } else {
-    //DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER - log(int(DIAMOND_DISTANCE_FROM_CENTER));
     DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER - (width * 0.02);
   }
 }
@@ -564,7 +558,9 @@ void draw() {
     text("RIP Sam", width/2, height/2);
   }
   
-  getUserInput(); // Polling
+  if (USING_CONTROLLER) {
+    getUserInput(); // Polling
+  }
 
 
   // reset drawing params when redrawing frame
@@ -572,6 +568,11 @@ void draw() {
   noStroke();
 
   background(200);
+  //background(190, 10, 200, 100);
+  
+
+
+  //background(0,0,(player.position()%254));
 
   // stop redrawing the hand drawn everyframe aka jitters
   // TODO: Investigate seeds for more gpu intensive styles
@@ -610,8 +611,11 @@ void draw() {
   for(int i = 0; i < fft.specSize(); i++)
   {
     //line(i, height, i, height - fft.getBand(i)*4);
+    int tempBand = (int) fft.getBand(i);
+    //rect(i * 4, height, 4, -tempBand);
+
     if (fft.getBand(i)*4 > 1000.0) {
-      applyBlendModeOnDrop(blendModeIntensity);
+      //applyBlendModeOnDrop(blendModeIntensity);
     }
 
   }
@@ -634,9 +638,12 @@ void draw() {
   // located at the bottom of the output screen
   // uses custom style, so doesn't alter other strokes
   float posx = map(player.position(), 0, player.length(), 0, width);
+  println("player position: " + player.position());
   pushStyle();
-  stroke(0,200,0);
-  line(posx, height, posx, (height * .95));
+  stroke(0,(player.position()%254),0);
+  //stroke(0,200,0);
+
+  line(posx, height, posx, (height * .975));
   popStyle();
 
   // DIAMONDS
