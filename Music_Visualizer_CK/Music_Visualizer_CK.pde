@@ -181,6 +181,8 @@ void setup() {
   if (stick != null) {
     USING_CONTROLLER = true;
   }
+  log_to_stdo("USING CONTROLLER?" + USING_CONTROLLER);
+
     
   surface.setResizable(false);
 
@@ -533,20 +535,24 @@ void splitFrequencyIntoLogBands() {
 }
 
 // Poll for user input called from the draw() method.
-public void getUserInput() {
-  /* joy sticks */
+public void getUserInput(boolean usingController) {
   
+  if (!usingController) {
+    return ;
+  }
+  
+  /* joy sticks */
   lx = map(stick.getSlider("lx").getValue(), -1, 1, 0, width);
   ly = map(stick.getSlider("ly").getValue(), -1, 1, 0, height);
-  
-  BEZIER_Y_OFFSET = (ly - (height/2)) - 12; // % (height / 2);
-  log_to_stdo("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
   
   rx = map(stick.getSlider("rx").getValue(), -1, 1, 0, width);
   ry = map(stick.getSlider("ry").getValue(), -1, 1, 0, height);
   
-  WAVE_MULTIPLIER = (ry % (height/5)) + 25;
   
+  BEZIER_Y_OFFSET = (ly - (height/2)) - 12; // % (height / 2);
+  log_to_stdo("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
+  
+  WAVE_MULTIPLIER = (ry % (height/5)) + 25;
   log_to_stdo("WAVE MULTIPLIER: " + WAVE_MULTIPLIER);
   
   log_to_stdo("lx: " + lx + ", ly " + ly);
@@ -601,7 +607,7 @@ void draw() {
     text("RIP Sam", width/2, height/2);
   }
   
-  getUserInput(); // Polling
+  getUserInput(USING_CONTROLLER); // Polling
 
 
   // reset drawing params when redrawing frame
