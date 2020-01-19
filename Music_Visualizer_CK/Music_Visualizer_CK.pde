@@ -121,7 +121,7 @@ boolean a_button, b_button, x_button, y_button;
 boolean USING_CONTROLLER = false;
 
 // Logging ---------------------------------------------------
-boolean LOGGING_ENABLED = false;
+boolean LOGGING_ENABLED = true;
 
 // Screen capture --------------------------------------------
 boolean SCREEN_RECORDING = false;
@@ -158,14 +158,14 @@ void setup() {
   h2 = HandyPresets.createColouredPencil(this);
   h3 = HandyPresets.createWaterAndInk(this);
   h4 = HandyPresets.createMarker(this);
-  
+
   // TODO: There's gotta be a better way to init array of objects..
   HANDY_RENDERERS[0] = h;
   //HANDY_RENDERERS[1] = h1;
   HANDY_RENDERERS[1] = h2;
   HANDY_RENDERERS[2] = h3;
   HANDY_RENDERERS[3] = h4;
-  
+
   log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
@@ -175,7 +175,7 @@ void setup() {
 
   // Initialise the ControlIO
   control = ControlIO.getInstance(this);
-  
+
   // Attempt to find a device that matches the configuration file
   stick = control.getMatchedDevice("joystick");
   if (stick != null) {
@@ -183,7 +183,7 @@ void setup() {
   }
   log_to_stdo("USING CONTROLLER?" + USING_CONTROLLER);
 
-    
+
   surface.setResizable(false);
 
   smooth();
@@ -233,7 +233,7 @@ void drawDiamond(float distanceFromCenter) {
 
   log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION]; //<>//
-  
+
   // bottom right diamond
   CURRENT_HANDY_RENDERER.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
@@ -416,7 +416,7 @@ void keyPressed() {
     //toggleHandDrawn();
     CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
   }
-  
+
   // toggle being hand-drawn or not
   if (key == 'H') {
     APPEAR_HAND_DRAWN = !APPEAR_HAND_DRAWN;
@@ -437,13 +437,13 @@ void keyPressed() {
     modifyDiamondCenterPoint(true);
   }
 
-  
+
   // record screen as pictures
   if (key == 'r' || key == 'R') {
     SCREEN_RECORDING = !SCREEN_RECORDING;
   }
-  
-  // pause/play 
+
+  // pause/play
   if (key == 'p' || key == 'P') {
     if (SONG_PLAYING) {
       player.pause();
@@ -453,7 +453,7 @@ void keyPressed() {
       SONG_PLAYING = true;
     }
   }
-  
+
   // logging / debug
   if (key == 'l' || key == 'L') {
     LOGGING_ENABLED = !LOGGING_ENABLED;
@@ -466,17 +466,17 @@ void keyPressed() {
   if (key == 'Y') {
     BEZIER_Y_OFFSET += 10;
   }
-  
+
   if (key == 's' || key == 'S') {
     EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
   }
-  
+
   // exit nicely
   if (key == 'x' || key == 'X') {
     minim.stop();
     exit();
   }
-    
+
 
   // quit
   if (key == 'q' || key == 'Q') {
@@ -511,7 +511,7 @@ void splitFrequencyIntoLogBands() {
 
     //log_to_stdo("i: " + i);
     //log_to_stdo("bandDB: " + bandDB);
-    
+
     //log_to_stdo("BlendMode: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 
 
@@ -536,48 +536,48 @@ void splitFrequencyIntoLogBands() {
 
 // Poll for user input called from the draw() method.
 public void getUserInput(boolean usingController) {
-  
+
   if (!usingController) {
     return ;
   }
-  
+
   /* joy sticks */
   lx = map(stick.getSlider("lx").getValue(), -1, 1, 0, width);
   ly = map(stick.getSlider("ly").getValue(), -1, 1, 0, height);
-  
+
   rx = map(stick.getSlider("rx").getValue(), -1, 1, 0, width);
   ry = map(stick.getSlider("ry").getValue(), -1, 1, 0, height);
-  
-  
+
+
   BEZIER_Y_OFFSET = (ly - (height/2)) - 12; // % (height / 2);
   log_to_stdo("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
-  
+
   WAVE_MULTIPLIER = (ry % (height/5)) + 25;
   log_to_stdo("WAVE MULTIPLIER: " + WAVE_MULTIPLIER);
-  
+
   log_to_stdo("lx: " + lx + ", ly " + ly);
   log_to_stdo("rx: " + rx + ", ry " + ry);
-  
 
-  /* buttons */  
+
+  /* buttons */
   a_button = stick.getButton("a").pressed();
   b_button = stick.getButton("b").pressed();
   x_button = stick.getButton("x").pressed();
   y_button = stick.getButton("y").pressed();
-  
+
   log_to_stdo("a button pressed: " + a_button);
   log_to_stdo("b button pressed: " + b_button);
   log_to_stdo("x button pressed: " + x_button);
   log_to_stdo("y button pressed: " + y_button);
-  
+
   if (b_button) {
     changeBlendMode();
   }
-  
+
   if (a_button) {
     CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
   }
-  
+
   if (y_button) {
     changeFinRotation();
   }
@@ -585,7 +585,7 @@ public void getUserInput(boolean usingController) {
   if (x_button) {
     EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
   }
-  
+
    /*
   if (y_button) {
     // change bezier y offset
@@ -606,7 +606,7 @@ void draw() {
     fill(0,255,0);
     text("RIP Sam", width/2, height/2);
   }
-  
+
   getUserInput(USING_CONTROLLER); // Polling
 
 
@@ -618,9 +618,9 @@ void draw() {
 
   // stop redrawing the hand drawn everyframe aka jitters
   // TODO: Investigate seeds for more gpu intensive styles
-  
+
   if (!EPILEPSY_MODE_ON) {
-    h.setSeed(117); 
+    h.setSeed(117);
     //h1.setSeed(322); // super intensive/slow
     h2.setSeed(322);
     h3.setSeed(420);
@@ -670,7 +670,7 @@ void draw() {
   {
     float x1 = map( i, 0, player.bufferSize(), 0, width );
     float x2 = map( i+1, 0, player.bufferSize(), 0, width );
-    
+
     //h.line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
     h.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
     //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
@@ -742,11 +742,12 @@ void draw() {
   //rotate(radians(rot));
   textSize(24);
   textAlign(CENTER);
-  text("Song: " + SONG_NAME, width/2, height-5);
-  
+  text("Song: " + SONG_NAME + "\t | FPS: " + frameRate, width/2, height-5);
+
   if (SCREEN_RECORDING) {
     saveFrame("/tmp/output/frames####.png");
   }
+  log_to_stdo("frameRate: " + frameRate);
 }
 
 void mouseClicked() {
