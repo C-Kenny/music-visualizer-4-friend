@@ -69,8 +69,6 @@ float DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
 float MAX_DIAMOND_DISTANCE = width * 0.57;
 float MIN_DIAMOND_DISTANCE = height * 0.2;
 
-
-
 boolean INCREMENT_DIAMOND_DISTANCE = true;
 
 // BLEND MODES -----------------------------------------------
@@ -98,9 +96,6 @@ String SONG_TO_VISUALIZE = "";
 int STATE = 0; // used to show loading screen
 
 float GLOBAL_REDNESS = 0.0;
-
-
-float rot;
 
 boolean EPILEPSY_MODE_ON = false;
 
@@ -171,7 +166,7 @@ void setup() {
 
   // P3D runs faster than JAVA2D
   // https://forum.processing.org/beta/num_1115431708.html
-  size(840, 840, P3D);
+  size(1200, 1200, P3D);
 
   // Initialise the ControlIO
   control = ControlIO.getInstance(this);
@@ -184,11 +179,12 @@ void setup() {
   log_to_stdo("USING CONTROLLER?" + USING_CONTROLLER);
 
 
-  surface.setResizable(false);
+  // Resizable allows Windows snap features (i.e. snap to right side of screen)
+  surface.setResizable(true);
 
-  smooth();
-  frameRate(75);
-  surface.setTitle("press[b,d,f,h,s,y] | [x,y,a,b] on controller");
+  smooth(8);
+  frameRate(144);
+  surface.setTitle("press[b,d,f,h,s,y,p] | [x,y,a,b] on controller");
 
 
   minim = new Minim(this);
@@ -447,11 +443,10 @@ void keyPressed() {
   if (key == 'p' || key == 'P') {
     if (SONG_PLAYING) {
       player.pause();
-      SONG_PLAYING = false;
     } else {
       player.play();
-      SONG_PLAYING = true;
     }
+    SONG_PLAYING = !SONG_PLAYING;
   }
 
   // logging / debug
@@ -742,7 +737,7 @@ void draw() {
   //rotate(radians(rot));
   textSize(24);
   textAlign(CENTER);
-  text("Song: " + SONG_NAME + "\t | FPS: " + frameRate, width/2, height-5);
+  text(SONG_NAME, width/2, height-5);
 
   if (SCREEN_RECORDING) {
     saveFrame("/tmp/output/frames####.png");
