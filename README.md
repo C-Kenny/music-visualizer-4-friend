@@ -33,6 +33,11 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 - Game Control Plus
 - Minim
 
+### Resources:
+
+- [Music Visualizer source code on GitHub](https://github.com/C-Kenny/music-visualizer-4-friend)
+- [GitHub Issue tracker for repo](https://github.com/C-Kenny/music-visualizer-4-friend/issues)
+
 ### Credits:
 
 - ttaM for the incredible help on the Bezier Curves (fins)!
