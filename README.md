@@ -1,7 +1,7 @@
 # Music Visualizer for a Friend
 
 ### What?
-Music Visualizer, starting with a 2D representation. Written in Processing 3.
+2D Music Visualizer, made using [Processing 3.](https://processing.org/)
 
 
 ### Current State?
@@ -14,6 +14,24 @@ Without sound:
 ![MusicVisualizerCK](output/current_output_animated.gif)
 
 
+### How to run development build?
+
+This visualizer relies on [processing-java](https://github.com/processing/processing/wiki/Command-Line) to be installed.
+
+```
+$ which processing-java
+/usr/local/bin/processing-java
+```
+
+Once that has been setup, you can run:
+
+`$ ./run.sh`
+
+which will launch the visualizer.
+
+### How to run user Visualizer app?
+
+
 
 
 ### Why?
@@ -23,16 +41,11 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 ![Halo3Emblem](media/h3_emblem.jpg)
 
 
-### Ideas?
-
-- Feel free to submit pull requests of code improvements/features.
-- Create a GitHub issue, and I'll look into developing it.
-
 ### Required Libraries:
 
-- Handy
-- Game Control Plus
-- Minim
+- [Handy. Used to make lines look 'hand-drawn'](https://github.com/gicentre/handy)
+- [Game Control Plus. Used to handle Xbox 360 controller input](http://lagers.org.uk/gamecontrol/)
+- [Minim. Used by the computer to listen to the music + break into frequencies/decibels](http://code.compartmental.net/tools/minim/)
 
 ### Resources:
 
@@ -42,42 +55,3 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 ### Credits:
 
 - ttaM for the incredible help on the Bezier Curves (fins)!
-- [Minim, for audio library](http://code.compartmental.net/minim/)
-- [Processing 3, for providing a platform to create with](https://processing.org/)
-- [Handy, for the sketch style render option](https://www.gicentre.net/handy/using/)
-
-
-### Getting Vim + Processing 3 working together
-- Get Oracle's Java running locally. Processing comes with it's own java installation, we don't want to use this.
-
-  `$ ln -s /usr/lib/jvm/java-8-oracle/jre/bin/java ./java/bin/java`
-
-- Make `processing-java` global:
-
-  `$ sudo ln -s /home/<local_path/processing-3.4/processing-java /usr/local/bin/processing-java`
-
-- Setup `vim-processing` https://github.com/sophacles/vim-processing
-
-  `:make`
-
-### Create video recording (.mp4) of Visualizer using OBS
-```
-$ obs --startrecording
-```
-
-Given that the scene + window capture is setup, this will boot the OBS GUI with
-recording started. Use the output (usually in ~/videos) to create a .gif
-of the Visualizer.
-
-
-### Convert OBS captured .mp4 to .gif
-
-```
-$ ffmpeg \
-  -i music_visualizer_preview.mp4 \
-  -r 60 \
-  -vf scale=420:-1 \
-  music_visualizer_preview.gif
-```
-
-
