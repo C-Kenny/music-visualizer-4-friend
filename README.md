@@ -23,16 +23,19 @@ $ which processing-java
 /usr/local/bin/processing-java
 ```
 
-Once that has been setup, you can run:
+Once that has been setup, you can clone the repo:
+
+`$ git clone git@github.com:C-Kenny/music-visualizer-4-friend.git`
+
+then launch the visualizer with:
 
 `$ ./run.sh`
 
-which will launch the visualizer.
+### How to run Visualizer app?
 
-### How to run user Visualizer app?
-
-
-
+From a Linux file browser you can just double click the file located at:
+`music-visualizer-4-friend/Music_Visualizer_CK/application.linux64/Music_Visualizer_CK`
+and it will launch the visualizer itself
 
 ### Why?
 
