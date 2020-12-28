@@ -1,0 +1,843 @@
+import processing.core.*; 
+import processing.data.*; 
+import processing.event.*; 
+import processing.opengl.*; 
+
+import ddf.minim.*; 
+import ddf.minim.analysis.*; 
+import org.gicentre.handy.*; 
+import org.gamecontrolplus.gui.*; 
+import org.gamecontrolplus.*; 
+import net.java.games.input.*; 
+
+import java.util.HashMap; 
+import java.util.ArrayList; 
+import java.io.File; 
+import java.io.BufferedReader; 
+import java.io.PrintWriter; 
+import java.io.InputStream; 
+import java.io.OutputStream; 
+import java.io.IOException; 
+
+public class Music_Visualizer_CK extends PApplet {
+
+/*
+
+Music Visualizer ♫ ♪♪
+
+Trivia:
+
+Diamonds and circles intersect to form a Celtic Cross
+*/
+
+
+// minim is used for music analysis, fast Fourier transform and beat detection
+
+
+
+
+// handy is used for the alternative style where it looks "sketched".
+
+
+// game control plus from Quark's place
+
+
+
+
+
+Minim minim;
+AudioPlayer player;
+BeatDetect beat;
+FFT fft;
+
+// GLOBALS
+
+// HANDY DRAWN STYLE ----------------------------------------
+// Draw shapes like they are hand drawn (thanks to Handy)
+HandyRenderer h, h1, h2, h3, h4;
+HandyRenderer[] HANDY_RENDERERS = new HandyRenderer[4];
+
+int HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
+
+int MIN_HANDY_RENDERER_POSITION = 0;
+int MAX_HANDY_RENDERER_POSITION = HANDY_RENDERERS_COUNT;
+int CURRENT_HANDY_RENDERER_POSITION = 0;
+HandyRenderer CURRENT_HANDY_RENDERER;
+
+boolean APPEAR_HAND_DRAWN = true;
+
+// FINS ------------------------------------------------------
+boolean FIN_REDNESS_ANGRY = true;
+boolean ANIMATED = true;
+
+int LAST_FIN_CHECK; // last time fin was checked, to be changed
+float FINS = 8.0f;
+int FIN_REDNESS = 1;
+
+boolean canChangeFinDirection = true;
+boolean finRotationClockWise = false;
+
+float BEZIER_Y_OFFSET = -50;
+float MAX_BEZIER_Y_OFFSET = 40;
+float MIN_BEZIER_Y_OFFSET = -140;
+
+// WAVE FORM -------------------------------------------------
+float WAVE_MULTIPLIER = 50.0f;
+
+
+// DIAMONDS --------------------------------------------------
+float DIAMOND_DISTANCE_FROM_CENTER = width*0.07f;
+
+
+float MAX_DIAMOND_DISTANCE = width * 0.57f;
+float MIN_DIAMOND_DISTANCE = height * 0.2f;
+
+boolean INCREMENT_DIAMOND_DISTANCE = true;
+
+// BLEND MODES -----------------------------------------------
+// TODO: Possible refactor into enums for Blend Modes?
+int[] modes = new int[]{
+  BLEND, ADD, SUBTRACT, EXCLUSION,
+  DIFFERENCE, MULTIPLY, SCREEN,
+  REPLACE
+};
+
+int CURRENT_BLEND_MODE_INDEX = 0;
+
+String[] modeNames = new String[]{
+  "BLEND", "ADD", "SUBTRACT", "EXCLUSION",
+  "DIFFERENCE", "MULTIPLY", "SCREEN",
+  "REPLACE"
+};
+
+// the number of bands per octave
+int bandsPerOctave = 4;
+
+// Visualize song passed to, prog waits for this to be legit
+String SONG_TO_VISUALIZE = "";
+
+int STATE = 0; // used to show loading screen
+
+float GLOBAL_REDNESS = 0.0f;
+
+boolean EPILEPSY_MODE_ON = false;
+
+// SONG META DATA --------------------------------------------
+boolean SONG_PLAYING = false;
+String SONG_NAME = "";
+
+
+/* Gamepad setup thanks to http://www.lagers.org.uk/gamecontrol/index.html */
+ControlIO control;
+ControlDevice stick;
+
+float lx, ly; // left joystick position
+float rx, ry; // right joystick position
+
+boolean a_button, b_button, x_button, y_button;
+
+boolean USING_CONTROLLER = false;
+
+// Logging ---------------------------------------------------
+boolean LOGGING_ENABLED = true;
+
+// Screen capture --------------------------------------------
+boolean SCREEN_RECORDING = false;
+
+
+public String fileSelected(File selection) {
+  if (selection == null) {
+    log_to_stdo("No file selected. Window might have been closed/cancelled");
+    return "";
+  } else {
+    log_to_stdo("File selected: " + selection.getAbsolutePath());
+    SONG_TO_VISUALIZE = selection.getAbsolutePath();
+  }
+  return selection.getAbsolutePath();
+}
+
+
+public void setup() {
+  // Entry point, run once
+
+  // Visualizer only begins once a song has been selected
+  selectInput("Select song to visualize", "fileSelected");
+
+  while (SONG_TO_VISUALIZE == "") {
+    delay(1);
+  }
+  STATE = 1;
+  String[] file_name_parts = split(SONG_TO_VISUALIZE, "/");
+  SONG_NAME = file_name_parts[file_name_parts.length-1];
+
+  // render shapes like they are hand drawn
+  h = new HandyRenderer(this);
+  h1 = HandyPresets.createPencil(this);
+  h2 = HandyPresets.createColouredPencil(this);
+  h3 = HandyPresets.createWaterAndInk(this);
+  h4 = HandyPresets.createMarker(this);
+
+  // TODO: There's gotta be a better way to init array of objects..
+  HANDY_RENDERERS[0] = h;
+  //HANDY_RENDERERS[1] = h1;
+  HANDY_RENDERERS[1] = h2;
+  HANDY_RENDERERS[2] = h3;
+  HANDY_RENDERERS[3] = h4;
+
+  log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
+  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
+
+  // P3D runs faster than JAVA2D
+  // https://forum.processing.org/beta/num_1115431708.html
+  
+
+  // Initialise the ControlIO
+  control = ControlIO.getInstance(this);
+
+  // Attempt to find a device that matches the configuration file
+  stick = control.getMatchedDevice("joystick");
+  if (stick != null) {
+    USING_CONTROLLER = true;
+  }
+  log_to_stdo("USING CONTROLLER?" + USING_CONTROLLER);
+
+
+  // Resizable allows Windows snap features (i.e. snap to right side of screen)
+  surface.setResizable(true);
+
+  
+  frameRate(144);
+  surface.setTitle("press[b,d,f,h,s,y,p] | [x,y,a,b] on controller");
+
+
+  minim = new Minim(this);
+  player = minim.loadFile(SONG_TO_VISUALIZE);
+
+  player.loop();
+  SONG_PLAYING = true;
+  beat = new BeatDetect();
+  ellipseMode(CENTER);
+
+  blendMode(BLEND);
+
+  // an FFT needs to know how
+  // long the audio buffers it will be analyzing are
+  // and also needs to know
+  // the sample rate of the audio it is analyzing
+  fft = new FFT(player.bufferSize(), player.sampleRate());
+
+  // calculate averages based on a miminum octave width of 22 Hz
+  // split each octave into a number of bands
+  fft.logAverages(22, bandsPerOctave);
+
+}
+
+
+public void drawDiamond(float distanceFromCenter) {
+  /*
+  Coordinate System
+
+  x -------->
+      0 1 2 3 4 5
+  y  0
+  |  1
+  |  2
+  v  3
+     4
+     5
+  */
+
+  float innerDiamondCoordinate = ((width/2) + DIAMOND_DISTANCE_FROM_CENTER % (height * 0.57f) );
+
+
+  log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
+  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
+
+  // bottom right diamond
+  CURRENT_HANDY_RENDERER.quad(
+    innerDiamondCoordinate, innerDiamondCoordinate,
+    width*0.92f, height*0.71f,
+    width, height,
+    width*0.74f, height*0.92f
+  );
+}
+
+public void drawDiamonds() {
+  // Diamonds are drawn by transforming the canvas
+
+  // bottom left diamond
+  pushMatrix();
+  scale(-1,1);
+  translate(-width, 0);
+  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  popMatrix();
+
+  // top left diamond
+  pushMatrix();
+  scale(-1,-1);
+  translate(-width, -height);
+  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  popMatrix();
+
+  // top right diamond
+  pushMatrix();
+  scale(1,-1);
+  translate(0, -height);
+  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  popMatrix();
+}
+
+public void drawInnerCircle() {
+  // red inner circle, is used to make the fins look smooth internally
+  ellipseMode(RADIUS);
+  stroke(FIN_REDNESS, 0, 0);
+  strokeWeight(8);
+  noFill();
+  h.ellipse(width/2.0f, height/2.0f, 110, 110);
+}
+
+public void stop() {
+  minim.stop();
+  super.stop();
+}
+
+public void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
+  //stroke(redness, 0, 0);
+  stroke(0);
+
+  strokeWeight(3);
+
+  float xOffset = -20;
+  float yOffset = -50;
+
+  yOffset = BEZIER_Y_OFFSET;
+
+  for (int i=0; i<fins; i++) {
+
+    pushMatrix();
+
+    float rotationAmount = (2 * (i / fins) * PI);
+
+    if (finRotationClockWise == true) {
+      rotationAmount = 0 - rotationAmount;
+    }
+
+    translate(width/2, height/2);
+    rotate(rotationAmount);
+    if (APPEAR_HAND_DRAWN) {
+      fill(255,0,0, 100);
+    } else {
+      noFill();
+    }
+    /*
+    .
+      .
+        .
+         .
+          .
+    */
+    bezier(
+      -36 + xOffset,-126 + yOffset,
+      -36 + xOffset,-126 + yOffset,
+      32 + xOffset,-118 + yOffset,
+      68 + xOffset,-52 + yOffset
+    );
+
+    /*
+      .
+       .
+       .
+      .
+    */
+    bezier(
+      -36 + xOffset,-126 + yOffset,
+      -36 + xOffset,-126 + yOffset,
+      -10 + xOffset,-88 + yOffset,
+      -22 + xOffset,-52 + yOffset
+    );
+
+    /*
+
+     ,......,
+    .        .
+    */
+  bezier(
+      -22 + xOffset,-52 + yOffset,
+      -22 + xOffset,-52 + yOffset,
+      20 + xOffset,-74 + yOffset,
+      68 + xOffset,-52 + yOffset
+    );
+
+    popMatrix();
+  }
+}
+
+public void applyBlendModeOnDrop(int intensityOutOfTen) {
+  FIN_REDNESS_ANGRY = true;
+
+  // To reduce eye sore, only change blend mode on RNG
+  float randomNumber = random(1, 10);
+
+  if (intensityOutOfTen > randomNumber) {
+    changeBlendMode();
+  }
+}
+
+public void changeBlendMode() {
+  log_to_stdo("BlendMode before: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+
+  if (CURRENT_BLEND_MODE_INDEX == modes.length - 1) {
+    CURRENT_BLEND_MODE_INDEX = 0;
+  } else {
+    CURRENT_BLEND_MODE_INDEX += 1;
+  }
+
+  blendMode(CURRENT_BLEND_MODE_INDEX);
+  log_to_stdo("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+}
+
+public void changeFinRotation() {
+  finRotationClockWise = !finRotationClockWise;
+
+  // once it has been changed, wait cooldown before changing again
+  canChangeFinDirection = false;
+}
+
+public void modifyDiamondCenterPoint(boolean closerToCenter) {
+  if (closerToCenter) {
+    DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER + (width * 0.02f);
+
+  } else {
+    DIAMOND_DISTANCE_FROM_CENTER = DIAMOND_DISTANCE_FROM_CENTER - (width * 0.02f);
+  }
+}
+
+public void toggleHandDrawn(){
+  APPEAR_HAND_DRAWN = !APPEAR_HAND_DRAWN;
+  h.setIsHandy(APPEAR_HAND_DRAWN);
+  //h3.setIsHandy(false);
+}
+
+public void toggleHandDrawn3(){
+  APPEAR_HAND_DRAWN = !APPEAR_HAND_DRAWN;
+  h3.setIsHandy(APPEAR_HAND_DRAWN);
+  //h.setIsHandy(false);
+}
+
+public void keyPressed() {
+  // blend
+  if (key == 'b' || key == 'B') {
+    changeBlendMode();
+  }
+
+  // cycle between drawing styles
+  if (key == 'h') {
+    //toggleHandDrawn();
+    CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
+  }
+
+  // toggle being hand-drawn or not
+  if (key == 'H') {
+    APPEAR_HAND_DRAWN = !APPEAR_HAND_DRAWN;
+    CURRENT_HANDY_RENDERER.setIsHandy(APPEAR_HAND_DRAWN);
+    //toggleHandDrawn3();
+  }
+
+  // fins
+  if (key == 'f' || key == 'F') {
+    changeFinRotation();
+  }
+
+  // diamonds
+  if (key == 'd') {
+    modifyDiamondCenterPoint(false);
+  }
+  if (key == 'D') {
+    modifyDiamondCenterPoint(true);
+  }
+
+
+  // record screen as pictures
+  if (key == 'r' || key == 'R') {
+    SCREEN_RECORDING = !SCREEN_RECORDING;
+  }
+
+  // pause/play
+  if (key == 'p' || key == 'P') {
+    if (SONG_PLAYING) {
+      player.pause();
+    } else {
+      player.play();
+    }
+    SONG_PLAYING = !SONG_PLAYING;
+  }
+
+  // logging / debug
+  if (key == 'l' || key == 'L') {
+    LOGGING_ENABLED = !LOGGING_ENABLED;
+  }
+
+  // change bezier y offset
+  if (key == 'y') {
+    BEZIER_Y_OFFSET -= 10;
+  }
+  if (key == 'Y') {
+    BEZIER_Y_OFFSET += 10;
+  }
+
+  if (key == 's' || key == 'S') {
+    EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
+  }
+
+  // exit nicely
+  if (key == 'x' || key == 'X') {
+    minim.stop();
+    exit();
+  }
+
+
+  // quit
+  if (key == 'q' || key == 'Q') {
+    exit();
+  }
+}
+
+public void log_to_stdo(String message_to_log) {
+  if (LOGGING_ENABLED) {
+    println(message_to_log);
+  }
+}
+
+public void exit() {
+  log_to_stdo("Exiting now :)");
+  super.exit();
+}
+
+
+public void splitFrequencyIntoLogBands() {
+  fft.avgSize();
+
+  for(int i = 0; i < fft.avgSize(); i++ ){
+    // get amplitude of frequency band
+    float amplitude = fft.getAvg(i);
+
+    // convert the amplitude to a DB value.
+    // this means values will range roughly from 0 for the loudest
+    // bands to some negative value.
+    float bandDB = 20 * log(2 * amplitude / fft.timeSize());
+
+
+    //log_to_stdo("i: " + i);
+    //log_to_stdo("bandDB: " + bandDB);
+
+    //log_to_stdo("BlendMode: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+
+
+    if ((i >= 0 && i <= 5) && bandDB > -10) {
+      // bass
+      changeBlendMode();
+    }
+
+    if ((i >=6 && i<= 15) && bandDB >-27) {
+      // mids
+      modifyDiamondCenterPoint(INCREMENT_DIAMOND_DISTANCE);
+    }
+
+    if (canChangeFinDirection == true) {
+      if ((i >=16 && i <= 35) && bandDB > -150) {
+        // highs
+        changeFinRotation();
+      }
+    }
+  }
+}
+
+// Poll for user input called from the draw() method.
+public void getUserInput(boolean usingController) {
+
+  if (!usingController) {
+    return ;
+  }
+
+  /* joy sticks */
+  lx = map(stick.getSlider("lx").getValue(), -1, 1, 0, width);
+  ly = map(stick.getSlider("ly").getValue(), -1, 1, 0, height);
+
+  rx = map(stick.getSlider("rx").getValue(), -1, 1, 0, width);
+  ry = map(stick.getSlider("ry").getValue(), -1, 1, 0, height);
+
+
+  BEZIER_Y_OFFSET = (ly - (height/2)) - 12; // % (height / 2);
+  log_to_stdo("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
+
+  WAVE_MULTIPLIER = (ry % (height/5)) + 25;
+  log_to_stdo("WAVE MULTIPLIER: " + WAVE_MULTIPLIER);
+
+  log_to_stdo("lx: " + lx + ", ly " + ly);
+  log_to_stdo("rx: " + rx + ", ry " + ry);
+
+
+  /* buttons */
+  a_button = stick.getButton("a").pressed();
+  b_button = stick.getButton("b").pressed();
+  x_button = stick.getButton("x").pressed();
+  y_button = stick.getButton("y").pressed();
+
+  log_to_stdo("a button pressed: " + a_button);
+  log_to_stdo("b button pressed: " + b_button);
+  log_to_stdo("x button pressed: " + x_button);
+  log_to_stdo("y button pressed: " + y_button);
+
+  if (b_button) {
+    changeBlendMode();
+  }
+
+  if (a_button) {
+    CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
+  }
+
+  if (y_button) {
+    changeFinRotation();
+  }
+
+  if (x_button) {
+    EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
+  }
+
+   /*
+  if (y_button) {
+    // change bezier y offset
+    if (key == 'y') {
+      BEZIER_Y_OFFSET -= 10;
+    }
+    if (key == 'Y') {
+      BEZIER_Y_OFFSET += 10;
+    }
+  */
+
+}
+
+public void draw() {
+  if (STATE == 0) {
+    // show loading screen
+    textSize(48);
+    fill(0,255,0);
+    text("RIP Sam", width/2, height/2);
+  }
+
+  getUserInput(USING_CONTROLLER); // Polling
+
+
+  // reset drawing params when redrawing frame
+  stroke(0);
+  noStroke();
+
+  background(200);
+
+  // stop redrawing the hand drawn everyframe aka jitters
+  // TODO: Investigate seeds for more gpu intensive styles
+
+  if (!EPILEPSY_MODE_ON) {
+    h.setSeed(117);
+    //h1.setSeed(322); // super intensive/slow
+    h2.setSeed(322);
+    h3.setSeed(420);
+    h4.setSeed(666);
+  }
+
+  // first perform a forward fft on one of song's mix buffers
+  fft.forward(player.mix);
+
+  stroke(255, 0, 0, 128);
+  strokeWeight(8);
+
+  // only change fin direction, if it has been more than 10s since last it was changed.
+  // otherwise eyes might hurt o_O
+
+  int msSinceProgStart = millis();
+  if (msSinceProgStart > LAST_FIN_CHECK + 10000) {
+    canChangeFinDirection = true;
+    LAST_FIN_CHECK = millis();
+  }
+  //log_to_stdo("Can change fin direction: " + canChangeFinDirection);
+
+  splitFrequencyIntoLogBands();
+
+
+  //log_to_stdo("MAX specSize: " + fft.specSize());
+  int blendModeIntensity = 5;
+  // Blend Mode changes on any loud volume
+
+  for(int i = 0; i < fft.specSize(); i++)
+  {
+    //line(i, height, i, height - fft.getBand(i)*4);
+    if (fft.getBand(i)*4 > 1000.0f) {
+      //applyBlendModeOnDrop(blendModeIntensity);
+    }
+
+  }
+  strokeWeight(2);
+
+  stroke(255);
+
+  // draw the waveforms
+  // the values returned by left.get() and right.get() will be between -1 and 1,
+  // so we need to scale them up to see the waveform
+  // note that if the file is MONO, left.get() and right.get() will return the same value
+  for(int i = 0; i < player.bufferSize() - 1; i++)
+  {
+    float x1 = map( i, 0, player.bufferSize(), 0, width );
+    float x2 = map( i+1, 0, player.bufferSize(), 0, width );
+
+    //h.line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
+    h.line( x1, height/2.0f + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0f + player.right.get(i+1)*WAVE_MULTIPLIER );
+    //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+
+  }
+
+  // draw a line to show where in the player playback is currently located
+  // located at the bottom of the output screen
+  // uses custom style, so doesn't alter other strokes
+  float posx = map(player.position(), 0, player.length(), 0, width);
+  pushStyle();
+  stroke(0,200,0);
+  line(posx, height, posx, (height * .975f));
+  popStyle();
+
+  // DIAMONDS
+
+  // check if should be incrementing  distance from center
+  if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
+    log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
+    log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
+    INCREMENT_DIAMOND_DISTANCE = false;
+
+  } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
+    INCREMENT_DIAMOND_DISTANCE = true;
+  }
+
+
+
+  if (APPEAR_HAND_DRAWN) {
+    fill(255, 76, 52);
+    //background(50, 25, 200);
+  } else {
+    fill(255);
+    background(200);
+  }
+
+  // bottom right diamond
+  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+
+  // draw rest of diamonds, by rotating canvas
+  drawDiamonds();
+  noFill();
+
+  // redness of fins, goes upto RED then back to BLACK
+  if (FIN_REDNESS >= 255) {
+    FIN_REDNESS_ANGRY = false;
+
+  } else if (FIN_REDNESS <= 0) {
+    FIN_REDNESS_ANGRY = true;
+  }
+
+  if (ANIMATED) {
+    if (FIN_REDNESS_ANGRY) {
+      FIN_REDNESS += 1;
+      FINS += 0.04f;
+
+    } else {
+      FIN_REDNESS -= 1;
+      FINS -= 0.04f;
+    }
+  }
+
+  // red circle, of which the bezier shapes touch
+  //drawInnerCircle();
+
+  drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
+
+  //rotate(radians(rot));
+  textSize(24);
+  textAlign(CENTER);
+  text(SONG_NAME, width/2, height-5);
+
+  if (SCREEN_RECORDING) {
+    saveFrame("/tmp/output/frames####.png");
+  }
+  log_to_stdo("frameRate: " + frameRate);
+}
+
+public void mouseClicked() {
+  // toggles fin animated state on mouse click
+  ANIMATED = !ANIMATED;
+}
+
+/*
+Ascii version
+
+o++ossyhyhhyhhyyyhyyyyhhyyhhyyyyhhyyyyyyyyyyyhyyyyyyyyyyyhyyyhyyyhyyyyyysso+/::y
++.```..-:/+ossyyhyyhyyhhyyyyhhhhyyyhhyyyyyyyyyhhyyyyyyhhyhyyyyyyso++/:-.``````:y
+y-```````````.--:/+ossyyhyhhhhyyyhhyyyyyyyyyyyhhyyyyyyhyyso/::-.`````````````-oy
+y+.``````````````````./yhyhhhhhhhhyyyyyyyyyyyyyyyyyyyhhho.```````````````````:yy
+yy-````````````````````/yhyyyhhhhhhhhhyyyyyyyyyyhyyyhhhho.``````````````````-oyy
+hh+.````````````````````oyyyyyhhhhhhhhhhhyyyyyyhyyhhyyyhh+.`````````````````/yyh
+hys:````````````````````.syyyyyhhhhhhhhhhhhyyhyyyyyyyyyhhh/````````````````-+yhy
+yhy/.````````````````````-syyyyhhhhhhhhhhhhhhyyyhyyyyyhhhhs-```````````````/yyhh
+yhhs:`````````````````````:oyyyhhhhhhhhhhhhhhhhyyyhhhhhhhhh/``````````````.oyyyy
+yyyy+`````````````...---:::oyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhho-`````````````/syyhy
+yyyyo:`````..:/+ossyyyyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhs:````````````.oyyyyy
+yyyyys/-:+oyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhy/`````````.:+syhhhhy
+yhyyyhhhhhhhyhhhhhhhhhhhhhhhhhhhhhhhhyyyyyyhhhhhhhhhhhhhhhhh+````.:/oyyhyhhyyhyh
+yyyyyhyhhyyyyyyyhhhhhhhhhhhhhs+ohyyyyyyyhhyyyyhy:+shhhhhhhhho::+syyyyyyyhhhyyyyy
+yyyyyyyyyyyyyyyyhhhhhhhhhhhs/.`.syyyyyhyhhyyyyy/``./shhhhhhhhyyyyyyyyyhhhhhyyyyy
+hyyyyyyyyyyyhhhhyyhhhhhhhho-````.syyyyyyyhhhyy+`````:shhhhhhhhyhhhhhhhhhhhyyyhyy
+yyyyyyyhhyyyyyyyhhhhhhhhhhhys+:-`:syyyyyhyyyyo..:+syyyhhhhhhhhhhhhhhhhhhhhyyyyyy
+yyyyyyyyyyyyyyyhhhhhhhhhhhhyyyyysoyyyyhhhyyhyysyyyhhhyyhhhhhhhhhhhhhhhhhyyyhhyyh
+yhyyyyhhyyyyyhhhhhhhhhhhhyyyyyyyyyyyyyyhhyhyyyyhyyyyhyyhhhhhhhhhhhhhhhhhyyyhyyyy
+yyyhyyyyyhyhhhhhhhhhhhhhyyhhyyyyyyyyyyyyyyyyyhhyhyyyhhyyhhhhhhhhhhhhhhhyyyyyyyyy
+hyhhhyhhyyhhhhhhhhhhhhhhyyhhyyyyyhhyyyyyyyyyyhhyyhhyyhyyhhhhhhhhhhhhhyyhyyyyyyyy
+yyyhhhyyyhhhhhhhhhhhhhhhhyyhhhyhhyhhhyyyyyhhyyyyyyyhhyyhhhhhhhhhhhhyyhhyyyyyyyyy
+yyyyhhyyhhhhhhhhhhhhhhhhhhyyhyyyysyyyyyhyhhyyyssyyyhhyyhhhhhhhhhhyyhhyyhyyyyyyyy
+hyhyyhyhhhhhhhhhhhhhhhhhhhyyys+:..oyyyhhyyhyyo-.-/osyhhhhhhhhhhyhhyyyyhyyyyyyyyy
+hhyhhhhhhhhhhhhhhyhhhhhhhhs:`````oyyyyyyhhyyyys.````-ohhhhhhhhyyyyhyyyyyyyyyyyyy
+yyhhyhhhhhyyyyyyyyyhhhhhhhhs/.``+yhhyyhyyyhhhyyo``./shhhhhhhhhhyhyhhyyyyyyyyyyyy
+hyhhhhhhyyhhyyys+::ohhhhhhhhhs+/yhyhhyhhhyyhyyyy++shhhhhhhhhhhhhyhyyyyyhhhhhyyyy
+yhhhhhhyhyyo/:.````+hhhhhhhhhhhhhhhhhyyyyyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyyhyy
+hhyhyys+:.`````````/yhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyo+::/syyyhh
+hhhyyo`````````````:shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyyyysss+/:..`````/shhhy
+hyyys:`````````````-ohhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyo:::---...````````````.+yyyy
+yyyy+.``````````````/hhhhhhhhhyyyhhhhhhhhhhhhhhhhyyyo-`````````````````````/syhh
+yyys:```````````````-shhhhhyyyyhyyhhhhhhhhhhhhhhhyyyyo.````````````````````.+yyy
+hhy+.````````````````/hhhyyyyyyyyyyyyhhhhhhhhhhhhyyyyyo`````````````````````:shh
+yhs:`````````````````.+hhyyyyyyyyhyhhyyhhhhhhhhhhyyyyhy+````````````````````-+yy
+yy+-``````````````````.ohhhhyyyyyyhhhyhhyyhhhhhhhhhhyhhh:````````````````````:yh
+yy:```````````````````.ohhyyyyyyyyyhyyyyyyyyyyhhhhhhhhhyy:.``````````````````.+y
+y+.`````````````--::/osyhyyyyyyyyyyyyyyyyyyyhyyyyyhhhhyhyysso//:-..```````````:y
+y-``````.-:/++ssyyyyhhhyhhhyyyyyyyyyyyyyyyyyyyyhyhhhyyyyhhyyyyhyyysso+/:-..```.o
+y::/+ossyyhhyyhyyhyyhyyhyyhyyyyyyyyyyyyyyyyyyyyyyyyyyyyyhyhyyyyyyyyhyyhyyysso++o
+
+I know we shared a love for visualizers. I remember Foobar's
+spectrum laying low on your secondary display, while
+Battlefield was being played.
+
+When you held that party, I was drawn to your audio/visualizer
+setup. You gestured towards the PC. I navigated Foobar, kicked
+Milkdrop 2 off using Shpeck. Thanks, man.
+
+RIP Sam,
+CK
+
+PS: If anyone ever wants to talk, I'm open ears and don't be
+hesitant even if I have headphones on d(-_-)b
+*/
+  public void settings() {  size(1200, 1200, P3D);  smooth(8); }
+  static public void main(String[] passedArgs) {
+    String[] appletArgs = new String[] { "Music_Visualizer_CK" };
+    if (passedArgs != null) {
+      PApplet.main(concat(appletArgs, passedArgs));
+    } else {
+      PApplet.main(appletArgs);
+    }
+  }
+}
