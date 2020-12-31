@@ -71,8 +71,8 @@ float DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
 float DIAMOND_WIDTH_OFFSET = 0.0;
 float DIAMOND_HEIGHT_OFFSET = 0.0;
 
-float DIAMOND_RIGHT_EDGE;
-float DIAMOND_LEFT_EDGE;
+float DIAMOND_RIGHT_EDGE_X;
+float DIAMOND_LEFT_EDGE_X;
 
 float DIAMOND_RIGHT_EDGE_Y;
 float DIAMOND_LEFT_EDGE_Y;
@@ -222,8 +222,8 @@ void setup() {
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
   
-  DIAMOND_RIGHT_EDGE = width*0.92;
-  DIAMOND_LEFT_EDGE = width*0.74;
+  DIAMOND_RIGHT_EDGE_X = width*0.92;
+  DIAMOND_LEFT_EDGE_X = width*0.74;
   
   DIAMOND_RIGHT_EDGE_Y = height*0.71;
   DIAMOND_LEFT_EDGE_Y = height*0.92;
@@ -256,9 +256,9 @@ void drawDiamond(float distanceFromCenter) {
   // bottom right diamond 
   CURRENT_HANDY_RENDERER.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
-    DIAMOND_RIGHT_EDGE + DIAMOND_WIDTH_OFFSET, DIAMOND_RIGHT_EDGE_Y + DIAMOND_HEIGHT_OFFSET,
+    DIAMOND_RIGHT_EDGE_X + DIAMOND_WIDTH_OFFSET, DIAMOND_RIGHT_EDGE_Y + DIAMOND_HEIGHT_OFFSET,
     width, height,
-    DIAMOND_LEFT_EDGE - DIAMOND_WIDTH_OFFSET, DIAMOND_LEFT_EDGE_Y - DIAMOND_HEIGHT_OFFSET
+    DIAMOND_LEFT_EDGE_X - DIAMOND_WIDTH_OFFSET, DIAMOND_LEFT_EDGE_Y - DIAMOND_HEIGHT_OFFSET
   );
 }
 
@@ -489,13 +489,23 @@ void keyPressed() {
   }
   
   if (key == 'r') {
-    DIAMOND_RIGHT_EDGE += 20;
-    DIAMOND_LEFT_EDGE -= 20;
+    DIAMOND_RIGHT_EDGE_X += 20;
+    DIAMOND_LEFT_EDGE_X -= 20;
   }
   
   if (key == 'R') {
-    DIAMOND_RIGHT_EDGE -= 20;
-    DIAMOND_LEFT_EDGE += 20;
+    DIAMOND_RIGHT_EDGE_X -= 20;
+    DIAMOND_LEFT_EDGE_X += 20;
+  }
+  
+  if (key == 'c') {
+    DIAMOND_RIGHT_EDGE_Y += 20;
+    DIAMOND_LEFT_EDGE_Y -= 20;
+  }
+  
+  if (key == 'C') {
+    DIAMOND_RIGHT_EDGE_Y -= 20;
+    DIAMOND_LEFT_EDGE_Y += 20;
   }
   
   // toggle background redrawing fresh every frame, 
@@ -590,10 +600,10 @@ public void getUserInput(boolean usingController) {
   
   // where rx the right joystick x axis position between (0, 1200)
   DIAMOND_WIDTH_OFFSET = ((rx - (height/10)) / 5.0) - 80;
-  log_to_stdo("DIAMOND_WIDTH_OFFSET: " + DIAMOND_WIDTH_OFFSET);
+  //log_to_stdo("DIAMOND_WIDTH_OFFSET: " + DIAMOND_WIDTH_OFFSET);
   
   DIAMOND_HEIGHT_OFFSET = ((ry - (height/10)) / 5.0) - 80;
-  log_to_stdo("DIAMOND_HEIGHT_OFFSET: " + DIAMOND_HEIGHT_OFFSET);
+  //log_to_stdo("DIAMOND_HEIGHT_OFFSET: " + DIAMOND_HEIGHT_OFFSET);
   
 
   log_to_stdo("controller left stick:\t lx: " + lx + ", ly " + ly);
