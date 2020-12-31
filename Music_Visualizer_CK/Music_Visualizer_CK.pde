@@ -161,7 +161,7 @@ void setup() {
   HANDY_RENDERERS[2] = h3;
   HANDY_RENDERERS[3] = h4;
 
-  log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
+  //log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
   // P3D runs faster than JAVA2D
@@ -227,7 +227,7 @@ void drawDiamond(float distanceFromCenter) {
   float innerDiamondCoordinate = ((width/2) + DIAMOND_DISTANCE_FROM_CENTER % (height * 0.57) );
 
 
-  log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
+  //log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION]; //<>//
 
   // bottom right diamond
@@ -267,7 +267,9 @@ void drawDiamonds() {
 void drawInnerCircle() {
   // red inner circle, is used to make the fins look smooth internally
   ellipseMode(RADIUS);
-  stroke(FIN_REDNESS, 0, 0);
+  //stroke(FIN_REDNESS, 0, 0);
+  stroke(204, 39, 242);
+
   strokeWeight(8);
   noFill();
   h.ellipse(width/2.0, height/2.0, 110, 110);
@@ -485,10 +487,6 @@ void log_to_stdo(String message_to_log) {
   }
 }
 
-void exit() {
-  log_to_stdo("Exiting now :)");
-  super.exit();
-}
 
 
 void splitFrequencyIntoLogBands() {
@@ -718,17 +716,18 @@ void draw() {
     FIN_REDNESS_ANGRY = true;
   }
 
+  // calm fins down for now
+  
   if (ANIMATED) {
     if (FIN_REDNESS_ANGRY) {
       FIN_REDNESS += 1;
       FINS += 0.04;
-
     } else {
       FIN_REDNESS -= 1;
       FINS -= 0.04;
     }
   }
-
+  
   // red circle, of which the bezier shapes touch
   //drawInnerCircle();
 
