@@ -21,6 +21,8 @@ import org.gamecontrolplus.gui.*;
 import org.gamecontrolplus.*;
 import net.java.games.input.*;
 
+import java.util.Map;
+
 
 Minim minim;
 AudioPlayer player;
@@ -65,6 +67,15 @@ float WAVE_MULTIPLIER = 50.0;
 // DIAMONDS --------------------------------------------------
 float DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
 
+// how far diamond width retracts/expands
+float DIAMOND_WIDTH_OFFSET = 0.0;
+float DIAMOND_HEIGHT_OFFSET = 0.0;
+
+float DIAMOND_RIGHT_EDGE;
+float DIAMOND_LEFT_EDGE;
+
+float DIAMOND_RIGHT_EDGE_Y;
+float DIAMOND_LEFT_EDGE_Y;
 
 float MAX_DIAMOND_DISTANCE = width * 0.57;
 float MIN_DIAMOND_DISTANCE = height * 0.2;
@@ -86,6 +97,10 @@ String[] modeNames = new String[]{
   "DIFFERENCE", "MULTIPLY", "SCREEN",
   "REPLACE"
 };
+
+// Background fill modes
+
+boolean BACKGROUND_ENABLED = true;
 
 // the number of bands per octave
 int bandsPerOctave = 4;
@@ -182,8 +197,8 @@ void setup() {
   // Resizable allows Windows snap features (i.e. snap to right side of screen)
   surface.setResizable(true);
 
-  smooth(8);
-  frameRate(144);
+  smooth(4);
+  frameRate(322);
   surface.setTitle("press[b,d,f,h,s,y,p] | [x,y,a,b] on controller");
 
 
@@ -206,6 +221,14 @@ void setup() {
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
+  
+  DIAMOND_RIGHT_EDGE = width*0.92;
+  DIAMOND_LEFT_EDGE = width*0.74;
+  
+  DIAMOND_RIGHT_EDGE_Y = height*0.71;
+  DIAMOND_LEFT_EDGE_Y = height*0.92;
+  
+  background(200);
 
 }
 
@@ -230,12 +253,12 @@ void drawDiamond(float distanceFromCenter) {
   //log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION]; //<>//
 
-  // bottom right diamond
+  // bottom right diamond 
   CURRENT_HANDY_RENDERER.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
-    width*0.92, height*0.71,
+    DIAMOND_RIGHT_EDGE + DIAMOND_WIDTH_OFFSET, DIAMOND_RIGHT_EDGE_Y + DIAMOND_HEIGHT_OFFSET,
     width, height,
-    width*0.74, height*0.92
+    DIAMOND_LEFT_EDGE - DIAMOND_WIDTH_OFFSET, DIAMOND_LEFT_EDGE_Y - DIAMOND_HEIGHT_OFFSET
   );
 }
 
@@ -244,23 +267,23 @@ void drawDiamonds() {
 
   // bottom left diamond
   pushMatrix();
-  scale(-1,1);
-  translate(-width, 0);
-  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+    scale(-1,1);
+    translate(-width, 0);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
 
   // top left diamond
   pushMatrix();
-  scale(-1,-1);
-  translate(-width, -height);
-  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+    scale(-1,-1);
+    translate(-width, -height);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
 
   // top right diamond
   pushMatrix();
-  scale(1,-1);
-  translate(0, -height);
-  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+    scale(1,-1);
+    translate(0, -height);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
 }
 
@@ -403,12 +426,13 @@ void toggleHandDrawn3(){
   //h.setIsHandy(false);
 }
 
+
 void keyPressed() {
   // blend
   if (key == 'b' || key == 'B') {
     changeBlendMode();
   }
-
+  
   // cycle between drawing styles
   if (key == 'h') {
     //toggleHandDrawn();
@@ -462,6 +486,22 @@ void keyPressed() {
   }
   if (key == 'Y') {
     BEZIER_Y_OFFSET += 10;
+  }
+  
+  if (key == 'r') {
+    DIAMOND_RIGHT_EDGE += 20;
+    DIAMOND_LEFT_EDGE -= 20;
+  }
+  
+  if (key == 'R') {
+    DIAMOND_RIGHT_EDGE -= 20;
+    DIAMOND_LEFT_EDGE += 20;
+  }
+  
+  // toggle background redrawing fresh every frame, 
+  // looks great when off and EPILEPSY_MODE_ON is on
+  if (key == 'g' || key == 'G') {
+    BACKGROUND_ENABLED = !BACKGROUND_ENABLED;
   }
 
   if (key == 's' || key == 'S') {
@@ -543,13 +583,21 @@ public void getUserInput(boolean usingController) {
 
 
   BEZIER_Y_OFFSET = (ly - (height/2)) - 12; // % (height / 2);
-  log_to_stdo("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
+  //log_to_stdo("BEZIER Y OFFSET: " + BEZIER_Y_OFFSET);
 
   WAVE_MULTIPLIER = (ry % (height/5)) + 25;
-  log_to_stdo("WAVE MULTIPLIER: " + WAVE_MULTIPLIER);
+  //log_to_stdo("WAVE MULTIPLIER: " + WAVE_MULTIPLIER);
+  
+  // where rx the right joystick x axis position between (0, 1200)
+  DIAMOND_WIDTH_OFFSET = ((rx - (height/10)) / 5.0) - 80;
+  log_to_stdo("DIAMOND_WIDTH_OFFSET: " + DIAMOND_WIDTH_OFFSET);
+  
+  DIAMOND_HEIGHT_OFFSET = ((ry - (height/10)) / 5.0) - 80;
+  log_to_stdo("DIAMOND_HEIGHT_OFFSET: " + DIAMOND_HEIGHT_OFFSET);
+  
 
-  log_to_stdo("lx: " + lx + ", ly " + ly);
-  log_to_stdo("rx: " + rx + ", ry " + ry);
+  log_to_stdo("controller left stick:\t lx: " + lx + ", ly " + ly);
+  log_to_stdo("controller right stick:\t rx: " + rx + ", ry " + ry);
 
 
   /* buttons */
@@ -558,10 +606,12 @@ public void getUserInput(boolean usingController) {
   x_button = stick.getButton("x").pressed();
   y_button = stick.getButton("y").pressed();
 
+  /*
   log_to_stdo("a button pressed: " + a_button);
   log_to_stdo("b button pressed: " + b_button);
   log_to_stdo("x button pressed: " + x_button);
   log_to_stdo("y button pressed: " + y_button);
+  */
 
   if (b_button) {
     changeBlendMode();
@@ -592,9 +642,16 @@ public void getUserInput(boolean usingController) {
 
 }
 
+void setBackGroundFillMode(){
+    fill(#FFFFFF); 
+}
+
+
 void draw() {
   if (STATE == 0) {
     // show loading screen
+    background(200);
+
     textSize(48);
     fill(0,255,0);
     text("RIP Sam", width/2, height/2);
@@ -607,7 +664,13 @@ void draw() {
   stroke(0);
   noStroke();
 
-  background(200);
+  
+  if(BACKGROUND_ENABLED) {
+    background(200);
+  }
+  
+
+  //fill(#FFFFFF); 
 
   // stop redrawing the hand drawn everyframe aka jitters
   // TODO: Investigate seeds for more gpu intensive styles
@@ -654,6 +717,10 @@ void draw() {
   strokeWeight(2);
 
   stroke(255);
+  float r_line = (frameCount % 255) / 10;
+  float g_line = (frameCount % 255) - 75;
+  float b_line = (frameCount % 255);
+  
 
   // draw the waveforms
   // the values returned by left.get() and right.get() will be between -1 and 1,
@@ -664,11 +731,13 @@ void draw() {
     float x1 = map( i, 0, player.bufferSize(), 0, width );
     float x2 = map( i+1, 0, player.bufferSize(), 0, width );
 
-    //h.line( x1, height/2.0 + player.right.get(i)*50, x2, height/2.0 + player.right.get(i+1)*50 );
-    h.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+    stroke(r_line, g_line, b_line);
+    line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
     //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
 
   }
+  stroke(255);
+
 
   // draw a line to show where in the player playback is currently located
   // located at the bottom of the output screen
@@ -741,7 +810,15 @@ void draw() {
   if (SCREEN_RECORDING) {
     saveFrame("/tmp/output/frames####.png");
   }
-  log_to_stdo("frameRate: " + frameRate);
+  
+  // only update fps counter in title a same amount of times to maintain performance
+  if (frameCount % 100 == 0) {
+    log_to_stdo("frameRate: " + frameRate);
+    surface.setTitle("press[b,d,f,g,h,s,y,p] | [x,y,a,b] on controller | fps: " + int(frameRate));
+ }
+ 
+ log_to_stdo("Current blendMode: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+
 }
 
 void mouseClicked() {
