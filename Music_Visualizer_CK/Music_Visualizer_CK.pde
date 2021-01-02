@@ -45,6 +45,11 @@ HandyRenderer CURRENT_HANDY_RENDERER;
 
 boolean APPEAR_HAND_DRAWN = true;
 
+// Toggle whether elements are drawn or not
+boolean DRAW_DIAMONDS = true;
+boolean DRAW_FINS = true;
+boolean DRAW_WAVEFORM = true;
+
 // FINS ------------------------------------------------------
 boolean FIN_REDNESS_ANGRY = true;
 boolean ANIMATED = true;
@@ -517,6 +522,20 @@ void keyPressed() {
   if (key == 's' || key == 'S') {
     EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
   }
+  
+  if (key == '<' || key == '>') {
+    DRAW_DIAMONDS = !DRAW_DIAMONDS;
+  }
+    
+  if (key == 'w' || key == 'W') {
+    DRAW_WAVEFORM = !DRAW_WAVEFORM;
+  }
+  
+ 
+  if (key == '/') {
+    DRAW_FINS = !DRAW_FINS;
+  }
+ 
 
   // exit nicely
   if (key == 'x' || key == 'X') {
@@ -732,19 +751,21 @@ void draw() {
   float b_line = (frameCount % 255);
   
 
-  // draw the waveforms
-  // the values returned by left.get() and right.get() will be between -1 and 1,
-  // so we need to scale them up to see the waveform
-  // note that if the file is MONO, left.get() and right.get() will return the same value
-  for(int i = 0; i < player.bufferSize() - 1; i++)
-  {
-    float x1 = map( i, 0, player.bufferSize(), 0, width );
-    float x2 = map( i+1, 0, player.bufferSize(), 0, width );
-
-    stroke(r_line, g_line, b_line);
-    line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
-    //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
-
+  if (DRAW_WAVEFORM) {
+    // draw the waveforms
+    // the values returned by left.get() and right.get() will be between -1 and 1,
+    // so we need to scale them up to see the waveform
+    // note that if the file is MONO, left.get() and right.get() will return the same value
+    for(int i = 0; i < player.bufferSize() - 1; i++)
+    {
+      float x1 = map( i, 0, player.bufferSize(), 0, width );
+      float x2 = map( i+1, 0, player.bufferSize(), 0, width );
+  
+      stroke(r_line, g_line, b_line);
+      line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+      //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+  
+    }
   }
   stroke(255);
 
@@ -754,8 +775,8 @@ void draw() {
   // uses custom style, so doesn't alter other strokes
   float posx = map(player.position(), 0, player.length(), 0, width);
   pushStyle();
-  stroke(0,200,0);
-  line(posx, height, posx, (height * .975));
+    stroke(0,200,0);
+    line(posx, height, posx, (height * .975));
   popStyle();
 
   // DIAMONDS
@@ -780,11 +801,14 @@ void draw() {
     background(200);
   }
 
-  // bottom right diamond
-  drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
-
-  // draw rest of diamonds, by rotating canvas
-  drawDiamonds();
+  if (DRAW_DIAMONDS) {
+    // bottom right diamond
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  
+    // draw rest of diamonds, by rotating canvas
+    drawDiamonds();
+  }
+  
   noFill();
 
   // redness of fins, goes upto RED then back to BLACK
@@ -809,9 +833,12 @@ void draw() {
   
   // red circle, of which the bezier shapes touch
   //drawInnerCircle();
-
-  drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
-
+  
+  
+  if (DRAW_FINS) {
+      drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
+  }
+  
   //rotate(radians(rot));
   textSize(24);
   textAlign(CENTER);
@@ -821,7 +848,7 @@ void draw() {
     saveFrame("/tmp/output/frames####.png");
   }
   
-  // only update fps counter in title a same amount of times to maintain performance
+  // only update fps counter in title a sane amount of times to maintain performance
   if (frameCount % 100 == 0) {
     log_to_stdo("frameRate: " + frameRate);
     surface.setTitle("press[b,d,f,g,h,s,y,p] | [x,y,a,b] on controller | fps: " + int(frameRate));
