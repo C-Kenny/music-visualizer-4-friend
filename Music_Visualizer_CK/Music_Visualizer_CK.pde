@@ -237,7 +237,7 @@ void setup() {
   surface.setResizable(true);
 
   smooth(4);
-  frameRate(322);
+  frameRate(160);
   surface.setTitle("press[b,d,f,h,s,y,p] | [x,y,a,b] on controller");
 
 
@@ -357,57 +357,57 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
 
     pushMatrix();
 
-    float rotationAmount = (2 * (i / fins) * PI);
-
-    if (finRotationClockWise == true) {
-      rotationAmount = 0 - rotationAmount;
-    }
-
-    translate(width/2, height/2);
-    rotate(rotationAmount);
-    if (APPEAR_HAND_DRAWN) {
-      fill(255,0,0, 100);
-    } else {
-      noFill();
-    }
-    /*
-    .
+      float rotationAmount = (2 * (i / fins) * PI);
+  
+      if (finRotationClockWise == true) {
+        rotationAmount = 0 - rotationAmount;
+      }
+  
+      translate(width/2, height/2);
+      rotate(rotationAmount);
+      if (APPEAR_HAND_DRAWN) {
+        fill(255,0,0, 100);
+      } else {
+        noFill();
+      }
+      /*
       .
         .
-         .
           .
-    */
+           .
+            .
+      */
+      bezier(
+        -36 + xOffset,-126 + yOffset,
+        -36 + xOffset,-126 + yOffset,
+        32 + xOffset,-118 + yOffset,
+        68 + xOffset,-52 + yOffset
+      );
+  
+      /*
+        .
+         .
+         .
+        .
+      */
+      bezier(
+        -36 + xOffset,-126 + yOffset,
+        -36 + xOffset,-126 + yOffset,
+        -10 + xOffset,-88 + yOffset,
+        -22 + xOffset,-52 + yOffset
+      );
+  
+      /*
+  
+       ,......,
+      .        .
+      */
     bezier(
-      -36 + xOffset,-126 + yOffset,
-      -36 + xOffset,-126 + yOffset,
-      32 + xOffset,-118 + yOffset,
-      68 + xOffset,-52 + yOffset
-    );
-
-    /*
-      .
-       .
-       .
-      .
-    */
-    bezier(
-      -36 + xOffset,-126 + yOffset,
-      -36 + xOffset,-126 + yOffset,
-      -10 + xOffset,-88 + yOffset,
-      -22 + xOffset,-52 + yOffset
-    );
-
-    /*
-
-     ,......,
-    .        .
-    */
-  bezier(
-      -22 + xOffset,-52 + yOffset,
-      -22 + xOffset,-52 + yOffset,
-      20 + xOffset,-74 + yOffset,
-      68 + xOffset,-52 + yOffset
-    );
+        -22 + xOffset,-52 + yOffset,
+        -22 + xOffset,-52 + yOffset,
+        20 + xOffset,-74 + yOffset,
+        68 + xOffset,-52 + yOffset
+      );
 
     popMatrix();
   }
@@ -476,6 +476,7 @@ void keyPressed() {
   if (key == 'h') {
     //toggleHandDrawn();
     CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
+    log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
   }
 
   // toggle being hand-drawn or not
@@ -585,6 +586,7 @@ void keyPressed() {
 }
 
 void log_to_stdo(String message_to_log) {
+  // we use this logging wrapper to be able to toggle logging off/now in real time with 'l' keyboard shortcut
   if (LOGGING_ENABLED) {
     println(message_to_log);
   }
