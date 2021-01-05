@@ -141,6 +141,9 @@ boolean LOGGING_ENABLED = true;
 // Screen capture --------------------------------------------
 boolean SCREEN_RECORDING = false;
 
+// Operating System Platform Specific Setup
+String OS_TYPE;
+
 
 String fileSelected(File selection) {
   if (selection == null) {
@@ -153,9 +156,40 @@ String fileSelected(File selection) {
   return selection.getAbsolutePath();
 }
 
+String discoverOperatingSystem() {
+  String os = System.getProperty("os.name");
+  if (os.contains("Windows")) {
+    return "win";
+  } else if (os.contains("Mac")) { //<>//
+    return "mac";
+  } else if (os.contains("Linux")) {
+    return "linux";
+  } else {
+    return "other";
+  }
+}
+
+String getSongNameFromFilePath(String song_path, String os_type) {
+  String[] file_name_parts;
+  
+  if (os_type == "linux") {
+    file_name_parts = split(song_path, "/");
+  } else if (os_type == "win") {
+    file_name_parts = split(song_path, "\\");
+  } else {
+    // assume unix like path
+    file_name_parts = split(song_path, "/");
+  }
+  
+  SONG_NAME = file_name_parts[file_name_parts.length-1];
+  return SONG_NAME;
+}
+  
 
 void setup() {
   // Entry point, run once
+  
+  OS_TYPE = discoverOperatingSystem();
 
   // Visualizer only begins once a song has been selected
   selectInput("Select song to visualize", "fileSelected");
@@ -164,8 +198,8 @@ void setup() {
     delay(1);
   }
   STATE = 1;
-  String[] file_name_parts = split(SONG_TO_VISUALIZE, "/");
-  SONG_NAME = file_name_parts[file_name_parts.length-1]; //<>//
+  
+  SONG_NAME = getSongNameFromFilePath(SONG_TO_VISUALIZE, OS_TYPE);
 
   // render shapes like they are hand drawn
   h = new HandyRenderer(this);
@@ -217,7 +251,7 @@ void setup() {
 
   blendMode(BLEND);
 
-  // an FFT needs to know how
+  // an FFT needs to know how //<>//
   // long the audio buffers it will be analyzing are
   // and also needs to know
   // the sample rate of the audio it is analyzing
