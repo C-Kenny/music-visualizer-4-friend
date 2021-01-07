@@ -33,13 +33,13 @@ FFT fft;
 
 // HANDY DRAWN STYLE ----------------------------------------
 // Draw shapes like they are hand drawn (thanks to Handy)
-HandyRenderer h, h1, h2, h3, h4;
-HandyRenderer[] HANDY_RENDERERS = new HandyRenderer[4];
+HandyRenderer h, h1, h2;
+HandyRenderer[] HANDY_RENDERERS = new HandyRenderer[3];
 
 int HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
 
 int MIN_HANDY_RENDERER_POSITION = 0;
-int MAX_HANDY_RENDERER_POSITION = HANDY_RENDERERS_COUNT;
+int MAX_HANDY_RENDERER_POSITION = HANDY_RENDERERS_COUNT -1;
 int CURRENT_HANDY_RENDERER_POSITION = 0;
 HandyRenderer CURRENT_HANDY_RENDERER;
 
@@ -71,6 +71,9 @@ float WAVE_MULTIPLIER = 50.0;
 
 // DIAMONDS --------------------------------------------------
 float DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
+
+boolean DIAMOND_CAN_CHANGE_CENTER_DISANCE = true;
+boolean DIAMON_CAN_CHANGE_X_WIDTH = true;
 
 // how far diamond width retracts/expands
 float DIAMOND_WIDTH_OFFSET = 0.0;
@@ -149,6 +152,7 @@ String fileSelected(File selection) {
   if (selection == null) {
     log_to_stdo("No file selected. Window might have been closed/cancelled");
     return "";
+    
   } else {
     log_to_stdo("File selected: " + selection.getAbsolutePath());
     SONG_TO_VISUALIZE = selection.getAbsolutePath();
@@ -159,8 +163,8 @@ String fileSelected(File selection) {
 String discoverOperatingSystem() {
   String os = System.getProperty("os.name");
   if (os.contains("Windows")) {
-    return "win";
-  } else if (os.contains("Mac")) { //<>//
+    return "win"; //<>//
+  } else if (os.contains("Mac")) {
     return "mac";
   } else if (os.contains("Linux")) {
     return "linux";
@@ -170,6 +174,8 @@ String discoverOperatingSystem() {
 }
 
 String getSongNameFromFilePath(String song_path, String os_type) {
+  log_to_stdo("Getting song name from file path, where os_type is: " + os_type);
+  
   String[] file_name_parts;
   
   if (os_type == "linux") {
@@ -177,11 +183,15 @@ String getSongNameFromFilePath(String song_path, String os_type) {
   } else if (os_type == "win") {
     file_name_parts = split(song_path, "\\");
   } else {
-    // assume unix like path
-    file_name_parts = split(song_path, "/");
+    // default to Windows :fingers_crossed:
+    file_name_parts = split(song_path, "\\");
   }
-  
+  for (int i=0; i < file_name_parts.length-1; i++) {
+    log_to_stdo("File name part: " + file_name_parts[i]);
+  }
   SONG_NAME = file_name_parts[file_name_parts.length-1];
+  log_to_stdo("SONG_NAME: " + SONG_NAME);
+  
   return SONG_NAME;
 }
   
@@ -200,29 +210,29 @@ void setup() {
   STATE = 1;
   
   SONG_NAME = getSongNameFromFilePath(SONG_TO_VISUALIZE, OS_TYPE);
+  //SONG_NAME = ""; 
+  // Processing Tweak mode doesn't provide nice file paths. 
+  // TODO: Investigate why it chokes on this.
 
+  log_to_stdo("Initializing Handy Renderers");
+  
   // render shapes like they are hand drawn
-  h = new HandyRenderer(this);
-  h1 = HandyPresets.createPencil(this);
-  h2 = HandyPresets.createColouredPencil(this);
-  h3 = HandyPresets.createWaterAndInk(this);
-  h4 = HandyPresets.createMarker(this);
+  h = HandyPresets.createWaterAndInk(this);
+  h1 = HandyPresets.createMarker(this);
+  h2 = new HandyRenderer(this);
 
   // TODO: There's gotta be a better way to init array of objects..
   HANDY_RENDERERS[0] = h;
-  //HANDY_RENDERERS[1] = h1;
-  HANDY_RENDERERS[1] = h2;
-  HANDY_RENDERERS[2] = h3;
-  HANDY_RENDERERS[3] = h4;
+  HANDY_RENDERERS[1] = h1;
+  HANDY_RENDERERS[2] = h2;
 
-  //log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
+  log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
   // P3D runs faster than JAVA2D
   // https://forum.processing.org/beta/num_1115431708.html
   size(1200, 1200, P3D);
 
-  // Initialise the ControlIO
   control = ControlIO.getInstance(this);
 
   // Attempt to find a device that matches the configuration file
@@ -230,7 +240,7 @@ void setup() {
   if (stick != null) {
     USING_CONTROLLER = true;
   }
-  log_to_stdo("USING CONTROLLER?" + USING_CONTROLLER);
+  log_to_stdo("USING CONTROLLER? " + USING_CONTROLLER);
 
 
   // Resizable allows Windows snap features (i.e. snap to right side of screen)
@@ -238,20 +248,20 @@ void setup() {
 
   smooth(4);
   frameRate(160);
-  surface.setTitle("press[b,d,f,h,s,y,p] | [x,y,a,b] on controller");
+  surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller");
 
 
-  minim = new Minim(this);
-  player = minim.loadFile(SONG_TO_VISUALIZE);
+  minim = new Minim(this); //<>// //<>//
+  player = minim.loadFile(SONG_TO_VISUALIZE); //<>//
 
-  player.loop();
-  SONG_PLAYING = true;
+  player.loop(); //<>// //<>//
+  SONG_PLAYING = true; //<>//
   beat = new BeatDetect();
   ellipseMode(CENTER);
 
   blendMode(BLEND);
-
-  // an FFT needs to know how //<>//
+ //<>// //<>//
+  // an FFT needs to know how
   // long the audio buffers it will be analyzing are
   // and also needs to know
   // the sample rate of the audio it is analyzing
@@ -344,9 +354,9 @@ void stop() {
 
 void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
   //stroke(redness, 0, 0);
-  stroke(0);
+  stroke(7);
 
-  strokeWeight(3);
+  strokeWeight(5);
 
   float xOffset = -20;
   float yOffset = -50;
@@ -363,10 +373,16 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
         rotationAmount = 0 - rotationAmount;
       }
   
-      translate(width/2, height/2);
+      translate(width/2, height/2);       // shift focal drawing point to center for fins
+      scale(1.75);                        // scale up fins to handle larger screen sizes
+      float random_noise_spin = random(0.01, 0.99);
+      
+      rotate( (radians(frameCount + random_noise_spin) / 2.0) );  // pulse rotating of inner fins
+
       rotate(rotationAmount);
+      
       if (APPEAR_HAND_DRAWN) {
-        fill(255,0,0, 100);
+        fill(247,9,143, 100);
       } else {
         noFill();
       }
@@ -408,7 +424,6 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
         20 + xOffset,-74 + yOffset,
         68 + xOffset,-52 + yOffset
       );
-
     popMatrix();
   }
 }
@@ -461,7 +476,7 @@ void toggleHandDrawn(){
 
 void toggleHandDrawn3(){
   APPEAR_HAND_DRAWN = !APPEAR_HAND_DRAWN;
-  h3.setIsHandy(APPEAR_HAND_DRAWN);
+  h.setIsHandy(APPEAR_HAND_DRAWN);
   //h.setIsHandy(false);
 }
 
@@ -475,7 +490,10 @@ void keyPressed() {
   // cycle between drawing styles
   if (key == 'h') {
     //toggleHandDrawn();
-    CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
+    log_to_stdo("MAX_HANDY_RENDERER_POSITION: " + MAX_HANDY_RENDERER_POSITION);
+    CURRENT_HANDY_RENDERER_POSITION += 1;
+    CURRENT_HANDY_RENDERER_POSITION = CURRENT_HANDY_RENDERER_POSITION % HANDY_RENDERERS_COUNT;
+    //(CURRENT_HANDY_RENDERER_POSITION + 1) % HANDY_RENDERERS_COUNT;//MAX_HANDY_RENDERER_POSITION;
     log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
   }
 
@@ -615,7 +633,8 @@ void splitFrequencyIntoLogBands() {
 
     if ((i >= 0 && i <= 5) && bandDB > -10) {
       // bass
-      changeBlendMode();
+      //changeBlendMode();
+      applyBlendModeOnDrop(3);
     }
 
     if ((i >=6 && i<= 15) && bandDB >-27) {
@@ -661,8 +680,8 @@ public void getUserInput(boolean usingController) {
   //log_to_stdo("DIAMOND_HEIGHT_OFFSET: " + DIAMOND_HEIGHT_OFFSET);
   
 
-  log_to_stdo("controller left stick:\t lx: " + lx + ", ly " + ly);
-  log_to_stdo("controller right stick:\t rx: " + rx + ", ry " + ry);
+  //log_to_stdo("controller left stick:\t lx: " + lx + ", ly " + ly);
+  //log_to_stdo("controller right stick:\t rx: " + rx + ", ry " + ry);
 
 
   /* buttons */
@@ -708,7 +727,7 @@ public void getUserInput(boolean usingController) {
 }
 
 void setBackGroundFillMode(){
-    fill(#FFFFFF); 
+    fill(#fbfafa); 
 }
 
 
@@ -733,25 +752,17 @@ void draw() {
   if(BACKGROUND_ENABLED) {
     background(200);
   }
-  
-
-  //fill(#FFFFFF); 
-
-  // stop redrawing the hand drawn everyframe aka jitters
-  // TODO: Investigate seeds for more gpu intensive styles
 
   if (!EPILEPSY_MODE_ON) {
     h.setSeed(117);
-    //h1.setSeed(322); // super intensive/slow
-    h2.setSeed(322);
-    h3.setSeed(420);
-    h4.setSeed(666);
+    h1.setSeed(322);
+    h2.setSeed(420);
   }
 
   // first perform a forward fft on one of song's mix buffers
   fft.forward(player.mix);
 
-  stroke(255, 0, 0, 128);
+  stroke(216, 16, 246, 128);
   strokeWeight(8);
 
   // only change fin direction, if it has been more than 10s since last it was changed.
@@ -769,16 +780,17 @@ void draw() {
 
   //log_to_stdo("MAX specSize: " + fft.specSize());
   int blendModeIntensity = 5;
-  // Blend Mode changes on any loud volume
 
+  /*
   for(int i = 0; i < fft.specSize(); i++)
   {
-    //line(i, height, i, height - fft.getBand(i)*4);
+    line(i, height, i, height - fft.getBand(i)*4);
     if (fft.getBand(i)*4 > 1000.0) {
       //applyBlendModeOnDrop(blendModeIntensity);
     }
 
   }
+  */
   strokeWeight(2);
 
   stroke(255);
@@ -811,7 +823,7 @@ void draw() {
   // uses custom style, so doesn't alter other strokes
   float posx = map(player.position(), 0, player.length(), 0, width);
   pushStyle();
-    stroke(0,200,0);
+    stroke(252,4,243);
     line(posx, height, posx, (height * .975));
   popStyle();
 
@@ -819,8 +831,8 @@ void draw() {
 
   // check if should be incrementing  distance from center
   if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
-    log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
-    log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
+    //log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
+    //log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
     INCREMENT_DIAMOND_DISTANCE = false;
 
   } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
@@ -828,7 +840,7 @@ void draw() {
   }
 
 
-
+  //log_to_stdo("APPEAR_HAND_DRAWN: " + APPEAR_HAND_DRAWN);
   if (APPEAR_HAND_DRAWN) {
     fill(255, 76, 52);
     //background(50, 25, 200);
@@ -860,10 +872,10 @@ void draw() {
   if (ANIMATED) {
     if (FIN_REDNESS_ANGRY) {
       FIN_REDNESS += 1;
-      FINS += 0.04;
+      FINS += 0.03;
     } else {
       FIN_REDNESS -= 1;
-      FINS -= 0.04;
+      FINS -= 0.03;
     }
   }
   
@@ -887,10 +899,11 @@ void draw() {
   // only update fps counter in title a sane amount of times to maintain performance
   if (frameCount % 100 == 0) {
     log_to_stdo("frameRate: " + frameRate);
-    surface.setTitle("press[b,d,f,g,h,s,y,p] | [x,y,a,b] on controller | fps: " + int(frameRate));
+    surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller | [x,y,a,b] on controller | fps: " + int(frameRate));
  }
+
  
- log_to_stdo("Current blendMode: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+ //log_to_stdo("Current blendMode: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 
 }
 
@@ -898,62 +911,3 @@ void mouseClicked() {
   // toggles fin animated state on mouse click
   ANIMATED = !ANIMATED;
 }
-
-/*
-Ascii version
-
-o++ossyhyhhyhhyyyhyyyyhhyyhhyyyyhhyyyyyyyyyyyhyyyyyyyyyyyhyyyhyyyhyyyyyysso+/::y
-+.```..-:/+ossyyhyyhyyhhyyyyhhhhyyyhhyyyyyyyyyhhyyyyyyhhyhyyyyyyso++/:-.``````:y
-y-```````````.--:/+ossyyhyhhhhyyyhhyyyyyyyyyyyhhyyyyyyhyyso/::-.`````````````-oy
-y+.``````````````````./yhyhhhhhhhhyyyyyyyyyyyyyyyyyyyhhho.```````````````````:yy
-yy-````````````````````/yhyyyhhhhhhhhhyyyyyyyyyyhyyyhhhho.``````````````````-oyy
-hh+.````````````````````oyyyyyhhhhhhhhhhhyyyyyyhyyhhyyyhh+.`````````````````/yyh
-hys:````````````````````.syyyyyhhhhhhhhhhhhyyhyyyyyyyyyhhh/````````````````-+yhy
-yhy/.````````````````````-syyyyhhhhhhhhhhhhhhyyyhyyyyyhhhhs-```````````````/yyhh
-yhhs:`````````````````````:oyyyhhhhhhhhhhhhhhhhyyyhhhhhhhhh/``````````````.oyyyy
-yyyy+`````````````...---:::oyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhho-`````````````/syyhy
-yyyyo:`````..:/+ossyyyyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhs:````````````.oyyyyy
-yyyyys/-:+oyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhy/`````````.:+syhhhhy
-yhyyyhhhhhhhyhhhhhhhhhhhhhhhhhhhhhhhhyyyyyyhhhhhhhhhhhhhhhhh+````.:/oyyhyhhyyhyh
-yyyyyhyhhyyyyyyyhhhhhhhhhhhhhs+ohyyyyyyyhhyyyyhy:+shhhhhhhhho::+syyyyyyyhhhyyyyy
-yyyyyyyyyyyyyyyyhhhhhhhhhhhs/.`.syyyyyhyhhyyyyy/``./shhhhhhhhyyyyyyyyyhhhhhyyyyy
-hyyyyyyyyyyyhhhhyyhhhhhhhho-````.syyyyyyyhhhyy+`````:shhhhhhhhyhhhhhhhhhhhyyyhyy
-yyyyyyyhhyyyyyyyhhhhhhhhhhhys+:-`:syyyyyhyyyyo..:+syyyhhhhhhhhhhhhhhhhhhhhyyyyyy
-yyyyyyyyyyyyyyyhhhhhhhhhhhhyyyyysoyyyyhhhyyhyysyyyhhhyyhhhhhhhhhhhhhhhhhyyyhhyyh
-yhyyyyhhyyyyyhhhhhhhhhhhhyyyyyyyyyyyyyyhhyhyyyyhyyyyhyyhhhhhhhhhhhhhhhhhyyyhyyyy
-yyyhyyyyyhyhhhhhhhhhhhhhyyhhyyyyyyyyyyyyyyyyyhhyhyyyhhyyhhhhhhhhhhhhhhhyyyyyyyyy
-hyhhhyhhyyhhhhhhhhhhhhhhyyhhyyyyyhhyyyyyyyyyyhhyyhhyyhyyhhhhhhhhhhhhhyyhyyyyyyyy
-yyyhhhyyyhhhhhhhhhhhhhhhhyyhhhyhhyhhhyyyyyhhyyyyyyyhhyyhhhhhhhhhhhhyyhhyyyyyyyyy
-yyyyhhyyhhhhhhhhhhhhhhhhhhyyhyyyysyyyyyhyhhyyyssyyyhhyyhhhhhhhhhhyyhhyyhyyyyyyyy
-hyhyyhyhhhhhhhhhhhhhhhhhhhyyys+:..oyyyhhyyhyyo-.-/osyhhhhhhhhhhyhhyyyyhyyyyyyyyy
-hhyhhhhhhhhhhhhhhyhhhhhhhhs:`````oyyyyyyhhyyyys.````-ohhhhhhhhyyyyhyyyyyyyyyyyyy
-yyhhyhhhhhyyyyyyyyyhhhhhhhhs/.``+yhhyyhyyyhhhyyo``./shhhhhhhhhhyhyhhyyyyyyyyyyyy
-hyhhhhhhyyhhyyys+::ohhhhhhhhhs+/yhyhhyhhhyyhyyyy++shhhhhhhhhhhhhyhyyyyyhhhhhyyyy
-yhhhhhhyhyyo/:.````+hhhhhhhhhhhhhhhhhyyyyyhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyyhyy
-hhyhyys+:.`````````/yhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyo+::/syyyhh
-hhhyyo`````````````:shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyyyysss+/:..`````/shhhy
-hyyys:`````````````-ohhhhhhhhhhhhhhhhhhhhhhhhhhhhhhyo:::---...````````````.+yyyy
-yyyy+.``````````````/hhhhhhhhhyyyhhhhhhhhhhhhhhhhyyyo-`````````````````````/syhh
-yyys:```````````````-shhhhhyyyyhyyhhhhhhhhhhhhhhhyyyyo.````````````````````.+yyy
-hhy+.````````````````/hhhyyyyyyyyyyyyhhhhhhhhhhhhyyyyyo`````````````````````:shh
-yhs:`````````````````.+hhyyyyyyyyhyhhyyhhhhhhhhhhyyyyhy+````````````````````-+yy
-yy+-``````````````````.ohhhhyyyyyyhhhyhhyyhhhhhhhhhhyhhh:````````````````````:yh
-yy:```````````````````.ohhyyyyyyyyyhyyyyyyyyyyhhhhhhhhhyy:.``````````````````.+y
-y+.`````````````--::/osyhyyyyyyyyyyyyyyyyyyyhyyyyyhhhhyhyysso//:-..```````````:y
-y-``````.-:/++ssyyyyhhhyhhhyyyyyyyyyyyyyyyyyyyyhyhhhyyyyhhyyyyhyyysso+/:-..```.o
-y::/+ossyyhhyyhyyhyyhyyhyyhyyyyyyyyyyyyyyyyyyyyyyyyyyyyyhyhyyyyyyyyhyyhyyysso++o
-
-I know we shared a love for visualizers. I remember Foobar's
-spectrum laying low on your secondary display, while
-Battlefield was being played.
-
-When you held that party, I was drawn to your audio/visualizer
-setup. You gestured towards the PC. I navigated Foobar, kicked
-Milkdrop 2 off using Shpeck. Thanks, man.
-
-RIP Sam,
-CK
-
-PS: If anyone ever wants to talk, I'm open ears and don't be
-hesitant even if I have headphones on d(-_-)b
-*/
