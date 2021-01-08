@@ -900,7 +900,7 @@ void draw() {
   // only update fps counter in title a sane amount of times to maintain performance
   if (frameCount % 100 == 0) {
     log_to_stdo("frameRate: " + frameRate);
-    surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller | [x,y,a,b] on controller | fps: " + int(frameRate));
+    surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller | fps: " + int(frameRate));
  }
 
  
