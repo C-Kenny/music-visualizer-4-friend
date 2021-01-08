@@ -13,6 +13,9 @@ Without sound:
 
 ![MusicVisualizerCK](output/current_output_animated.gif)
 
+### Xbox 360 Controller Layout:
+
+![Xbox 360 Controller Layout](documentation/xbox-360-controller.png)
 
 ### How to run development build?
 
@@ -34,8 +37,8 @@ then launch the visualizer with:
 ### How to run Visualizer app?
 
 From a Linux file browser you can just double click the file located at:
+
 `music-visualizer-4-friend/Music_Visualizer_CK/application.linux64/Music_Visualizer_CK`
-and it will launch the visualizer itself
 
 ### Why?
 
