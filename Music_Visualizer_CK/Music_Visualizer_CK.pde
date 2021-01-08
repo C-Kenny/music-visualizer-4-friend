@@ -710,7 +710,8 @@ public void getUserInput(boolean usingController) {
   }
 
   if (x_button) {
-    EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
+    //EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
+    BACKGROUND_ENABLED = !BACKGROUND_ENABLED;
   }
 
    /*
