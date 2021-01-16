@@ -2,9 +2,6 @@
 
 Music Visualizer ♫ ♪♪
 
-Trivia:
-
-Diamonds and circles intersect to form a Celtic Cross
 */
 
 
@@ -23,7 +20,6 @@ import net.java.games.input.*;
 
 import java.util.Map;
 
-
 Minim minim;
 AudioPlayer player;
 BeatDetect beat;
@@ -34,50 +30,50 @@ FFT fft;
 // HANDY DRAWN STYLE ----------------------------------------
 // Draw shapes like they are hand drawn (thanks to Handy)
 HandyRenderer h, h1, h2;
-HandyRenderer[] HANDY_RENDERERS = new HandyRenderer[3];
+HandyRenderer[] HANDY_RENDERERS;
 
-int HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
+int HANDY_RENDERERS_COUNT;
 
-int MIN_HANDY_RENDERER_POSITION = 0;
-int MAX_HANDY_RENDERER_POSITION = HANDY_RENDERERS_COUNT -1;
-int CURRENT_HANDY_RENDERER_POSITION = 0;
+int MIN_HANDY_RENDERER_POSITION;
+int MAX_HANDY_RENDERER_POSITION;
+int CURRENT_HANDY_RENDERER_POSITION;
 HandyRenderer CURRENT_HANDY_RENDERER;
 
-boolean APPEAR_HAND_DRAWN = true;
+boolean APPEAR_HAND_DRAWN;
 
 // Toggle whether elements are drawn or not
-boolean DRAW_DIAMONDS = true;
-boolean DRAW_FINS = true;
-boolean DRAW_WAVEFORM = true;
+boolean DRAW_DIAMONDS;
+boolean DRAW_FINS;
+boolean DRAW_WAVEFORM;
 
 // FINS ------------------------------------------------------
-boolean FIN_REDNESS_ANGRY = true;
-boolean ANIMATED = true;
+boolean FIN_REDNESS_ANGRY;
+boolean ANIMATED;
 
 int LAST_FIN_CHECK; // last time fin was checked, to be changed
-float FINS = 8.0;
-int FIN_REDNESS = 1;
+float FINS;
+int FIN_REDNESS;
 
-boolean canChangeFinDirection = true;
-boolean finRotationClockWise = false;
+boolean canChangeFinDirection;
+boolean finRotationClockWise;
 
-float BEZIER_Y_OFFSET = -50;
-float MAX_BEZIER_Y_OFFSET = 40;
-float MIN_BEZIER_Y_OFFSET = -140;
+float BEZIER_Y_OFFSET;
+float MAX_BEZIER_Y_OFFSET;
+float MIN_BEZIER_Y_OFFSET;
 
 // WAVE FORM -------------------------------------------------
-float WAVE_MULTIPLIER = 50.0;
+float WAVE_MULTIPLIER;
 
 
 // DIAMONDS --------------------------------------------------
-float DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
+float DIAMOND_DISTANCE_FROM_CENTER;
 
-boolean DIAMOND_CAN_CHANGE_CENTER_DISANCE = true;
-boolean DIAMON_CAN_CHANGE_X_WIDTH = true;
+boolean DIAMOND_CAN_CHANGE_CENTER_DISANCE;
+boolean DIAMON_CAN_CHANGE_X_WIDTH;
 
 // how far diamond width retracts/expands
-float DIAMOND_WIDTH_OFFSET = 0.0;
-float DIAMOND_HEIGHT_OFFSET = 0.0;
+float DIAMOND_WIDTH_OFFSET;
+float DIAMOND_HEIGHT_OFFSET;
 
 float DIAMOND_RIGHT_EDGE_X;
 float DIAMOND_LEFT_EDGE_X;
@@ -85,49 +81,39 @@ float DIAMOND_LEFT_EDGE_X;
 float DIAMOND_RIGHT_EDGE_Y;
 float DIAMOND_LEFT_EDGE_Y;
 
-float MAX_DIAMOND_DISTANCE = width * 0.57;
-float MIN_DIAMOND_DISTANCE = height * 0.2;
+float MAX_DIAMOND_DISTANCE;
+float MIN_DIAMOND_DISTANCE;
 
-boolean INCREMENT_DIAMOND_DISTANCE = true;
+boolean INCREMENT_DIAMOND_DISTANCE;
 
 // BLEND MODES -----------------------------------------------
-// TODO: Possible refactor into enums for Blend Modes?
-int[] modes = new int[]{
-  BLEND, ADD, SUBTRACT, EXCLUSION,
-  DIFFERENCE, MULTIPLY, SCREEN,
-  REPLACE
-};
+int[] modes;
 
-int CURRENT_BLEND_MODE_INDEX = 0;
+int CURRENT_BLEND_MODE_INDEX;
 
-String[] modeNames = new String[]{
-  "BLEND", "ADD", "SUBTRACT", "EXCLUSION",
-  "DIFFERENCE", "MULTIPLY", "SCREEN",
-  "REPLACE"
-};
+String[]modeNames;
 
 // Background fill modes
-
-boolean BACKGROUND_ENABLED = true;
+boolean BACKGROUND_ENABLED;
 
 // the number of bands per octave
-int bandsPerOctave = 4;
+int bandsPerOctave;
 
 // Visualize song passed to, prog waits for this to be legit
-String SONG_TO_VISUALIZE = "";
+String SONG_TO_VISUALIZE;
 
-int STATE = 0; // used to show loading screen
+int STATE; // used to show loading screen
 
-float GLOBAL_REDNESS = 0.0;
+float GLOBAL_REDNESS;
 
-boolean EPILEPSY_MODE_ON = false;
+boolean EPILEPSY_MODE_ON;
 
 // SONG META DATA --------------------------------------------
-boolean SONG_PLAYING = false;
-String SONG_NAME = "";
+boolean SONG_PLAYING;
+String SONG_NAME;
 
 
-/* Gamepad setup thanks to http://www.lagers.org.uk/gamecontrol/index.html */
+/* Gamepadsetup thanks to http://www.lagers.org.uk/gamecontrol/index.html */
 ControlIO control;
 ControlDevice stick;
 
@@ -136,16 +122,114 @@ float rx, ry; // right joystick position
 
 boolean a_button, b_button, x_button, y_button;
 
-boolean USING_CONTROLLER = false;
+boolean USING_CONTROLLER;
 
 // Logging ---------------------------------------------------
-boolean LOGGING_ENABLED = true;
+boolean LOGGING_ENABLED;
 
 // Screen capture --------------------------------------------
-boolean SCREEN_RECORDING = false;
+boolean SCREEN_RECORDING;
 
 // Operating System Platform Specific Setup
 String OS_TYPE;
+
+void initializeGlobals() {
+  log_to_stdo("initializeGlobals");
+
+  // HANDY DRAWN STYLE ----------------------------------------
+  HandyRenderer h, h1, h2;
+  HANDY_RENDERERS = new HandyRenderer[3];
+  
+  HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
+  
+  MIN_HANDY_RENDERER_POSITION = 0;
+  MAX_HANDY_RENDERER_POSITION = HANDY_RENDERERS_COUNT -1;
+  CURRENT_HANDY_RENDERER_POSITION = 0;
+  HandyRenderer CURRENT_HANDY_RENDERER;
+  
+  APPEAR_HAND_DRAWN = true;
+  
+  // Toggle whether elements are drawn or not
+  DRAW_DIAMONDS = true;
+  DRAW_FINS = true;
+  DRAW_WAVEFORM = true;
+  
+  // FINS ------------------------------------------------------
+  FIN_REDNESS_ANGRY = true;
+  ANIMATED = true;
+  
+  FINS = 8.0;
+  FIN_REDNESS = 1;
+  
+  canChangeFinDirection = true;
+  finRotationClockWise = false;
+  
+  BEZIER_Y_OFFSET = -50;
+  MAX_BEZIER_Y_OFFSET = 40;
+  MIN_BEZIER_Y_OFFSET = -140;
+  
+  // WAVE FORM -------------------------------------------------
+  WAVE_MULTIPLIER = 50.0;
+  
+  
+  // DIAMONDS --------------------------------------------------
+  DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
+  
+  DIAMOND_CAN_CHANGE_CENTER_DISANCE = true;
+  DIAMON_CAN_CHANGE_X_WIDTH = true;
+  
+  // how far diamond width retracts/expands
+  DIAMOND_WIDTH_OFFSET = 0.0;
+  DIAMOND_HEIGHT_OFFSET = 0.0;
+  
+  MAX_DIAMOND_DISTANCE = width * 0.57;
+  MIN_DIAMOND_DISTANCE = height * 0.2;
+  
+  INCREMENT_DIAMOND_DISTANCE = true;
+  
+  modes = new int[]{
+    BLEND, ADD, SUBTRACT, EXCLUSION,
+    DIFFERENCE, MULTIPLY, SCREEN,
+    REPLACE
+  };
+  
+  CURRENT_BLEND_MODE_INDEX = 0;
+  
+  modeNames = new String[]{
+    "BLEND", "ADD", "SUBTRACT", "EXCLUSION",
+    "DIFFERENCE", "MULTIPLY", "SCREEN",
+    "REPLACE"
+  };
+  
+  // Background fill modes
+  BACKGROUND_ENABLED = true;
+  
+  // the number of bands per octave
+  bandsPerOctave = 4;
+  
+  // Visualize song passed to, prog waits for this to be legit
+  SONG_TO_VISUALIZE = "";
+  
+  STATE = 0; // used to show loading screen
+  
+  GLOBAL_REDNESS = 0.0;
+  
+  EPILEPSY_MODE_ON = false;
+  
+  // SONG META DATA --------------------------------------------
+  SONG_PLAYING = false;
+  SONG_NAME = "";
+  
+  
+  /* Gamepad setup */
+  USING_CONTROLLER = false;
+  
+  // Logging ---------------------------------------------------
+  LOGGING_ENABLED = true;
+  
+  // Screen capture --------------------------------------------
+  SCREEN_RECORDING = false;
+}
 
 
 String fileSelected(File selection) {
@@ -182,12 +266,9 @@ String getSongNameFromFilePath(String song_path, String os_type) {
     file_name_parts = split(song_path, "/");
   } else if (os_type == "win") {
     file_name_parts = split(song_path, "\\");
-  } else {
+  } else { //<>//
     // default to Windows :fingers_crossed:
     file_name_parts = split(song_path, "\\");
-  }
-  for (int i=0; i < file_name_parts.length-1; i++) {
-    log_to_stdo("File name part: " + file_name_parts[i]);
   }
   SONG_NAME = file_name_parts[file_name_parts.length-1];
   log_to_stdo("SONG_NAME: " + SONG_NAME);
@@ -198,6 +279,7 @@ String getSongNameFromFilePath(String song_path, String os_type) {
 
 void setup() {
   // Entry point, run once
+  initializeGlobals();
   
   OS_TYPE = discoverOperatingSystem();
 
@@ -209,8 +291,8 @@ void setup() {
   }
   STATE = 1;
   
+  log_to_stdo("SONG TO VISUALIZE: " + SONG_TO_VISUALIZE);
   SONG_NAME = getSongNameFromFilePath(SONG_TO_VISUALIZE, OS_TYPE);
-  //SONG_NAME = ""; 
   // Processing Tweak mode doesn't provide nice file paths. 
   // TODO: Investigate why it chokes on this.
 
@@ -270,15 +352,15 @@ void setup() {
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
-  
-  DIAMOND_RIGHT_EDGE_X = width*0.92;
+   //<>//
+  DIAMOND_RIGHT_EDGE_X = width*0.92; //<>//
   DIAMOND_LEFT_EDGE_X = width*0.74;
-  
-  DIAMOND_RIGHT_EDGE_Y = height*0.71;
+   //<>//
+  DIAMOND_RIGHT_EDGE_Y = height*0.71; //<>//
   DIAMOND_LEFT_EDGE_Y = height*0.92;
   
   background(200);
-
+ //<>//
 }
 
 
@@ -318,7 +400,7 @@ void drawDiamonds() {
   pushMatrix();
     scale(-1,1);
     translate(-width, 0);
-    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER); //<>//
   popMatrix();
 
   // top left diamond
@@ -584,6 +666,11 @@ void keyPressed() {
     DRAW_WAVEFORM = !DRAW_WAVEFORM;
   }
   
+      
+  if (key == 'o' || key == 'o') {
+    reset();
+  }
+  
  
   if (key == '/') {
     DRAW_FINS = !DRAW_FINS;
@@ -601,6 +688,10 @@ void keyPressed() {
   if (key == 'q' || key == 'Q') {
     exit();
   }
+}
+
+void reset(){
+  frameCount = -1;
 }
 
 void log_to_stdo(String message_to_log) {
