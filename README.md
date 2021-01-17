@@ -11,7 +11,7 @@ With sound: [Music Visualizer with Controller Overlay](https://music-visualizer-
 
 Without sound:
 
-![MusicVisualizerCK](output/current_output_animated.gif)
+![MusicVisualizerCK](output/music_visualizer_output_2021_01_17.gif)
 
 ### Xbox 360 Controller Layout:
 
