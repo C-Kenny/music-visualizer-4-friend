@@ -6,7 +6,7 @@
 
 ### Current State?
 
-With sound: [Music Visualizer with Controller Overlay](https://music-visualizer-4-friend.s3-ap-southeast-2.amazonaws.com/music_visualizer_controller.mp4)
+With sound: [Music Visualizer with Controller Overlay](https://vimeo.com/501329047)
 
 
 Without sound:
