@@ -9,7 +9,6 @@ Music Visualizer ♫ ♪♪
 import ddf.minim.*;
 import ddf.minim.analysis.*;
 
-
 // handy is used for the alternative style where it looks "sketched".
 import org.gicentre.handy.*;
 
@@ -24,8 +23,6 @@ Minim minim;
 AudioPlayer player;
 BeatDetect beat;
 FFT fft;
-
-// GLOBALS
 
 // HANDY DRAWN STYLE ----------------------------------------
 // Draw shapes like they are hand drawn (thanks to Handy)
@@ -182,8 +179,8 @@ void initializeGlobals() {
   DIAMOND_WIDTH_OFFSET = 0.0;
   DIAMOND_HEIGHT_OFFSET = 0.0;
   
-  MAX_DIAMOND_DISTANCE = width * 0.57;
-  MIN_DIAMOND_DISTANCE = height * 0.2;
+  MAX_DIAMOND_DISTANCE = width * 0.3; //0.57;
+  MIN_DIAMOND_DISTANCE = height * 0.1; //0.2;
   
   INCREMENT_DIAMOND_DISTANCE = true;
   
@@ -247,7 +244,7 @@ String fileSelected(File selection) {
 String discoverOperatingSystem() {
   String os = System.getProperty("os.name");
   if (os.contains("Windows")) {
-    return "win"; //<>//
+    return "win"; //<>// //<>//
   } else if (os.contains("Mac")) {
     return "mac";
   } else if (os.contains("Linux")) {
@@ -266,7 +263,7 @@ String getSongNameFromFilePath(String song_path, String os_type) {
     file_name_parts = split(song_path, "/");
   } else if (os_type == "win") {
     file_name_parts = split(song_path, "\\");
-  } else { //<>//
+  } else { //<>// //<>//
     // default to Windows :fingers_crossed:
     file_name_parts = split(song_path, "\\");
   }
@@ -279,6 +276,11 @@ String getSongNameFromFilePath(String song_path, String os_type) {
 
 void setup() {
   // Entry point, run once
+  
+  // P3D runs faster than JAVA2D
+  // https://forum.processing.org/beta/num_1115431708.html
+  size(1200, 1200, P3D);
+  
   initializeGlobals();
   
   OS_TYPE = discoverOperatingSystem();
@@ -311,9 +313,7 @@ void setup() {
   log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
-  // P3D runs faster than JAVA2D
-  // https://forum.processing.org/beta/num_1115431708.html
-  size(1200, 1200, P3D);
+
 
   control = ControlIO.getInstance(this);
 
@@ -330,16 +330,16 @@ void setup() {
 
   smooth(4);
   frameRate(160);
-  surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller");
+  surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller"); //<>//
+ //<>//
 
-
-  minim = new Minim(this); //<>// //<>//
-  player = minim.loadFile(SONG_TO_VISUALIZE); //<>//
+  minim = new Minim(this); //<>// //<>// //<>//
+  player = minim.loadFile(SONG_TO_VISUALIZE); //<>// //<>//
 
   player.loop(); //<>// //<>//
   SONG_PLAYING = true; //<>//
   beat = new BeatDetect();
-  ellipseMode(CENTER);
+  ellipseMode(CENTER); //<>//
 
   blendMode(BLEND);
  //<>// //<>//
@@ -349,15 +349,15 @@ void setup() {
   // the sample rate of the audio it is analyzing
   fft = new FFT(player.bufferSize(), player.sampleRate());
 
-  // calculate averages based on a miminum octave width of 22 Hz
-  // split each octave into a number of bands
+  // calculate averages based on a miminum octave width of 22 Hz //<>//
+  // split each octave into a number of bands //<>//
   fft.logAverages(22, bandsPerOctave);
-   //<>//
-  DIAMOND_RIGHT_EDGE_X = width*0.92; //<>//
+   //<>// //<>//
+  DIAMOND_RIGHT_EDGE_X = width*0.92; //<>// //<>//
   DIAMOND_LEFT_EDGE_X = width*0.74;
    //<>//
   DIAMOND_RIGHT_EDGE_Y = height*0.71; //<>//
-  DIAMOND_LEFT_EDGE_Y = height*0.92;
+  DIAMOND_LEFT_EDGE_Y = height*0.92; //<>//
   
   background(200);
  //<>//
@@ -379,7 +379,7 @@ void drawDiamond(float distanceFromCenter) {
   */
 
   float innerDiamondCoordinate = ((width/2) + DIAMOND_DISTANCE_FROM_CENTER % (height * 0.57) );
-
+ //<>//
 
   //log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION]; //<>//
@@ -397,7 +397,7 @@ void drawDiamonds() {
   // Diamonds are drawn by transforming the canvas
 
   // bottom left diamond
-  pushMatrix();
+  pushMatrix(); //<>//
     scale(-1,1);
     translate(-width, 0);
     drawDiamond(DIAMOND_DISTANCE_FROM_CENTER); //<>//
@@ -517,6 +517,7 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
   float randomNumber = random(1, 10);
 
   if (intensityOutOfTen > randomNumber) {
+    log_to_stdo("Change blend mode if random number: " + randomNumber + " is less than intensity: " + intensityOutOfTen);
     changeBlendMode();
   }
 }
@@ -658,31 +659,31 @@ void keyPressed() {
     EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
   }
   
+  // toggle drawing diamonds
   if (key == '<' || key == '>') {
     DRAW_DIAMONDS = !DRAW_DIAMONDS;
   }
-    
+  
+  // toggle drawing waveform 
   if (key == 'w' || key == 'W') {
     DRAW_WAVEFORM = !DRAW_WAVEFORM;
   }
   
-      
-  if (key == 'o' || key == 'o') {
-    reset();
-  }
-  
- 
+  // toggle drawing fins
   if (key == '/') {
     DRAW_FINS = !DRAW_FINS;
   }
- 
+  
+  // TODO: Open new song on pressing open keyboard shortcut
+  if (key == 'o' || key == 'O') {
+    reset();
+  } 
 
   // exit nicely
   if (key == 'x' || key == 'X') {
     minim.stop();
     exit();
   }
-
 
   // quit
   if (key == 'q' || key == 'Q') {
@@ -691,6 +692,8 @@ void keyPressed() {
 }
 
 void reset(){
+  minim.stop();
+  initializeGlobals();
   frameCount = -1;
 }
 
@@ -700,8 +703,6 @@ void log_to_stdo(String message_to_log) {
     println(message_to_log);
   }
 }
-
-
 
 void splitFrequencyIntoLogBands() {
   fft.avgSize();
@@ -835,12 +836,10 @@ void draw() {
 
   getUserInput(USING_CONTROLLER); // Polling
 
-
   // reset drawing params when redrawing frame
   stroke(0);
   noStroke();
 
-  
   if(BACKGROUND_ENABLED) {
     background(200);
   }
@@ -868,7 +867,6 @@ void draw() {
   //log_to_stdo("Can change fin direction: " + canChangeFinDirection);
 
   splitFrequencyIntoLogBands();
-
 
   //log_to_stdo("MAX specSize: " + fft.specSize());
   int blendModeIntensity = 5;
@@ -909,7 +907,6 @@ void draw() {
   }
   stroke(255);
 
-
   // draw a line to show where in the player playback is currently located
   // located at the bottom of the output screen
   // uses custom style, so doesn't alter other strokes
@@ -923,8 +920,8 @@ void draw() {
 
   // check if should be incrementing  distance from center
   if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
-    //log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
-    //log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
+    log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
+    log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
     INCREMENT_DIAMOND_DISTANCE = false;
 
   } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
@@ -964,10 +961,10 @@ void draw() {
   if (ANIMATED) {
     if (FIN_REDNESS_ANGRY) {
       FIN_REDNESS += 1;
-      FINS += 0.03;
+      FINS += 0.02;
     } else {
       FIN_REDNESS -= 1;
-      FINS -= 0.03;
+      FINS -= 0.02;
     }
   }
   
@@ -980,9 +977,7 @@ void draw() {
   }
   
   //rotate(radians(rot));
-  textSize(24);
-  textAlign(CENTER);
-  text(SONG_NAME, width/2, height-5);
+  drawSongNameOnScreen(SONG_NAME, width/2, height-5);
 
   if (SCREEN_RECORDING) {
     saveFrame("/tmp/output/frames####.png");
@@ -990,13 +985,19 @@ void draw() {
   
   // only update fps counter in title a sane amount of times to maintain performance
   if (frameCount % 100 == 0) {
-    log_to_stdo("frameRate: " + frameRate);
+    //log_to_stdo("frameRate: " + frameRate);
     surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller | fps: " + int(frameRate));
  }
 
  
  //log_to_stdo("Current blendMode: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 
+}
+
+void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocationY) {
+  textSize(24);
+  textAlign(CENTER);
+  text(song_name, nameLocationX, nameLocationY);
 }
 
 void mouseClicked() {
