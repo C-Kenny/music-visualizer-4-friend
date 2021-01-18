@@ -83,6 +83,8 @@ float MIN_DIAMOND_DISTANCE;
 
 boolean INCREMENT_DIAMOND_DISTANCE;
 
+boolean DRAW_INNER_DIAMONDS;
+
 // BLEND MODES -----------------------------------------------
 int[] modes;
 
@@ -118,6 +120,13 @@ float lx, ly; // left joystick position
 float rx, ry; // right joystick position
 
 boolean a_button, b_button, x_button, y_button;
+boolean back_button, start_button;
+boolean lb_button, rb_button;
+
+boolean lstickclick_button, rstickclick_button;
+
+float l_trigger;         // TODO
+float dpad_hat_switch;   // TODO
 
 boolean USING_CONTROLLER;
 
@@ -183,6 +192,8 @@ void initializeGlobals() {
   MIN_DIAMOND_DISTANCE = height * 0.1; //0.2;
   
   INCREMENT_DIAMOND_DISTANCE = true;
+  
+  DRAW_INNER_DIAMONDS = false;
   
   modes = new int[]{
     BLEND, ADD, SUBTRACT, EXCLUSION,
@@ -393,29 +404,75 @@ void drawDiamond(float distanceFromCenter) {
   );
 }
 
+void drawInnerDiamonds() { 
+  // bottom right inner diamond
+  pushMatrix();
+    fill(0,0,0);   
+    scale(0.5, 0.5);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  popMatrix();
+  
+  // bottom left inner diamond
+  pushMatrix();
+    fill(0,0,0);  
+    scale(-0.5, 0.5);
+    translate(-width, 0);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  popMatrix();
+  
+   // top left inner diamond
+   pushMatrix();
+    fill(0,0,0);
+    scale(-0.5,-0.5);
+    translate(-width, -height);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  popMatrix();
+  
+  // top right inner diamond
+  pushMatrix();
+    fill(0,0,0);
+    scale(0.5,-0.5);
+    translate(0, -height);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  popMatrix();
+}
+
 void drawDiamonds() {
   // Diamonds are drawn by transforming the canvas
-
+  
   // bottom left diamond
   pushMatrix(); //<>//
+    fill(255, 76, 52);
     scale(-1,1);
     translate(-width, 0);
     drawDiamond(DIAMOND_DISTANCE_FROM_CENTER); //<>//
   popMatrix();
+   
+  // bottom right diamond
+  pushMatrix();
+    fill(255, 76, 52);  
+    scale(1, 1);
+    //translate(width, 0);
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
+  popMatrix();
 
   // top left diamond
   pushMatrix();
+    fill(255, 76, 52);
     scale(-1,-1);
     translate(-width, -height);
     drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
-
+    
   // top right diamond
   pushMatrix();
+    fill(255, 76, 52);
     scale(1,-1);
     translate(0, -height);
     drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
+  
+
 }
 
 void drawInnerCircle() {
@@ -563,6 +620,24 @@ void toggleHandDrawn3(){
   //h.setIsHandy(false);
 }
 
+void toggleSongPlaying(){
+   if (SONG_PLAYING) {
+    stopSong();
+  } else {
+    startSong();
+  }
+}
+
+void stopSong(){
+  player.pause();
+  SONG_PLAYING = false;
+}
+
+void startSong(){
+  player.play();
+  SONG_PLAYING = true;
+}
+
 
 void keyPressed() {
   // blend
@@ -608,12 +683,7 @@ void keyPressed() {
 
   // pause/play
   if (key == 'p' || key == 'P') {
-    if (SONG_PLAYING) {
-      player.pause();
-    } else {
-      player.play();
-    }
-    SONG_PLAYING = !SONG_PLAYING;
+    toggleSongPlaying();
   }
 
   // logging / debug
@@ -677,7 +747,11 @@ void keyPressed() {
   // TODO: Open new song on pressing open keyboard shortcut
   if (key == 'o' || key == 'O') {
     reset();
-  } 
+  }
+  
+  if (key == 'i' || key == 'I') {
+    DRAW_INNER_DIAMONDS = !DRAW_INNER_DIAMONDS;
+  }
 
   // exit nicely
   if (key == 'x' || key == 'X') {
@@ -781,6 +855,16 @@ public void getUserInput(boolean usingController) {
   b_button = stick.getButton("b").pressed();
   x_button = stick.getButton("x").pressed();
   y_button = stick.getButton("y").pressed();
+  
+
+ back_button = stick.getButton("back").pressed();
+ start_button = stick.getButton("start").pressed();
+ 
+ lb_button = stick.getButton("lb").pressed();
+ rb_button = stick.getButton("rb").pressed();
+
+ lstickclick_button = stick.getButton("lstickclick").pressed();
+ rstickclick_button = stick.getButton("rstickclick").pressed();
 
   /*
   log_to_stdo("a button pressed: " + a_button);
@@ -802,20 +886,34 @@ public void getUserInput(boolean usingController) {
   }
 
   if (x_button) {
-    //EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
     BACKGROUND_ENABLED = !BACKGROUND_ENABLED;
   }
-
-   /*
-  if (y_button) {
-    // change bezier y offset
-    if (key == 'y') {
-      BEZIER_Y_OFFSET -= 10;
-    }
-    if (key == 'Y') {
-      BEZIER_Y_OFFSET += 10;
-    }
-  */
+  
+  if (back_button) {
+    stopSong();
+  }
+   
+  if (start_button) {
+    startSong();
+  }
+  
+  if (lb_button) {
+    EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
+  }
+  
+  if (rb_button) {
+    DRAW_INNER_DIAMONDS = !DRAW_INNER_DIAMONDS;
+  }
+  
+  // toggle drawing diamonds
+  if (lstickclick_button) {
+    DRAW_DIAMONDS = !DRAW_DIAMONDS;
+  }
+    
+  // toggle drawing fins
+  if (rstickclick_button) {
+    DRAW_FINS = !DRAW_FINS;
+  }
 
 }
 
@@ -939,11 +1037,36 @@ void draw() {
   }
 
   if (DRAW_DIAMONDS) {
-    // bottom right diamond
-    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
-  
-    // draw rest of diamonds, by rotating canvas
+    // main size
     drawDiamonds();
+    
+    // inner smaller diamonds
+    if (DRAW_INNER_DIAMONDS) {
+      pushMatrix();
+        // top left inner diamonds
+        drawInnerDiamonds();
+      popMatrix();
+      
+      pushMatrix();
+        // top right
+        translate(0, height/2.0);
+        drawInnerDiamonds();
+      popMatrix();
+   
+      pushMatrix();
+        // top right
+        translate(width/2.0, 0);
+        drawInnerDiamonds();
+      popMatrix();
+      
+      pushMatrix();
+        // bottom right inner diamonds
+        translate(width/2.0, height/2.0);
+        drawInnerDiamonds();
+      popMatrix();
+    }
+    
+       
   }
   
   noFill();
