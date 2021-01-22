@@ -763,6 +763,17 @@ void keyPressed() {
   if (key == 'q' || key == 'Q') {
     exit();
   }
+  
+  if (key == CODED) {
+    if (keyCode == LEFT) {
+      // skip backward 10s
+      player.skip(-10000);
+    }
+    if (keyCode == RIGHT) {
+      // skip forward 10s
+      player.skip(10000);
+    }
+  }
 }
 
 void reset(){
