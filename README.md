@@ -34,11 +34,15 @@ then launch the visualizer with:
 
 `$ ./run.sh`
 
-### How to run Visualizer app?
+### How to run Visualizer from Linux?
 
-From a Linux file browser you can just double click the file located at:
+From a Linux file browser you can double click the launcher file located at:
 
-`music-visualizer-4-friend/Music_Visualizer_CK/application.linux64/Music_Visualizer_CK`
+`Music_Visualizer_CK/application.linux64/Music_Visualizer_CK`
+
+### How to run Visualizer from Windows?
+
+From Windows you can double click the `Music_Visualizer_CK.exe` from `Music_Visualizer_CK\application.windows64` folder
 
 ### Why?
 
@@ -46,6 +50,10 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 
 ![Halo3Emblem](media/h3_emblem.jpg)
 
+### Credits:
+
+- [Luis Gonzalez for the amazing Processing tunnels + plasma. Used as toggle-able backgrounds](https://luis.net/)
+- ttaM for the incredible help on the Bezier Curves (fins)!
 
 ### Required Libraries:
 
@@ -53,11 +61,8 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 - [Game Control Plus. Used to handle Xbox 360 controller input](http://lagers.org.uk/gamecontrol/)
 - [Minim. Used by the computer to listen to the music + break into frequencies/decibels](http://code.compartmental.net/tools/minim/)
 
+
 ### Resources:
 
 - [Music Visualizer source code on GitHub](https://github.com/C-Kenny/music-visualizer-4-friend)
 - [GitHub Issue tracker for repo](https://github.com/C-Kenny/music-visualizer-4-friend/issues)
-
-### Credits:
-
-- ttaM for the incredible help on the Bezier Curves (fins)!

@@ -1,9 +1,6 @@
 /*
-
 Music Visualizer ♫ ♪♪
-
 */
-
 
 // minim is used for music analysis, fast Fourier transform and beat detection
 import ddf.minim.*;
@@ -23,6 +20,12 @@ Minim minim;
 AudioPlayer player;
 BeatDetect beat;
 FFT fft;
+
+int XRES=1200;
+int YRES=1200;
+
+int[] TUNNEL_LOOK_UP_TABLE;
+int[] TUNNEL_TEX;
 
 // HANDY DRAWN STYLE ----------------------------------------
 // Draw shapes like they are hand drawn (thanks to Handy)
@@ -60,6 +63,40 @@ float MIN_BEZIER_Y_OFFSET;
 
 // WAVE FORM -------------------------------------------------
 float WAVE_MULTIPLIER;
+
+// TUNNEL
+boolean DRAW_TUNNEL = false;
+
+// PLASMA
+int PLASMA_SIZE = 128;
+int pal []=new int [PLASMA_SIZE];
+
+int[] cls;
+
+int PLASMA_SEED = 0;
+
+boolean DRAW_PLASMA = false;
+boolean DRAW_POLAR_PLASMA = false;
+  
+/*
+ * Polar Plasma
+ *
+ *
+ */
+
+int SCR_WIDTH  = 1200;
+int SCR_HEIGHT = 1200;
+int SCR_SIZE = SCR_WIDTH * SCR_HEIGHT;
+int xc = SCR_WIDTH / 2;
+int yc = SCR_HEIGHT / 2;
+int rang = 512;
+float d2r = 180/PI;
+float d2b = (rang * d2r) / 360;
+int radius[];
+int angle[];
+int fsin1[];
+int fsin2[];
+color sinePalette[];
 
 
 // DIAMONDS --------------------------------------------------
@@ -111,7 +148,6 @@ boolean EPILEPSY_MODE_ON;
 boolean SONG_PLAYING;
 String SONG_NAME;
 
-
 /* Gamepadsetup thanks to http://www.lagers.org.uk/gamecontrol/index.html */
 ControlIO control;
 ControlDevice stick;
@@ -139,9 +175,15 @@ boolean SCREEN_RECORDING;
 // Operating System Platform Specific Setup
 String OS_TYPE;
 
+String TITLE_BAR;
+
+int TUNNEL_ZOOM_INCREMENT;
+
 void initializeGlobals() {
   log_to_stdo("initializeGlobals");
 
+  TITLE_BAR = "press[b,d,f,h,p,s,t,w,y,>,/]";
+  
   // HANDY DRAWN STYLE ----------------------------------------
   HandyRenderer h, h1, h2;
   HANDY_RENDERERS = new HandyRenderer[3];
@@ -255,7 +297,7 @@ String fileSelected(File selection) {
 String discoverOperatingSystem() {
   String os = System.getProperty("os.name");
   if (os.contains("Windows")) {
-    return "win"; //<>// //<>//
+    return "win"; //<>//
   } else if (os.contains("Mac")) {
     return "mac";
   } else if (os.contains("Linux")) {
@@ -274,7 +316,7 @@ String getSongNameFromFilePath(String song_path, String os_type) {
     file_name_parts = split(song_path, "/");
   } else if (os_type == "win") {
     file_name_parts = split(song_path, "\\");
-  } else { //<>// //<>//
+  } else { //<>//
     // default to Windows :fingers_crossed:
     file_name_parts = split(song_path, "\\");
   }
@@ -324,14 +366,13 @@ void setup() {
   log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
-
-
   control = ControlIO.getInstance(this);
 
   // Attempt to find a device that matches the configuration file
   stick = control.getMatchedDevice("joystick");
   if (stick != null) {
     USING_CONTROLLER = true;
+    TITLE_BAR = "press[b,d,f,h,p,s,t,w,y,>,/] | [x,y,a,b,lb,rb,] on controller ";
   }
   log_to_stdo("USING CONTROLLER? " + USING_CONTROLLER);
 
@@ -341,37 +382,149 @@ void setup() {
 
   smooth(4);
   frameRate(160);
-  surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller"); //<>//
- //<>//
+  surface.setTitle(TITLE_BAR);
 
-  minim = new Minim(this); //<>// //<>// //<>//
-  player = minim.loadFile(SONG_TO_VISUALIZE); //<>// //<>//
 
-  player.loop(); //<>// //<>//
-  SONG_PLAYING = true; //<>//
+  minim = new Minim(this); //<>// //<>//
+  player = minim.loadFile(SONG_TO_VISUALIZE); //<>//
+
+  player.loop(); //<>//
+  SONG_PLAYING = true;
   beat = new BeatDetect();
-  ellipseMode(CENTER); //<>//
+  ellipseMode(CENTER);
 
   blendMode(BLEND);
- //<>// //<>//
+ //<>//
   // an FFT needs to know how
   // long the audio buffers it will be analyzing are
   // and also needs to know
   // the sample rate of the audio it is analyzing
   fft = new FFT(player.bufferSize(), player.sampleRate());
 
-  // calculate averages based on a miminum octave width of 22 Hz //<>//
-  // split each octave into a number of bands //<>//
+  // calculate averages based on a miminum octave width of 22 Hz
+  // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
-   //<>// //<>//
-  DIAMOND_RIGHT_EDGE_X = width*0.92; //<>// //<>//
-  DIAMOND_LEFT_EDGE_X = width*0.74;
    //<>//
-  DIAMOND_RIGHT_EDGE_Y = height*0.71; //<>//
-  DIAMOND_LEFT_EDGE_Y = height*0.92; //<>//
+  DIAMOND_RIGHT_EDGE_X = width*0.92; //<>//
+  DIAMOND_LEFT_EDGE_X = width*0.74;
+  
+  DIAMOND_RIGHT_EDGE_Y = height*0.71;
+  DIAMOND_LEFT_EDGE_Y = height*0.92;
   
   background(200);
- //<>//
+  
+  // Tunnel https://luis.net/projects/processing/html/tunnel/Tunnel.pde
+  TUNNEL_LOOK_UP_TABLE = new int[XRES*YRES];
+  int TexSize = 128; //256; //128
+  TUNNEL_TEX = new int[TexSize*TexSize];
+
+  for ( int j=0; j<TexSize; j++ )
+  {
+    for ( int i=0; i<TexSize; i++ )
+    {
+      int r = (i ^ j);
+      int g = (((i>>6)&1)^((j>>6)&1))*255;
+      g = (g*5 + 3*r)>>3;
+      TUNNEL_TEX[TexSize*j+i] = 0xff000000 | (g<<16) | (g<<8) | g;
+    }
+  }  
+
+  for ( int j=YRES-1; j>0; j-- )
+    {
+      for ( int i=XRES-1; i>0; i-- )
+        {
+          float x = -1.0f + (float)i*(2.0f/(float)XRES);
+          float y =  1.0f - (float)j*(2.0f/(float)YRES);
+          float r = sqrt( x*x+y*y );
+          float a = atan2(x, y );
+    
+          float u = 1.0f/r;
+          float v = a*(1.0f/3.14159f);
+          float w = r*r;
+          if ( w>1.0f ) w=1.0f;
+    
+          int iu = (int)(u*255.0f);
+          int iv = (int)(v*255.0f);
+          int iw = (int)(w*255.0f);
+    
+          TUNNEL_LOOK_UP_TABLE[XRES*j+i] = ((iw&255)<<16) | ((iv&255)<<8) | (iu&255);
+
+        }
+    }
+    
+  // plasma https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
+  float s1, s2;
+  for (int i=0; i<PLASMA_SIZE; i++) {
+    s1=sin(i*PI/25);  //<>//
+    s2=sin(i*PI/50+PI/4);
+    
+    //log_to_stdo("s1: " + s1 + " s2: " + s2);
+    
+    float r_color = 128+s1*128;
+    //float g_color = 128 * s2; // 128+s2*128;
+    //float b_color = 128 + s1 * 128; //s1*128;
+    
+    //float r_color = random(0, 255);
+    float g_color = random(0, 255);
+    float b_color = random(0, 255);
+    
+    pal[i]=color(r_color, g_color, b_color);
+  }
+
+  cls = new int[width*height];
+  
+  float plasma_bubble_size = random(24.0, 128.0); //32.0;
+  log_to_stdo("plasma_bubble_size: " + plasma_bubble_size);
+  
+  for (int x = 0; x < width; x++)
+  {
+    for (int y = 0; y < height; y++)
+    {
+      cls[x+y*width] = (int)(
+        (127.5 + (127.5 * sin(x / plasma_bubble_size)))
+        + 
+        (127.5 + (127.5 * cos(y / plasma_bubble_size)))
+        + 
+        (127.5 + (127.5 * sin(sqrt((x * x + y * y)) / plasma_bubble_size)))
+      ) / 4;
+    }
+  }
+  
+  // Polar Plasma
+  radius = new int[SCR_SIZE];
+  angle = new int[SCR_SIZE];
+
+  sinePalette = new color[256];
+
+  fsin1 = new int[SCR_WIDTH*4];
+  fsin2 = new int[SCR_WIDTH*4];
+
+  int count=0;
+  for (int y=0; y<SCR_HEIGHT; y++) {
+    for (int x=0; x<SCR_WIDTH; x++) {
+      int xs = x - xc;
+      int ys = y - yc;
+      radius[count] = (int)(sqrt(pow(xs, 2) + pow(ys, 2))) ;
+      angle[count] = (int) (atan2(xs, ys) * d2b);
+      count++;
+    }
+  }
+
+  float l = 0.25;
+  for (int x=0; x<fsin1.length; x++) {
+    fsin1[x]=   (int)(cos(x/(l*d2b))*48+64);
+    fsin2[x]=   (int)(sin(x/(l*d2b/2))*40+48);
+  }
+
+  for (int i = 0; i < 256; i++)
+  {
+    int r = int((cos(i * 2.0 * PI / 256.0) + 1) * 32);
+    int g = int(sin(i * 2.0 * PI / 512.0) * 255 * cos(i * 2.0 * PI / 1024.0));
+    int b = int(sin(i * 2.0 * PI / 512.0) * 255);
+    sinePalette[i] = color(r, g, b);
+  }
+  
+  TUNNEL_ZOOM_INCREMENT = 400; //<>//
 }
 
 
@@ -471,8 +624,6 @@ void drawDiamonds() {
     translate(0, -height);
     drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
-  
-
 }
 
 void drawInnerCircle() {
@@ -682,9 +833,11 @@ void keyPressed() {
   }
 
   // pause/play
-  if (key == 'p' || key == 'P') {
+  if (key == 's' || key == 's') {
     toggleSongPlaying();
   }
+  
+
 
   // logging / debug
   if (key == 'l' || key == 'L') {
@@ -724,10 +877,6 @@ void keyPressed() {
   if (key == 'g' || key == 'G') {
     BACKGROUND_ENABLED = !BACKGROUND_ENABLED;
   }
-
-  if (key == 's' || key == 'S') {
-    EPILEPSY_MODE_ON = !EPILEPSY_MODE_ON;
-  }
   
   // toggle drawing diamonds
   if (key == '<' || key == '>') {
@@ -764,6 +913,22 @@ void keyPressed() {
     exit();
   }
   
+  // backgrounds
+  if (key == 't' || key == 'T') {
+    DRAW_TUNNEL = !DRAW_TUNNEL;
+    if (DRAW_TUNNEL) {enableOneBackgroundAndDisableOthers("tunnel");}
+  }
+  
+  if (key == 'p') {
+    DRAW_PLASMA = !DRAW_PLASMA;
+    if (DRAW_PLASMA) {enableOneBackgroundAndDisableOthers("plasma");}
+  }
+  
+  if (key == 'P') {
+    DRAW_POLAR_PLASMA = !DRAW_POLAR_PLASMA;
+    if (DRAW_POLAR_PLASMA) {enableOneBackgroundAndDisableOthers("polar_plasma");}
+  }
+  
   if (key == CODED) {
     if (keyCode == LEFT) {
       // skip backward 10s
@@ -773,6 +938,24 @@ void keyPressed() {
       // skip forward 10s
       player.skip(10000);
     }
+  }
+}
+
+void enableOneBackgroundAndDisableOthers(String backgroundToEnable) {
+  DRAW_TUNNEL = false;
+  DRAW_PLASMA = false;
+  DRAW_POLAR_PLASMA = false;
+  
+  switch(backgroundToEnable) {
+    case "tunnel":
+      DRAW_TUNNEL = true;
+      break;
+    case "plasma":
+      DRAW_PLASMA = true;
+      break;
+    case "polar_plasma":
+      DRAW_POLAR_PLASMA = true;
+      break;
   }
 }
 
@@ -798,9 +981,8 @@ void splitFrequencyIntoLogBands() {
 
     // convert the amplitude to a DB value.
     // this means values will range roughly from 0 for the loudest
-    // bands to some negative value.
+    // bands to some negative value ~ -200 .
     float bandDB = 20 * log(2 * amplitude / fft.timeSize());
-
 
     //log_to_stdo("i: " + i);
     //log_to_stdo("bandDB: " + bandDB);
@@ -824,6 +1006,18 @@ void splitFrequencyIntoLogBands() {
         // highs
         changeFinRotation();
       }
+    }
+    
+    // singing high voice melodies
+    if ((i >=35 && i<=38) && bandDB > -130) {
+      //log_to_stdo("received high note for i: " + i + " with decibel on band: " + bandDB);
+      PLASMA_SEED = (PLASMA_SEED + 1) % PLASMA_SIZE/2 -1;
+    }
+  
+    // singing high voice melodies
+    if ((i >=39 && i<=43) && bandDB > -130) {
+      //log_to_stdo("received high note for i: " + i + " with decibel on band: " + bandDB);
+      PLASMA_SEED = (PLASMA_SEED - 1)  % PLASMA_SIZE/2 -1;
     }
   }
 }
@@ -876,14 +1070,15 @@ public void getUserInput(boolean usingController) {
 
  lstickclick_button = stick.getButton("lstickclick").pressed();
  rstickclick_button = stick.getButton("rstickclick").pressed();
-
-  /*
-  log_to_stdo("a button pressed: " + a_button);
-  log_to_stdo("b button pressed: " + b_button);
-  log_to_stdo("x button pressed: " + x_button);
-  log_to_stdo("y button pressed: " + y_button);
-  */
-
+ 
+ /* TUNNEL ZOOM */
+ 
+ // make a sane mapping of how fast you want to travel in the tunnel
+ float l_trigger_depletion = map(stick.getSlider("lt").getValue(), -1, 1, -2, 6);
+ 
+ int tunnel_zoom_amount_by_controller = int(l_trigger_depletion);
+ TUNNEL_ZOOM_INCREMENT = TUNNEL_ZOOM_INCREMENT + tunnel_zoom_amount_by_controller;
+ 
   if (b_button) {
     changeBlendMode();
   }
@@ -930,6 +1125,20 @@ public void getUserInput(boolean usingController) {
 
 void setBackGroundFillMode(){
     fill(#fbfafa); 
+}
+
+void drawTunnel(){
+  loadPixels();
+    for ( int i=0; i<XRES*YRES; i++ )
+    {
+      int val = TUNNEL_LOOK_UP_TABLE[i];
+      int col = TUNNEL_TEX[
+        //( (val&0x0000ffff) + (frameCount<<1) ) & ( (128*128)-1 ) 
+        ( (val&0x0000ffff) + ( (frameCount + TUNNEL_ZOOM_INCREMENT)<<1) ) & ( (128*128)-1 ) 
+      ];
+      pixels[i] =  color(col, (val>>16));
+    }
+  updatePixels();
 }
 
 
@@ -998,32 +1207,18 @@ void draw() {
   float b_line = (frameCount % 255);
   
 
-  if (DRAW_WAVEFORM) {
-    // draw the waveforms
-    // the values returned by left.get() and right.get() will be between -1 and 1,
-    // so we need to scale them up to see the waveform
-    // note that if the file is MONO, left.get() and right.get() will return the same value
-    for(int i = 0; i < player.bufferSize() - 1; i++)
-    {
-      float x1 = map( i, 0, player.bufferSize(), 0, width );
-      float x2 = map( i+1, 0, player.bufferSize(), 0, width );
-  
-      stroke(r_line, g_line, b_line);
-      line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
-      //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
-  
-    }
-  }
-  stroke(255);
 
-  // draw a line to show where in the player playback is currently located
-  // located at the bottom of the output screen
-  // uses custom style, so doesn't alter other strokes
-  float posx = map(player.position(), 0, player.length(), 0, width);
-  pushStyle();
-    stroke(252,4,243);
-    line(posx, height, posx, (height * .975));
-  popStyle();
+  
+  // Get Tempo from Minim
+  //float tempo = player.getTempo();
+  beat.detect(player.mix);
+  if (beat.isOnset() ){
+    TUNNEL_ZOOM_INCREMENT = (TUNNEL_ZOOM_INCREMENT + 3) % 10000;
+  }
+  //ellipse(width/2, height/2, TUNNEL_ZOOM_INCREMENT, TUNNEL_ZOOM_INCREMENT);
+  //TUNNEL_ZOOM_INCREMENT *= 0.95;
+  
+  stroke(255);
 
   // DIAMONDS
 
@@ -1046,37 +1241,100 @@ void draw() {
     fill(255);
     background(200);
   }
+  
+  // tunnel from https://luis.net/projects/processing/html/tunnel/Tunnel.pde
+  
+  if (DRAW_TUNNEL) {
+    drawTunnel();
+  }
+  
+  
+  // plasma from https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
+
+  
+  if (DRAW_PLASMA) {
+    loadPixels();
+    for (int pixelCount = 0; pixelCount < cls.length; pixelCount++)
+    {                   
+      pixels[pixelCount] =  pal[
+        (cls[pixelCount] + PLASMA_SEED)& (PLASMA_SIZE-1)
+      ] &= 0x00FFFFFF // make transparent
+      ;
+
+    }
+    updatePixels();
+  }
+  
+  if (DRAW_POLAR_PLASMA) {
+  
+    // polar plasma from https://luis.net/projects/processing/html/polarplasma/polarPlasma.pde
+    int k = frameCount&0xff ;
+  
+    loadPixels();
+    for (int i=0; i<SCR_SIZE; i++) {
+      pixels[i] = sinePalette[
+        (
+          angle[i] + 
+          fsin1[radius[i] + 
+          fsin2[radius[i]]+k]
+        ) &0xff
+     ];
+    }
+    updatePixels();
+  }
+  
+   if (DRAW_WAVEFORM) {
+    // draw the waveforms
+    // the values returned by left.get() and right.get() will be between -1 and 1,
+    // so we need to scale them up to see the waveform
+    // note that if the file is MONO, left.get() and right.get() will return the same value
+    for(int i = 0; i < player.bufferSize() - 1; i++)
+    {
+      float x1 = map( i, 0, player.bufferSize(), 0, width );
+      float x2 = map( i+1, 0, player.bufferSize(), 0, width );
+  
+      stroke(r_line, g_line, b_line);
+      line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+      //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+  
+    }
+  }
+
 
   if (DRAW_DIAMONDS) {
     // main size
-    drawDiamonds();
-    
-    // inner smaller diamonds
-    if (DRAW_INNER_DIAMONDS) {
-      pushMatrix();
-        // top left inner diamonds
-        drawInnerDiamonds();
+    //translate(width/2, height/2);
+    pushMatrix();
+      
+      drawDiamonds();
+      
+      // inner smaller diamonds
+      if (DRAW_INNER_DIAMONDS) {
+        pushMatrix();
+          // top left inner diamonds
+          drawInnerDiamonds();
+        popMatrix();
+        
+        pushMatrix();
+          // top right
+          translate(0, height/2.0);
+          drawInnerDiamonds();
+        popMatrix();
+     
+        pushMatrix();
+          // top right
+          translate(width/2.0, 0);
+          drawInnerDiamonds();
+        popMatrix();
+        
+        pushMatrix();
+          // bottom right inner diamonds
+          translate(width/2.0, height/2.0);
+          drawInnerDiamonds();
+        popMatrix();
+      }
       popMatrix();
       
-      pushMatrix();
-        // top right
-        translate(0, height/2.0);
-        drawInnerDiamonds();
-      popMatrix();
-   
-      pushMatrix();
-        // top right
-        translate(width/2.0, 0);
-        drawInnerDiamonds();
-      popMatrix();
-      
-      pushMatrix();
-        // bottom right inner diamonds
-        translate(width/2.0, height/2.0);
-        drawInnerDiamonds();
-      popMatrix();
-    }
-    
        
   }
   
@@ -1117,20 +1375,30 @@ void draw() {
     saveFrame("/tmp/output/frames####.png");
   }
   
+  // draw a line to show where in the player playback is currently located
+  // located at the bottom of the output screen
+  // uses custom style, so doesn't alter other strokes
+  float posx = map(player.position(), 0, player.length(), 0, width);
+  pushStyle();
+    stroke(252,4,243);
+    line(posx, height, posx, (height * .975));
+  popStyle();
+  
   // only update fps counter in title a sane amount of times to maintain performance
   if (frameCount % 100 == 0) {
-    //log_to_stdo("frameRate: " + frameRate);
-    surface.setTitle("press[b,d,f,h,s,y,p,w,>,/] | [x,y,a,b] on controller | fps: " + int(frameRate));
+    surface.setTitle(TITLE_BAR + " | fps: " + int(frameRate));
  }
-
- 
- //log_to_stdo("Current blendMode: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
-
 }
 
 void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocationY) {
   textSize(24);
   textAlign(CENTER);
+  fill(0);
+  // draw black text underneath
+  text(song_name, nameLocationX + 2, nameLocationY + 2);
+  
+  fill(255);
+  // draw white text ontop
   text(song_name, nameLocationX, nameLocationY);
 }
 
