@@ -938,6 +938,14 @@ void keyPressed() {
       // skip forward 10s
       player.skip(10000);
     }
+    if (keyCode == UP) {
+      float current_gain = player.getGain();
+      player.setGain(current_gain + 5);
+    }
+    if (keyCode == DOWN) {
+      float current_gain = player.getGain();
+      player.setGain(current_gain - 5);
+    }
   }
 }
 
