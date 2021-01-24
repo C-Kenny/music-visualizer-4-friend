@@ -1,0 +1,1 @@
+processing-java --sketch=%cd%\Music_Visualizer_CK --force --run
