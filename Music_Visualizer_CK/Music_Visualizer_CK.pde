@@ -55,6 +55,8 @@ float FINS;
 int FIN_REDNESS;
 
 boolean canChangeFinDirection;
+
+boolean canChangePlasmaFlow = false;
 boolean finRotationClockWise;
 
 float BEZIER_Y_OFFSET;
@@ -68,6 +70,8 @@ float WAVE_MULTIPLIER;
 boolean DRAW_TUNNEL = false;
 
 // PLASMA
+int LAST_PLASMA_CHECK;
+boolean PLASMA_INCREMENTING = true;
 int PLASMA_SIZE = 128;
 int pal []=new int [PLASMA_SIZE];
 
@@ -452,43 +456,7 @@ void setup() {
         }
     }
     
-  // plasma https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
-  float s1, s2;
-  for (int i=0; i<PLASMA_SIZE; i++) {
-    s1=sin(i*PI/25);  //<>//
-    s2=sin(i*PI/50+PI/4);
-    
-    //log_to_stdo("s1: " + s1 + " s2: " + s2);
-    
-    float r_color = 128+s1*128;
-    //float g_color = 128 * s2; // 128+s2*128;
-    //float b_color = 128 + s1 * 128; //s1*128;
-    
-    //float r_color = random(0, 255);
-    float g_color = random(0, 255);
-    float b_color = random(0, 255);
-    
-    pal[i]=color(r_color, g_color, b_color);
-  }
-
-  cls = new int[width*height];
-  
-  float plasma_bubble_size = random(24.0, 128.0); //32.0;
-  log_to_stdo("plasma_bubble_size: " + plasma_bubble_size);
-  
-  for (int x = 0; x < width; x++)
-  {
-    for (int y = 0; y < height; y++)
-    {
-      cls[x+y*width] = (int)(
-        (127.5 + (127.5 * sin(x / plasma_bubble_size)))
-        + 
-        (127.5 + (127.5 * cos(y / plasma_bubble_size)))
-        + 
-        (127.5 + (127.5 * sin(sqrt((x * x + y * y)) / plasma_bubble_size)))
-      ) / 4;
-    }
-  }
+  setupPlasma();
   
   // Polar Plasma
   radius = new int[SCR_SIZE];
@@ -525,6 +493,47 @@ void setup() {
   }
   
   TUNNEL_ZOOM_INCREMENT = 400; //<>//
+}
+
+void setupPlasma() {
+  // plasma https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
+  float s1, s2;
+  for (int i=0; i<PLASMA_SIZE; i++) {
+    s1=sin(i*PI/25); 
+    s2=sin(i*PI/50+PI/4);
+    
+    //log_to_stdo("s1: " + s1 + " s2: " + s2);
+    
+    float r_color = 128+s1*128;
+    //float g_color = 128 * s2; // 128+s2*128;
+    //float b_color = 128 + s1 * 128; //s1*128;
+    
+    //float r_color = random(0, 255);
+    float g_color = random(0, 255);
+    float b_color = random(0, 255);
+    
+    pal[i]=color(r_color, g_color, b_color);
+  }
+
+  cls = new int[width*height];
+  
+  float plasma_bubble_size = random(24.0, 128.0); //32.0;
+  log_to_stdo("plasma_bubble_size: " + plasma_bubble_size);
+  
+  for (int x = 0; x < width; x++)
+  {
+    for (int y = 0; y < height; y++)
+    {
+      cls[x+y*width] = (int)(
+        (127.5 + (127.5 * sin(x / plasma_bubble_size)))
+        + 
+        (127.5 + (127.5 * cos(y / plasma_bubble_size)))
+        + 
+        (127.5 + (127.5 * sin(sqrt((x * x + y * y)) / plasma_bubble_size)))
+      ) / 4;
+    }
+  }
+
 }
 
 
@@ -921,7 +930,10 @@ void keyPressed() {
   
   if (key == 'p') {
     DRAW_PLASMA = !DRAW_PLASMA;
-    if (DRAW_PLASMA) {enableOneBackgroundAndDisableOthers("plasma");}
+    if (DRAW_PLASMA) {
+      setupPlasma();
+      enableOneBackgroundAndDisableOthers("plasma");
+      }
   }
   
   if (key == 'P') {
@@ -1017,17 +1029,33 @@ void splitFrequencyIntoLogBands() {
     }
     
     // singing high voice melodies
-    if ((i >=35 && i<=38) && bandDB > -130) {
+    if ((i >=35 && i<=36) && bandDB > -130) {
       //log_to_stdo("received high note for i: " + i + " with decibel on band: " + bandDB);
-      PLASMA_SEED = (PLASMA_SEED + 1) % PLASMA_SIZE/2 -1;
+      changePlasmaFlow(1);
     }
   
     // singing high voice melodies
-    if ((i >=39 && i<=43) && bandDB > -130) {
+    if ((i >=40 && i<=41) && bandDB > -130) {
       //log_to_stdo("received high note for i: " + i + " with decibel on band: " + bandDB);
-      PLASMA_SEED = (PLASMA_SEED - 1)  % PLASMA_SIZE/2 -1;
+      //changePlasmaFlow(1);
+      PLASMA_INCREMENTING = !PLASMA_INCREMENTING;
     }
   }
+}
+
+void changePlasmaFlow(int amountToChange){
+    //log_to_stdo("changePlasmaFlow. Can change plasma? " + canChangePlasmaFlow);
+    //log_to_stdo("PLASMA_INCREMENTING: " + PLASMA_INCREMENTING);
+
+    if (random(0, 10) > 6) {
+      if (canChangePlasmaFlow) {
+        if(PLASMA_INCREMENTING) {
+            PLASMA_SEED = (PLASMA_SEED + abs(amountToChange))  % (PLASMA_SIZE/2 -1);
+        } else {
+            PLASMA_SEED = (PLASMA_SEED - amountToChange)  % (PLASMA_SIZE/2 -1);
+        }
+      }
+    }
 }
 
 // Poll for user input called from the draw() method.
@@ -1190,7 +1218,17 @@ void draw() {
     canChangeFinDirection = true;
     LAST_FIN_CHECK = millis();
   }
+
+  // TODO: Refactor into dictionary of states that can be changed or not
+  if (msSinceProgStart > LAST_PLASMA_CHECK + 10000) {
+    canChangePlasmaFlow = true;
+    PLASMA_INCREMENTING = !PLASMA_INCREMENTING;
+    LAST_PLASMA_CHECK = millis();
+  }
+
   //log_to_stdo("Can change fin direction: " + canChangeFinDirection);
+  //log_to_stdo("Can change plasma flow: " + canChangePlasmaFlow);
+
 
   splitFrequencyIntoLogBands();
 
@@ -1213,10 +1251,7 @@ void draw() {
   float r_line = (frameCount % 255) / 10;
   float g_line = (frameCount % 255) - 75;
   float b_line = (frameCount % 255);
-  
 
-
-  
   // Get Tempo from Minim
   //float tempo = player.getTempo();
   beat.detect(player.mix);
