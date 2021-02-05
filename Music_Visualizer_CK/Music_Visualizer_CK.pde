@@ -16,16 +16,62 @@ import net.java.games.input.*;
 
 import java.util.Map;
 
+// dashed lines 
+import garciadelcastillo.dashedlines.*;
+
+// peasy cam used for 3D
+import peasy.*;
+
 Minim minim;
 AudioPlayer player;
 BeatDetect beat;
 FFT fft;
+
+import tracer.*;
+import tracer.paths.*;
+import tracer.renders.*;
+
+//paths
+Rose path;
+ArrayList<Point> tracers = new ArrayList<Point>();
+ArrayList<Path> metapaths = new ArrayList<Path>();
+
+//render
+Render render;
+
+//parameters
+int freq1 = 3;
+int freq2 = 5;
+int n = 20;
+//float speed = 0.0004;
+float speed = 0.0001;
+int minDist = 90;
+
+//draw mode
+final static int MESH = 0, CLIQUE = 1, SHP = 2, VORONOI = 3;
+int renderMode = SHP;
+boolean drawMetapaths = false;
+boolean drawRender = true;
+
+
+DashedLines dash;
+float dist = 0;
+float DASH_LINE_SPEED = 0.5;
+float DASH_LINE_SPEED_LIMIT = 69;
+boolean DASH_LINE_SPEED_INCREASING = true;
 
 int XRES=1200;
 int YRES=1200;
 
 int[] TUNNEL_LOOK_UP_TABLE;
 int[] TUNNEL_TEX;
+
+// H3 Emblems as jpgs
+PImage h3_emblem;
+PImage new_h3_emblem;
+int x;
+int y;
+int i;
 
 // HANDY DRAWN STYLE ----------------------------------------
 // Draw shapes like they are hand drawn (thanks to Handy)
@@ -163,9 +209,10 @@ boolean a_button, b_button, x_button, y_button;
 boolean back_button, start_button;
 boolean lb_button, rb_button;
 
+boolean dpad_hat_switch_up, dpad_hat_switch_down, dpad_hat_switch_left, dpad_hat_switch_right;
+
 boolean lstickclick_button, rstickclick_button;
 
-float l_trigger;         // TODO
 float dpad_hat_switch;   // TODO
 
 boolean USING_CONTROLLER;
@@ -183,13 +230,56 @@ String TITLE_BAR;
 
 int TUNNEL_ZOOM_INCREMENT;
 
+PeasyCam cam;
+
+void switchRenderMode() {
+  switch (renderMode) {
+    case MESH :
+      println("MESH");
+      RenderMesh r = new RenderMesh(tracers, minDist);
+      r.setStrokeRamp(80);
+      r.setStrokeWeight(4);
+      render = r;
+      break;
+    case CLIQUE :
+      println("CLIQUE");
+      render = new RenderClique(tracers);
+      render.setStrokeWeight(2);
+      break;
+    case SHP :
+      println("SHP");
+      render = new RenderShape(tracers);
+      render.setStrokeWeight(4);
+      break;
+  }
+  
+  render.setStrokeColor(10);
+  render.setFill(false);
+
+}
+
 void initializeGlobals() {
   log_to_stdo("initializeGlobals");
 
-  TITLE_BAR = "press[b,d,f,h,p,s,t,w,y,>,/]";
+  TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins";
+
+  path = new Rose(width/2.0, height/2.0, width/2.0);
+  path.setFreq1(freq1);
+  path.setFreq2(freq2);
+  path.setSampleCount(200);
+
+  for (int i=0; i<n; i++) {
+    Tracer tracer = new Tracer(path, i * (1.0 / n), speed);
+    Path metapath = new Circle(tracer, 10);
+    metapath.setStroke(false);
+    metapath.setSampleCount(75);
+    tracers.add(tracer);
+    metapaths.add(metapath);
+  }
+  
+  switchRenderMode();
   
   // HANDY DRAWN STYLE ----------------------------------------
-  HandyRenderer h, h1, h2;
   HANDY_RENDERERS = new HandyRenderer[3];
   
   HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
@@ -278,8 +368,7 @@ void initializeGlobals() {
   /* Gamepad setup */
   USING_CONTROLLER = false;
   
-  // Logging ---------------------------------------------------
-  LOGGING_ENABLED = true;
+
   
   // Screen capture --------------------------------------------
   SCREEN_RECORDING = false;
@@ -301,7 +390,7 @@ String fileSelected(File selection) {
 String discoverOperatingSystem() {
   String os = System.getProperty("os.name");
   if (os.contains("Windows")) {
-    return "win"; //<>//
+    return "win";
   } else if (os.contains("Mac")) {
     return "mac";
   } else if (os.contains("Linux")) {
@@ -320,7 +409,7 @@ String getSongNameFromFilePath(String song_path, String os_type) {
     file_name_parts = split(song_path, "/");
   } else if (os_type == "win") {
     file_name_parts = split(song_path, "\\");
-  } else { //<>//
+  } else {
     // default to Windows :fingers_crossed:
     file_name_parts = split(song_path, "\\");
   }
@@ -337,6 +426,24 @@ void setup() {
   // P3D runs faster than JAVA2D
   // https://forum.processing.org/beta/num_1115431708.html
   size(1200, 1200, P3D);
+  
+  // Logging ---------------------------------------------------
+  LOGGING_ENABLED = true;
+  
+  // 3D Camera in the future
+  /*
+  cam = new PeasyCam(this, 100);
+  cam.setMinimumDistance(50);
+  cam.setMaximumDistance(500);
+  */
+  
+  log_to_stdo("canvas spawned");
+  
+    
+  dash = new DashedLines(this);
+  dash.pattern(130, 110);
+  //float[] decreasingPattern = { 500, 100, 400, 100, 300, 100, 200, 100, 100, 100 };
+  //dash.pattern(decreasingPattern);
   
   initializeGlobals();
   
@@ -367,7 +474,7 @@ void setup() {
   HANDY_RENDERERS[1] = h1;
   HANDY_RENDERERS[2] = h2;
 
-  log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
+  //log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
   CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
   control = ControlIO.getInstance(this);
@@ -376,7 +483,7 @@ void setup() {
   stick = control.getMatchedDevice("joystick");
   if (stick != null) {
     USING_CONTROLLER = true;
-    TITLE_BAR = "press[b,d,f,h,p,s,t,w,y,>,/] | [x,y,a,b,lb,rb,] on controller ";
+    TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins";
   }
   log_to_stdo("USING CONTROLLER? " + USING_CONTROLLER);
 
@@ -389,16 +496,16 @@ void setup() {
   surface.setTitle(TITLE_BAR);
 
 
-  minim = new Minim(this); //<>// //<>//
-  player = minim.loadFile(SONG_TO_VISUALIZE); //<>//
+  minim = new Minim(this); //<>//
+  player = minim.loadFile(SONG_TO_VISUALIZE);
 
-  player.loop(); //<>//
+  player.loop();
   SONG_PLAYING = true;
   beat = new BeatDetect();
   ellipseMode(CENTER);
 
   blendMode(BLEND);
- //<>//
+
   // an FFT needs to know how
   // long the audio buffers it will be analyzing are
   // and also needs to know
@@ -408,8 +515,8 @@ void setup() {
   // calculate averages based on a miminum octave width of 22 Hz
   // split each octave into a number of bands
   fft.logAverages(22, bandsPerOctave);
-   //<>//
-  DIAMOND_RIGHT_EDGE_X = width*0.92; //<>//
+  
+  DIAMOND_RIGHT_EDGE_X = width*0.92;
   DIAMOND_LEFT_EDGE_X = width*0.74;
   
   DIAMOND_RIGHT_EDGE_Y = height*0.71;
@@ -492,7 +599,7 @@ void setup() {
     sinePalette[i] = color(r, g, b);
   }
   
-  TUNNEL_ZOOM_INCREMENT = 400; //<>//
+  TUNNEL_ZOOM_INCREMENT = 400;
 }
 
 void setupPlasma() {
@@ -552,17 +659,30 @@ void drawDiamond(float distanceFromCenter) {
   */
 
   float innerDiamondCoordinate = ((width/2) + DIAMOND_DISTANCE_FROM_CENTER % (height * 0.57) );
- //<>//
+
 
   //log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
-  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION]; //<>//
+  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
 
-  // bottom right diamond 
+  // bottom right diamond
+  /*
   CURRENT_HANDY_RENDERER.quad(
     innerDiamondCoordinate, innerDiamondCoordinate,
     DIAMOND_RIGHT_EDGE_X + DIAMOND_WIDTH_OFFSET, DIAMOND_RIGHT_EDGE_Y + DIAMOND_HEIGHT_OFFSET,
     width, height,
     DIAMOND_LEFT_EDGE_X - DIAMOND_WIDTH_OFFSET, DIAMOND_LEFT_EDGE_Y - DIAMOND_HEIGHT_OFFSET
+  );
+  */
+  //fill(255, 0, 0, 100);
+  strokeWeight(5);
+  strokeCap(SQUARE);
+  //rectMode(CORNERS);
+  
+  dash.quad(
+    innerDiamondCoordinate, innerDiamondCoordinate,
+    DIAMOND_RIGHT_EDGE_X + DIAMOND_WIDTH_OFFSET, DIAMOND_RIGHT_EDGE_Y + DIAMOND_HEIGHT_OFFSET,
+    width, height,
+    DIAMOND_LEFT_EDGE_X - DIAMOND_WIDTH_OFFSET, DIAMOND_LEFT_EDGE_Y - DIAMOND_HEIGHT_OFFSET //<>//
   );
 }
 
@@ -603,11 +723,11 @@ void drawDiamonds() {
   // Diamonds are drawn by transforming the canvas
   
   // bottom left diamond
-  pushMatrix(); //<>//
+  pushMatrix();
     fill(255, 76, 52);
     scale(-1,1);
     translate(-width, 0);
-    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER); //<>//
+    drawDiamond(DIAMOND_DISTANCE_FROM_CENTER);
   popMatrix();
    
   // bottom right diamond
@@ -734,13 +854,13 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
   float randomNumber = random(1, 10);
 
   if (intensityOutOfTen > randomNumber) {
-    log_to_stdo("Change blend mode if random number: " + randomNumber + " is less than intensity: " + intensityOutOfTen);
+    //log_to_stdo("Change blend mode if random number: " + randomNumber + " is less than intensity: " + intensityOutOfTen);
     changeBlendMode();
   }
 }
 
 void changeBlendMode() {
-  log_to_stdo("BlendMode before: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+  //log_to_stdo("BlendMode before: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 
   if (CURRENT_BLEND_MODE_INDEX == modes.length - 1) {
     CURRENT_BLEND_MODE_INDEX = 0;
@@ -749,7 +869,7 @@ void changeBlendMode() {
   }
 
   blendMode(CURRENT_BLEND_MODE_INDEX);
-  log_to_stdo("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+  //log_to_stdo("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 }
 
 void changeFinRotation() {
@@ -807,12 +927,7 @@ void keyPressed() {
   
   // cycle between drawing styles
   if (key == 'h') {
-    //toggleHandDrawn();
-    log_to_stdo("MAX_HANDY_RENDERER_POSITION: " + MAX_HANDY_RENDERER_POSITION);
-    CURRENT_HANDY_RENDERER_POSITION += 1;
-    CURRENT_HANDY_RENDERER_POSITION = CURRENT_HANDY_RENDERER_POSITION % HANDY_RENDERERS_COUNT;
-    //(CURRENT_HANDY_RENDERER_POSITION + 1) % HANDY_RENDERERS_COUNT;//MAX_HANDY_RENDERER_POSITION;
-    log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
+    cycleHandDrawn();
   }
 
   // toggle being hand-drawn or not
@@ -910,6 +1025,12 @@ void keyPressed() {
   if (key == 'i' || key == 'I') {
     DRAW_INNER_DIAMONDS = !DRAW_INNER_DIAMONDS;
   }
+  
+  if (key >= '0' && key <= '9') {
+    log_to_stdo("key:" + (int) key);
+    STATE = (int) key - 48;  // ascii offset..
+    log_to_stdo("STATE: " + STATE);
+  }
 
   // exit nicely
   if (key == 'x' || key == 'X') {
@@ -979,6 +1100,13 @@ void enableOneBackgroundAndDisableOthers(String backgroundToEnable) {
   }
 }
 
+void cycleHandDrawn() {
+  //log_to_stdo("MAX_HANDY_RENDERER_POSITION: " + MAX_HANDY_RENDERER_POSITION);
+  CURRENT_HANDY_RENDERER_POSITION += 1;
+  CURRENT_HANDY_RENDERER_POSITION = CURRENT_HANDY_RENDERER_POSITION % HANDY_RENDERERS_COUNT;
+  //log_to_stdo("CURRENT_HANDY_RENDERER_POSITION: " + CURRENT_HANDY_RENDERER_POSITION);
+}
+
 void reset(){
   minim.stop();
   initializeGlobals();
@@ -990,6 +1118,17 @@ void log_to_stdo(String message_to_log) {
   if (LOGGING_ENABLED) {
     println(message_to_log);
   }
+}
+
+void changeDashedLineSpeed(float amountToChange) {
+  if (DASH_LINE_SPEED > DASH_LINE_SPEED_LIMIT) {
+    DASH_LINE_SPEED_INCREASING = false;
+  } else if (DASH_LINE_SPEED < -DASH_LINE_SPEED_LIMIT) {
+    DASH_LINE_SPEED_INCREASING = true;
+  }
+  
+  DASH_LINE_SPEED = DASH_LINE_SPEED_INCREASING ? DASH_LINE_SPEED + amountToChange: DASH_LINE_SPEED - amountToChange;    
+  //log_to_stdo("DASH_LINE_SPEED: " + DASH_LINE_SPEED);
 }
 
 void splitFrequencyIntoLogBands() {
@@ -1014,6 +1153,7 @@ void splitFrequencyIntoLogBands() {
       // bass
       //changeBlendMode();
       applyBlendModeOnDrop(3);
+      changeDashedLineSpeed(0.2);
     }
 
     if ((i >=6 && i<= 15) && bandDB >-27) {
@@ -1032,6 +1172,7 @@ void splitFrequencyIntoLogBands() {
     if ((i >=35 && i<=36) && bandDB > -130) {
       //log_to_stdo("received high note for i: " + i + " with decibel on band: " + bandDB);
       changePlasmaFlow(1);
+      changeDashedLineSpeed(0.1);
     }
   
     // singing high voice melodies
@@ -1111,16 +1252,50 @@ public void getUserInput(boolean usingController) {
  
  // make a sane mapping of how fast you want to travel in the tunnel
  float l_trigger_depletion = map(stick.getSlider("lt").getValue(), -1, 1, -2, 6);
+
+ dpad_hat_switch_up = stick.getHat("dpad").up();
+ dpad_hat_switch_down = stick.getHat("dpad").down();
+ dpad_hat_switch_left = stick.getHat("dpad").left();
+ dpad_hat_switch_right = stick.getHat("dpad").right();
+
+ log_to_stdo("dpad hat switch up: " + dpad_hat_switch_up);
  
  int tunnel_zoom_amount_by_controller = int(l_trigger_depletion);
  TUNNEL_ZOOM_INCREMENT = TUNNEL_ZOOM_INCREMENT + tunnel_zoom_amount_by_controller;
+
+ if (dpad_hat_switch_up) {
+   DRAW_TUNNEL = !DRAW_TUNNEL;
+   if (DRAW_TUNNEL) {
+    enableOneBackgroundAndDisableOthers("tunnel");
+   }
+ }
+
+ if (dpad_hat_switch_left) {
+   DRAW_PLASMA = !DRAW_PLASMA;
+   if (DRAW_PLASMA) {
+    setupPlasma();
+    enableOneBackgroundAndDisableOthers("plasma");
+   }
+ }
+
+ if (dpad_hat_switch_right) {
+   DRAW_POLAR_PLASMA = !DRAW_POLAR_PLASMA;
+   if (DRAW_POLAR_PLASMA) {
+   enableOneBackgroundAndDisableOthers("polar_plasma");
+   }
+ }
+ if (dpad_hat_switch_down) {
+   DRAW_TUNNEL = false;
+   DRAW_POLAR_PLASMA = false;
+   DRAW_PLASMA = false;
+ }
  
   if (b_button) {
     changeBlendMode();
   }
 
   if (a_button) {
-    CURRENT_HANDY_RENDERER_POSITION = (CURRENT_HANDY_RENDERER_POSITION + 1) % MAX_HANDY_RENDERER_POSITION;
+    cycleHandDrawn();
   }
 
   if (y_button) {
@@ -1179,264 +1354,312 @@ void drawTunnel(){
 
 
 void draw() {
-  if (STATE == 0) {
-    // show loading screen
-    background(200);
-
-    textSize(48);
-    fill(0,255,0);
-    text("RIP Sam", width/2, height/2);
-  }
-
-  getUserInput(USING_CONTROLLER); // Polling
-
-  // reset drawing params when redrawing frame
-  stroke(0);
-  noStroke();
-
-  if(BACKGROUND_ENABLED) {
-    background(200);
-  }
-
-  if (!EPILEPSY_MODE_ON) {
-    h.setSeed(117);
-    h1.setSeed(322);
-    h2.setSeed(420);
-  }
-
-  // first perform a forward fft on one of song's mix buffers
-  fft.forward(player.mix);
-
-  stroke(216, 16, 246, 128);
-  strokeWeight(8);
-
-  // only change fin direction, if it has been more than 10s since last it was changed.
-  // otherwise eyes might hurt o_O
-
-  int msSinceProgStart = millis();
-  if (msSinceProgStart > LAST_FIN_CHECK + 10000) {
-    canChangeFinDirection = true;
-    LAST_FIN_CHECK = millis();
-  }
-
-  // TODO: Refactor into dictionary of states that can be changed or not
-  if (msSinceProgStart > LAST_PLASMA_CHECK + 10000) {
-    canChangePlasmaFlow = true;
-    PLASMA_INCREMENTING = !PLASMA_INCREMENTING;
-    LAST_PLASMA_CHECK = millis();
-  }
-
-  //log_to_stdo("Can change fin direction: " + canChangeFinDirection);
-  //log_to_stdo("Can change plasma flow: " + canChangePlasmaFlow);
-
-
-  splitFrequencyIntoLogBands();
-
-  //log_to_stdo("MAX specSize: " + fft.specSize());
-  int blendModeIntensity = 5;
-
-  /*
-  for(int i = 0; i < fft.specSize(); i++)
-  {
-    line(i, height, i, height - fft.getBand(i)*4);
-    if (fft.getBand(i)*4 > 1000.0) {
-      //applyBlendModeOnDrop(blendModeIntensity);
+  // handle different states the user can be in (song select, tunnels, plasma etc)
+  
+  switch(STATE){
+    case 0:
+      // show loading screen
+      background(200);
+  
+      textSize(48);
+      fill(0,255,0);
+      text("RIP Sam", width/2, height/2);
+      break;
+   
+   case 1:
+    getUserInput(USING_CONTROLLER); // Polling
+  
+    // reset drawing params when redrawing frame
+    stroke(0);
+    noStroke();
+  
+    if(BACKGROUND_ENABLED) {
+      background(200);
     }
-
-  }
-  */
-  strokeWeight(2);
-
-  stroke(255);
-  float r_line = (frameCount % 255) / 10;
-  float g_line = (frameCount % 255) - 75;
-  float b_line = (frameCount % 255);
-
-  // Get Tempo from Minim
-  //float tempo = player.getTempo();
-  beat.detect(player.mix);
-  if (beat.isOnset() ){
-    TUNNEL_ZOOM_INCREMENT = (TUNNEL_ZOOM_INCREMENT + 3) % 10000;
-  }
-  //ellipse(width/2, height/2, TUNNEL_ZOOM_INCREMENT, TUNNEL_ZOOM_INCREMENT);
-  //TUNNEL_ZOOM_INCREMENT *= 0.95;
   
-  stroke(255);
-
-  // DIAMONDS
-
-  // check if should be incrementing  distance from center
-  if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
-    log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
-    log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
-    INCREMENT_DIAMOND_DISTANCE = false;
-
-  } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
-    INCREMENT_DIAMOND_DISTANCE = true;
-  }
-
-
-  //log_to_stdo("APPEAR_HAND_DRAWN: " + APPEAR_HAND_DRAWN);
-  if (APPEAR_HAND_DRAWN) {
-    fill(255, 76, 52);
-    //background(50, 25, 200);
-  } else {
-    fill(255);
-    background(200);
-  }
-  
-  // tunnel from https://luis.net/projects/processing/html/tunnel/Tunnel.pde
-  
-  if (DRAW_TUNNEL) {
-    drawTunnel();
-  }
-  
-  
-  // plasma from https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
-
-  
-  if (DRAW_PLASMA) {
-    loadPixels();
-    for (int pixelCount = 0; pixelCount < cls.length; pixelCount++)
-    {                   
-      pixels[pixelCount] =  pal[
-        (cls[pixelCount] + PLASMA_SEED)& (PLASMA_SIZE-1)
-      ] &= 0x00FFFFFF // make transparent
-      ;
-
+    if (!EPILEPSY_MODE_ON) {
+      h.setSeed(117);
+      h1.setSeed(322);
+      h2.setSeed(420);
     }
-    updatePixels();
-  }
   
-  if (DRAW_POLAR_PLASMA) {
+    // first perform a forward fft on one of song's mix buffers
+    fft.forward(player.mix);
   
-    // polar plasma from https://luis.net/projects/processing/html/polarplasma/polarPlasma.pde
-    int k = frameCount&0xff ;
+    stroke(216, 16, 246, 128);
+    strokeWeight(8);
   
-    loadPixels();
-    for (int i=0; i<SCR_SIZE; i++) {
-      pixels[i] = sinePalette[
-        (
-          angle[i] + 
-          fsin1[radius[i] + 
-          fsin2[radius[i]]+k]
-        ) &0xff
-     ];
+    // only change fin direction, if it has been more than 10s since last it was changed.
+    // otherwise eyes might hurt o_O
+  
+    int msSinceProgStart = millis();
+    if (msSinceProgStart > LAST_FIN_CHECK + 10000) {
+      canChangeFinDirection = true;
+      LAST_FIN_CHECK = millis();
     }
-    updatePixels();
-  }
   
-   if (DRAW_WAVEFORM) {
-    // draw the waveforms
-    // the values returned by left.get() and right.get() will be between -1 and 1,
-    // so we need to scale them up to see the waveform
-    // note that if the file is MONO, left.get() and right.get() will return the same value
-    for(int i = 0; i < player.bufferSize() - 1; i++)
+    // TODO: Refactor into dictionary of states that can be changed or not
+    if (msSinceProgStart > LAST_PLASMA_CHECK + 10000) {
+      canChangePlasmaFlow = true;
+      PLASMA_INCREMENTING = !PLASMA_INCREMENTING;
+      LAST_PLASMA_CHECK = millis();
+    }
+  
+    //log_to_stdo("Can change fin direction: " + canChangeFinDirection);
+    //log_to_stdo("Can change plasma flow: " + canChangePlasmaFlow);
+  
+  
+    splitFrequencyIntoLogBands();
+  
+    //log_to_stdo("MAX specSize: " + fft.specSize());
+    int blendModeIntensity = 5;
+  
+    /*
+    for(int i = 0; i < fft.specSize(); i++)
     {
-      float x1 = map( i, 0, player.bufferSize(), 0, width );
-      float x2 = map( i+1, 0, player.bufferSize(), 0, width );
-  
-      stroke(r_line, g_line, b_line);
-      line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
-      //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
-  
-    }
-  }
-
-
-  if (DRAW_DIAMONDS) {
-    // main size
-    //translate(width/2, height/2);
-    pushMatrix();
-      
-      drawDiamonds();
-      
-      // inner smaller diamonds
-      if (DRAW_INNER_DIAMONDS) {
-        pushMatrix();
-          // top left inner diamonds
-          drawInnerDiamonds();
-        popMatrix();
-        
-        pushMatrix();
-          // top right
-          translate(0, height/2.0);
-          drawInnerDiamonds();
-        popMatrix();
-     
-        pushMatrix();
-          // top right
-          translate(width/2.0, 0);
-          drawInnerDiamonds();
-        popMatrix();
-        
-        pushMatrix();
-          // bottom right inner diamonds
-          translate(width/2.0, height/2.0);
-          drawInnerDiamonds();
-        popMatrix();
+      line(i, height, i, height - fft.getBand(i)*4);
+      if (fft.getBand(i)*4 > 1000.0) {
+        //applyBlendModeOnDrop(blendModeIntensity);
       }
-      popMatrix();
-      
-       
-  }
   
-  noFill();
-
-  // redness of fins, goes upto RED then back to BLACK
-  if (FIN_REDNESS >= 255) {
-    FIN_REDNESS_ANGRY = false;
-
-  } else if (FIN_REDNESS <= 0) {
-    FIN_REDNESS_ANGRY = true;
-  }
-
-  // calm fins down for now
-  
-  if (ANIMATED) {
-    if (FIN_REDNESS_ANGRY) {
-      FIN_REDNESS += 1;
-      FINS += 0.02;
-    } else {
-      FIN_REDNESS -= 1;
-      FINS -= 0.02;
     }
-  }
+    */
+    strokeWeight(2);
   
-  // red circle, of which the bezier shapes touch
-  //drawInnerCircle();
+    stroke(255);
+    float r_line = (frameCount % 255) / 10;
+    float g_line = (frameCount % 255) - 75;
+    float b_line = (frameCount % 255);
+  
+    // Get Tempo from Minim
+    //float tempo = player.getTempo();
+    beat.detect(player.mix);
+    if (beat.isOnset() ){
+      TUNNEL_ZOOM_INCREMENT = (TUNNEL_ZOOM_INCREMENT + 3) % 10000;
+    }
+    //ellipse(width/2, height/2, TUNNEL_ZOOM_INCREMENT, TUNNEL_ZOOM_INCREMENT);
+    //TUNNEL_ZOOM_INCREMENT *= 0.95;
+    
+    stroke(255);
+  
+    // DIAMONDS
+  
+    // check if should be incrementing  distance from center
+    if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
+      //log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
+      //log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
+      INCREMENT_DIAMOND_DISTANCE = false;
+  
+    } else if (DIAMOND_DISTANCE_FROM_CENTER <= MIN_DIAMOND_DISTANCE) {
+      INCREMENT_DIAMOND_DISTANCE = true;
+    }
   
   
-  if (DRAW_FINS) {
-      drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
-  }
+    //log_to_stdo("APPEAR_HAND_DRAWN: " + APPEAR_HAND_DRAWN);
+    if (APPEAR_HAND_DRAWN) {
+      fill(255, 76, 52);
+      //background(50, 25, 200);
+    } else {
+      fill(255);
+      background(200);
+    }
+    
+    // tunnel from https://luis.net/projects/processing/html/tunnel/Tunnel.pde
+    
+    if (DRAW_TUNNEL) {
+      drawTunnel();
+    }
+    
+    
+    // plasma from https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
   
-  //rotate(radians(rot));
-  drawSongNameOnScreen(SONG_NAME, width/2, height-5);
+    
+    if (DRAW_PLASMA) {
+      loadPixels();
+      for (int pixelCount = 0; pixelCount < cls.length; pixelCount++)
+      {                   
+        pixels[pixelCount] =  pal[
+          (cls[pixelCount] + PLASMA_SEED)& (PLASMA_SIZE-1)
+        ] &= 0x00FFFFFF // make transparent
+        ;
+  
+      }
+      updatePixels();
+    }
+    
+    if (DRAW_POLAR_PLASMA) {
+    
+      // polar plasma from https://luis.net/projects/processing/html/polarplasma/polarPlasma.pde
+      int k = frameCount&0xff ;
+    
+      loadPixels();
+      for (int i=0; i<SCR_SIZE; i++) {
+        pixels[i] = sinePalette[
+          (
+            angle[i] + 
+            fsin1[radius[i] + 
+            fsin2[radius[i]]+k]
+          ) &0xff
+       ];
+      }
+      updatePixels();
+    }
+    
+     if (DRAW_WAVEFORM) {
+      // draw the waveforms
+      // the values returned by left.get() and right.get() will be between -1 and 1,
+      // so we need to scale them up to see the waveform
+      // note that if the file is MONO, left.get() and right.get() will return the same value
+      pushStyle();
+        strokeWeight(4);
+        strokeCap(ROUND);
+        for(int i = 0; i < player.bufferSize() - 1; i++) {
+          float x1 = map( i, 0, player.bufferSize(), 0, width );
+          float x2 = map( i+1, 0, player.bufferSize(), 0, width );
+      
+          stroke(r_line, g_line, b_line);
+          line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+          //CURRENT_HANDY_RENDERER.line( x1, height/2.0 + player.right.get(i)*WAVE_MULTIPLIER, x2, height/2.0 + player.right.get(i+1)*WAVE_MULTIPLIER );
+      
+        }
+      popStyle();
+    }
+    strokeWeight(2);
+  
+  
+    if (DRAW_DIAMONDS) {
+      // main size
+      //translate(width/2, height/2);
+      pushMatrix();
+        
+        drawDiamonds();
+        
+        // inner smaller diamonds
+        if (DRAW_INNER_DIAMONDS) {
+          pushMatrix();
+            // top left inner diamonds
+            drawInnerDiamonds();
+          popMatrix();
+          
+          pushMatrix();
+            // top right
+            translate(0, height/2.0);
+            drawInnerDiamonds();
+          popMatrix();
+       
+          pushMatrix();
+            // top right
+            translate(width/2.0, 0);
+            drawInnerDiamonds();
+          popMatrix();
+          
+          pushMatrix();
+            // bottom right inner diamonds
+            translate(width/2.0, height/2.0);
+            drawInnerDiamonds();
+          popMatrix();
+        }
+        popMatrix();
+        
+         
+    }
+    
+    noFill();
+  
+    // redness of fins, goes upto RED then back to BLACK
+    if (FIN_REDNESS >= 255) {
+      FIN_REDNESS_ANGRY = false;
+  
+    } else if (FIN_REDNESS <= 0) {
+      FIN_REDNESS_ANGRY = true;
+    }
+  
+    // calm fins down for now
+    
+    if (ANIMATED) {
+      if (FIN_REDNESS_ANGRY) {
+        FIN_REDNESS += 1;
+        FINS += 0.02;
+      } else {
+        FIN_REDNESS -= 1;
+        FINS -= 0.02;
+      }
+    }
+    
+    // red circle, of which the bezier shapes touch
+    //drawInnerCircle();
+    
+    
+    if (DRAW_FINS) {
+        drawBezierFins(FIN_REDNESS, FINS, finRotationClockWise);
+    }
+    
+    // Animate dashes with 'walking ants' effect 
+    dash.offset(dist);
+    
+    dist = dist + (.2 * DASH_LINE_SPEED);
+    if (dist >= 10000 || dist <= -10000) {
+      dist = 0;
+    }
+    
+    //log_to_stdo("dist: " + dist);
+  
+    //rotate(radians(rot));
+    drawSongNameOnScreen(SONG_NAME, width/2, height-5);
+  
+    if (SCREEN_RECORDING) {
+      saveFrame("/tmp/output/frames####.png");
+    }
+    
+    // draw a line to show where in the player playback is currently located
+    // located at the bottom of the output screen
+    // uses custom style, so doesn't alter other strokes
+    float posx = map(player.position(), 0, player.length(), 0, width);
+    pushStyle();
+      stroke(252,4,243);
+      line(posx, height, posx, (height * .975));
+    popStyle();
+    
+    // only update fps counter in title a sane amount of times to maintain performance
+    if (frameCount % 100 == 0) {
+      surface.setTitle(TITLE_BAR + " | fps: " + int(frameRate));
+   }
+   break;
+  case 2:
+    background(0);
+    break;
 
-  if (SCREEN_RECORDING) {
-    saveFrame("/tmp/output/frames####.png");
+  
+  case 3:
+    background(150, 10, 200);
+  
+    render.step(1);
+  
+    PGraphics g = this.g;
+    
+    if (drawRender) {    
+      render.draw(g);
+    }
+  
+    stroke(100, 0, 100);
+    //if (drawMetapaths) {
+    if (true) {
+
+      for (Path p : metapaths) {
+        p.draw(g);
+      }
+    }
+    break;
   }
-  
-  // draw a line to show where in the player playback is currently located
-  // located at the bottom of the output screen
-  // uses custom style, so doesn't alter other strokes
-  float posx = map(player.position(), 0, player.length(), 0, width);
-  pushStyle();
-    stroke(252,4,243);
-    line(posx, height, posx, (height * .975));
-  popStyle();
-  
-  // only update fps counter in title a sane amount of times to maintain performance
-  if (frameCount % 100 == 0) {
-    surface.setTitle(TITLE_BAR + " | fps: " + int(frameRate));
- }
 }
+
+
 
 void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocationY) {
   textSize(24);
   textAlign(CENTER);
   fill(0);
+  
   // draw black text underneath
   text(song_name, nameLocationX + 2, nameLocationY + 2);
   
@@ -1447,5 +1670,8 @@ void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocat
 
 void mouseClicked() {
   // toggles fin animated state on mouse click
-  ANIMATED = !ANIMATED;
+  //ANIMATED = !ANIMATED;
+  
+  renderMode = (renderMode+1) % 4;
+  switchRenderMode();
 }
