@@ -16,7 +16,7 @@ import net.java.games.input.*;
 
 import java.util.Map;
 
-// dashed lines 
+// dashed lines
 import garciadelcastillo.dashedlines.*;
 
 // peasy cam used for 3D
@@ -27,6 +27,8 @@ AudioPlayer player;
 BeatDetect beat;
 FFT fft;
 
+/*
+// tracer
 import tracer.*;
 import tracer.paths.*;
 import tracer.renders.*;
@@ -38,6 +40,7 @@ ArrayList<Path> metapaths = new ArrayList<Path>();
 
 //render
 Render render;
+
 
 //parameters
 int freq1 = 3;
@@ -52,16 +55,13 @@ final static int MESH = 0, CLIQUE = 1, SHP = 2, VORONOI = 3;
 int renderMode = SHP;
 boolean drawMetapaths = false;
 boolean drawRender = true;
-
+*/
 
 DashedLines dash;
-float dist = 0;
-float DASH_LINE_SPEED = 0.5;
-float DASH_LINE_SPEED_LIMIT = 69;
-boolean DASH_LINE_SPEED_INCREASING = true;
-
-int XRES=1200;
-int YRES=1200;
+float dash_dist;
+float DASH_LINE_SPEED;
+float DASH_LINE_SPEED_LIMIT;
+boolean DASH_LINE_SPEED_INCREASING;
 
 int[] TUNNEL_LOOK_UP_TABLE;
 int[] TUNNEL_TEX;
@@ -102,7 +102,7 @@ int FIN_REDNESS;
 
 boolean canChangeFinDirection;
 
-boolean canChangePlasmaFlow = false;
+boolean canChangePlasmaFlow;
 boolean finRotationClockWise;
 
 float BEZIER_Y_OFFSET;
@@ -113,35 +113,30 @@ float MIN_BEZIER_Y_OFFSET;
 float WAVE_MULTIPLIER;
 
 // TUNNEL
-boolean DRAW_TUNNEL = false;
+boolean DRAW_TUNNEL;
 
 // PLASMA
 int LAST_PLASMA_CHECK;
-boolean PLASMA_INCREMENTING = true;
-int PLASMA_SIZE = 128;
-int pal []=new int [PLASMA_SIZE];
+boolean PLASMA_INCREMENTING;
+int PLASMA_SIZE;
+int[] pal;
 
 int[] cls;
 
-int PLASMA_SEED = 0;
+int PLASMA_SEED;
 
-boolean DRAW_PLASMA = false;
-boolean DRAW_POLAR_PLASMA = false;
-  
-/*
- * Polar Plasma
- *
- *
- */
+boolean DRAW_PLASMA;
+boolean DRAW_POLAR_PLASMA;
 
-int SCR_WIDTH  = 1200;
-int SCR_HEIGHT = 1200;
-int SCR_SIZE = SCR_WIDTH * SCR_HEIGHT;
-int xc = SCR_WIDTH / 2;
-int yc = SCR_HEIGHT / 2;
-int rang = 512;
-float d2r = 180/PI;
-float d2b = (rang * d2r) / 360;
+// Polar Plasma
+int SCREEN_WIDTH;
+int SCREEN_HEIGHT;
+int SCREEN_SIZE;
+int xc;
+int yc;
+int rang;
+float d2r;
+float d2b;
 int radius[];
 int angle[];
 int fsin1[];
@@ -213,8 +208,6 @@ boolean dpad_hat_switch_up, dpad_hat_switch_down, dpad_hat_switch_left, dpad_hat
 
 boolean lstickclick_button, rstickclick_button;
 
-float dpad_hat_switch;   // TODO
-
 boolean USING_CONTROLLER;
 
 // Logging ---------------------------------------------------
@@ -233,6 +226,7 @@ int TUNNEL_ZOOM_INCREMENT;
 PeasyCam cam;
 
 void switchRenderMode() {
+  /*
   switch (renderMode) {
     case MESH :
       println("MESH");
@@ -252,10 +246,43 @@ void switchRenderMode() {
       render.setStrokeWeight(4);
       break;
   }
-  
+
   render.setStrokeColor(10);
   render.setFill(false);
+  */
+}
 
+void loadSongToVisualize() {
+  log_to_stdo("Loading song to visualize");
+
+  minim = new Minim(this);
+  player = minim.loadFile(SONG_TO_VISUALIZE);
+
+  player.loop();
+  SONG_PLAYING = true;
+  beat = new BeatDetect();
+
+  // an FFT needs to know how
+  // long the audio buffers it will be analyzing are
+  // and also needs to know
+  // the sample rate of the audio it is analyzing
+  fft = new FFT(player.bufferSize(), player.sampleRate());
+
+  // calculate averages based on a miminum octave width of 22 Hz
+  // split each octave into a number of bands
+  fft.logAverages(22, bandsPerOctave);
+}
+
+void setupController() {
+  control = ControlIO.getInstance(this);
+
+  // Attempt to find a device that matches the configuration file
+  stick = control.getMatchedDevice("joystick");
+  if (stick != null) {
+    USING_CONTROLLER = true;
+    TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins";
+  }
+  log_to_stdo("USING CONTROLLER? " + USING_CONTROLLER);
 }
 
 void initializeGlobals() {
@@ -263,6 +290,13 @@ void initializeGlobals() {
 
   TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins";
 
+  OS_TYPE = discoverOperatingSystem();
+
+  ellipseMode(CENTER);
+  blendMode(BLEND);
+
+
+  /*
   path = new Rose(width/2.0, height/2.0, width/2.0);
   path.setFreq1(freq1);
   path.setFreq2(freq2);
@@ -276,33 +310,79 @@ void initializeGlobals() {
     tracers.add(tracer);
     metapaths.add(metapath);
   }
-  
+
   switchRenderMode();
-  
-  // HANDY DRAWN STYLE ----------------------------------------
+  */
+
+  // Dashed Lines
+  dash = new DashedLines(this);
+  dash.pattern(130, 110);
+
+  dash_dist = 0;
+  DASH_LINE_SPEED = 0.5;
+  DASH_LINE_SPEED_LIMIT = 69;
+  DASH_LINE_SPEED_INCREASING = true;
+
+  // Polar Plasma
+  SCREEN_WIDTH  = 1200;
+  SCREEN_HEIGHT = 1200;
+  SCREEN_SIZE = SCREEN_WIDTH * SCREEN_HEIGHT;
+  xc = SCREEN_WIDTH / 2;
+  yc = SCREEN_HEIGHT / 2;
+  rang = 512;
+  d2r = 180/PI;
+  d2b = (rang * d2r) / 360;
+
+  // Plasma
+  canChangePlasmaFlow = false;
+  PLASMA_INCREMENTING = true;
+  PLASMA_SIZE = 128;
+  pal = new int[PLASMA_SIZE];
+
+  PLASMA_SEED = 0;
+
+  DRAW_PLASMA = false;
+  DRAW_POLAR_PLASMA = false;
+
+  // Tunnel
+  DRAW_TUNNEL = false;
+  TUNNEL_ZOOM_INCREMENT = 400;
+
+  // Handy draw style ----------------------------------------
   HANDY_RENDERERS = new HandyRenderer[3];
-  
+
   HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
-  
+
   MIN_HANDY_RENDERER_POSITION = 0;
   MAX_HANDY_RENDERER_POSITION = HANDY_RENDERERS_COUNT -1;
   CURRENT_HANDY_RENDERER_POSITION = 0;
   HandyRenderer CURRENT_HANDY_RENDERER;
-  
+
   APPEAR_HAND_DRAWN = true;
-  
+
+  h = HandyPresets.createWaterAndInk(this);
+  h1 = HandyPresets.createMarker(this);
+  h2 = new HandyRenderer(this);
+
+  HANDY_RENDERERS[0] = h;
+  HANDY_RENDERERS[1] = h1;
+  HANDY_RENDERERS[2] = h2;
+
+  //log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
+  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
+
   // Toggle whether elements are drawn or not
   DRAW_DIAMONDS = true;
   DRAW_FINS = true;
   DRAW_WAVEFORM = true;
-  
+
   // FINS ------------------------------------------------------
   FIN_REDNESS_ANGRY = true;
   ANIMATED = true;
-  
+
   FINS = 8.0;
   FIN_REDNESS = 1;
-  
+
   canChangeFinDirection = true;
   finRotationClockWise = false;
   
@@ -313,24 +393,30 @@ void initializeGlobals() {
   // WAVE FORM -------------------------------------------------
   WAVE_MULTIPLIER = 50.0;
   
-  
+
   // DIAMONDS --------------------------------------------------
   DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
-  
+
+  DIAMOND_RIGHT_EDGE_X = width*0.92;
+  DIAMOND_LEFT_EDGE_X = width*0.74;
+
+  DIAMOND_RIGHT_EDGE_Y = height*0.71;
+  DIAMOND_LEFT_EDGE_Y = height*0.92;
+
   DIAMOND_CAN_CHANGE_CENTER_DISANCE = true;
   DIAMON_CAN_CHANGE_X_WIDTH = true;
-  
+
   // how far diamond width retracts/expands
   DIAMOND_WIDTH_OFFSET = 0.0;
   DIAMOND_HEIGHT_OFFSET = 0.0;
-  
+
   MAX_DIAMOND_DISTANCE = width * 0.3; //0.57;
   MIN_DIAMOND_DISTANCE = height * 0.1; //0.2;
-  
+
   INCREMENT_DIAMOND_DISTANCE = true;
-  
+
   DRAW_INNER_DIAMONDS = false;
-  
+
   modes = new int[]{
     BLEND, ADD, SUBTRACT, EXCLUSION,
     DIFFERENCE, MULTIPLY, SCREEN,
@@ -344,13 +430,13 @@ void initializeGlobals() {
     "DIFFERENCE", "MULTIPLY", "SCREEN",
     "REPLACE"
   };
-  
+
   // Background fill modes
   BACKGROUND_ENABLED = true;
   
   // the number of bands per octave
   bandsPerOctave = 4;
-  
+
   // Visualize song passed to, prog waits for this to be legit
   SONG_TO_VISUALIZE = "";
   
@@ -363,23 +449,75 @@ void initializeGlobals() {
   // SONG META DATA --------------------------------------------
   SONG_PLAYING = false;
   SONG_NAME = "";
-  
-  
+
+
   /* Gamepad setup */
   USING_CONTROLLER = false;
-  
 
-  
   // Screen capture --------------------------------------------
   SCREEN_RECORDING = false;
 }
 
+void setSongToVisualize() {
+  log_to_stdo("Current song: " + SONG_TO_VISUALIZE);
+
+  // Visualizer only begins once a song has been selected
+  selectInput("Select song to visualize", "fileSelected");
+
+  while (SONG_TO_VISUALIZE == "") {
+    delay(1);
+  }
+  STATE = 1;
+
+  log_to_stdo("SONG TO VISUALIZE: " + SONG_TO_VISUALIZE);
+  SONG_NAME = getSongNameFromFilePath(SONG_TO_VISUALIZE, OS_TYPE);
+  // Processing Tweak mode doesn't provide nice file paths.
+  // TODO: Investigate why it chokes on this.
+}
+
+void setupPolarPlasma() {
+  radius = new int[SCREEN_SIZE];
+  angle = new int[SCREEN_SIZE];
+
+  sinePalette = new color[256];
+
+  fsin1 = new int[SCREEN_WIDTH*4];
+  fsin2 = new int[SCREEN_WIDTH*4];
+
+  int count=0;
+  for (int y=0; y<SCREEN_HEIGHT; y++) {
+    for (int x=0; x<SCREEN_WIDTH; x++) {
+      int xs = x - xc;
+      int ys = y - yc;
+      radius[count] = (int)(sqrt(pow(xs, 2) + pow(ys, 2))) ;
+      angle[count] = (int) (atan2(xs, ys) * d2b);
+      count++;
+    }
+  }
+
+  float l = 0.25;
+  for (int x=0; x<fsin1.length; x++) {
+    fsin1[x]=   (int)(cos(x/(l*d2b))*48+64);
+    fsin2[x]=   (int)(sin(x/(l*d2b/2))*40+48);
+  }
+
+  for (int i = 0; i < 256; i++)
+  {
+    int r = int((cos(i * 2.0 * PI / 256.0) + 1) * 32);
+    int g = int(sin(i * 2.0 * PI / 512.0) * 255 * cos(i * 2.0 * PI / 1024.0));
+    int b = int(sin(i * 2.0 * PI / 512.0) * 255);
+    sinePalette[i] = color(r, g, b);
+  }
+
+}
+
 
 String fileSelected(File selection) {
+  // Used as the callback function from select Song to visualizer file prompt
   if (selection == null) {
     log_to_stdo("No file selected. Window might have been closed/cancelled");
     return "";
-    
+
   } else {
     log_to_stdo("File selected: " + selection.getAbsolutePath());
     SONG_TO_VISUALIZE = selection.getAbsolutePath();
@@ -402,9 +540,9 @@ String discoverOperatingSystem() {
 
 String getSongNameFromFilePath(String song_path, String os_type) {
   log_to_stdo("Getting song name from file path, where os_type is: " + os_type);
-  
+
   String[] file_name_parts;
-  
+
   if (os_type == "linux") {
     file_name_parts = split(song_path, "/");
   } else if (os_type == "win") {
@@ -413,119 +551,56 @@ String getSongNameFromFilePath(String song_path, String os_type) {
     // default to Windows :fingers_crossed:
     file_name_parts = split(song_path, "\\");
   }
+
   SONG_NAME = file_name_parts[file_name_parts.length-1];
   log_to_stdo("SONG_NAME: " + SONG_NAME);
-  
+
   return SONG_NAME;
 }
-  
+
 
 void setup() {
-  // Entry point, run once
-  
-  // P3D runs faster than JAVA2D
-  // https://forum.processing.org/beta/num_1115431708.html
+  // Entry point, run once and only once
+
+  // P3D runs faster than JAVA2D: https://forum.processing.org/beta/num_1115431708.html
   size(1200, 1200, P3D);
-  
-  // Logging ---------------------------------------------------
+
+  background(200);
+
   LOGGING_ENABLED = true;
-  
+
   // 3D Camera in the future
   /*
   cam = new PeasyCam(this, 100);
   cam.setMinimumDistance(50);
   cam.setMaximumDistance(500);
   */
-  
+
   log_to_stdo("canvas spawned");
-  
-    
-  dash = new DashedLines(this);
-  dash.pattern(130, 110);
-  //float[] decreasingPattern = { 500, 100, 400, 100, 300, 100, 200, 100, 100, 100 };
-  //dash.pattern(decreasingPattern);
-  
+
   initializeGlobals();
-  
-  OS_TYPE = discoverOperatingSystem();
 
-  // Visualizer only begins once a song has been selected
-  selectInput("Select song to visualize", "fileSelected");
-
-  while (SONG_TO_VISUALIZE == "") {
-    delay(1);
-  }
-  STATE = 1;
-  
-  log_to_stdo("SONG TO VISUALIZE: " + SONG_TO_VISUALIZE);
-  SONG_NAME = getSongNameFromFilePath(SONG_TO_VISUALIZE, OS_TYPE);
-  // Processing Tweak mode doesn't provide nice file paths. 
-  // TODO: Investigate why it chokes on this.
-
-  log_to_stdo("Initializing Handy Renderers");
-  
-  // render shapes like they are hand drawn
-  h = HandyPresets.createWaterAndInk(this);
-  h1 = HandyPresets.createMarker(this);
-  h2 = new HandyRenderer(this);
-
-  // TODO: There's gotta be a better way to init array of objects..
-  HANDY_RENDERERS[0] = h;
-  HANDY_RENDERERS[1] = h1;
-  HANDY_RENDERERS[2] = h2;
-
-  //log_to_stdo("Count of Handy Renderers: " + HANDY_RENDERERS_COUNT);
-  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[CURRENT_HANDY_RENDERER_POSITION];
-
-  control = ControlIO.getInstance(this);
-
-  // Attempt to find a device that matches the configuration file
-  stick = control.getMatchedDevice("joystick");
-  if (stick != null) {
-    USING_CONTROLLER = true;
-    TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins";
-  }
-  log_to_stdo("USING CONTROLLER? " + USING_CONTROLLER);
-
+  setSongToVisualize();
 
   // Resizable allows Windows snap features (i.e. snap to right side of screen)
   surface.setResizable(true);
 
-  smooth(4);
+  smooth(2);
   frameRate(160);
   surface.setTitle(TITLE_BAR);
 
+  setupController();
 
-  minim = new Minim(this); //<>//
-  player = minim.loadFile(SONG_TO_VISUALIZE);
+  loadSongToVisualize();
 
-  player.loop();
-  SONG_PLAYING = true;
-  beat = new BeatDetect();
-  ellipseMode(CENTER);
+  setupTunnel();
+  setupPlasma();
+  setupPolarPlasma();
+}
 
-  blendMode(BLEND);
-
-  // an FFT needs to know how
-  // long the audio buffers it will be analyzing are
-  // and also needs to know
-  // the sample rate of the audio it is analyzing
-  fft = new FFT(player.bufferSize(), player.sampleRate());
-
-  // calculate averages based on a miminum octave width of 22 Hz
-  // split each octave into a number of bands
-  fft.logAverages(22, bandsPerOctave);
-  
-  DIAMOND_RIGHT_EDGE_X = width*0.92;
-  DIAMOND_LEFT_EDGE_X = width*0.74;
-  
-  DIAMOND_RIGHT_EDGE_Y = height*0.71;
-  DIAMOND_LEFT_EDGE_Y = height*0.92;
-  
-  background(200);
-  
+void setupTunnel() {
   // Tunnel https://luis.net/projects/processing/html/tunnel/Tunnel.pde
-  TUNNEL_LOOK_UP_TABLE = new int[XRES*YRES];
+  TUNNEL_LOOK_UP_TABLE = new int[SCREEN_WIDTH*SCREEN_HEIGHT];
   int TexSize = 128; //256; //128
   TUNNEL_TEX = new int[TexSize*TexSize];
 
@@ -538,87 +613,50 @@ void setup() {
       g = (g*5 + 3*r)>>3;
       TUNNEL_TEX[TexSize*j+i] = 0xff000000 | (g<<16) | (g<<8) | g;
     }
-  }  
+  }
 
-  for ( int j=YRES-1; j>0; j-- )
+  for ( int j=SCREEN_HEIGHT-1; j>0; j-- )
     {
-      for ( int i=XRES-1; i>0; i-- )
+      for ( int i=SCREEN_WIDTH-1; i>0; i-- )
         {
-          float x = -1.0f + (float)i*(2.0f/(float)XRES);
-          float y =  1.0f - (float)j*(2.0f/(float)YRES);
+          float x = -1.0f + (float)i*(2.0f/(float)SCREEN_WIDTH);
+          float y =  1.0f - (float)j*(2.0f/(float)SCREEN_HEIGHT);
           float r = sqrt( x*x+y*y );
           float a = atan2(x, y );
-    
+
           float u = 1.0f/r;
           float v = a*(1.0f/3.14159f);
           float w = r*r;
           if ( w>1.0f ) w=1.0f;
-    
+
           int iu = (int)(u*255.0f);
           int iv = (int)(v*255.0f);
           int iw = (int)(w*255.0f);
-    
-          TUNNEL_LOOK_UP_TABLE[XRES*j+i] = ((iw&255)<<16) | ((iv&255)<<8) | (iu&255);
+
+          TUNNEL_LOOK_UP_TABLE[SCREEN_WIDTH*j+i] = ((iw&255)<<16) | ((iv&255)<<8) | (iu&255);
 
         }
     }
-    
-  setupPlasma();
-  
-  // Polar Plasma
-  radius = new int[SCR_SIZE];
-  angle = new int[SCR_SIZE];
 
-  sinePalette = new color[256];
-
-  fsin1 = new int[SCR_WIDTH*4];
-  fsin2 = new int[SCR_WIDTH*4];
-
-  int count=0;
-  for (int y=0; y<SCR_HEIGHT; y++) {
-    for (int x=0; x<SCR_WIDTH; x++) {
-      int xs = x - xc;
-      int ys = y - yc;
-      radius[count] = (int)(sqrt(pow(xs, 2) + pow(ys, 2))) ;
-      angle[count] = (int) (atan2(xs, ys) * d2b);
-      count++;
-    }
-  }
-
-  float l = 0.25;
-  for (int x=0; x<fsin1.length; x++) {
-    fsin1[x]=   (int)(cos(x/(l*d2b))*48+64);
-    fsin2[x]=   (int)(sin(x/(l*d2b/2))*40+48);
-  }
-
-  for (int i = 0; i < 256; i++)
-  {
-    int r = int((cos(i * 2.0 * PI / 256.0) + 1) * 32);
-    int g = int(sin(i * 2.0 * PI / 512.0) * 255 * cos(i * 2.0 * PI / 1024.0));
-    int b = int(sin(i * 2.0 * PI / 512.0) * 255);
-    sinePalette[i] = color(r, g, b);
-  }
-  
-  TUNNEL_ZOOM_INCREMENT = 400;
 }
 
 void setupPlasma() {
   // plasma https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
   float s1, s2;
   for (int i=0; i<PLASMA_SIZE; i++) {
-    s1=sin(i*PI/25); 
+    s1=sin(i*PI/25);
     s2=sin(i*PI/50+PI/4);
-    
+
     //log_to_stdo("s1: " + s1 + " s2: " + s2);
-    
+
     float r_color = 128+s1*128;
     //float g_color = 128 * s2; // 128+s2*128;
     //float b_color = 128 + s1 * 128; //s1*128;
-    
+
     //float r_color = random(0, 255);
     float g_color = random(0, 255);
     float b_color = random(0, 255);
-    
+
     pal[i]=color(r_color, g_color, b_color);
   }
 
@@ -644,7 +682,7 @@ void setupPlasma() {
 }
 
 
-void drawDiamond(float distanceFromCenter) {
+void drawDiamond(float dash_distanceFromCenter) {
   /*
   Coordinate System
 
@@ -1108,13 +1146,16 @@ void cycleHandDrawn() {
 }
 
 void reset(){
+  log_to_stdo("reset");
   minim.stop();
-  initializeGlobals();
-  frameCount = -1;
+  //initializeGlobals();
+  SONG_TO_VISUALIZE = "";
+  setSongToVisualize();
+  loadSongToVisualize();
 }
 
 void log_to_stdo(String message_to_log) {
-  // we use this logging wrapper to be able to toggle logging off/now in real time with 'l' keyboard shortcut
+  // this logging wrapper enables toggle logging off/now in real time with 'l' keyboard shortcut
   if (LOGGING_ENABLED) {
     println(message_to_log);
   }
@@ -1340,12 +1381,12 @@ void setBackGroundFillMode(){
 
 void drawTunnel(){
   loadPixels();
-    for ( int i=0; i<XRES*YRES; i++ )
+    for ( int i=0; i<SCREEN_WIDTH*SCREEN_HEIGHT; i++ )
     {
       int val = TUNNEL_LOOK_UP_TABLE[i];
       int col = TUNNEL_TEX[
         //( (val&0x0000ffff) + (frameCount<<1) ) & ( (128*128)-1 ) 
-        ( (val&0x0000ffff) + ( (frameCount + TUNNEL_ZOOM_INCREMENT)<<1) ) & ( (128*128)-1 ) 
+        ( (val&0x0000ffff) + ( (frameCount + TUNNEL_ZOOM_INCREMENT)<<1) ) & ( (128*128)-1 )
       ];
       pixels[i] =  color(col, (val>>16));
     }
@@ -1444,7 +1485,7 @@ void draw() {
   
     // DIAMONDS
   
-    // check if should be incrementing  distance from center
+    // check if should be incrementing  dash_distance from center
     if (DIAMOND_DISTANCE_FROM_CENTER >= MAX_DIAMOND_DISTANCE) {
       //log_to_stdo("Too far from center.\nDistance from center: " + DIAMOND_DISTANCE_FROM_CENTER);
       //log_to_stdo("Max Diamond Distance: " + MAX_DIAMOND_DISTANCE);
@@ -1493,11 +1534,11 @@ void draw() {
       int k = frameCount&0xff ;
     
       loadPixels();
-      for (int i=0; i<SCR_SIZE; i++) {
+      for (int i=0; i<SCREEN_SIZE; i++) {
         pixels[i] = sinePalette[
           (
             angle[i] + 
-            fsin1[radius[i] + 
+            fsin1[radius[i] +
             fsin2[radius[i]]+k]
           ) &0xff
        ];
@@ -1595,14 +1636,14 @@ void draw() {
     }
     
     // Animate dashes with 'walking ants' effect 
-    dash.offset(dist);
+    dash.offset(dash_dist);
     
-    dist = dist + (.2 * DASH_LINE_SPEED);
-    if (dist >= 10000 || dist <= -10000) {
-      dist = 0;
+    dash_dist = dash_dist + (.2 * DASH_LINE_SPEED);
+    if (dash_dist >= 10000 || dash_dist <= -10000) {
+      dash_dist = 0;
     }
     
-    //log_to_stdo("dist: " + dist);
+    //log_to_stdo("dash_dist: " + dash_dist);
   
     //rotate(radians(rot));
     drawSongNameOnScreen(SONG_NAME, width/2, height-5);
@@ -1632,15 +1673,16 @@ void draw() {
   
   case 3:
     background(150, 10, 200);
-  
+
+    /*
     render.step(1);
-  
+
     PGraphics g = this.g;
-    
-    if (drawRender) {    
+
+    if (drawRender) {
       render.draw(g);
     }
-  
+
     stroke(100, 0, 100);
     //if (drawMetapaths) {
     if (true) {
@@ -1650,6 +1692,7 @@ void draw() {
       }
     }
     break;
+    */
   }
 }
 
@@ -1670,8 +1713,10 @@ void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocat
 
 void mouseClicked() {
   // toggles fin animated state on mouse click
-  //ANIMATED = !ANIMATED;
-  
+  ANIMATED = !ANIMATED;
+
+  /*
   renderMode = (renderMode+1) % 4;
   switchRenderMode();
+  */
 }
