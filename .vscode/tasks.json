@@ -16,11 +16,11 @@
         "panel": "dedicated"
       },
       "args": [
-		"--force",
-		"--sketch=${workspaceRoot}\\Music_Visualizer_CK",
-		"--output=${workspaceRoot}/out",
-		"--run"
-	  ],
+        "--force",
+        "--sketch=${workspaceRoot}\\Music_Visualizer_CK",
+        "--output=${workspaceRoot}/out",
+        "--run"
+      ],
       "windows": {
         "type": "process",
         "args": [
@@ -32,6 +32,22 @@
           },
           {
             "value": "--output=${workspaceRoot}\\out",
+            "quoting": "strong"
+          },
+          "--run"
+        ]
+      },
+      "linux": {
+        "type": "process",
+        "args": [
+          "--force",
+          {
+            "value": "--sketch=${workspaceRoot}/Music_Visualizer_CK",
+
+            "quoting": "strong"
+          },
+          {
+            "value": "--output=${workspaceRoot}/out",
             "quoting": "strong"
           },
           "--run"
