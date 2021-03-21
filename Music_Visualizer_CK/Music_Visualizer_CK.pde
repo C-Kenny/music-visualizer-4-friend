@@ -1055,7 +1055,6 @@ void keyPressed() {
     DRAW_FINS = !DRAW_FINS;
   }
   
-  // TODO: Open new song on pressing open keyboard shortcut
   if (key == 'o' || key == 'O') {
     reset();
   }
@@ -1240,7 +1239,7 @@ void changePlasmaFlow(int amountToChange){
     }
 }
 
-// Poll for user input called from the draw() method.
+// Poll for user input called from the draw method.
 public void getUserInput(boolean usingController) {
 
   if (!usingController) {
