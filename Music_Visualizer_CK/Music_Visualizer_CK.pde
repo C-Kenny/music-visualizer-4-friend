@@ -27,35 +27,15 @@ AudioPlayer player;
 BeatDetect beat;
 FFT fft;
 
-/*
-// tracer
-import tracer.*;
-import tracer.paths.*;
-import tracer.renders.*;
+// BEZIER HEARTS
+float bezier_angle = 0.0;
+float bezier_speed = .025;
+float bezier_range = 300;
 
-//paths
-Rose path;
-ArrayList<Point> tracers = new ArrayList<Point>();
-ArrayList<Path> metapaths = new ArrayList<Path>();
+Wave myWave;
 
-//render
-Render render;
-
-
-//parameters
-int freq1 = 3;
-int freq2 = 5;
-int n = 20;
-//float speed = 0.0004;
-float speed = 0.0001;
-int minDist = 90;
-
-//draw mode
-final static int MESH = 0, CLIQUE = 1, SHP = 2, VORONOI = 3;
-int renderMode = SHP;
-boolean drawMetapaths = false;
-boolean drawRender = true;
-*/
+float PULSE_VALUE = 20.0;
+float HEART_PULSE = 10.0;
 
 DashedLines dash;
 float dash_dist;
@@ -225,33 +205,6 @@ int TUNNEL_ZOOM_INCREMENT;
 
 PeasyCam cam;
 
-void switchRenderMode() {
-  /*
-  switch (renderMode) {
-    case MESH :
-      println("MESH");
-      RenderMesh r = new RenderMesh(tracers, minDist);
-      r.setStrokeRamp(80);
-      r.setStrokeWeight(4);
-      render = r;
-      break;
-    case CLIQUE :
-      println("CLIQUE");
-      render = new RenderClique(tracers);
-      render.setStrokeWeight(2);
-      break;
-    case SHP :
-      println("SHP");
-      render = new RenderShape(tracers);
-      render.setStrokeWeight(4);
-      break;
-  }
-
-  render.setStrokeColor(10);
-  render.setFill(false);
-  */
-}
-
 void loadSongToVisualize() {
   log_to_stdo("Loading song to visualize");
 
@@ -294,25 +247,6 @@ void initializeGlobals() {
 
   ellipseMode(CENTER);
   blendMode(BLEND);
-
-
-  /*
-  path = new Rose(width/2.0, height/2.0, width/2.0);
-  path.setFreq1(freq1);
-  path.setFreq2(freq2);
-  path.setSampleCount(200);
-
-  for (int i=0; i<n; i++) {
-    Tracer tracer = new Tracer(path, i * (1.0 / n), speed);
-    Path metapath = new Circle(tracer, 10);
-    metapath.setStroke(false);
-    metapath.setSampleCount(75);
-    tracers.add(tracer);
-    metapaths.add(metapath);
-  }
-
-  switchRenderMode();
-  */
 
   // Dashed Lines
   dash = new DashedLines(this);
@@ -1473,9 +1407,13 @@ void draw() {
   
     // Get Tempo from Minim
     //float tempo = player.getTempo();
+    
     beat.detect(player.mix);
     if (beat.isOnset() ){
+      log_to_stdo("Beat onset detected");
       TUNNEL_ZOOM_INCREMENT = (TUNNEL_ZOOM_INCREMENT + 3) % 10000;
+    
+      
     }
     //ellipse(width/2, height/2, TUNNEL_ZOOM_INCREMENT, TUNNEL_ZOOM_INCREMENT);
     //TUNNEL_ZOOM_INCREMENT *= 0.95;
@@ -1667,31 +1605,132 @@ void draw() {
    break;
   case 2:
     background(0);
+    //drawBezierHeart();
+    
+    for(int i = 100; i <= 1100; i+=500) {
+      pushMatrix();
+        //translate(width/2.0, height/2.0);
+        ///scale(.75);
+        //drawBezierHeart(i, height/3.0);
+        drawBezierHeart(i, height - i);
+        drawBezierHeart(i, 0 + i);
+        popMatrix();
+    }
+    
+    beat.detect(player.mix);
+    if (beat.isOnset() ){
+      log_to_stdo("Beat onset detected");      
+      HEART_PULSE = pulseValBetweenRange(HEART_PULSE, -150, 250);    
+    }
+
+    bezier_angle += bezier_speed;
     break;
 
   
   case 3:
-    background(150, 10, 200);
-
-    /*
-    render.step(1);
-
-    PGraphics g = this.g;
-
-    if (drawRender) {
-      render.draw(g);
-    }
-
-    stroke(100, 0, 100);
-    //if (drawMetapaths) {
-    if (true) {
-
-      for (Path p : metapaths) {
-        p.draw(g);
+    background(0);
+    randomSeed(6);
+    
+    pushMatrix();
+      translate(0,height/2);
+      
+      
+      //for(int i = 0; i < 100; i++) {
+      for(int i = 0; i < 10; i++) {
+        //set random blue stroke to strings
+        stroke(random(255),random(255),random(200,255),random(100,200));
+        
+        //make wave with random x pos for bezier curves
+        myWave = new Wave(int(random(width)),int(random(width)));
+        
+        myWave.display();
       }
-    }
-    break;
-    */
+      
+      bezier_angle += bezier_speed;
+      println("bezier_angle: " + bezier_angle);
+    popMatrix();
+  }
+}
+
+void drawBezierHeart(float xHeartOffset, float yHeartOffset) {
+    log_to_stdo("HEART PULSE: " + HEART_PULSE);
+    pushMatrix();
+    
+    scale(0.5);
+    //translate((width/2.0) - xHeartOffset, (height/2.0) + yHeartOffset);
+    translate(0 + xHeartOffset, 0 + yHeartOffset);
+    //rotate(radians(frameCount) * 0.25);
+    
+      fill(-1);
+      stroke(255, 1, 1);
+      strokeWeight(1.0);
+      
+      float left_heart_corner = 7;
+      float right_heart_corner = 838;
+      
+      float heart_sinval = sin(random(bezier_angle));
+      float heart_cosval = cos(random(bezier_angle));
+      
+      //log_to_stdo("heart_sinval: " + heart_sinval);
+      //log_to_stdo("heart_cosval: " + heart_cosval);
+      
+      //HEART_PULSE = pulseValBetweenRange(HEART_PULSE, 0, 100);
+      
+      bezier(
+        450, 804, 
+        left_heart_corner - (HEART_PULSE), 330, 
+        380 - (HEART_PULSE / 2.0), 242, 
+        453, 420
+      );
+  
+      bezier(
+        450, 804, 
+        right_heart_corner + (HEART_PULSE), 300, 
+        467 + (HEART_PULSE / 2.0), 257, 
+        453, 420
+      );
+   popMatrix();
+
+}
+
+float pulseValBetweenRange(float currentVal, float minVal, float maxVal) {
+  log_to_stdo("Pulsing value: " + currentVal + " between: " + minVal + " and maxVal: " + maxVal); 
+  
+  currentVal += PULSE_VALUE;
+  if (currentVal > maxVal) {
+    PULSE_VALUE = -40;
+  } else if (currentVal <= minVal) {
+    PULSE_VALUE = 40;
+  }
+  return currentVal;
+}
+
+class Wave { 
+  float bz1x;
+  float bz1y;
+  float bz2x;
+  float bz2y;
+  float sinval;
+  float cosval;
+  
+  Wave(float x1, float x2) {
+    bz1x = x1;
+    bz2x = x2;
+  }
+  
+  void display() {
+    //Trig Math for motion
+    sinval = sin(random(bezier_angle));
+    cosval = cos(random(bezier_angle));
+    float b1y =  (sinval * bezier_range);
+    float b2y = (cosval * bezier_range);
+    
+    //draw string
+    noFill();
+    beginShape();
+      vertex(0,0);
+      bezierVertex(bz1x,b1y,bz2x,b2y,width,0);
+    endShape(); 
   }
 }
 
@@ -1713,9 +1752,4 @@ void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocat
 void mouseClicked() {
   // toggles fin animated state on mouse click
   ANIMATED = !ANIMATED;
-
-  /*
-  renderMode = (renderMode+1) % 4;
-  switchRenderMode();
-  */
 }
