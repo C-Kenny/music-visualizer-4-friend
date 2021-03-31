@@ -28,14 +28,15 @@ BeatDetect beat;
 FFT fft;
 
 // BEZIER HEARTS
-float bezier_angle = 0.0;
-float bezier_speed = .025;
-float bezier_range = 300;
+BezierHeart bezier_heart_0;
+BezierHeart bezier_heart_1;
+BezierHeart bezier_heart_2;
+BezierHeart bezier_heart_3;
 
-Wave myWave;
+ArrayList<BezierHeart> bezier_hearts;
 
-float PULSE_VALUE = 20.0;
-float HEART_PULSE = 10.0;
+float PULSE_VALUE;
+float HEART_PULSE;
 
 DashedLines dash;
 float dash_dist;
@@ -205,6 +206,88 @@ int TUNNEL_ZOOM_INCREMENT;
 
 PeasyCam cam;
 
+class BezierHeart {
+  float bezier_angle, bezier_speed, bezier_range;
+
+  float bezier_heart_l_x1, bezier_heart_l_y1;
+  float bezier_heart_l_x2, bezier_heart_l_y2;
+  float bezier_heart_l_x3, bezier_heart_l_y3;
+  float bezier_heart_l_x4, bezier_heart_l_y4;
+
+  float bezier_heart_r_x1, bezier_heart_r_y1;
+  float bezier_heart_r_x2, bezier_heart_r_y2;
+  float bezier_heart_r_x3, bezier_heart_r_y3;
+  float bezier_heart_r_x4, bezier_heart_r_y4;
+
+  float bezier_heart_fill_color_r = random(255);
+  float bezier_heart_fill_color_g = 100.0;
+  float bezier_heart_fill_color_b = random(255);
+
+
+  BezierHeart (float b_angle, float b_speed, float b_range) {
+    bezier_angle = b_angle;
+    bezier_speed = b_speed;
+    bezier_range = b_range;
+
+    /*
+    bezier_heart_l_x1 = 450;  bezier_heart_l_y1 = 804;
+    bezier_heart_l_x2 = 7;    bezier_heart_l_y2 = 330;
+    bezier_heart_l_x3 = 380;  bezier_heart_l_y3 = 242;
+    bezier_heart_l_x4 = 450;  bezier_heart_l_y4 = 420;
+
+    bezier_heart_r_x1 = 450;  bezier_heart_r_y1 = 804;
+    bezier_heart_r_x2 = 838;  bezier_heart_r_y2 = 300;
+    bezier_heart_r_x3 = 467;  bezier_heart_r_y3 = 257;
+    bezier_heart_r_x4 = 450;  bezier_heart_r_y4 = 420;
+    */
+    bezier_heart_l_x1 = 0;  bezier_heart_l_y1 = 562;
+    bezier_heart_l_x2 = -443;    bezier_heart_l_y2 = 88;
+    bezier_heart_l_x3 = -70;  bezier_heart_l_y3 = 0;
+    bezier_heart_l_x4 = 0;  bezier_heart_l_y4 = 178;
+
+    bezier_heart_r_x1 = 0;  bezier_heart_r_y1 = 562;
+    bezier_heart_r_x2 = 388;  bezier_heart_r_y2 = 58;
+    bezier_heart_r_x3 = 17;  bezier_heart_r_y3 = 0;
+    bezier_heart_r_x4 = 0;  bezier_heart_r_y4 = 178;
+  }
+
+  void BezierUpdateAngle () {
+    bezier_angle += bezier_speed;
+  }
+
+  void BezierUpdateFillColor (float new_heart_color_g) {
+    bezier_heart_fill_color_g = new_heart_color_g;
+  }
+
+  void drawBezierHeart(float xHeartOffset, float yHeartOffset) {
+      //log_to_stdo("HEART PULSE: " + HEART_PULSE);
+
+      pushMatrix();
+        scale(0.75);
+        translate(0 + xHeartOffset, 0 + yHeartOffset);
+
+        //fill(-1);
+        fill(bezier_heart_fill_color_r, bezier_heart_fill_color_g, bezier_heart_fill_color_b);
+        stroke(255, 1, 1);
+        strokeWeight(1.0);
+        
+        bezier(
+          bezier_heart_l_x1,                        bezier_heart_l_y1, 
+          bezier_heart_l_x2 - (HEART_PULSE),        bezier_heart_l_y2, 
+          bezier_heart_l_x3 - (HEART_PULSE / 2.0),  bezier_heart_l_y3, 
+          bezier_heart_l_x4,                        bezier_heart_l_y4
+        );
+    
+        bezier(
+          bezier_heart_r_x1,                        bezier_heart_r_y1, 
+          bezier_heart_r_x2 + (HEART_PULSE),        bezier_heart_r_y2, 
+          bezier_heart_r_x3 + (HEART_PULSE / 2.0),  bezier_heart_r_y3, 
+          bezier_heart_r_x4,                        bezier_heart_r_y4
+        );
+    popMatrix();
+  }
+}
+
 void loadSongToVisualize() {
   log_to_stdo("Loading song to visualize");
 
@@ -247,6 +330,19 @@ void initializeGlobals() {
 
   ellipseMode(CENTER);
   blendMode(BLEND);
+
+  // Bezier Hearts
+  bezier_heart_0 = new BezierHeart(0.0, 0.25, 300);
+  bezier_heart_1 = new BezierHeart(0.0, 0.25, 300);
+  bezier_heart_2 = new BezierHeart(0.0, 0.25, 300);
+  bezier_heart_3 = new BezierHeart(0.0, 0.25, 300);
+
+  bezier_hearts = new ArrayList<BezierHeart>();
+
+  bezier_hearts.add(bezier_heart_0);
+
+  PULSE_VALUE = 19.0;
+  HEART_PULSE = 10.0;
 
   // Dashed Lines
   dash = new DashedLines(this);
@@ -1598,103 +1694,43 @@ void draw() {
       line(posx, height, posx, (height * .975));
     popStyle();
     
-    // only update fps counter in title a sane amount of times to maintain performance
-    if (frameCount % 100 == 0) {
-      surface.setTitle(TITLE_BAR + " | fps: " + int(frameRate));
-   }
+    addFPSToTitleBar();
    break;
   case 2:
     background(0);
-    //drawBezierHeart();
     
-    for(int i = 100; i <= 1100; i+=500) {
-      pushMatrix();
-        //translate(width/2.0, height/2.0);
-        ///scale(.75);
-        //drawBezierHeart(i, height/3.0);
-        drawBezierHeart(i, height - i);
-        drawBezierHeart(i, 0 + i);
-        popMatrix();
+    for(int i = 0; i <= (height + 500); i+= 500) {
+      for(int j = 0; j <= (height + 500); j+=500) {
+        if ( (i % 1000 == 0) && (j % 500 == 0) ) {
+          bezier_heart_0.drawBezierHeart(i, j);
+        } else {
+          bezier_heart_1.drawBezierHeart(i, j);
+        }
+      }
     }
     
     beat.detect(player.mix);
     if (beat.isOnset() ){
       log_to_stdo("Beat onset detected");      
-      HEART_PULSE = pulseValBetweenRange(HEART_PULSE, -150, 250);    
+      HEART_PULSE = pulseValBetweenRange(HEART_PULSE, -100, 200);    
+      bezier_heart_0.BezierUpdateFillColor(HEART_PULSE);
+      bezier_heart_1.BezierUpdateFillColor(HEART_PULSE * .60);
     }
-
-    bezier_angle += bezier_speed;
+    addFPSToTitleBar();
     break;
-
-  
-  case 3:
-    background(0);
-    randomSeed(6);
-    
-    pushMatrix();
-      translate(0,height/2);
-      
-      
-      //for(int i = 0; i < 100; i++) {
-      for(int i = 0; i < 10; i++) {
-        //set random blue stroke to strings
-        stroke(random(255),random(255),random(200,255),random(100,200));
-        
-        //make wave with random x pos for bezier curves
-        myWave = new Wave(int(random(width)),int(random(width)));
-        
-        myWave.display();
-      }
-      
-      bezier_angle += bezier_speed;
-      println("bezier_angle: " + bezier_angle);
-    popMatrix();
   }
 }
 
-void drawBezierHeart(float xHeartOffset, float yHeartOffset) {
-    log_to_stdo("HEART PULSE: " + HEART_PULSE);
-    pushMatrix();
-    
-    scale(0.5);
-    //translate((width/2.0) - xHeartOffset, (height/2.0) + yHeartOffset);
-    translate(0 + xHeartOffset, 0 + yHeartOffset);
-    //rotate(radians(frameCount) * 0.25);
-    
-      fill(-1);
-      stroke(255, 1, 1);
-      strokeWeight(1.0);
-      
-      float left_heart_corner = 7;
-      float right_heart_corner = 838;
-      
-      float heart_sinval = sin(random(bezier_angle));
-      float heart_cosval = cos(random(bezier_angle));
-      
-      //log_to_stdo("heart_sinval: " + heart_sinval);
-      //log_to_stdo("heart_cosval: " + heart_cosval);
-      
-      //HEART_PULSE = pulseValBetweenRange(HEART_PULSE, 0, 100);
-      
-      bezier(
-        450, 804, 
-        left_heart_corner - (HEART_PULSE), 330, 
-        380 - (HEART_PULSE / 2.0), 242, 
-        453, 420
-      );
-  
-      bezier(
-        450, 804, 
-        right_heart_corner + (HEART_PULSE), 300, 
-        467 + (HEART_PULSE / 2.0), 257, 
-        453, 420
-      );
-   popMatrix();
-
+void addFPSToTitleBar() {
+  // only update fps counter in title a sane amount of times to maintain performance
+  if (frameCount % 100 == 0) {
+    surface.setTitle("fps: " + int(frameRate) + " | " + TITLE_BAR);
+  }
 }
 
+
 float pulseValBetweenRange(float currentVal, float minVal, float maxVal) {
-  log_to_stdo("Pulsing value: " + currentVal + " between: " + minVal + " and maxVal: " + maxVal); 
+  //log_to_stdo("Pulsing value: " + currentVal + " between: " + minVal + " and maxVal: " + maxVal); 
   
   currentVal += PULSE_VALUE;
   if (currentVal > maxVal) {
@@ -1705,37 +1741,6 @@ float pulseValBetweenRange(float currentVal, float minVal, float maxVal) {
   return currentVal;
 }
 
-class Wave { 
-  float bz1x;
-  float bz1y;
-  float bz2x;
-  float bz2y;
-  float sinval;
-  float cosval;
-  
-  Wave(float x1, float x2) {
-    bz1x = x1;
-    bz2x = x2;
-  }
-  
-  void display() {
-    //Trig Math for motion
-    sinval = sin(random(bezier_angle));
-    cosval = cos(random(bezier_angle));
-    float b1y =  (sinval * bezier_range);
-    float b2y = (cosval * bezier_range);
-    
-    //draw string
-    noFill();
-    beginShape();
-      vertex(0,0);
-      bezierVertex(bz1x,b1y,bz2x,b2y,width,0);
-    endShape(); 
-  }
-}
-
-
-
 void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocationY) {
   textSize(24);
   textAlign(CENTER);
@@ -1744,8 +1749,8 @@ void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocat
   // draw black text underneath
   text(song_name, nameLocationX + 2, nameLocationY + 2);
   
-  fill(255);
   // draw white text ontop
+  fill(255);
   text(song_name, nameLocationX, nameLocationY);
 }
 
