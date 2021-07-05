@@ -47,9 +47,6 @@ boolean DASH_LINE_SPEED_INCREASING;
 int[] TUNNEL_LOOK_UP_TABLE;
 int[] TUNNEL_TEX;
 
-// H3 Emblems as jpgs
-PImage h3_emblem;
-PImage new_h3_emblem;
 int x;
 int y;
 int i;
@@ -206,6 +203,9 @@ int TUNNEL_ZOOM_INCREMENT;
 
 PeasyCam cam;
 
+CameraState state;
+
+
 class BezierHeart {
   float bezier_angle, bezier_speed, bezier_range;
 
@@ -259,6 +259,7 @@ class BezierHeart {
     bezier_heart_fill_color_g = new_heart_color_g;
   }
 
+  // ♥
   void drawBezierHeart(float xHeartOffset, float yHeartOffset) {
       //log_to_stdo("HEART PULSE: " + HEART_PULSE);
 
@@ -271,6 +272,7 @@ class BezierHeart {
         stroke(255, 1, 1);
         strokeWeight(1.0);
         
+        // left bezier curve (
         bezier(
           bezier_heart_l_x1,                        bezier_heart_l_y1, 
           bezier_heart_l_x2 - (HEART_PULSE),        bezier_heart_l_y2, 
@@ -278,6 +280,7 @@ class BezierHeart {
           bezier_heart_l_x4,                        bezier_heart_l_y4
         );
     
+        // right bezier curve )
         bezier(
           bezier_heart_r_x1,                        bezier_heart_r_y1, 
           bezier_heart_r_x2 + (HEART_PULSE),        bezier_heart_r_y2, 
@@ -486,6 +489,23 @@ void initializeGlobals() {
 
   // Screen capture --------------------------------------------
   SCREEN_RECORDING = false;
+
+  setupPeasyCam();
+}
+
+void setupPeasyCam() {
+  // 3D Camera in the future
+  //cam.setMinimumDistance(50);
+  //cam.setMaximumDistance(500);
+  //cam = new PeasyCam(this, 400);
+  cam = new PeasyCam(this, 100);
+  state = cam.getState();
+}
+
+void resetPeasyCamTo2D() {
+  log_to_stdo("resetting PeasyCam");
+  cam = null;
+  //cam.setState(state, 10);
 }
 
 void setSongToVisualize() {
@@ -599,12 +619,6 @@ void setup() {
 
   LOGGING_ENABLED = true;
 
-  // 3D Camera in the future
-  /*
-  cam = new PeasyCam(this, 100);
-  cam.setMinimumDistance(50);
-  cam.setMaximumDistance(500);
-  */
 
   log_to_stdo("canvas spawned");
 
@@ -613,7 +627,7 @@ void setup() {
   setSongToVisualize();
 
   // Resizable allows Windows snap features (i.e. snap to right side of screen)
-  surface.setResizable(true);
+  surface.setResizable(true);  // TODO: Having cavnas size LARGER than expected Plasma pixel h x w will break here
 
   smooth(2);
   frameRate(160);
@@ -626,6 +640,8 @@ void setup() {
   setupTunnel();
   setupPlasma();
   setupPolarPlasma();
+
+  setupPeasyCam();
 }
 
 void setupTunnel() {
@@ -677,7 +693,7 @@ void setupPlasma() {
     s1=sin(i*PI/25);
     s2=sin(i*PI/50+PI/4);
 
-    //log_to_stdo("s1: " + s1 + " s2: " + s2);
+    //log_to_stdo("s1 " + s1 + " s2 " + s2);
 
     float r_color = 128+s1*128;
     //float g_color = 128 * s2; // 128+s2*128;
@@ -753,7 +769,7 @@ void drawDiamond(float dash_distanceFromCenter) {
     DIAMOND_LEFT_EDGE_X - DIAMOND_WIDTH_OFFSET, DIAMOND_LEFT_EDGE_Y - DIAMOND_HEIGHT_OFFSET //<>//
   );
 }
-
+// 
 void drawInnerDiamonds() { 
   // bottom right inner diamond
   pushMatrix();
@@ -928,7 +944,7 @@ void applyBlendModeOnDrop(int intensityOutOfTen) {
 }
 
 void changeBlendMode() {
-  //log_to_stdo("BlendMode before: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+  log_to_stdo("BlendMode before: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 
   if (CURRENT_BLEND_MODE_INDEX == modes.length - 1) {
     CURRENT_BLEND_MODE_INDEX = 0;
@@ -937,7 +953,7 @@ void changeBlendMode() {
   }
 
   blendMode(CURRENT_BLEND_MODE_INDEX);
-  //log_to_stdo("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
+  log_to_stdo("Changed blendMode to: " + modeNames[CURRENT_BLEND_MODE_INDEX]);
 }
 
 void changeFinRotation() {
@@ -1093,10 +1109,9 @@ void keyPressed() {
     DRAW_INNER_DIAMONDS = !DRAW_INNER_DIAMONDS;
   }
   
-  if (key >= '0' && key <= '9') {
-    log_to_stdo("key:" + (int) key);
+  // for now only allow 3 states, wouldn't want to jump to an undefined state.. or would we?
+  if (key >= '0' && key <= '3') {
     STATE = (int) key - 48;  // ascii offset..
-    log_to_stdo("STATE: " + STATE);
   }
 
   // exit nicely
@@ -1328,7 +1343,7 @@ public void getUserInput(boolean usingController) {
  dpad_hat_switch_left = stick.getHat("dpad").left();
  dpad_hat_switch_right = stick.getHat("dpad").right();
 
- log_to_stdo("dpad hat switch up: " + dpad_hat_switch_up);
+ //log_to_stdo("dpad hat switch up: " + dpad_hat_switch_up);
  
  int tunnel_zoom_amount_by_controller = int(l_trigger_depletion);
  TUNNEL_ZOOM_INCREMENT = TUNNEL_ZOOM_INCREMENT + tunnel_zoom_amount_by_controller;
@@ -1422,6 +1437,44 @@ void drawTunnel(){
   updatePixels();
 }
 
+void drawBackgroundsEnabled() {
+  // tunnel from https://luis.net/projects/processing/html/tunnel/Tunnel.pde
+  if (DRAW_TUNNEL) {
+    drawTunnel();
+  }
+  
+  
+  // plasma from https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
+  if (DRAW_PLASMA) {
+    loadPixels();
+    for (int pixelCount = 0; pixelCount < cls.length; pixelCount++)
+    {                   
+      pixels[pixelCount] =  pal[
+        (cls[pixelCount] + PLASMA_SEED)& (PLASMA_SIZE-1)
+      ] &= 0x00FFFFFF // make transparent
+      ;
+    }
+    updatePixels();
+  }
+  
+  // polar plasma from https://luis.net/projects/processing/html/polarplasma/polarPlasma.pde
+  if (DRAW_POLAR_PLASMA) {
+    int k = frameCount&0xff ;
+  
+    loadPixels();
+    for (int i=0; i<SCREEN_SIZE; i++) {
+      pixels[i] = sinePalette[
+        (
+          angle[i] + 
+          fsin1[radius[i] +
+          fsin2[radius[i]]+k]
+        ) &0xff
+      ];
+    }
+    updatePixels();
+  } 
+}
+
 
 void draw() {
   // handle different states the user can be in (song select, tunnels, plasma etc)
@@ -1437,6 +1490,10 @@ void draw() {
       break;
    
    case 1:
+    //setupPeasyCam();
+    //resetPeasyCamTo2D();
+    cam.beginHUD();
+
     getUserInput(USING_CONTROLLER); // Polling
   
     // reset drawing params when redrawing frame
@@ -1506,9 +1563,8 @@ void draw() {
     
     beat.detect(player.mix);
     if (beat.isOnset() ){
-      log_to_stdo("Beat onset detected");
+      //log_to_stdo("Beat onset detected");
       TUNNEL_ZOOM_INCREMENT = (TUNNEL_ZOOM_INCREMENT + 3) % 10000;
-    
       
     }
     //ellipse(width/2, height/2, TUNNEL_ZOOM_INCREMENT, TUNNEL_ZOOM_INCREMENT);
@@ -1537,47 +1593,8 @@ void draw() {
       fill(255);
       background(200);
     }
-    
-    // tunnel from https://luis.net/projects/processing/html/tunnel/Tunnel.pde
-    
-    if (DRAW_TUNNEL) {
-      drawTunnel();
-    }
-    
-    
-    // plasma from https://luis.net/projects/processing/html/plasmafast/PlasmaFast.pde
-  
-    
-    if (DRAW_PLASMA) {
-      loadPixels();
-      for (int pixelCount = 0; pixelCount < cls.length; pixelCount++)
-      {                   
-        pixels[pixelCount] =  pal[
-          (cls[pixelCount] + PLASMA_SEED)& (PLASMA_SIZE-1)
-        ] &= 0x00FFFFFF // make transparent
-        ;
-  
-      }
-      updatePixels();
-    }
-    
-    if (DRAW_POLAR_PLASMA) {
-    
-      // polar plasma from https://luis.net/projects/processing/html/polarplasma/polarPlasma.pde
-      int k = frameCount&0xff ;
-    
-      loadPixels();
-      for (int i=0; i<SCREEN_SIZE; i++) {
-        pixels[i] = sinePalette[
-          (
-            angle[i] + 
-            fsin1[radius[i] +
-            fsin2[radius[i]]+k]
-          ) &0xff
-       ];
-      }
-      updatePixels();
-    }
+
+    drawBackgroundsEnabled();
     
      if (DRAW_WAVEFORM) {
       // draw the waveforms
@@ -1695,9 +1712,19 @@ void draw() {
     popStyle();
     
     addFPSToTitleBar();
+    cam.endHUD();
    break;
+
   case 2:
+    /*
+    cam.setActive(true);
+    cam.setMouseControlled(true);  
+    */
+
     background(0);
+
+    splitFrequencyIntoLogBands();
+    drawBackgroundsEnabled();
     
     for(int i = 0; i <= (height + 500); i+= 500) {
       for(int j = 0; j <= (height + 500); j+=500) {
@@ -1711,12 +1738,22 @@ void draw() {
     
     beat.detect(player.mix);
     if (beat.isOnset() ){
-      log_to_stdo("Beat onset detected");      
+      //log_to_stdo("Beat onset detected");      
       HEART_PULSE = pulseValBetweenRange(HEART_PULSE, -100, 200);    
       bezier_heart_0.BezierUpdateFillColor(HEART_PULSE);
       bezier_heart_1.BezierUpdateFillColor(HEART_PULSE * .60);
     }
+
     addFPSToTitleBar();
+    break;
+
+  case 3:
+    /*
+    cam.setActive(true);
+    cam.setMouseControlled(true);  
+    */
+
+    render3DSceneHelper();
     break;
   }
 }
@@ -1726,6 +1763,42 @@ void addFPSToTitleBar() {
   if (frameCount % 100 == 0) {
     surface.setTitle("fps: " + int(frameRate) + " | " + TITLE_BAR);
   }
+}
+
+void render3DSceneHelper() {
+  //rotateX(-.5f);
+  //rotateY(-.5f);
+  lights();
+  scale(10);
+  strokeWeight(1 / 10f);
+  background(0);
+  //fill(220, 255, 0);
+  noFill();
+  box(30);
+  pushMatrix();
+  translate(0, 0, 20);
+  fill(0, 96, 255);
+  box(5);
+  popMatrix();
+  
+  pushMatrix();
+    drawAxis(2000);
+  popMatrix();
+
+}
+
+void drawAxis(float size){
+  //X  - red
+  stroke(192,0,0);
+  line(0,0,0,size,0,0);
+
+  //Y - green
+  stroke(0,192,0);
+  line(0,0,0,0,size,0);
+
+  //Z - blue
+  stroke(0,0,192);
+  line(0,0,0,0,0,size);
 }
 
 
