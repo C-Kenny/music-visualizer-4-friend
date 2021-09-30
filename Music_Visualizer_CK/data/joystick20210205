@@ -1,0 +1,17 @@
+Xbox 360 Controller
+lx	lx	3	SLIDER	X Axis	0	1.0	0.0
+ly	ly	3	SLIDER	Y Axis	0	1.0	0.0
+ry	ry	3	SLIDER	Y Rotation	0	1.0	0.0
+rx	rx	3	SLIDER	X Rotation	0	1.0	0.0
+a	a	1	BUTTON	Button 0	0	0.0	0.0
+b	b	1	BUTTON	Button 1	0	0.0	0.0
+x	x	1	BUTTON	Button 2	0	0.0	0.0
+y	y	1	BUTTON	Button 3	0	0.0	0.0
+lb	lb	1	BUTTON	Button 4	0	0.0	0.0
+rb	rb	1	BUTTON	Button 5	0	0.0	0.0
+lt	lt	3	SLIDER	Z Axis	0	1.0	0.0
+back	back	1	BUTTON	Button 6	0	0.0	0.0
+start	start	1	BUTTON	Button 7	0	0.0	0.0
+lstickclick	lstickclick	1	BUTTON	Button 8	0	0.0	0.0
+rstickclick	rstickclick	1	BUTTON	Button 9	0	0.0	0.0
+dpad	dpad	2	HAT	cooliehat: Hat Switch	0	1.0	0.0
