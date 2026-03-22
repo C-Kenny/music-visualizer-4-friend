@@ -315,8 +315,12 @@ String getSongNameFromFilePath(String song_path, String os_type) {
   return config.SONG_NAME;
 }
 
-void setup() {
+void settings() {
   size(displayWidth, displayHeight - 80, P3D);
+  smooth(2);
+}
+
+void setup() {
   background(200);
   s1Size    = min(width, height);
   s1OffsetX = (width - s1Size) / 2.0;
@@ -325,7 +329,6 @@ void setup() {
   initializeGlobals();
   setSongToVisualize();
   surface.setResizable(true);
-  smooth(2);
   frameRate(160);
   surface.setTitle(config.TITLE_BAR);
   setupController();
@@ -611,9 +614,9 @@ void keyPressed() {
     config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
   if (key >= '0' && key <= '9') {
-    log_to_stdo("key:" + (int) key);
-    config.STATE = (int) key - 48;
-    log_to_stdo("STATE: " + config.STATE);
+    int newState = (int) key - 48;
+    log_to_stdo("Switching to state: " + newState);
+    switchScene(newState);
   }
   // Shapes3DScene live tuning keys (state 3 only)
   if (config.STATE == 3 && shapes3D != null) {
@@ -926,6 +929,23 @@ void setBackGroundFillMode(){
 
 int previous_state = -1;
 
+// ── Scene crossfade ───────────────────────────────────────────────────────────
+// When switchScene() is called, we capture the current frame as a frozen
+// snapshot and draw it on top of the incoming scene with decreasing alpha.
+// This gives a smooth dissolve without needing two live render buffers.
+
+PImage crossfadeSnapshot  = null;
+int    crossfadeFrame     = 0;
+final int CROSSFADE_DURATION = 45; // frames  (~0.75 s at 60 fps)
+
+void switchScene(int newState) {
+  if (config.STATE == newState) return;
+  crossfadeSnapshot = get();        // freeze the last frame of the current scene
+  crossfadeFrame    = 0;
+  config.STATE      = newState;
+  previous_state    = newState;     // suppress the background(0) clear so no black flash
+}
+
 void draw() {
   // occasional log to show current state
   if (frameCount % 240 == 0) println("Main draw state=" + config.STATE);
@@ -1218,6 +1238,28 @@ void draw() {
     if (config.SHOW_CODE) drawCodeOverlay(halo2Logo.getCodeLines());
     addFPSToTitleBar();
     break;
+  }
+
+  // ── Crossfade overlay ───────────────────────────────────────────────────────
+  // Drawn after every scene so it always sits on top.
+  // The snapshot fades out while the new scene plays live underneath.
+  if (crossfadeSnapshot != null) {
+    crossfadeFrame++;
+
+    // Beat-snap: if a beat lands when we're past the halfway point, finish early
+    audio.beat.detect(audio.player.mix);
+    if (audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
+      crossfadeFrame = CROSSFADE_DURATION;
+    }
+
+    if (crossfadeFrame >= CROSSFADE_DURATION) {
+      crossfadeSnapshot = null;
+    } else {
+      float alpha = map(crossfadeFrame, 0, CROSSFADE_DURATION, 255, 0);
+      tint(255, alpha);
+      image(crossfadeSnapshot, 0, 0);
+      noTint();
+    }
   }
 }
 
