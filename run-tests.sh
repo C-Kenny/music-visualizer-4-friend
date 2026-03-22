@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# run-tests.sh — compile-check the sketch then run all unit tests
+# Usage: ./run-tests.sh
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+SKETCH_DIR="$REPO_ROOT/Music_Visualizer_CK"
+TESTS_DIR="$REPO_ROOT/tests"
+
+# ── colours ───────────────────────────────────────────────────────────────────
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+pass() { echo -e "${GREEN}✓ $1${NC}"; }
+fail() { echo -e "${RED}✗ $1${NC}"; exit 1; }
+info() { echo -e "${YELLOW}▸ $1${NC}"; }
+
+# ── 1. Compile smoke test via processing CLI ──────────────────────────────────
+info "Compile check: processing cli --build ..."
+if snap run processing cli --sketch="$SKETCH_DIR" --build 2>&1 | grep -qi "error"; then
+  fail "Sketch failed to compile — fix errors before running tests"
+fi
+pass "Sketch compiles cleanly"
+
+# ── 2. Ensure Maven is available ──────────────────────────────────────────────
+if ! command -v mvn &>/dev/null; then
+  info "Maven not found. Installing via apt..."
+  sudo apt-get install -y maven
+fi
+
+# ── 3. Unit tests ─────────────────────────────────────────────────────────────
+info "Running unit tests..."
+cd "$TESTS_DIR"
+if mvn --quiet test; then
+  pass "All unit tests passed"
+else
+  fail "Unit tests failed — see output above"
+fi
