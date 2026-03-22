@@ -17,6 +17,8 @@ CatsCradleScene catsCradle;
 OscilloscopeScene oscilloscope;
 ParticleFountainScene particleFountain;
 Halo2LogoScene halo2Logo;
+PrismCodexScene prismCodex;
+TableTennisScene tableTennis;
 PFont monoFont;
 
 BezierHeart bezier_heart_0;
@@ -341,6 +343,8 @@ void setup() {
   oscilloscope = new OscilloscopeScene();
   particleFountain = new ParticleFountainScene();
   halo2Logo = new Halo2LogoScene();
+  prismCodex = new PrismCodexScene();
+  tableTennis = new TableTennisScene();
   monoFont = createFont("Monospaced", 15, true);
   // load Halo 3 emblem used as reference for colors and texture
   h3_emblem = loadImage("../media/h3_emblem.jpg");
@@ -618,6 +622,14 @@ void keyPressed() {
     log_to_stdo("Switching to state: " + newState);
     switchScene(newState);
   }
+  // Table Tennis tuning keys (state 6 only)
+  if (config.STATE == 6 && tableTennis != null) {
+    if (key == '+' || key == '=') tableTennis.adjustGravity(0.02);
+    if (key == '-')               tableTennis.adjustGravity(-0.02);
+    if (key == '[')               tableTennis.adjustMagnus(-0.005);
+    if (key == ']')               tableTennis.adjustMagnus(0.005);
+  }
+
   // Shapes3DScene live tuning keys (state 3 only)
   if (config.STATE == 3 && shapes3D != null) {
     if (key == 'k') shapes3D.incrementBlades(-1);
@@ -1223,6 +1235,16 @@ void draw() {
     audio.forward();
     oscilloscope.drawScene();
     if (config.SHOW_CODE) drawCodeOverlay(oscilloscope.getCodeLines());
+    addFPSToTitleBar();
+    break;
+  case 6:
+    tableTennis.drawScene();
+    if (config.SHOW_CODE) drawCodeOverlay(tableTennis.getCodeLines());
+    addFPSToTitleBar();
+    break;
+  case 7:
+    prismCodex.drawScene();
+    if (config.SHOW_CODE) drawCodeOverlay(prismCodex.getCodeLines());
     addFPSToTitleBar();
     break;
   case 8:

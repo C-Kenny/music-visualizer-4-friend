@@ -5,21 +5,22 @@ PID=""
 
 start() {
   touch "$SKETCH_DIR/.devmode" "$SCRIPT_DIR/.devmode" "$HOME/.devmode"
-  /snap/bin/processing cli --sketch="$SKETCH_DIR" --force --run &
+  # setsid gives Processing its own process group so stop() can kill it
+  # safely without affecting this script or inotifywait
+  setsid /snap/bin/processing cli --sketch="$SKETCH_DIR" --force --run &
   PID=$!
   echo "Started (PID $PID)"
 }
 
 stop() {
-  # Kill the stored launcher PID and all its child processes
   if [ -n "$PID" ]; then
-    pkill -KILL -P "$PID" 2>/dev/null || true
+    # Kill the entire process group spawned by setsid (launcher + JVM)
+    PGID=$(ps -o pgid= "$PID" 2>/dev/null | tr -d ' ')
+    [ -n "$PGID" ] && kill -KILL -- -"$PGID" 2>/dev/null || true
     kill -KILL "$PID" 2>/dev/null || true
   fi
-  # Fallback: catch any stray instances not tracked by $PID
-  # (e.g. a visualizer left running from ./run.sh before watch.sh started)
-  pkill -KILL -f "sketch-path=.*Music_Visualizer_CK" 2>/dev/null || true
-  pkill -KILL -f "/snap/processing.*Music_Visualizer_CK" 2>/dev/null || true
+  # Fallback: match only the Processing launcher binary, not this script or inotifywait
+  pkill -KILL -f "/snap/bin/processing" 2>/dev/null || true
   # Give the JVM time to fully release the audio device
   sleep 0.8
   PID=""
