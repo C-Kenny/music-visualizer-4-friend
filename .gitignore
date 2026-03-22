@@ -1,0 +1,6 @@
+Music_Visualizer_CK/.devmode
+.devmode
+output/
+media/debug_outputs/
+Music_Visualizer_CK/data/images/*.png
+Music_Visualizer_CK/data/images/*.jpg

@@ -1,6 +1,7 @@
 class Config {
   float PULSE_VALUE;
   float HEART_PULSE;
+  int   HEART_COLS;
 
   float DASH_LINE_SPEED;
   float DASH_LINE_SPEED_LIMIT;
@@ -90,6 +91,10 @@ class Config {
   boolean LOGGING_ENABLED;
 
   boolean SCREEN_RECORDING;
+  boolean SHOW_CODE;
+
+  ArrayList<String> songList;
+  int currentSongIndex;
 
   String OS_TYPE;
 
@@ -98,12 +103,13 @@ class Config {
   int TUNNEL_ZOOM_INCREMENT;
 
   Config() {
-    TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins";
+    TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins, (n)ext song, (N)shuffle";
 
     OS_TYPE = discoverOperatingSystem();
 
     PULSE_VALUE = 19.0;
     HEART_PULSE = 10.0;
+    HEART_COLS  = 9;
 
     DASH_LINE_SPEED = 0.5;
     DASH_LINE_SPEED_LIMIT = 69;
@@ -145,13 +151,13 @@ class Config {
 
     WAVE_MULTIPLIER = 50.0;
 
-    DIAMOND_DISTANCE_FROM_CENTER = width*0.07;
+    DIAMOND_DISTANCE_FROM_CENTER = s1Size * 0.07;
 
-    DIAMOND_RIGHT_EDGE_X = width*0.92;
-    DIAMOND_LEFT_EDGE_X = width*0.74;
+    DIAMOND_RIGHT_EDGE_X = s1Size * 0.92;
+    DIAMOND_LEFT_EDGE_X  = s1Size * 0.74;
 
-    DIAMOND_RIGHT_EDGE_Y = height*0.71;
-    DIAMOND_LEFT_EDGE_Y = height*0.92;
+    DIAMOND_RIGHT_EDGE_Y = s1Size * 0.71;
+    DIAMOND_LEFT_EDGE_Y  = s1Size * 0.92;
 
     DIAMOND_CAN_CHANGE_CENTER_DISANCE = true;
     DIAMON_CAN_CHANGE_X_WIDTH = true;
@@ -159,8 +165,8 @@ class Config {
     DIAMOND_WIDTH_OFFSET = 0.0;
     DIAMOND_HEIGHT_OFFSET = 0.0;
 
-    MAX_DIAMOND_DISTANCE = width * 0.3;
-    MIN_DIAMOND_DISTANCE = height * 0.1;
+    MAX_DIAMOND_DISTANCE = s1Size * 0.3;
+    MIN_DIAMOND_DISTANCE = s1Size * 0.1;
 
     INCREMENT_DIAMOND_DISTANCE = true;
 
@@ -186,5 +192,10 @@ class Config {
     USING_CONTROLLER = false;
 
     SCREEN_RECORDING = false;
+    SHOW_CODE = false;
+    LOGGING_ENABLED = true;
+
+    songList = new ArrayList<String>();
+    currentSongIndex = 0;
   }
 }
