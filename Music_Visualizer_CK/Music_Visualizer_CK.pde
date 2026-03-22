@@ -17,6 +17,7 @@ CatsCradleScene catsCradle;
 OscilloscopeScene oscilloscope;
 ParticleFountainScene particleFountain;
 Halo2LogoScene halo2Logo;
+PrismCodexScene prismCodex;
 PFont monoFont;
 
 BezierHeart bezier_heart_0;
@@ -341,6 +342,7 @@ void setup() {
   oscilloscope = new OscilloscopeScene();
   particleFountain = new ParticleFountainScene();
   halo2Logo = new Halo2LogoScene();
+  prismCodex = new PrismCodexScene();
   monoFont = createFont("Monospaced", 15, true);
   // load Halo 3 emblem used as reference for colors and texture
   h3_emblem = loadImage("../media/h3_emblem.jpg");
@@ -1223,6 +1225,11 @@ void draw() {
     audio.forward();
     oscilloscope.drawScene();
     if (config.SHOW_CODE) drawCodeOverlay(oscilloscope.getCodeLines());
+    addFPSToTitleBar();
+    break;
+  case 7:
+    prismCodex.drawScene();
+    if (config.SHOW_CODE) drawCodeOverlay(prismCodex.getCodeLines());
     addFPSToTitleBar();
     break;
   case 8:
