@@ -1585,41 +1585,30 @@ void drawControlsHUD() {
 
 // Toggle with the backtick key (`).
 void drawCodeOverlay(String[] lines) {
+  // Same style as drawSceneControlsHUD but anchored to the left edge.
+  blendMode(BLEND);
   pushStyle();
   textFont(monoFont);
-  float lineH  = 20 * uiScale();
-  float pad    = 16 * uiScale();
-  float boxW   = width  * 0.55;
-  float boxH   = pad * 2 + lines.length * lineH;
-  float boxX   = (width  - boxW) / 2.0;
-  float boxY   = (height - boxH) / 2.0;
+  float lineH = 18 * uiScale();
+  float pad   = 14 * uiScale();
+  float boxW  = 360 * uiScale();
+  float boxH  = pad * 2 + lines.length * lineH;
+  float boxX  = 12 * uiScale();
+  float boxY  = (height - boxH) / 2.0;
 
-  // dark terminal background
-  fill(0, 0, 0, 210);
-  noStroke();
-  rectMode(CORNER);
+  fill(0, 0, 0, 210); noStroke(); rectMode(CORNER);
+  rect(boxX, boxY, boxW, boxH, 6);
+  stroke(0, 220, 80, 180); strokeWeight(1.5); noFill();
   rect(boxX, boxY, boxW, boxH, 6);
 
-  // green border
-  stroke(0, 220, 80, 180);
-  strokeWeight(1.5);
-  noFill();
-  rect(boxX, boxY, boxW, boxH, 6);
-
-  // text
-  textAlign(LEFT, TOP);
-  textSize(15 * uiScale());
-  float tx = boxX + pad;
-  float ty = boxY + pad;
+  textAlign(LEFT, TOP); textSize(13 * uiScale());
+  float tx = boxX + pad, ty = boxY + pad;
   for (int i = 0; i < lines.length; i++) {
     String line = lines[i];
-    if (line.startsWith("//")) {
-      fill(120, 200, 120);   // comments → dim green
-    } else if (line.startsWith("===")) {
-      fill(0, 255, 120);     // title → bright green
-    } else {
-      fill(180, 255, 180);   // formula → light green
-    }
+    if      (line.startsWith("//"))  fill(120, 200, 120);  // comments → dim green
+    else if (line.startsWith("===")) fill(0, 255, 120);    // title → bright green
+    else if (line.equals(""))        fill(0, 0, 0, 0);     // invisible spacer
+    else                             fill(180, 255, 180);   // body → light green
     text(line, tx, ty + i * lineH);
   }
   popStyle();
