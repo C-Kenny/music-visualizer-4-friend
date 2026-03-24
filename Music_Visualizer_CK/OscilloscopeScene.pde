@@ -106,7 +106,6 @@ class OscilloscopeScene {
     float amplitude = (bassAmp + midAmp + highAmp) / 3.0;
 
     // beat
-    audio.beat.detect(audio.player.mix);
     if (audio.beat.isOnset()) pulse = 1.0;
     pulse *= 0.90;
     hue    = (hue + 0.5) % 360;

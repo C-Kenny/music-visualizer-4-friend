@@ -9,8 +9,23 @@ class CatsCradleScene {
   float  phase        = 0;     // master phase for string oscillation
   float  pulse        = 0;     // decaying beat-pulse value
   float  rotation     = 0;     // slow rotation of the whole frame
+  float  rotationSpeed = 0.002; // controllable rotation speed (default matches original)
 
   CatsCradleScene() {}
+
+  void applyController(Controller c) {
+    // L Stick ↕ → rotation speed (up = faster, down = slower)
+    float ly = map(c.ly, 0, height, -1, 1);
+    rotationSpeed = map(ly, -1, 1, 0.008, 0.0004);
+
+    // R Stick ↔ → numAnchors (4–14)
+    float rx = map(c.rx, 0, width, -1, 1);
+    int newAnchors = round(map(rx, -1, 1, 4, 14));
+    numAnchors = constrain(newAnchors, 4, 14);
+
+    // A button → inject a manual beat pulse
+    if (c.a_just_pressed) pulse = 1.0;
+  }
 
   // --- code overlay -----------------------------------------------
 
@@ -40,8 +55,6 @@ class CatsCradleScene {
     // --- audio sampling -------------------------------------------------
     float amplitude = 0;
     if (audio != null) {
-      audio.forward();
-      audio.beat.detect(audio.player.mix);
       if (audio.beat.isOnset()) {
         pulse    = 1.0;
         rotation += 0.08;      // spin jolt on beat
@@ -53,7 +66,7 @@ class CatsCradleScene {
     }
     pulse    *= 0.88;
     phase    += 0.04;
-    rotation += 0.002;
+    rotation += rotationSpeed;
 
     // --- layout ---------------------------------------------------------
     float baseRadius = min(width, height) * 0.38;

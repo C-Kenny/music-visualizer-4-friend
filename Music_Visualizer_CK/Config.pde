@@ -90,6 +90,8 @@ class Config {
 
   boolean LOGGING_ENABLED;
 
+  boolean RAINBOW_FINS;
+
   boolean SCREEN_RECORDING;
   boolean SHOW_CODE;
 
@@ -190,6 +192,8 @@ class Config {
     SONG_NAME = "";
 
     USING_CONTROLLER = false;
+
+    RAINBOW_FINS = false;
 
     SCREEN_RECORDING = false;
     SHOW_CODE = false;
