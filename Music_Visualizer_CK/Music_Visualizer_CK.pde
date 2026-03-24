@@ -21,6 +21,9 @@ PrismCodexScene prismCodex;
 TableTennisScene tableTennis;
 WormScene wormScene;
 FFTWormScene fftWorm;
+AuroraRibbonsScene auroraRibbons;
+RadialFFTScene radialFFT;
+SpirographScene spirograph;
 PFont monoFont;
 
 BezierHeart bezier_heart_0;
@@ -369,8 +372,11 @@ void setup() {
   halo2Logo = new Halo2LogoScene();
   prismCodex = new PrismCodexScene();
   tableTennis = new TableTennisScene();
-  wormScene = new WormScene();
-  fftWorm   = new FFTWormScene();
+  wormScene     = new WormScene();
+  fftWorm       = new FFTWormScene();
+  auroraRibbons = new AuroraRibbonsScene();
+  radialFFT     = new RadialFFTScene();
+  spirograph    = new SpirographScene();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
@@ -979,6 +985,21 @@ public void getUserInput(boolean usingController) {
     fftWorm.applyController(controller);
   }
 
+  // aurora ribbons
+  if (config.STATE == 10 && auroraRibbons != null) {
+    auroraRibbons.applyController(controller);
+  }
+
+  // radial fft
+  if (config.STATE == 11 && radialFFT != null) {
+    radialFFT.applyController(controller);
+  }
+
+  // spirograph
+  if (config.STATE == 12 && spirograph != null) {
+    spirograph.applyController(controller);
+  }
+
   // map controller sticks to Shapes3DScene parameters for live tuning
   if (config.STATE == 3 && shapes3D != null) {
     // controller.* values are mapped to screen coords (0..width or 0..height) by Controller
@@ -1051,7 +1072,7 @@ int previous_state = -1;
 // ── Active scene list ─────────────────────────────────────────────────────────
 // Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
 // in the codebase but excluded from rotation for now.
-final int[] SCENE_ORDER = {1, 3, 9, 8, 2, 4, 5, 6, 7};
+final int[] SCENE_ORDER = {1, 3, 9, 8, 2, 4, 5, 6, 7, 10, 11, 12};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -1396,12 +1417,30 @@ void draw() {
     fftWorm.drawScene();
     addFPSToTitleBar();
     break;
+  case 10:
+    getUserInput(config.USING_CONTROLLER);
+    auroraRibbons.drawScene();
+    addFPSToTitleBar();
+    break;
+  case 11:
+    getUserInput(config.USING_CONTROLLER);
+    radialFFT.drawScene();
+    addFPSToTitleBar();
+    break;
+  case 12:
+    getUserInput(config.USING_CONTROLLER);
+    spirograph.drawScene();
+    addFPSToTitleBar();
+    break;
   }
 
   // ── Per-scene controls HUD (` to toggle) ────────────────────────────────────
   if (config.STATE == 1  && config.SHOW_CODE) drawControlsHUD();
   if (config.STATE == 3  && config.SHOW_CODE) drawSceneControlsHUD(wormScene.getCodeLines());
   if (config.STATE == 9  && config.SHOW_CODE) drawSceneControlsHUD(fftWorm.getCodeLines());
+  if (config.STATE == 10 && config.SHOW_CODE) drawSceneControlsHUD(auroraRibbons.getCodeLines());
+  if (config.STATE == 11 && config.SHOW_CODE) drawSceneControlsHUD(radialFFT.getCodeLines());
+  if (config.STATE == 12 && config.SHOW_CODE) drawSceneControlsHUD(spirograph.getCodeLines());
 
   // ── Crossfade overlay ───────────────────────────────────────────────────────
   // Drawn after every scene so it always sits on top.
