@@ -74,7 +74,6 @@ class Shapes3DScene {
 
     // audio-driven pulse
     if (audio != null) {
-      audio.beat.detect(audio.player.mix);
       if (audio.beat.isOnset()) {
         pulse = 1.0;
         angle += 0.18;
