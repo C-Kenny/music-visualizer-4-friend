@@ -1589,9 +1589,12 @@ void drawCodeOverlay(String[] lines) {
   blendMode(BLEND);
   pushStyle();
   textFont(monoFont);
+  textSize(13 * uiScale());
   float lineH = 18 * uiScale();
   float pad   = 14 * uiScale();
-  float boxW  = 360 * uiScale();
+  float maxLineW = 0;
+  for (String l : lines) maxLineW = max(maxLineW, textWidth(l));
+  float boxW  = maxLineW + pad * 2;
   float boxH  = pad * 2 + lines.length * lineH;
   float boxX  = 12 * uiScale();
   float boxY  = (height - boxH) / 2.0;
@@ -1601,7 +1604,7 @@ void drawCodeOverlay(String[] lines) {
   stroke(0, 220, 80, 180); strokeWeight(1.5); noFill();
   rect(boxX, boxY, boxW, boxH, 6);
 
-  textAlign(LEFT, TOP); textSize(13 * uiScale());
+  textAlign(LEFT, TOP);
   float tx = boxX + pad, ty = boxY + pad;
   for (int i = 0; i < lines.length; i++) {
     String line = lines[i];
