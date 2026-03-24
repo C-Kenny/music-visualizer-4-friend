@@ -39,6 +39,10 @@ class ParticleFountainScene {
 
   int   MAX_PARTICLES  = 1200;
 
+  // Object pool: pre-allocate all Particles at startup, recycle dead ones.
+  // This eliminates ~60 allocations/frame and prevents GC stutter during loud sections.
+  ArrayList<Particle> pool = new ArrayList<Particle>();
+
   // emission origin (screen coords) — user can nudge this with WASD
   float origin_x;
   float origin_y;
@@ -61,6 +65,7 @@ class ParticleFountainScene {
   ParticleFountainScene() {
     origin_x = width  / 2.0;
     origin_y = height / 2.0;
+    for (int i = 0; i < MAX_PARTICLES; i++) pool.add(new Particle());
   }
 
   // ── getCodeLines ──────────────────────────────────────────────────────────
@@ -108,8 +113,6 @@ class ParticleFountainScene {
     mid_level  /= max(1, mid_end  - bass_end);
     high_level /= max(1, fft_size - mid_end);
 
-    // beat detection
-    audio.beat.detect(audio.player.mix);
     boolean is_beat = audio.beat.isOnset();
 
     // --- aim toward mouse when not using controller -----------------
@@ -146,9 +149,10 @@ class ParticleFountainScene {
       p.y   += p.vy;
       p.life -= p.life_decay;
 
-      // remove dead or off-screen particles
+      // remove dead or off-screen particles — return to pool for reuse
       if (p.life <= 0 || p.x < -50 || p.x > width + 50 || p.y > height + 50) {
         particles.remove(i);
+        pool.add(p);
         continue;
       }
 
@@ -276,7 +280,8 @@ class ParticleFountainScene {
   Particle makeParticle(float x, float y, float vx, float vy,
                         float size, float hue, float sat,
                         float life_decay, int band) {
-    Particle p   = new Particle();
+    // Pull from pool if available, otherwise allocate (only during initial warmup)
+    Particle p = pool.size() > 0 ? pool.remove(pool.size() - 1) : new Particle();
     p.x          = x;
     p.y          = y;
     p.vx         = vx;
@@ -328,8 +333,10 @@ class ParticleFountainScene {
     emit_spread         = map(rx, -1, 1, radians(10), TWO_PI);
     gravity             = map(ry, -1, 1, -0.2, 0.6);
 
-    // left trigger → reduce emission rate (hold to thin out the fountain)
-    float left_trigger   = map(c.stick.getSlider("lt").getValue(), -1, 1, 0, 1);
-    emit_rate_multiplier = map(left_trigger, 0, 1, 1.0, 0.1);
+    // left trigger → reduce emission rate (LT half of shared z axis)
+    try {
+      float z = c.stick.getSlider("z").getValue(); // -1=LT full, +1=RT full
+      emit_rate_multiplier = map(z, -1, 1, 0.1, 1.0);
+    } catch (Exception e) { /* no z axis on this controller */ }
   }
 }

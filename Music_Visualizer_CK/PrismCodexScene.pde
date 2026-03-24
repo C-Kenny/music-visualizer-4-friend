@@ -5,8 +5,27 @@ class PrismCodexScene {
   float spin = 0.0;
   float beatGlow = 0.0;
   float latticeDrift = 0.0;
+  float spinSpeed   = 0.0025; // controllable (default matches original)
+  float driftSpeed  = 0.35;   // controllable latticeDrift increment
+
+  // Pre-allocated node buffers — reused every frame to avoid per-frame array allocation
+  float[][] nodeX = { new float[6], new float[10], new float[14] };
+  float[][] nodeY = { new float[6], new float[10], new float[14] };
 
   PrismCodexScene() {}
+
+  void applyController(Controller c) {
+    // L Stick ↕ → spin speed (up = faster)
+    float ly = map(c.ly, 0, height, -1, 1);
+    spinSpeed = map(ly, -1, 1, 0.010, 0.0003);
+
+    // R Stick ↕ → lattice drift speed (up = faster)
+    float ry = map(c.ry, 0, height, -1, 1);
+    driftSpeed = map(ry, -1, 1, 2.0, 0.05);
+
+    // A button → inject a manual glow flash
+    if (c.a_just_pressed) beatGlow = 1.0;
+  }
 
   String[] getCodeLines() {
     return new String[] {
@@ -29,14 +48,12 @@ class PrismCodexScene {
   }
 
   void drawScene() {
-    audio.forward();
-    audio.beat.detect(audio.player.mix);
     if (audio.beat.isOnset()) {
       beatGlow = 1.0;
     }
     beatGlow *= 0.92;
-    spin += 0.0025;
-    latticeDrift += 0.35;
+    spin += spinSpeed;
+    latticeDrift += driftSpeed;
 
     float lowEnergy = getAverageBandEnergy(0.00, 0.18);
     float midEnergy = getAverageBandEnergy(0.18, 0.52);
@@ -101,16 +118,10 @@ class PrismCodexScene {
     int[] nodeCounts = { 6, 10, 14 };
     float baseRadius = min(width, height) * 0.13;
 
-    float[][] nodeX = new float[3][];
-    float[][] nodeY = new float[3][];
-
     for (int ring = 0; ring < 3; ring++) {
       float ringEnergy = energies[ring];
       float radius = baseRadius * (ring + 1) * (1.0 + ringEnergy * 0.05 + beatGlow * 0.04);
       float ringRotation = spin * (ring % 2 == 0 ? 1.0 : -1.35) + ring * PI / 7.0;
-
-      nodeX[ring] = new float[nodeCounts[ring]];
-      nodeY[ring] = new float[nodeCounts[ring]];
 
       noFill();
       stroke(80 + ring * 50, 120 + ring * 35, 220 + ring * 10, 85);

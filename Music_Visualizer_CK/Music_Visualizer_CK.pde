@@ -19,6 +19,8 @@ ParticleFountainScene particleFountain;
 Halo2LogoScene halo2Logo;
 PrismCodexScene prismCodex;
 TableTennisScene tableTennis;
+WormScene wormScene;
+FFTWormScene fftWorm;
 PFont monoFont;
 
 BezierHeart bezier_heart_0;
@@ -38,6 +40,11 @@ float s1OffsetX = 0;
 float heartBeatDecay   = 0;    // beat impulse, decays to 0 between beats
 float heartHue         = 0;    // current hue (0–360), smoothly lerped
 float heartTargetHue   = 0;    // hue we're drifting toward
+
+// Scene 2 zoom/pan — R stick zooms toward stick direction, releases ease back out
+float heartZoom        = 1.0;  // current zoom level (1.0 = no zoom)
+float heartFocusNX     = 0.0;  // zoom focus, normalised -1..1 from center (X)
+float heartFocusNY     = 0.0;  // zoom focus, normalised -1..1 from center (Y)
 
 // UI scale: 1.0 at 1080p, grows proportionally for higher resolutions.
 // Use uiScale() for textSize, strokeWeight, and HUD rect sizes.
@@ -136,6 +143,7 @@ void setupController() {
   if (controller.isConnected()) {
     config.USING_CONTROLLER = true;
     config.TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins";
+    controller.debugPrintControls();
   }
   log_to_stdo("USING CONTROLLER? " + config.USING_CONTROLLER);
 }
@@ -209,6 +217,22 @@ void setSongToVisualize() {
   log_to_stdo("user.dir     = " + System.getProperty("user.dir"));
   boolean useRandomSong = isDevMode();
   if (useRandomSong) {
+    // Dev shortcut: if .devsong exists, always use that song while developing.
+    // e.g.  echo "/home/user/Music/song.mp3" > Music_Visualizer_CK/.devsong
+    try {
+      java.io.File devSongFile = new java.io.File(sketchPath(".devsong"));
+      if (devSongFile.exists()) {
+        String devSongPath = join(loadStrings(devSongFile.getAbsolutePath()), "").trim();
+        if (new java.io.File(devSongPath).exists()) {
+          config.SONG_TO_VISUALIZE = devSongPath;
+          config.SONG_NAME = getSongNameFromFilePath(devSongPath, config.OS_TYPE);
+          config.STATE = 1;
+          log_to_stdo("Dev song: " + config.SONG_TO_VISUALIZE);
+          return;
+        }
+      }
+    } catch (Exception e) { /* ignore */ }
+
     java.io.File musicDir = new java.io.File(System.getProperty("user.home"), "Music");
     if (config.songList.size() == 0) {
       collectSongs(musicDir, config.songList);
@@ -345,7 +369,18 @@ void setup() {
   halo2Logo = new Halo2LogoScene();
   prismCodex = new PrismCodexScene();
   tableTennis = new TableTennisScene();
+  wormScene = new WormScene();
+  fftWorm   = new FFTWormScene();
   monoFont = createFont("Monospaced", 15, true);
+  // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
+  // e.g.  echo 6 > Music_Visualizer_CK/.devscene
+  try {
+    java.io.File devScene = new java.io.File(sketchPath(".devscene"));
+    if (devScene.exists()) {
+      String raw = join(loadStrings(devScene.getAbsolutePath()), "").trim();
+      config.STATE = Integer.parseInt(raw);
+    }
+  } catch (Exception e) { /* ignore — missing or malformed file */ }
   // load Halo 3 emblem used as reference for colors and texture
   h3_emblem = loadImage("../media/h3_emblem.jpg");
 }
@@ -430,17 +465,32 @@ void drawInnerCircle() {
 }
 
 void stop() {
+  if (tableTennis != null) tableTennis.closeScoreLog();
   audio.stop();
   super.stop();
 }
 
 void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
-  stroke(7);
   strokeWeight(5);
   float xOffset = -20;
-  float yOffset = -50;
-  yOffset = config.BEZIER_Y_OFFSET;
-  for (int i=0; i<fins; i++) {
+  float yOffset = config.BEZIER_Y_OFFSET;
+
+  // Switch colour mode once before the loop, not once per fin
+  if (config.RAINBOW_FINS) colorMode(HSB, 360, 255, 255);
+  for (int i = 0; i < fins; i++) {
+    // Per-fin colour: in rainbow mode each fin gets its own hue, slowly cycling.
+    // The hue drifts with frameCount so the whole mandala shifts over time,
+    // and the GLOBAL_REDNESS ties it loosely to the music energy.
+    if (config.RAINBOW_FINS) {
+      float hue = (((float)i / fins) * 360 + frameCount * 0.4 + config.GLOBAL_REDNESS * 60) % 360;
+      stroke(hue, 220, 255);
+      fill(config.APPEAR_HAND_DRAWN ? color(hue, 200, 200, 100) : color(0, 0));
+    } else {
+      stroke(7);
+      if (config.APPEAR_HAND_DRAWN) fill(247, 9, 143, 100);
+      else noFill();
+    }
+
     pushMatrix();
       float rotationAmount = (2 * (i / fins) * PI);
       if (finRotationClockWise == true) {
@@ -451,11 +501,6 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
       float random_noise_spin = random(0.01, 0.99);
       rotate( (radians(frameCount + random_noise_spin) / 2.0) );
       rotate(rotationAmount);
-      if (config.APPEAR_HAND_DRAWN) {
-        fill(247,9,143, 100);
-      } else {
-        noFill();
-      }
       bezier(
         -36 + xOffset,-126 + yOffset,
         -36 + xOffset,-126 + yOffset,
@@ -468,7 +513,7 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
         -10 + xOffset,-88 + yOffset,
         -22 + xOffset,-52 + yOffset
       );
-    bezier(
+      bezier(
         -22 + xOffset,-52 + yOffset,
         -22 + xOffset,-52 + yOffset,
         20 + xOffset,-74 + yOffset,
@@ -476,6 +521,7 @@ void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
       );
     popMatrix();
   }
+  if (config.RAINBOW_FINS) colorMode(RGB, 255);
 }
 
 void applyBlendModeOnDrop(int intensityOutOfTen) {
@@ -617,10 +663,17 @@ void keyPressed() {
   if (key == 'i' || key == 'I') {
     config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
-  if (key >= '0' && key <= '9') {
+  if (key >= '1' && key <= '9') {
     int newState = (int) key - 48;
-    log_to_stdo("Switching to state: " + newState);
-    switchScene(newState);
+    // Only allow switching to active scenes (3 and 9 are disabled)
+    if (_sceneOrderIndex(newState) >= 0 || newState == SCENE_ORDER[0]) {
+      boolean inRotation = false;
+      for (int s : SCENE_ORDER) { if (s == newState) { inRotation = true; break; } }
+      if (inRotation) {
+        log_to_stdo("Switching to state: " + newState);
+        switchScene(newState);
+      }
+    }
   }
   // Table Tennis tuning keys (state 6 only)
   if (config.STATE == 6 && tableTennis != null) {
@@ -824,14 +877,18 @@ public void getUserInput(boolean usingController) {
 
   controller.read();
 
-  config.BEZIER_Y_OFFSET = (controller.ly - (height/2)) - 12;
-  config.WAVE_MULTIPLIER = (controller.ry % (height/5)) + 25;
-  config.DIAMOND_WIDTH_OFFSET = ((controller.rx - (height/10)) / 5.0) - 80;
-  config.DIAMOND_HEIGHT_OFFSET = ((controller.ry - (height/10)) / 5.0) - 80;
-  
-  float l_trigger_depletion = map(controller.stick.getSlider("lt").getValue(), -1, 1, -2, 6);
-  int tunnel_zoom_amount_by_controller = int(l_trigger_depletion);
-  config.TUNNEL_ZOOM_INCREMENT = config.TUNNEL_ZOOM_INCREMENT + tunnel_zoom_amount_by_controller;
+  // Scene 1 exclusive: sticks control fins/wave/diamonds and tunnel zoom
+  if (config.STATE == 1) {
+    config.BEZIER_Y_OFFSET = (controller.ly - (height/2)) - 12;
+    config.WAVE_MULTIPLIER = (controller.ry % (height/5)) + 25;
+    config.DIAMOND_WIDTH_OFFSET = ((controller.rx - (height/10)) / 5.0) - 80;
+    config.DIAMOND_HEIGHT_OFFSET = ((controller.ry - (height/10)) / 5.0) - 80;
+
+    try {
+      float l_trigger_depletion = map(controller.stick.getSlider("lt").getValue(), -1, 1, -2, 6);
+      config.TUNNEL_ZOOM_INCREMENT += int(l_trigger_depletion);
+    } catch (Exception e) { /* no lt axis */ }
+  }
 
   if (controller.dpad_hat_switch_up) {
    config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
@@ -860,6 +917,27 @@ public void getUserInput(boolean usingController) {
    config.DRAW_PLASMA = false;
   }
 
+  // Scene 2: heart grid
+  if (config.STATE == 2) {
+    // L Stick ↔ → number of columns
+    float lx_norm = map(controller.lx, 0, width, -1, 1);
+    config.HEART_COLS = constrain(round(map(lx_norm, -1, 1, 3, 15)), 3, 15);
+
+    // R Stick → zoom toward stick direction; release to ease back out
+    float rx_norm = map(controller.rx, 0, width, -1, 1);
+    float ry_norm = map(controller.ry, 0, height, -1, 1);
+    float stickMag = sqrt(rx_norm * rx_norm + ry_norm * ry_norm);
+    if (stickMag > 0.15) {
+      heartZoom = min(heartZoom + 0.02, 3.5);
+      heartFocusNX = lerp(heartFocusNX, rx_norm, 0.04);
+      heartFocusNY = lerp(heartFocusNY, ry_norm, 0.04);
+    } else {
+      heartZoom = max(heartZoom - 0.015, 1.0);
+      heartFocusNX *= 0.95;
+      heartFocusNY *= 0.95;
+    }
+  }
+
   // oscilloscope live tuning via controller (only when on that scene)
   if (config.STATE == 5 && oscilloscope != null) {
     oscilloscope.applyController(controller);
@@ -868,8 +946,37 @@ public void getUserInput(boolean usingController) {
   // particle fountain controller input
   if (config.STATE == 8 && particleFountain != null) {
     particleFountain.applyController(controller);
-    if (controller.a_just_pressed) particleFountain.triggerBurst();
     if (controller.b_just_pressed) particleFountain.long_trail = !particleFountain.long_trail;
+  }
+
+  // cats cradle live tuning
+  if (config.STATE == 4 && catsCradle != null) {
+    catsCradle.applyController(controller);
+  }
+
+  // table tennis live tuning
+  if (config.STATE == 6 && tableTennis != null) {
+    tableTennis.applyController(controller);
+  }
+
+  // prism codex live tuning
+  if (config.STATE == 7 && prismCodex != null) {
+    prismCodex.applyController(controller);
+  }
+
+  // halo 2 logo live tuning
+  if (config.STATE == 9 && halo2Logo != null) {
+    halo2Logo.applyController(controller);
+  }
+
+  // worm colony
+  if (config.STATE == 3 && wormScene != null) {
+    wormScene.applyController(controller);
+  }
+
+  // fft worm
+  if (config.STATE == 9 && fftWorm != null) {
+    fftWorm.applyController(controller);
   }
 
   // map controller sticks to Shapes3DScene parameters for live tuning
@@ -894,19 +1001,24 @@ public void getUserInput(boolean usingController) {
     shapes3D.setPulseSensitivity(pulseS);
   }
 
-  if (controller.b_just_pressed) {
+  boolean wormScene_active = (config.STATE == 3 || config.STATE == 9);
+
+  if (controller.b_just_pressed && !wormScene_active) {
     changeBlendMode();
   }
 
-  if (controller.a_just_pressed) {
-    cycleHandDrawn();
+  if (controller.a_just_pressed && !wormScene_active) {
+    switch (config.STATE) {
+      case 8:  if (particleFountain != null) particleFountain.triggerBurst(); break;
+      default: config.RAINBOW_FINS = !config.RAINBOW_FINS; break;
+    }
   }
 
-  if (controller.y_just_pressed) {
-    changeFinRotation();
+  if (controller.y_just_pressed && !wormScene_active) {
+    if (config.STATE != 9) changeFinRotation();
   }
 
-  if (controller.x_just_pressed) {
+  if (controller.x_just_pressed && !wormScene_active) {
     config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
   }
 
@@ -918,20 +1030,15 @@ public void getUserInput(boolean usingController) {
     startSong();
   }
 
-  if (controller.lb_just_pressed) {
-    config.EPILEPSY_MODE_ON = !config.EPILEPSY_MODE_ON;
-  }
-
-  if (controller.rb_just_pressed) {
-    config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
-  }
+  if (controller.lb_just_pressed) switchScene(prevActiveScene());
+  if (controller.rb_just_pressed) switchScene(nextActiveScene());
 
   if (controller.lstickclick_just_pressed) {
-    config.DRAW_DIAMONDS = !config.DRAW_DIAMONDS;
+    config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
   }
 
   if (controller.rstickclick_just_pressed) {
-    config.DRAW_FINS = !config.DRAW_FINS;
+    config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
 }
 
@@ -940,6 +1047,28 @@ void setBackGroundFillMode(){
 }
 
 int previous_state = -1;
+
+// ── Active scene list ─────────────────────────────────────────────────────────
+// Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
+// in the codebase but excluded from rotation for now.
+final int[] SCENE_ORDER = {1, 3, 9, 8, 2, 4, 5, 6, 7};
+
+int _sceneOrderIndex(int state) {
+  for (int i = 0; i < SCENE_ORDER.length; i++) {
+    if (SCENE_ORDER[i] == state) return i;
+  }
+  return 0; // default to first if current scene not in list
+}
+
+int nextActiveScene() {
+  int idx = (_sceneOrderIndex(config.STATE) + 1) % SCENE_ORDER.length;
+  return SCENE_ORDER[idx];
+}
+
+int prevActiveScene() {
+  int idx = (_sceneOrderIndex(config.STATE) - 1 + SCENE_ORDER.length) % SCENE_ORDER.length;
+  return SCENE_ORDER[idx];
+}
 
 // ── Scene crossfade ───────────────────────────────────────────────────────────
 // When switchScene() is called, we capture the current frame as a frozen
@@ -962,11 +1091,14 @@ void draw() {
   // occasional log to show current state
   if (frameCount % 240 == 0) println("Main draw state=" + config.STATE);
 
-  // clear canvas on first frame of a scene switch so previous scene doesn't bleed through
   if (config.STATE != previous_state) {
-    background(0);
     previous_state = config.STATE;
   }
+
+  // Audio analysis — run once per frame so every scene reads the same snapshot.
+  // Calling forward() or beat.detect() inside individual scenes is redundant and wastes CPU.
+  audio.forward();
+  audio.beat.detect(audio.player.mix);
 
   switch(config.STATE){
     case 0:
@@ -997,21 +1129,19 @@ void draw() {
       h2.setSeed(420);
     }
   
-    audio.forward();
-  
     stroke(216, 16, 246, 128);
     strokeWeight(8);
   
     int msSinceProgStart = millis();
     if (msSinceProgStart > config.LAST_FIN_CHECK + 10000) {
       config.canChangeFinDirection = true;
-      config.LAST_FIN_CHECK = millis();
+      config.LAST_FIN_CHECK = msSinceProgStart;
     }
-  
+
     if (msSinceProgStart > config.LAST_PLASMA_CHECK + 10000) {
       config.canChangePlasmaFlow = true;
       config.PLASMA_INCREMENTING = !config.PLASMA_INCREMENTING;
-      config.LAST_PLASMA_CHECK = millis();
+      config.LAST_PLASMA_CHECK = msSinceProgStart;
     }
   
     splitFrequencyIntoLogBands();
@@ -1019,11 +1149,7 @@ void draw() {
     strokeWeight(2);
   
     stroke(255);
-    float r_line = (frameCount % 255) / 10;
-    float g_line = (frameCount % 255) - 75;
-    float b_line = (frameCount % 255);
-    
-    audio.beat.detect(audio.player.mix);
+
     if (audio.beat.isOnset() ){
       log_to_stdo("Beat onset detected");
       config.TUNNEL_ZOOM_INCREMENT = (config.TUNNEL_ZOOM_INCREMENT + 3) % 10000;
@@ -1041,7 +1167,7 @@ void draw() {
       fill(255, 76, 52);
     } else {
       fill(255);
-      background(200);
+      if (config.BACKGROUND_ENABLED) background(200);
     }
     
     if (config.DRAW_TUNNEL) {
@@ -1057,14 +1183,18 @@ void draw() {
     }
     
      if (config.DRAW_WAVEFORM) {
+      // Colour computed here — only when waveform is actually visible
+      float r_line = (frameCount % 255) / 10.0;
+      float g_line = (frameCount % 255) - 75;
+      float b_line = (frameCount % 255);
+      int   wBufSz = audio.player.bufferSize();
       pushStyle();
         strokeWeight(4);
         strokeCap(ROUND);
-        for(int i = 0; i < audio.player.bufferSize() - 1; i++) {
-          float x1 = map( i, 0, audio.player.bufferSize(), 0, s1Size );
-          float x2 = map( i+1, 0, audio.player.bufferSize(), 0, s1Size );
-
-          stroke(r_line, g_line, b_line);
+        stroke(r_line, g_line, b_line);  // set once, not inside the loop
+        for(int i = 0; i < wBufSz - 1; i++) {
+          float x1 = map( i,   0, wBufSz, 0, s1Size );
+          float x2 = map( i+1, 0, wBufSz, 0, s1Size );
           line( x1, s1Size/2.0 + audio.player.right.get(i)*config.WAVE_MULTIPLIER, x2, s1Size/2.0 + audio.player.right.get(i+1)*config.WAVE_MULTIPLIER );
         }
       popStyle();
@@ -1144,8 +1274,8 @@ void draw() {
     addFPSToTitleBar();
    break;
   case 2:
+    getUserInput(config.USING_CONTROLLER);
     background(0);
-    audio.forward();
 
     // Natural bounding box of one heart at scale=1:
     //   x: -443 (leftmost ctrl pt) to 388 (rightmost ctrl pt)  → width  = 831
@@ -1157,8 +1287,6 @@ void draw() {
       float baseScale = width / (config.HEART_COLS * HEART_NAT_W);
       float cellH     = HEART_NAT_H;
       int   rows      = ceil(height / (cellH * baseScale)) + 1;
-
-      audio.beat.detect(audio.player.mix);
 
       // Baseline breath: gentle sine wave so hearts always move subtly
       float breath = sin(frameCount * 0.03) * 12;
@@ -1192,14 +1320,22 @@ void draw() {
 
       config.HEART_PULSE = breath + heartBeatDecay;
 
-      for (int row = 0; row < rows; row++) {
-        for (int col = 0; col < config.HEART_COLS; col++) {
-          float xOff = col * HEART_NAT_W + 443.0;
-          float yOff = row * HEART_NAT_H;
-          BezierHeart heart = ((row + col) % 2 == 0) ? bezier_heart_0 : bezier_heart_1;
-          heart.drawBezierHeart(xOff, yOff, baseScale);
+      // Zoom toward R-stick direction
+      float focusX = width / 2.0 + heartFocusNX * width  * 0.25;
+      float focusY = height / 2.0 + heartFocusNY * height * 0.25;
+      pushMatrix();
+        translate(focusX, focusY);
+        scale(heartZoom);
+        translate(-focusX, -focusY);
+        for (int row = 0; row < rows; row++) {
+          for (int col = 0; col < config.HEART_COLS; col++) {
+            float xOff = col * HEART_NAT_W + 443.0;
+            float yOff = row * HEART_NAT_H;
+            BezierHeart heart = ((row + col) % 2 == 0) ? bezier_heart_0 : bezier_heart_1;
+            heart.drawBezierHeart(xOff, yOff, baseScale);
+          }
         }
-      }
+      popMatrix();
     }
 
     // HUD
@@ -1209,58 +1345,63 @@ void draw() {
       fill(0, 140);
       noStroke();
       rectMode(CORNER);
-      rect(8, 8, 230 * uiScale(), 8 + lh);
+      rect(8, 8, 280 * uiScale(), 8 + lh * 2);
       fill(255);
       textSize(ts);
       textAlign(LEFT, TOP);
-      text("Hearts: " + config.HEART_COLS + " cols  ([ ] to adjust)", 12, 12);
+      text("Hearts: " + config.HEART_COLS + " cols  (L ↔ to adjust)", 12, 12);
+      text("Zoom: " + nf(heartZoom, 1, 2) + "x  (R stick to zoom)", 12, 12 + lh);
     popStyle();
 
     addFPSToTitleBar();
     break;
   case 3:
-    background(210);
-    pushMatrix();
-      shapes3D.drawScene();
-    popMatrix();
+    getUserInput(config.USING_CONTROLLER);
+    wormScene.drawScene();
     addFPSToTitleBar();
     break;
   case 4:
+    getUserInput(config.USING_CONTROLLER);
     background(0);
     catsCradle.drawScene();
     if (config.SHOW_CODE) drawCodeOverlay(catsCradle.getCodeLines());
     addFPSToTitleBar();
     break;
   case 5:
-    audio.forward();
+    getUserInput(config.USING_CONTROLLER);
     oscilloscope.drawScene();
     if (config.SHOW_CODE) drawCodeOverlay(oscilloscope.getCodeLines());
     addFPSToTitleBar();
     break;
   case 6:
+    getUserInput(config.USING_CONTROLLER);
     tableTennis.drawScene();
     if (config.SHOW_CODE) drawCodeOverlay(tableTennis.getCodeLines());
     addFPSToTitleBar();
     break;
   case 7:
+    getUserInput(config.USING_CONTROLLER);
     prismCodex.drawScene();
     if (config.SHOW_CODE) drawCodeOverlay(prismCodex.getCodeLines());
     addFPSToTitleBar();
     break;
   case 8:
     getUserInput(config.USING_CONTROLLER);
-    audio.forward();
     particleFountain.drawScene();
     if (config.SHOW_CODE) drawCodeOverlay(particleFountain.getCodeLines());
     addFPSToTitleBar();
     break;
   case 9:
-    audio.forward();
-    halo2Logo.drawScene();
-    if (config.SHOW_CODE) drawCodeOverlay(halo2Logo.getCodeLines());
+    getUserInput(config.USING_CONTROLLER);
+    fftWorm.drawScene();
     addFPSToTitleBar();
     break;
   }
+
+  // ── Per-scene controls HUD (` to toggle) ────────────────────────────────────
+  if (config.STATE == 1  && config.SHOW_CODE) drawControlsHUD();
+  if (config.STATE == 3  && config.SHOW_CODE) drawSceneControlsHUD(wormScene.getCodeLines());
+  if (config.STATE == 9  && config.SHOW_CODE) drawSceneControlsHUD(fftWorm.getCodeLines());
 
   // ── Crossfade overlay ───────────────────────────────────────────────────────
   // Drawn after every scene so it always sits on top.
@@ -1269,7 +1410,6 @@ void draw() {
     crossfadeFrame++;
 
     // Beat-snap: if a beat lands when we're past the halfway point, finish early
-    audio.beat.detect(audio.player.mix);
     if (audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
       crossfadeFrame = CROSSFADE_DURATION;
     }
@@ -1278,6 +1418,7 @@ void draw() {
       crossfadeSnapshot = null;
     } else {
       float alpha = map(crossfadeFrame, 0, CROSSFADE_DURATION, 255, 0);
+      blendMode(BLEND);  // snapshot must use normal alpha blend, not the scene's blend mode
       tint(255, alpha);
       image(crossfadeSnapshot, 0, 0);
       noTint();
@@ -1285,8 +1426,124 @@ void draw() {
   }
 }
 
+// Generic right-side terminal HUD — used by worm scenes (and any future scene).
+void drawSceneControlsHUD(String[] lines) {
+  blendMode(BLEND);
+  pushStyle();
+  textFont(monoFont);
+  float lineH = 18 * uiScale();
+  float pad   = 14 * uiScale();
+  float boxW  = 360 * uiScale();
+  float boxH  = pad * 2 + lines.length * lineH;
+  float boxX  = width - boxW - 12 * uiScale();
+  float boxY  = (height - boxH) / 2.0;
+
+  fill(0, 0, 0, 210); noStroke(); rectMode(CORNER);
+  rect(boxX, boxY, boxW, boxH, 6);
+  stroke(0, 220, 80, 180); strokeWeight(1.5); noFill();
+  rect(boxX, boxY, boxW, boxH, 6);
+
+  textAlign(LEFT, TOP); textSize(13 * uiScale());
+  float tx = boxX + pad, ty = boxY + pad;
+  for (int i = 0; i < lines.length; i++) {
+    String line = lines[i];
+    if      (line.startsWith("===")) fill(0, 255, 120);
+    else if (line.equals(""))        fill(0, 0, 0, 0); // invisible spacer
+    else                             fill(180, 255, 180);
+    text(line, tx, ty + i * lineH);
+  }
+  popStyle();
+}
+
 // Draws a terminal-style code overlay showing the formulas a scene uses.
 // Each scene passes in plain-English lines explaining its maths.
+// Controls HUD for scene 1 — shown on the right side when ` is pressed.
+void drawControlsHUD() {
+  // pushStyle() does not save blend mode — reset explicitly so scene's active
+  // blend mode (EXCLUSION, ADD, etc.) doesn't invert/corrupt the HUD colours.
+  blendMode(BLEND);
+  String[] sections = {
+    "=== CONTROLLER (scene 1) ===",
+    "LB / RB          prev / next scene",
+    "L Stick ↕        fin Y offset",
+    "R Stick ↕        wave amplitude",
+    "R Stick ↔        diamond width",
+    "L Trigger        tunnel zoom",
+    "A                rainbow fins",
+    "B                cycle blend mode",
+    "X / L-Click      stacking / trails mode",
+    "Y                flip fin direction",
+    "R-Click          inner diamonds",
+    "D-pad ↑          toggle tunnel",
+    "D-pad ←          toggle plasma",
+    "D-pad →          toggle polar plasma",
+    "D-pad ↓          clear backgrounds",
+    "Start / Back     play / stop song",
+    "",
+    "=== CONTROLLER (other scenes) ===",
+    "2: R ↔           heart grid columns",
+    "4: L ↕           rotation speed",
+    "4: R ↔           anchor count",
+    "4: A             beat pulse",
+    "6: R ↕           gravity",
+    "6: L ↕           magnus spin",
+    "6: A             randomise spin",
+    "7: L ↕           spin speed",
+    "7: R ↕           lattice drift",
+    "7: A             glow flash",
+    "9: L ↕           pulse sensitivity",
+    "9: Y             cycle bg mode",
+    "9: A             manual pulse",
+    "",
+    "=== KEYBOARD ===",
+    "0–9              switch scene",
+    "`                toggle this HUD",
+    "t                tunnel",
+    "b                blend mode",
+    "d / >            diamonds",
+    "/                fins",
+    "w                waveform",
+    "n / N            next / shuffle song",
+  };
+
+  pushStyle();
+  textFont(monoFont);
+  float lineH = 18 * uiScale();
+  float pad   = 14 * uiScale();
+  float boxW  = 380 * uiScale();
+  float boxH  = pad * 2 + sections.length * lineH;
+  float boxX  = width - boxW - 12 * uiScale();
+  float boxY  = (height - boxH) / 2.0;
+
+  fill(0, 0, 0, 210);
+  noStroke();
+  rectMode(CORNER);
+  rect(boxX, boxY, boxW, boxH, 6);
+
+  stroke(0, 220, 80, 180);
+  strokeWeight(1.5);
+  noFill();
+  rect(boxX, boxY, boxW, boxH, 6);
+
+  textAlign(LEFT, TOP);
+  textSize(13 * uiScale());
+  float tx = boxX + pad;
+  float ty = boxY + pad;
+  for (int i = 0; i < sections.length; i++) {
+    String line = sections[i];
+    if (line.startsWith("===")) {
+      fill(0, 255, 120);
+    } else if (line.equals("")) {
+      // blank spacer — skip
+    } else {
+      fill(180, 255, 180);
+    }
+    text(line, tx, ty + i * lineH);
+  }
+  popStyle();
+  blendMode(config.CURRENT_BLEND_MODE_INDEX);  // restore scene blend mode
+}
+
 // Toggle with the backtick key (`).
 void drawCodeOverlay(String[] lines) {
   pushStyle();

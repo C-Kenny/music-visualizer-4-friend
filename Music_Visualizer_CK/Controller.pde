@@ -40,6 +40,15 @@ class Controller {
     return stick != null;
   }
 
+  // Print matched device name and all its controls — call once from setup for debugging
+  void debugPrintControls() {
+    println("=== Controller matched: " + stick.getName() + " ===");
+    for (ControlInput inp : stick.getInputs()) {
+      String type = (inp instanceof ControlHat) ? "HAT" : (inp instanceof ControlButton) ? "BUTTON" : "SLIDER";
+      println("  " + type + ": '" + inp.getName() + "'");
+    }
+  }
+
   void read() {
     lx = map(stick.getSlider("lx").getValue(), -1, 1, 0, width);
     ly = map(stick.getSlider("ly").getValue(), -1, 1, 0, height);
@@ -65,6 +74,13 @@ class Controller {
     dpad_hat_switch_down = stick.getHat("dpad").down();
     dpad_hat_switch_left = stick.getHat("dpad").left();
     dpad_hat_switch_right = stick.getHat("dpad").right();
+
+    // Debug: log values every 180 frames (~3s) so we can see if reads change
+    if (frameCount % 180 == 0) {
+      println("CTRL lx=" + nf(lx,1,2) + " ly=" + nf(ly,1,2) + " rx=" + nf(rx,1,2) + " ry=" + nf(ry,1,2)
+            + " A=" + a_button + " B=" + b_button + " X=" + x_button + " Y=" + y_button
+            + " dpad↑=" + dpad_hat_switch_up + " ↓=" + dpad_hat_switch_down);
+    }
 
     // Compute rising-edge flags
     a_just_pressed = a_button && !prev_a;

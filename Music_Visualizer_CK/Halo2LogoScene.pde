@@ -17,7 +17,12 @@ class Halo2LogoScene {
   PImage maskImg;       // white-where-logo-is mask
   PGraphics canvas;     // off-screen buffer that gets masked each frame
 
-  // logo placement
+  // Render at reduced resolution then scale up — avoids per-pixel Java loop bottleneck.
+  // RENDER_SCALE = 4 means 1/16th the pixels (e.g. 640×360 instead of 2560×1440).
+  final int RENDER_SCALE = 4;
+  int rW, rH;  // actual render dimensions
+
+  // logo placement (in screen coords; divide by RENDER_SCALE for render coords)
   float logoX, logoY;
   float logoW, logoH;
 
@@ -43,7 +48,10 @@ class Halo2LogoScene {
       return;
     }
 
-    // Scale logo to fit ~75% of the shorter screen dimension, keep aspect ratio
+    rW = width  / RENDER_SCALE;
+    rH = height / RENDER_SCALE;
+
+    // Scale logo to fit ~82% of the shorter screen dimension, keep aspect ratio
     float scale = min(width * 0.82, height * 0.82) / max(logo.width, logo.height);
     logoW = logo.width  * scale;
     logoH = logo.height * scale;
@@ -52,43 +60,42 @@ class Halo2LogoScene {
 
     buildMask();
 
-    canvas = createGraphics(width, height);
+    canvas = createGraphics(rW, rH);
     loaded = true;
   }
 
   // Build a grayscale mask where the logo pixels are WHITE (visible)
   // and the background is BLACK (hidden).
+  // Built at render resolution (rW × rH) to match the canvas.
   void buildMask() {
-    // Resize a copy of the logo to full screen size for pixel-perfect masking
+    int mW = rW;
+    int mH = rH;
+
+    // Logo dimensions and position scaled to render resolution
+    int lw = max(1, (int)(logoW / RENDER_SCALE));
+    int lh = max(1, (int)(logoH / RENDER_SCALE));
+    int ox = (int)(logoX / RENDER_SCALE);
+    int oy = (int)(logoY / RENDER_SCALE);
+
     PImage resized = logo.copy();
-    resized.resize((int)logoW, (int)logoH);
+    resized.resize(lw, lh);
     resized.loadPixels();
 
     // Auto-detect: sample a corner to decide if background is light or dark
-    int cornerColor = resized.pixels[0];
-    int cornerBrightness = (int) brightness(cornerColor);
-    boolean invertNeeded = cornerBrightness > 128; // white background → invert
+    boolean invertNeeded = brightness(resized.pixels[0]) > 128;
 
-    maskImg = createImage(width, height, RGB);
+    maskImg = createImage(mW, mH, RGB);
     maskImg.loadPixels();
 
-    // Fill mask black first
     for (int i = 0; i < maskImg.pixels.length; i++) {
       maskImg.pixels[i] = color(0);
     }
 
-    // Write resized logo into the mask region, inverting if needed
-    int ox = (int) logoX;
-    int oy = (int) logoY;
-    int lw = resized.width;
-    int lh = resized.height;
-
     for (int y = 0; y < lh; y++) {
       for (int x = 0; x < lw; x++) {
         int srcIdx = y * lw + x;
-        int dstIdx = (oy + y) * width + (ox + x);
+        int dstIdx = (oy + y) * mW + (ox + x);
         if (dstIdx < 0 || dstIdx >= maskImg.pixels.length) continue;
-
         float b = brightness(resized.pixels[srcIdx]);
         if (invertNeeded) b = 255 - b;
         maskImg.pixels[dstIdx] = color(b);
@@ -146,7 +153,6 @@ class Halo2LogoScene {
     mid  /= max(1, mid_end  - bass_end);
     high /= max(1, fft_size - mid_end);
 
-    audio.beat.detect(audio.player.mix);
     boolean is_beat = audio.beat.isOnset();
 
     // --- beat pulse -------------------------------------------------------
@@ -175,7 +181,7 @@ class Halo2LogoScene {
       translate(width / 2.0, height / 2.0);
       scale(currentScale);
       translate(-width / 2.0, -height / 2.0);
-      image(frame, 0, 0);
+      image(frame, 0, 0, width, height);  // scale rW×rH up to full screen
     popMatrix();
 
     // Subtle outer glow ring on beat
@@ -214,42 +220,43 @@ class Halo2LogoScene {
     g.colorMode(RGB, 255);
   }
 
-  // Scrolling plasma-style colour sweep
+  // Scrolling plasma-style colour sweep — rendered at rW×rH for performance
   void drawPlasmaSweep(PGraphics g, float bass, float mid, float high) {
     g.loadPixels();
     float t = frameCount * 0.015;
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        float nx = x / (float) width;
-        float ny = y / (float) height;
+    for (int y = 0; y < rH; y++) {
+      for (int x = 0; x < rW; x++) {
+        float nx = x / (float) rW;
+        float ny = y / (float) rH;
         float v  = sin(nx * 6 + t + bass * 0.4)
                  + sin(ny * 4 - t * 0.7 + mid * 0.3)
                  + sin((nx + ny) * 5 + t * 1.3 + high * 0.2);
         float h = (hueShift + v * 40) % 360;
         float s = 200 + high * 8;
         float b = 200 + bass * 10;
-        g.pixels[y * width + x] = g.color(h, constrain(s,0,255), constrain(b,0,255));
+        g.pixels[y * rW + x] = g.color(h, constrain(s,0,255), constrain(b,0,255));
       }
     }
     g.updatePixels();
   }
 
-  // Radial burst from center
+  // Radial burst from center — rendered at rW×rH for performance
   void drawRadialBurst(PGraphics g, float bass, float mid, float high) {
     g.loadPixels();
-    float cx = width / 2.0;
-    float cy = height / 2.0;
+    float cx = rW / 2.0;
+    float cy = rH / 2.0;
     float t  = frameCount * 0.02;
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
+    for (int y = 0; y < rH; y++) {
+      for (int x = 0; x < rW; x++) {
         float dx = x - cx;
         float dy = y - cy;
         float r  = sqrt(dx*dx + dy*dy);
         float a  = atan2(dy, dx);
-        float v  = sin(r * 0.04 - t * 2 + bass * 0.5)
-                 + sin(a * 3     + t     + mid  * 0.4);
+        // multiply r by RENDER_SCALE so spatial frequency matches full-res version
+        float v  = sin(r * 0.04 * RENDER_SCALE - t * 2 + bass * 0.5)
+                 + sin(a * 3                    + t     + mid  * 0.4);
         float h  = (hueShift + v * 50) % 360;
-        g.pixels[y * width + x] = g.color(h, 220, 230 + high * 5);
+        g.pixels[y * rW + x] = g.color(h, 220, 230 + high * 5);
       }
     }
     g.updatePixels();
@@ -293,5 +300,17 @@ class Halo2LogoScene {
 
   void adjustPulseSens(float delta) {
     pulseSens = constrain(pulseSens + delta, 0.05, 1.0);
+  }
+
+  void applyController(Controller c) {
+    // L Stick ↕ → pulse sensitivity (up = stronger pulse)
+    float ly = map(c.ly, 0, height, -1, 1);
+    pulseSens = map(ly, -1, 1, 1.0, 0.05);
+
+    // Y button → cycle background mode (B is global blend mode, so use Y here)
+    if (c.y_just_pressed) cycleBgMode();
+
+    // A button → trigger a manual scale pulse
+    if (c.a_just_pressed) targetScale = 1.0 + pulseSens * 0.9;
   }
 }
