@@ -140,8 +140,7 @@ class SceneMandala {
     this.dashDist += 0.2 * Config.DASH_LINE_SPEED;
     if (this.dashDist >= 10000 || this.dashDist <= -10000) this.dashDist = 0;
 
-    // ── Song name ─────────────────────────────────────────────────────────────
-    this._drawSongName(p, s);
+    // Song name is displayed in the nav bar by sketch.js — no need to draw it here too
 
     // ── Playback position bar ─────────────────────────────────────────────────
     if (audio.ready) {
