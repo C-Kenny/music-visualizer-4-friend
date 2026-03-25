@@ -23,7 +23,7 @@
       top: 0; left: 0;
     }
 
-    /* ── File picker overlay ─────────────────────────────────────────── */
+    /* ── Source picker overlay ───────────────────────────────────────── */
     #picker-ui {
       position: fixed;
       inset: 0;
@@ -33,7 +33,7 @@
       justify-content: center;
       background: #0a0a0a;
       z-index: 100;
-      gap: 24px;
+      gap: 28px;
     }
 
     #picker-ui h1 {
@@ -43,24 +43,84 @@
       text-shadow: 0 0 20px rgba(255,150,50,0.4);
     }
 
-    #picker-ui p {
-      color: #888;
-      font-size: 0.85rem;
+    /* ── Source buttons row ──────────────────────────────────────────── */
+    .source-buttons {
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
     }
 
+    .source-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 130px;
+      min-height: 110px;
+      padding: 18px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 2px solid #333;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      color: #ccc;
+      font-size: 0.95rem;
+      transition: border-color 0.18s, background 0.18s, color 0.18s, transform 0.12s;
+      user-select: none;
+    }
+
+    .source-btn:hover {
+      border-color: #ff9933;
+      background: rgba(255,153,51,0.08);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    .source-btn:active {
+      transform: translateY(0px);
+    }
+
+    .source-btn .btn-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .source-btn .btn-label {
+      font-weight: bold;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Divider ─────────────────────────────────────────────────────── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: min(440px, 90vw);
+      color: #444;
+      font-size: 0.8rem;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #333;
+    }
+
+    /* ── Drop zone (file source) ─────────────────────────────────────── */
     #drop-zone {
-      width: min(480px, 90vw);
-      min-height: 180px;
-      border: 2px dashed #444;
+      width: min(440px, 90vw);
+      min-height: 130px;
+      border: 2px dashed #333;
       border-radius: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 14px;
+      gap: 10px;
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
-      padding: 32px;
+      padding: 24px 32px;
       background: rgba(255,255,255,0.02);
     }
 
@@ -70,14 +130,9 @@
       background: rgba(255,153,51,0.06);
     }
 
-    #drop-zone .icon {
-      font-size: 3rem;
-      user-select: none;
-    }
-
     #drop-zone .label {
-      color: #ccc;
-      font-size: 1rem;
+      color: #bbb;
+      font-size: 0.95rem;
       text-align: center;
     }
 
@@ -89,12 +144,39 @@
 
     #file-input { display: none; }
 
+    /* ── System audio note ───────────────────────────────────────────── */
+    .system-note {
+      color: #555;
+      font-size: 0.72rem;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+
+    /* ── General hint ────────────────────────────────────────────────── */
     .hint {
       color: #444;
       font-size: 0.75rem;
       text-align: center;
       max-width: 400px;
       line-height: 1.6;
+    }
+
+    /* ── Error toast ─────────────────────────────────────────────────── */
+    #error-msg {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(180, 40, 40, 0.92);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      z-index: 200;
+      max-width: 90vw;
+      text-align: center;
     }
 
     /* Pulsing glow animation on title */
@@ -107,14 +189,37 @@
 </head>
 <body>
 
-  <!-- ── File picker UI (shown before song loads) ───────────────────────── -->
+  <!-- ── Source picker UI (shown before audio source is selected) ──────── -->
   <div id="picker-ui">
-    <h1>♫ Music Visualizer</h1>
+    <h1>🎵 Music Visualizer</h1>
 
+    <!-- Three source buttons -->
+    <div class="source-buttons">
+      <button class="source-btn" id="btn-file" title="Load an audio file">
+        <span class="btn-icon">📁</span>
+        <span class="btn-label">File</span>
+      </button>
+      <button class="source-btn" id="btn-mic" title="Visualize your microphone">
+        <span class="btn-icon">🎤</span>
+        <span class="btn-label">Mic</span>
+      </button>
+      <button class="source-btn" id="btn-system" title="Visualize system audio (Spotify, foobar, etc.)">
+        <span class="btn-icon">🖥️</span>
+        <span class="btn-label">System</span>
+      </button>
+    </div>
+
+    <p class="system-note">
+      System audio works natively on Chrome / Windows.<br>
+      macOS users need <a href="https://existential.audio/blackhole/" target="_blank" style="color:#777;text-decoration:underline;">BlackHole</a> virtual audio device.
+    </p>
+
+    <div class="divider">or drop a file</div>
+
+    <!-- Drag-and-drop zone (also acts as fallback file picker) -->
     <div id="drop-zone">
-      <span class="icon">🎵</span>
-      <span class="label">Drop your music here<br>or click to browse</span>
-      <span class="sub">MP3 · WAV · FLAC · OGG · AAC · M4A<br>Multiple files OK — use <kbd>n</kbd> / <kbd>N</kbd> to navigate</span>
+      <span class="label">Drag &amp; drop an audio file here</span>
+      <span class="sub">MP3 · WAV · FLAC · OGG · AAC · M4A &nbsp;·&nbsp; Multiple files OK — use <kbd>n</kbd> / <kbd>N</kbd> to navigate</span>
     </div>
 
     <input type="file" id="file-input" accept=".mp3,.wav,.flac,.ogg,.aac,.m4a" multiple />
@@ -124,6 +229,9 @@
       Works best in Chrome or Firefox at 120 Hz.
     </p>
   </div>
+
+  <!-- ── Error message toast ────────────────────────────────────────────── -->
+  <div id="error-msg"></div>
 
   <!-- ── p5.js library ──────────────────────────────────────────────────── -->
   <script src="lib/p5.min.js"></script>

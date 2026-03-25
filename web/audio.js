@@ -8,6 +8,8 @@
  *   audio.player.mix         → Float32Array waveform (current frame)
  *   audio.player.bufferSize()→ length of mix buffer
  *   audio.play() / pause() / stop() / skip(ms) / getGain() / setGain(db)
+ *   audio.setSourceFile(file) / setSourceMic() / setSourceSystem()
+ *   audio.sourceType         → "file" | "mic" | "system"
  */
 
 class AudioSystem {
@@ -32,6 +34,8 @@ class AudioSystem {
     this._pauseOffset = 0;     // accumulated playback offset in seconds
     this._audioBuffer = null;
     this._sampleRate = 44100;
+    this._stream = null;       // active MediaStream (mic/system)
+    this.sourceType = "file";  // "file" | "mic" | "system"
 
     // Public interface objects (mirroring Processing API surface)
     this.fft = {
@@ -71,13 +75,63 @@ class AudioSystem {
     this.player.length = () => this._duration;
   }
 
-  /** Load an audio File object (from file input or drag-drop). */
-  async loadFile(file) {
-    // Tear down any previous context
+  // ── Shared analyser setup ────────────────────────────────────────────────
+
+  _initAnalyser() {
+    this._analyser = this._ctx.createAnalyser();
+    this._analyser.fftSize = 2048;
+    this._analyser.smoothingTimeConstant = 0.8;
+    this._analyser.connect(this._ctx.destination);
+
+    this._timeDomain = new Float32Array(this._analyser.fftSize);
+    this._freqData = new Float32Array(this._analyser.frequencyBinCount);
+
+    // Build log-average band table (mirrors Minim's logAverages(22, 4))
+    this._buildLogBands(22, Config.bandsPerOctave);
+
+    // Reset beat history
+    this._beatHistory.fill(0);
+    this._beatHistoryIdx = 0;
+    this._beatOnset = false;
+  }
+
+  /** Stop and release any active MediaStream tracks. */
+  _releaseStream() {
+    if (this._stream) {
+      this._stream.getTracks().forEach(t => t.stop());
+      this._stream = null;
+    }
+  }
+
+  /** Tear down existing audio context and state. */
+  async _teardown() {
+    this._releaseStream();
+    if (this._source) {
+      try { this._source.disconnect(); } catch(e) {}
+      try { this._source.stop(); } catch(e) {}
+      this._source = null;
+    }
     if (this._ctx) {
       await this._ctx.close();
+      this._ctx = null;
     }
+    this._ready = false;
+    this._gainNode = null;
+    this._analyser = null;
+  }
 
+  // ── Source: File ─────────────────────────────────────────────────────────
+
+  /** Alias for loadFile — sets sourceType to "file". */
+  async setSourceFile(file) {
+    return this.loadFile(file);
+  }
+
+  /** Load an audio File object (from file input or drag-drop). */
+  async loadFile(file) {
+    await this._teardown();
+
+    this.sourceType = "file";
     this._ctx = new AudioContext();
     this._sampleRate = this._ctx.sampleRate;
 
@@ -86,7 +140,11 @@ class AudioSystem {
     this._duration = this._audioBuffer.duration;
     this._fileName = file.name;
 
-    // Build node graph
+    // Build node graph: BufferSource → Gain → Analyser → Destination
+    this._gainNode = this._ctx.createGain();
+    this._gainNode.connect(this._ctx.createGain()); // placeholder, replaced below
+
+    // Re-wire: gain → analyser → destination
     this._gainNode = this._ctx.createGain();
     this._analyser = this._ctx.createAnalyser();
     this._analyser.fftSize = 2048;
@@ -101,6 +159,11 @@ class AudioSystem {
     // Build log-average band table (mirrors Minim's logAverages(22, 4))
     this._buildLogBands(22, Config.bandsPerOctave);
 
+    // Reset beat state
+    this._beatHistory.fill(0);
+    this._beatHistoryIdx = 0;
+    this._beatOnset = false;
+
     this._ready = true;
     this._paused = false;
     this._pauseOffset = 0;
@@ -108,6 +171,76 @@ class AudioSystem {
     Config.SONG_NAME = file.name.replace(/\.[^.]+$/, '');
 
     this._startPlayback(0);
+    Config.SONG_PLAYING = true;
+  }
+
+  // ── Source: Microphone ───────────────────────────────────────────────────
+
+  /**
+   * Request microphone access and connect it to the analyser pipeline.
+   * Throws if permission is denied.
+   */
+  async setSourceMic() {
+    await this._teardown();
+
+    this.sourceType = "mic";
+    this._ctx = new AudioContext();
+    this._sampleRate = this._ctx.sampleRate;
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    this._stream = stream;
+
+    this._initAnalyser();
+
+    const source = this._ctx.createMediaStreamSource(stream);
+    source.connect(this._analyser);
+    this._source = source;
+
+    this._fileName = "🎤 Microphone";
+    this._duration = Infinity;
+    this._ready = true;
+    this._paused = false;
+
+    Config.SONG_NAME = "Microphone";
+    Config.SONG_PLAYING = true;
+  }
+
+  // ── Source: System audio ─────────────────────────────────────────────────
+
+  /**
+   * Request screen/tab audio capture and connect to the analyser pipeline.
+   * On Chrome/Windows this captures system audio natively.
+   * On macOS, BlackHole virtual device must be set as the default output.
+   * Throws if permission is denied or no audio track is available.
+   */
+  async setSourceSystem() {
+    await this._teardown();
+
+    this.sourceType = "system";
+    this._ctx = new AudioContext();
+    this._sampleRate = this._ctx.sampleRate;
+
+    const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: false });
+    this._stream = stream;
+
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      await this._teardown();
+      throw new Error("No audio track in display media stream. Make sure to check 'Share audio' in the browser dialog.");
+    }
+
+    this._initAnalyser();
+
+    const source = this._ctx.createMediaStreamSource(stream);
+    source.connect(this._analyser);
+    this._source = source;
+
+    this._fileName = "🖥️ System Audio";
+    this._duration = Infinity;
+    this._ready = true;
+    this._paused = false;
+
+    Config.SONG_NAME = "System Audio";
     Config.SONG_PLAYING = true;
   }
 
@@ -196,9 +329,11 @@ class AudioSystem {
   }
 
   // ── Playback controls ────────────────────────────────────────────────────────
+  // For mic/system sources, play/pause/stop/skip are no-ops (live stream).
 
   play() {
     if (!this._ready) return;
+    if (this.sourceType !== "file") return; // live stream — no-op
     if (this._paused) {
       this._startPlayback(this._pauseOffset);
     }
@@ -206,7 +341,9 @@ class AudioSystem {
   }
 
   pause() {
-    if (!this._ready || this._paused) return;
+    if (!this._ready) return;
+    if (this.sourceType !== "file") return; // live stream — no-op
+    if (this._paused) return;
     const elapsed = this._ctx.currentTime - this._startTime;
     this._pauseOffset = (this._pauseOffset + elapsed) % this._duration;
     try { this._source.stop(); } catch(e) {}
@@ -216,15 +353,17 @@ class AudioSystem {
 
   stop() {
     if (!this._ready) return;
+    if (this.sourceType !== "file") return; // live stream — no-op
     try { this._source.stop(); } catch(e) {}
     this._paused = true;
     this._pauseOffset = 0;
     Config.SONG_PLAYING = false;
   }
 
-  /** Skip forward (positive) or backward (negative) by ms milliseconds. */
+  /** Skip forward (positive) or backward (negative) by ms milliseconds. No-op for mic/system. */
   skip(ms) {
     if (!this._ready) return;
+    if (this.sourceType !== "file") return; // live stream — no-op
     const offset = (this._pauseOffset + (this._paused ? 0 : this._ctx.currentTime - this._startTime) + ms / 1000 + this._duration * 2) % this._duration;
     if (this._paused) {
       this._pauseOffset = offset;
@@ -233,16 +372,16 @@ class AudioSystem {
     }
   }
 
-  /** Returns gain in dB. */
+  /** Returns gain in dB. Returns 0 for mic/system (no gain node). */
   getGain() {
-    if (!this._gainNode) return 0;
+    if (this.sourceType !== "file" || !this._gainNode) return 0;
     // Convert linear to dB
     return 20 * Math.log10(Math.max(0.0001, this._gainNode.gain.value));
   }
 
-  /** Sets gain in dB. */
+  /** Sets gain in dB. No-op for mic/system. */
   setGain(db) {
-    if (!this._gainNode) return;
+    if (this.sourceType !== "file" || !this._gainNode) return;
     this._gainNode.gain.value = Math.pow(10, db / 20);
   }
 

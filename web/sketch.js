@@ -164,7 +164,10 @@ function _drawNavBar() {
   textAlign(CENTER, CENTER);
 
   const scenes = Object.entries(SCENE_NAMES);
-  const slotW  = width / scenes.length;
+  // Reserve right side for source badge
+  const badgeW = 90;
+  const navW   = width - badgeW;
+  const slotW  = navW / scenes.length;
 
   for (let i = 0; i < scenes.length; i++) {
     const [id, name] = scenes[i];
@@ -182,6 +185,21 @@ function _drawNavBar() {
     }
     text(name, cx, cy);
   }
+
+  // ── Source type badge (right side of nav bar) ─────────────────────────
+  const srcLabels = { file: '📁 File', mic: '🎤 Mic', system: '🖥️ System' };
+  const srcLabel  = srcLabels[audio.sourceType] || audio.sourceType;
+  const bx = width - badgeW;
+
+  noStroke();
+  fill(30, 30, 30, 200);
+  rect(bx + 4, barY + 4, badgeW - 8, barH - 8, 4);
+
+  fill(160, 200, 160, 220);
+  textSize(11);
+  textAlign(CENTER, CENTER);
+  text(srcLabel, bx + badgeW / 2, barY + barH / 2);
+
   pop();
 }
 
@@ -282,7 +300,7 @@ function switchScene(id) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function keyPressed() {
-  // Ignore keys until a song is loaded (except ?)
+  // Ignore keys until audio source is active (except ?)
   if (Config.STATE === 0 && key !== '?') return;
 
   // ── Scene switching ─────────────────────────────────────────────────────
@@ -448,19 +466,34 @@ function _setupFilePicker() {
   const dropZone    = document.getElementById('drop-zone');
   const fileInput   = document.getElementById('file-input');
   const pickerUI    = document.getElementById('picker-ui');
+  const btnFile     = document.getElementById('btn-file');
+  const btnMic      = document.getElementById('btn-mic');
+  const btnSystem   = document.getElementById('btn-system');
+  const errorMsg    = document.getElementById('error-msg');
 
   if (!dropZone || !fileInput || !pickerUI) return;
 
-  // Click to open file dialog
+  // ── Helper: show error temporarily ──────────────────────────────────
+  function showError(msg) {
+    if (!errorMsg) return;
+    errorMsg.textContent = msg;
+    errorMsg.style.display = 'block';
+    setTimeout(() => { errorMsg.style.display = 'none'; }, 5000);
+  }
+
+  // ── File button → open file dialog ──────────────────────────────────
+  if (btnFile) btnFile.addEventListener('click', () => fileInput.click());
+
+  // ── Drop zone click → open file dialog ──────────────────────────────
   dropZone.addEventListener('click', () => fileInput.click());
 
-  // File input change
+  // ── File input change ────────────────────────────────────────────────
   fileInput.addEventListener('change', (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 0) _loadFiles(files);
   });
 
-  // Drag-and-drop
+  // ── Drag-and-drop ────────────────────────────────────────────────────
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropZone.classList.add('drag-over');
@@ -474,13 +507,52 @@ function _setupFilePicker() {
     );
     if (files.length > 0) _loadFiles(files);
   });
+
+  // ── Mic button ───────────────────────────────────────────────────────
+  if (btnMic) {
+    btnMic.addEventListener('click', async () => {
+      try {
+        btnMic.disabled = true;
+        btnMic.style.opacity = '0.6';
+        await audio.setSourceMic();
+        _launchVisualizer();
+      } catch(err) {
+        console.error('Mic error:', err);
+        showError('Microphone access denied or unavailable: ' + err.message);
+      } finally {
+        btnMic.disabled = false;
+        btnMic.style.opacity = '';
+      }
+    });
+  }
+
+  // ── System audio button ──────────────────────────────────────────────
+  if (btnSystem) {
+    btnSystem.addEventListener('click', async () => {
+      try {
+        btnSystem.disabled = true;
+        btnSystem.style.opacity = '0.6';
+        await audio.setSourceSystem();
+        _launchVisualizer();
+      } catch(err) {
+        console.error('System audio error:', err);
+        showError('System audio unavailable: ' + err.message);
+      } finally {
+        btnSystem.disabled = false;
+        btnSystem.style.opacity = '';
+      }
+    });
+  }
 }
 
 async function _loadFiles(files) {
   _songQueue = files;
   _songIndex = 0;
   await audio.loadFile(files[0]);
+  _launchVisualizer();
+}
 
+function _launchVisualizer() {
   // Hide picker, show canvas full-screen
   const pickerUI = document.getElementById('picker-ui');
   if (pickerUI) pickerUI.style.display = 'none';
