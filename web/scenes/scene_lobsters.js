@@ -12,7 +12,7 @@
  *   - "🦾 xdd" watermark bottom-right
  */
 
-class Scene11 {
+class SceneLobsters {
   constructor() {
     this.lobsters  = [];
     this.bubbles   = [];
@@ -554,4 +554,4 @@ class Lobster {
 }
 
 // Global singleton
-const scene11 = new Scene11();
+const sceneLobsters = new SceneLobsters();

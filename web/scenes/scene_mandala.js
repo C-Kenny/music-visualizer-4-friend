@@ -7,7 +7,7 @@
  * graphics buffer of size s1Size × s1Size.
  */
 
-class Scene1 {
+class SceneMandala {
   constructor(p5instance) {
     this.p = p5instance;
 
@@ -554,4 +554,4 @@ class PolarPlasmaEffect {
 }
 
 // Export as global
-const scene1 = new Scene1(null); // p5 instance injected later in sketch.js
+const sceneMandala = new SceneMandala(null); // p5 instance injected later in sketch.js

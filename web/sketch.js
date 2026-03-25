@@ -54,8 +54,8 @@ function setup() {
   pg1.pixelDensity(1); // keep pixel arrays manageable
 
   // Scene 1: inject p5 instance and init geometry
-  scene1.p = pg1;
-  scene1.init(s1Size);
+  sceneMandala.p = pg1;
+  sceneMandala.init(s1Size);
 
   // Blend mode constants
   BLEND_MODES = [BLEND, ADD, SUBTRACT, EXCLUSION, DIFFERENCE, MULTIPLY, SCREEN, REPLACE];
@@ -73,8 +73,8 @@ function windowResized() {
   pg1.remove();
   pg1 = createGraphics(s1Size, s1Size);
   pg1.pixelDensity(1);
-  scene1.p = pg1;
-  scene1.init(s1Size);
+  sceneMandala.p = pg1;
+  sceneMandala.init(s1Size);
 }
 
 function draw() {
@@ -96,11 +96,11 @@ function draw() {
       break;
 
     case 1:
-      _drawScene1();
+      _drawSceneMandala();
       break;
 
     case 11:
-      _drawScene11();
+      _drawSceneLobsters();
       break;
 
     default:
@@ -126,25 +126,25 @@ function draw() {
 // Scene rendering
 // ─────────────────────────────────────────────────────────────────────────────
 
-function _drawScene1() {
+function _drawSceneMandala() {
   // Dark sides
   background(15);
 
   // Draw into off-screen buffer
   const bm = BLEND_MODES[Config.CURRENT_BLEND_MODE_INDEX % BLEND_MODES.length];
   pg1.blendMode(bm);
-  scene1.draw(pg1);
+  sceneMandala.draw(pg1);
 
   // Blit centered square onto main canvas
   blendMode(BLEND);
   image(pg1, s1OffsetX, 0, s1Size, s1Size);
 }
 
-function _drawScene11() {
+function _drawSceneLobsters() {
   // Scene 11 draws directly to main canvas (full-screen).
   // In p5 global mode, drawing functions are on the window object.
-  // We pass a proxy that delegates to p5 globals so scene11 can call p.fill(), etc.
-  scene11.draw(_globalP5Proxy);
+  // We pass a proxy that delegates to p5 globals so sceneLobsters can call p.fill(), etc.
+  sceneLobsters.draw(_globalP5Proxy);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,7 +317,7 @@ function keyPressed() {
     if (Config.DRAW_PLASMA) {
       _enableOneBg('plasma');
       // Rebuild plasma with new random seed
-      scene1.plasma = new PlasmaEffect(pg1, s1Size, s1Size);
+      sceneMandala.plasma = new PlasmaEffect(pg1, s1Size, s1Size);
     }
   }
   if (key === 'P') {
@@ -427,7 +427,7 @@ function _handleControllerInput() {
 
   // D-pad background toggles
   if (c.dpad_hat_switch_up)    { Config.DRAW_TUNNEL = !Config.DRAW_TUNNEL; if (Config.DRAW_TUNNEL) _enableOneBg('tunnel'); }
-  if (c.dpad_hat_switch_left)  { Config.DRAW_PLASMA = !Config.DRAW_PLASMA; if (Config.DRAW_PLASMA) { _enableOneBg('plasma'); scene1.plasma = new PlasmaEffect(pg1, s1Size, s1Size); } }
+  if (c.dpad_hat_switch_left)  { Config.DRAW_PLASMA = !Config.DRAW_PLASMA; if (Config.DRAW_PLASMA) { _enableOneBg('plasma'); sceneMandala.plasma = new PlasmaEffect(pg1, s1Size, s1Size); } }
   if (c.dpad_hat_switch_right) { Config.DRAW_POLAR_PLASMA = !Config.DRAW_POLAR_PLASMA; if (Config.DRAW_POLAR_PLASMA) _enableOneBg('polar_plasma'); }
   if (c.dpad_hat_switch_down)  { Config.DRAW_TUNNEL = false; Config.DRAW_PLASMA = false; Config.DRAW_POLAR_PLASMA = false; }
 
@@ -563,7 +563,7 @@ function _launchVisualizer() {
 
 /**
  * _globalP5Proxy — a thin proxy object that delegates p5 drawing calls
- * to the global-mode p5 functions.  Scene11 expects a p5-like object.
+ * to the global-mode p5 functions.  SceneLobsters expects a p5-like object.
  *
  * In global mode, p5 installs all drawing functions directly on window,
  * so we just make an object that forwards everything to window.
