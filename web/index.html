@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Visualizer</title>
+  <style>
+    /* ── Reset & base ────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0a0a;
+      font-family: 'Courier New', monospace;
+      color: #e0e0e0;
+    }
+
+    canvas {
+      display: block;
+      position: fixed;
+      top: 0; left: 0;
+    }
+
+    /* ── File picker overlay ─────────────────────────────────────────── */
+    #picker-ui {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a0a;
+      z-index: 100;
+      gap: 24px;
+    }
+
+    #picker-ui h1 {
+      font-size: 2rem;
+      color: #ff9933;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 20px rgba(255,150,50,0.4);
+    }
+
+    #picker-ui p {
+      color: #888;
+      font-size: 0.85rem;
+    }
+
+    #drop-zone {
+      width: min(480px, 90vw);
+      min-height: 180px;
+      border: 2px dashed #444;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      padding: 32px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    #drop-zone:hover,
+    #drop-zone.drag-over {
+      border-color: #ff9933;
+      background: rgba(255,153,51,0.06);
+    }
+
+    #drop-zone .icon {
+      font-size: 3rem;
+      user-select: none;
+    }
+
+    #drop-zone .label {
+      color: #ccc;
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    #drop-zone .sub {
+      color: #555;
+      font-size: 0.78rem;
+      text-align: center;
+    }
+
+    #file-input { display: none; }
+
+    .hint {
+      color: #444;
+      font-size: 0.75rem;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    /* Pulsing glow animation on title */
+    @keyframes glow {
+      0%, 100% { text-shadow: 0 0 10px rgba(255,150,50,0.3); }
+      50%       { text-shadow: 0 0 30px rgba(255,150,50,0.7), 0 0 60px rgba(255,100,20,0.3); }
+    }
+    #picker-ui h1 { animation: glow 2.5s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+  <!-- ── File picker UI (shown before song loads) ───────────────────────── -->
+  <div id="picker-ui">
+    <h1>♫ Music Visualizer</h1>
+
+    <div id="drop-zone">
+      <span class="icon">🎵</span>
+      <span class="label">Drop your music here<br>or click to browse</span>
+      <span class="sub">MP3 · WAV · FLAC · OGG · AAC · M4A<br>Multiple files OK — use <kbd>n</kbd> / <kbd>N</kbd> to navigate</span>
+    </div>
+
+    <input type="file" id="file-input" accept=".mp3,.wav,.flac,.ogg,.aac,.m4a" multiple />
+
+    <p class="hint">
+      Press <kbd>?</kbd> after loading to see all keyboard shortcuts.<br>
+      Works best in Chrome or Firefox at 120 Hz.
+    </p>
+  </div>
+
+  <!-- ── p5.js library ──────────────────────────────────────────────────── -->
+  <script src="lib/p5.min.js"></script>
+
+  <!-- ── App modules (order matters) ───────────────────────────────────── -->
+  <script src="config.js"></script>
+  <script src="audio.js"></script>
+  <script src="controller.js"></script>
+  <script src="scenes/scene1.js"></script>
+  <script src="scenes/scene11.js"></script>
+  <script src="sketch.js"></script>
+
+</body>
+</html>
