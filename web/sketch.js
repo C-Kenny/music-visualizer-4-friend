@@ -29,7 +29,7 @@ let showHelp = false;
 
 // Scene names for nav bar and toast
 const SCENE_NAMES = {
-  1:  'Scene 1 — Fins / Mandala',
+  1:  'Mandala',
   11: 'Lobsters 🦞',
 };
 
@@ -127,15 +127,19 @@ function draw() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _drawSceneMandala() {
-  // Dark sides
+  // Dark grey sides (visible on widescreen where canvas is wider than the square)
   background(15);
 
-  // Draw into off-screen buffer
-  const bm = BLEND_MODES[Config.CURRENT_BLEND_MODE_INDEX % BLEND_MODES.length];
-  pg1.blendMode(bm);
+  // Clear the off-screen buffer each frame so visuals don't accumulate permanently.
+  // The scene itself controls fading via semi-transparent background draws.
+  pg1.clear();
+
+  // Apply the active blend mode inside the buffer
+  const blendModeConstant = BLEND_MODES[Config.CURRENT_BLEND_MODE_INDEX % BLEND_MODES.length];
+  pg1.blendMode(blendModeConstant);
   sceneMandala.draw(pg1);
 
-  // Blit centered square onto main canvas
+  // Blit the buffer onto the main canvas using normal blend so the dark sides show through
   blendMode(BLEND);
   image(pg1, s1OffsetX, 0, s1Size, s1Size);
 }
@@ -152,53 +156,56 @@ function _drawSceneLobsters() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _drawNavBar() {
-  const barH = 36;
-  const barY = height - barH;
+  const barHeight  = 36;
+  const barTopY    = height - barHeight;
+  const badgeWidth = 90; // width reserved for the audio source badge on the right
+  const navWidth   = width - badgeWidth;
 
   push();
+
+  // Semi-transparent black bar background
   noStroke();
-  fill(0, 0, 0, 160);
-  rect(0, barY, width, barH);
+  fill(0, 0, 0, 170);
+  rect(0, barTopY, width, barHeight);
+
+  // ── Scene tabs ─────────────────────────────────────────────────────────
+  const sceneEntries = Object.entries(SCENE_NAMES);
+  const slotWidth    = navWidth / sceneEntries.length;
 
   textSize(13);
   textAlign(CENTER, CENTER);
 
-  const scenes = Object.entries(SCENE_NAMES);
-  // Reserve right side for source badge
-  const badgeW = 90;
-  const navW   = width - badgeW;
-  const slotW  = navW / scenes.length;
+  for (let sceneIndex = 0; sceneIndex < sceneEntries.length; sceneIndex++) {
+    const [sceneId, sceneName] = sceneEntries[sceneIndex];
+    const isActiveScene = Config.STATE === parseInt(sceneId);
+    const slotCenterX   = slotWidth * sceneIndex + slotWidth / 2;
+    const slotCenterY   = barTopY + barHeight / 2;
 
-  for (let sceneIndex = 0; sceneIndex < scenes.length; sceneIndex++) {
-    const [id, name] = scenes[sceneIndex];
-    const active = Config.STATE === parseInt(id);
-    const cx = slotW * sceneIndex + slotW / 2;
-    const cy = barY + barH / 2;
-
-    if (active) {
+    if (isActiveScene) {
+      // Highlight pill behind active scene name
       fill(255, 160, 50, 220);
       noStroke();
-      rect(slotW * i + 2, barY + 3, slotW - 4, barH - 6, 4);
-      fill(10);
+      rect(slotWidth * sceneIndex + 2, barTopY + 3, slotWidth - 4, barHeight - 6, 4);
+      fill(10); // dark text on orange pill
     } else {
-      fill(180, 180, 180, 200);
+      fill(180, 180, 180, 200); // muted text for inactive scenes
     }
-    text(name, cx, cy);
+    text(sceneName, slotCenterX, slotCenterY);
   }
 
-  // ── Source type badge (right side of nav bar) ─────────────────────────
-  const srcLabels = { file: '📁 File', mic: '🎤 Mic', system: '🖥️ System' };
-  const srcLabel  = srcLabels[audio.sourceType] || audio.sourceType;
-  const bx = width - badgeW;
+  // ── Audio source badge (right side) ───────────────────────────────────
+  const sourceLabels  = { file: '📁 File', mic: '🎤 Mic', system: '🖥️ System' };
+  const sourceLabel   = sourceLabels[audio.sourceType] || audio.sourceType;
+  const badgeLeftX    = width - badgeWidth;
 
   noStroke();
   fill(30, 30, 30, 200);
-  rect(bx + 4, barY + 4, badgeW - 8, barH - 8, 4);
+  rect(badgeLeftX + 4, barTopY + 4, badgeWidth - 8, barHeight - 8, 4);
 
   fill(160, 200, 160, 220);
   textSize(11);
   textAlign(CENTER, CENTER);
-  text(srcLabel, bx + badgeW / 2, barY + barH / 2);
+  text(sourceLabel, badgeLeftX + badgeWidth / 2, barTopY + barHeight / 2);
 
   pop();
 }

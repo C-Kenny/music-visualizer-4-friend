@@ -49,8 +49,14 @@ class SceneMandala {
     this.frameCount++;
 
     // ── Background ────────────────────────────────────────────────────────────
+    // When no special background is active, fill with light grey (matches original Processing bg).
+    // Using background() here fully clears the buffer each frame — which is what we want.
+    // The pg1.clear() in sketch.js handles the alpha reset; this paints the visible colour.
     if (Config.BACKGROUND_ENABLED && !Config.DRAW_TUNNEL && !Config.DRAW_PLASMA && !Config.DRAW_POLAR_PLASMA) {
       p.background(200);
+    } else if (!Config.DRAW_TUNNEL && !Config.DRAW_PLASMA && !Config.DRAW_POLAR_PLASMA) {
+      // Background disabled — paint black so fins/diamonds have a dark canvas
+      p.background(0);
     }
 
     // ── Tunnel background ─────────────────────────────────────────────────────
