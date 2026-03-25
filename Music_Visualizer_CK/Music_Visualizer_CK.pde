@@ -21,6 +21,7 @@ PrismCodexScene prismCodex;
 TableTennisScene tableTennis;
 WormScene wormScene;
 FFTWormScene fftWorm;
+AuroraRibbonsScene auroraRibbons;
 PFont monoFont;
 
 BezierHeart bezier_heart_0;
@@ -371,6 +372,7 @@ void setup() {
   tableTennis = new TableTennisScene();
   wormScene = new WormScene();
   fftWorm   = new FFTWormScene();
+  auroraRibbons = new AuroraRibbonsScene();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
@@ -663,8 +665,8 @@ void keyPressed() {
   if (key == 'i' || key == 'I') {
     config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
-  if (key >= '1' && key <= '9') {
-    int newState = (int) key - 48;
+  if ((key >= '1' && key <= '9') || key == '0') {
+    int newState = (key == '0') ? 10 : ((int) key - 48);
     // Only allow switching to active scenes (3 and 9 are disabled)
     if (_sceneOrderIndex(newState) >= 0 || newState == SCENE_ORDER[0]) {
       boolean inRotation = false;
@@ -728,6 +730,17 @@ void keyPressed() {
     if (key == 'a' || key == 'A') particleFountain.nudgeOrigin(-10, 0);
     if (key == 's' || key == 'S') particleFountain.nudgeOrigin(0, 10);
     if (key == 'd' || key == 'D') particleFountain.nudgeOrigin(10, 0);
+  }
+  // Aurora ribbons keys (state 10 only)
+  if (config.STATE == 10 && auroraRibbons != null) {
+    if (key == '[') auroraRibbons.adjustTurbulence(-0.05);
+    if (key == ']') auroraRibbons.adjustTurbulence(0.05);
+    if (key == '-' || key == '_') auroraRibbons.adjustLength(-0.05);
+    if (key == '=' || key == '+') auroraRibbons.adjustLength(0.05);
+    if (key == 'h' || key == 'H') auroraRibbons.adjustHue(-7);
+    if (key == 'j' || key == 'J') auroraRibbons.adjustHue(7);
+    if (key == 'k' || key == 'K') auroraRibbons.cyclePalette();
+    if (key == ' ') auroraRibbons.triggerFlash();
   }
   if (key == '`') {
     config.SHOW_CODE = !config.SHOW_CODE;
@@ -979,6 +992,11 @@ public void getUserInput(boolean usingController) {
     fftWorm.applyController(controller);
   }
 
+  // aurora ribbons
+  if (config.STATE == 10 && auroraRibbons != null) {
+    auroraRibbons.applyController(controller);
+  }
+
   // map controller sticks to Shapes3DScene parameters for live tuning
   if (config.STATE == 3 && shapes3D != null) {
     // controller.* values are mapped to screen coords (0..width or 0..height) by Controller
@@ -1051,7 +1069,7 @@ int previous_state = -1;
 // ── Active scene list ─────────────────────────────────────────────────────────
 // Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
 // in the codebase but excluded from rotation for now.
-final int[] SCENE_ORDER = {1, 3, 9, 8, 2, 4, 5, 6, 7};
+final int[] SCENE_ORDER = {1, 3, 9, 8, 2, 4, 5, 6, 7, 10};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -1396,6 +1414,12 @@ void draw() {
     fftWorm.drawScene();
     addFPSToTitleBar();
     break;
+  case 10:
+    getUserInput(config.USING_CONTROLLER);
+    auroraRibbons.drawScene();
+    if (config.SHOW_CODE) drawCodeOverlay(auroraRibbons.getCodeLines());
+    addFPSToTitleBar();
+    break;
   }
 
   // ── Per-scene controls HUD (` to toggle) ────────────────────────────────────
@@ -1494,6 +1518,11 @@ void drawControlsHUD() {
     "9: L ↕           pulse sensitivity",
     "9: Y             cycle bg mode",
     "9: A             manual pulse",
+    "10: L ↔          wind drift",
+    "10: R ↕          ribbon length",
+    "10: R ↔          turbulence",
+    "10: A / Y        flash / hue shift",
+    "10: K / Space    palette / flash",
     "",
     "=== KEYBOARD ===",
     "0–9              switch scene",
