@@ -169,10 +169,10 @@ function _drawNavBar() {
   const navW   = width - badgeW;
   const slotW  = navW / scenes.length;
 
-  for (let i = 0; i < scenes.length; i++) {
-    const [id, name] = scenes[i];
+  for (let sceneIndex = 0; sceneIndex < scenes.length; sceneIndex++) {
+    const [id, name] = scenes[sceneIndex];
     const active = Config.STATE === parseInt(id);
-    const cx = slotW * i + slotW / 2;
+    const cx = slotW * sceneIndex + slotW / 2;
     const cy = barY + barH / 2;
 
     if (active) {
@@ -272,13 +272,13 @@ function _drawHelpOverlay() {
 
   textAlign(LEFT, TOP);
   textSize(13);
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.startsWith('===')) fill(0, 255, 120);
-    else if (line === '')       fill(0, 0, 0, 0);
-    else                       fill(180, 255, 180);
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const lineText = lines[lineIndex];
+    if (lineText.startsWith('===')) fill(0, 255, 120);
+    else if (lineText === '')       fill(0, 0, 0, 0);
+    else                            fill(180, 255, 180);
     noStroke();
-    text(line, bx + pad, by + pad + i * lh);
+    text(lineText, bx + pad, by + pad + lineIndex * lh);
   }
   pop();
 }
@@ -412,9 +412,10 @@ function _nextSong() {
 
 function _shuffleSong() {
   if (_songQueue.length < 2) return;
-  let i;
-  do { i = Math.floor(Math.random() * _songQueue.length); } while (i === _songIndex);
-  _songIndex = i;
+  let randomIndex;
+  // Keep picking until we land on a different song than the one currently playing
+  do { randomIndex = Math.floor(Math.random() * _songQueue.length); } while (randomIndex === _songIndex);
+  _songIndex = randomIndex;
   audio.loadFile(_songQueue[_songIndex]);
 }
 
@@ -463,83 +464,226 @@ function _handleControllerInput() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _setupFilePicker() {
-  const dropZone    = document.getElementById('drop-zone');
-  const fileInput   = document.getElementById('file-input');
-  const pickerUI    = document.getElementById('picker-ui');
-  const btnFile     = document.getElementById('btn-file');
-  const btnMic      = document.getElementById('btn-mic');
-  const btnSystem   = document.getElementById('btn-system');
-  const errorMsg    = document.getElementById('error-msg');
+  const dropZoneEl      = document.getElementById('drop-zone');
+  const fileInputEl     = document.getElementById('file-input');
+  const pickerUIEl      = document.getElementById('picker-ui');
+  const fileButtonEl    = document.getElementById('btn-file');
+  const micButtonEl     = document.getElementById('btn-mic');
+  const systemButtonEl  = document.getElementById('btn-system');
+  const errorToastEl    = document.getElementById('error-msg');
+  const systemNoteEl    = document.getElementById('system-note');
 
-  if (!dropZone || !fileInput || !pickerUI) return;
+  // Firefox-specific elements
+  const firefoxHelpOverlayEl = document.getElementById('firefox-help-overlay');
+  const firefoxHelpGotItBtn  = document.getElementById('firefox-help-got-it-btn');
+  const firefoxMicBadgeEl    = document.getElementById('firefox-mic-badge');
 
-  // ── Helper: show error temporarily ──────────────────────────────────
-  function showError(msg) {
-    if (!errorMsg) return;
-    errorMsg.textContent = msg;
-    errorMsg.style.display = 'block';
-    setTimeout(() => { errorMsg.style.display = 'none'; }, 5000);
+  // Device picker elements
+  const devicePickerEl       = document.getElementById('device-picker');
+  const devicePickerLabelEl  = document.getElementById('device-picker-label');
+  const deviceSelectEl       = document.getElementById('device-select');
+  const deviceConnectBtn     = document.getElementById('device-connect-btn');
+  const deviceCancelBtn      = document.getElementById('device-cancel-btn');
+
+  if (!dropZoneEl || !fileInputEl || !pickerUIEl) return;
+
+  // Detect Firefox — it doesn't support getDisplayMedia() for system audio
+  const isFirefoxBrowser = navigator.userAgent.toLowerCase().includes('firefox');
+
+  // ── Apply Firefox-specific UI tweaks ────────────────────────────────────
+  if (isFirefoxBrowser) {
+    // Grey out the System button and explain why
+    systemButtonEl.classList.add('firefox-unsupported');
+    systemButtonEl.title = 'Not supported in Firefox — use Mic with a virtual audio device instead';
+
+    // Show the badge on the Mic button pointing users toward the right option
+    if (firefoxMicBadgeEl) firefoxMicBadgeEl.style.display = 'block';
+
+    // Replace the generic system-audio note with a Firefox-specific one
+    if (systemNoteEl) {
+      systemNoteEl.innerHTML = 'Firefox detected — System audio isn\'t available.<br>' +
+        'Click <strong style="color:#ccc">🎤 Mic</strong> and select your monitor/loopback device instead.';
+    }
   }
 
-  // ── File button → open file dialog ──────────────────────────────────
-  if (btnFile) btnFile.addEventListener('click', () => fileInput.click());
+  // ── Helper: show error toast for a few seconds ───────────────────────────
+  function showErrorToast(errorMessage) {
+    if (!errorToastEl) return;
+    errorToastEl.textContent = errorMessage;
+    errorToastEl.style.display = 'block';
+    setTimeout(() => { errorToastEl.style.display = 'none'; }, 5000);
+  }
 
-  // ── Drop zone click → open file dialog ──────────────────────────────
-  dropZone.addEventListener('click', () => fileInput.click());
+  // ── Firefox help overlay: open / close ──────────────────────────────────
+  function showFirefoxHelpOverlay() {
+    if (!firefoxHelpOverlayEl) return;
+    firefoxHelpOverlayEl.classList.add('visible');
+  }
 
-  // ── File input change ────────────────────────────────────────────────
-  fileInput.addEventListener('change', (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) _loadFiles(files);
-  });
+  function hideFirefoxHelpOverlay() {
+    if (!firefoxHelpOverlayEl) return;
+    firefoxHelpOverlayEl.classList.remove('visible');
+  }
 
-  // ── Drag-and-drop ────────────────────────────────────────────────────
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('drag-over');
-  });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    const files = Array.from(e.dataTransfer.files).filter(f =>
-      /\.(mp3|wav|flac|ogg|aac|m4a)$/i.test(f.name)
-    );
-    if (files.length > 0) _loadFiles(files);
-  });
-
-  // ── Mic button ───────────────────────────────────────────────────────
-  if (btnMic) {
-    btnMic.addEventListener('click', async () => {
-      try {
-        btnMic.disabled = true;
-        btnMic.style.opacity = '0.6';
-        await audio.setSourceMic();
-        _launchVisualizer();
-      } catch(err) {
-        console.error('Mic error:', err);
-        showError('Microphone access denied or unavailable: ' + err.message);
-      } finally {
-        btnMic.disabled = false;
-        btnMic.style.opacity = '';
+  if (firefoxHelpGotItBtn) {
+    firefoxHelpGotItBtn.addEventListener('click', () => {
+      hideFirefoxHelpOverlay();
+      // Highlight the Mic button so the user knows where to go next
+      if (micButtonEl) {
+        micButtonEl.focus();
+        micButtonEl.style.borderColor = '#ff9933';
+        setTimeout(() => { micButtonEl.style.borderColor = ''; }, 1800);
       }
     });
   }
 
-  // ── System audio button ──────────────────────────────────────────────
-  if (btnSystem) {
-    btnSystem.addEventListener('click', async () => {
+  // Dismiss overlay with Escape key
+  document.addEventListener('keydown', (keyEvent) => {
+    if (keyEvent.key === 'Escape' && firefoxHelpOverlayEl &&
+        firefoxHelpOverlayEl.classList.contains('visible')) {
+      hideFirefoxHelpOverlay();
+    }
+  });
+
+  // ── File button → open file dialog ──────────────────────────────────────
+  if (fileButtonEl) fileButtonEl.addEventListener('click', () => fileInputEl.click());
+
+  // ── Drop zone click → open file dialog ──────────────────────────────────
+  dropZoneEl.addEventListener('click', () => fileInputEl.click());
+
+  // ── File input change ────────────────────────────────────────────────────
+  fileInputEl.addEventListener('change', (changeEvent) => {
+    const selectedFiles = Array.from(changeEvent.target.files);
+    if (selectedFiles.length > 0) _loadFiles(selectedFiles);
+  });
+
+  // ── Drag-and-drop ────────────────────────────────────────────────────────
+  dropZoneEl.addEventListener('dragover', (dragEvent) => {
+    dragEvent.preventDefault();
+    dropZoneEl.classList.add('drag-over');
+  });
+  dropZoneEl.addEventListener('dragleave', () => dropZoneEl.classList.remove('drag-over'));
+  dropZoneEl.addEventListener('drop', (dropEvent) => {
+    dropEvent.preventDefault();
+    dropZoneEl.classList.remove('drag-over');
+    const droppedAudioFiles = Array.from(dropEvent.dataTransfer.files).filter(
+      droppedFile => /\.(mp3|wav|flac|ogg|aac|m4a)$/i.test(droppedFile.name)
+    );
+    if (droppedAudioFiles.length > 0) _loadFiles(droppedAudioFiles);
+  });
+
+  // ── Device picker: show with discovered audio inputs ─────────────────────
+  //
+  // We enumerate devices *before* asking for permission — on first call this
+  // usually returns unlabelled entries. After getUserMedia() grants access,
+  // labels become available. We do a quick permission-first approach: request
+  // a throwaway stream to unlock labels, then enumerate properly.
+  async function showDevicePickerForMic() {
+    devicePickerEl.classList.add('visible');
+    deviceSelectEl.innerHTML = '<option value="">Loading devices…</option>';
+    deviceConnectBtn.disabled = true;
+
+    try {
+      // Request a temporary stream just to unlock device labels in the browser.
+      // Without this, enumerateDevices() returns empty labels on most browsers.
+      const labelUnlockStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      labelUnlockStream.getTracks().forEach(track => track.stop());
+    } catch (permissionError) {
+      // If permission is denied here, we'll surface it later when connecting.
+      console.warn('[device picker] Could not unlock device labels:', permissionError.message);
+    }
+
+    const allMediaDevices    = await navigator.mediaDevices.enumerateDevices();
+    const audioInputDevices  = allMediaDevices.filter(device => device.kind === 'audioinput');
+
+    deviceSelectEl.innerHTML = '';
+
+    if (audioInputDevices.length === 0) {
+      // No devices found — add a placeholder and let the connect button try anyway
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = 'Default microphone';
+      deviceSelectEl.appendChild(placeholderOption);
+    } else {
+      audioInputDevices.forEach(audioDevice => {
+        const deviceOption = document.createElement('option');
+        deviceOption.value = audioDevice.deviceId;
+        // Fall back to a generic label if the browser won't tell us the name
+        deviceOption.textContent = audioDevice.label || `Microphone (${audioDevice.deviceId.slice(0, 8)}…)`;
+        deviceSelectEl.appendChild(deviceOption);
+      });
+    }
+
+    // On Firefox, tell users specifically to look for the Monitor entry
+    if (isFirefoxBrowser && devicePickerLabelEl) {
+      devicePickerLabelEl.textContent =
+        '🎤 Select audio source (choose "Monitor of…" for system audio on Linux):';
+    } else if (devicePickerLabelEl) {
+      devicePickerLabelEl.textContent = '🎤 Audio input device:';
+    }
+
+    deviceConnectBtn.disabled = false;
+  }
+
+  function hideDevicePicker() {
+    devicePickerEl.classList.remove('visible');
+  }
+
+  // ── Mic button ───────────────────────────────────────────────────────────
+  if (micButtonEl) {
+    micButtonEl.addEventListener('click', async () => {
+      // Show device picker so user can choose their input (e.g. loopback monitor)
+      await showDevicePickerForMic();
+    });
+  }
+
+  // ── Device picker: Connect button ────────────────────────────────────────
+  if (deviceConnectBtn) {
+    deviceConnectBtn.addEventListener('click', async () => {
+      const selectedDeviceId = deviceSelectEl.value;
+      hideDevicePicker();
+
       try {
-        btnSystem.disabled = true;
-        btnSystem.style.opacity = '0.6';
+        micButtonEl.disabled = true;
+        micButtonEl.style.opacity = '0.6';
+        await audio.setSourceMic(selectedDeviceId || null);
+        _launchVisualizer();
+      } catch (micError) {
+        console.error('[mic] Connection failed:', micError);
+        showErrorToast('Microphone access denied or unavailable: ' + micError.message);
+      } finally {
+        micButtonEl.disabled = false;
+        micButtonEl.style.opacity = '';
+      }
+    });
+  }
+
+  // ── Device picker: Cancel button ─────────────────────────────────────────
+  if (deviceCancelBtn) {
+    deviceCancelBtn.addEventListener('click', () => hideDevicePicker());
+  }
+
+  // ── System audio button ──────────────────────────────────────────────────
+  if (systemButtonEl) {
+    systemButtonEl.addEventListener('click', async () => {
+      // On Firefox, getDisplayMedia() doesn't capture system audio at all.
+      // Show the help panel instead of attempting a call that will silently fail.
+      if (isFirefoxBrowser) {
+        showFirefoxHelpOverlay();
+        return;
+      }
+
+      try {
+        systemButtonEl.disabled = true;
+        systemButtonEl.style.opacity = '0.6';
         await audio.setSourceSystem();
         _launchVisualizer();
-      } catch(err) {
-        console.error('System audio error:', err);
-        showError('System audio unavailable: ' + err.message);
+      } catch (systemAudioError) {
+        console.error('[system audio] Capture failed:', systemAudioError);
+        showErrorToast('System audio unavailable: ' + systemAudioError.message);
       } finally {
-        btnSystem.disabled = false;
-        btnSystem.style.opacity = '';
+        systemButtonEl.disabled = false;
+        systemButtonEl.style.opacity = '';
       }
     });
   }
@@ -575,8 +719,8 @@ const _globalP5Proxy = new Proxy({}, {
     if (prop === 'height') return height;
     // p5 constants & functions live on window in global mode
     if (prop in window) {
-      const v = window[prop];
-      return (typeof v === 'function') ? v.bind(window) : v;
+      const windowProperty = window[prop];
+      return (typeof windowProperty === 'function') ? windowProperty.bind(window) : windowProperty;
     }
     return undefined;
   }

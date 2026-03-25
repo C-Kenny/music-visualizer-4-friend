@@ -48,9 +48,9 @@ class AudioSystem {
     this.beat = {
       _sys: this,
       isOnset: () => {
-        const v = this._beatOnset;
+        const onsetFiredThisFrame = this._beatOnset;
         this._beatOnset = false;   // consume: returns true exactly once per beat
-        return v;
+        return onsetFiredThisFrame;
       },
     };
 
@@ -98,7 +98,7 @@ class AudioSystem {
   /** Stop and release any active MediaStream tracks. */
   _releaseStream() {
     if (this._stream) {
-      this._stream.getTracks().forEach(t => t.stop());
+      this._stream.getTracks().forEach(track => track.stop());
       this._stream = null;
     }
   }
@@ -107,8 +107,8 @@ class AudioSystem {
   async _teardown() {
     this._releaseStream();
     if (this._source) {
-      try { this._source.disconnect(); } catch(e) {}
-      try { this._source.stop(); } catch(e) {}
+      try { this._source.disconnect(); } catch (disconnectError) { /* already disconnected */ }
+      try { this._source.stop(); } catch (stopError) { /* already stopped or not a BufferSource */ }
       this._source = null;
     }
     if (this._ctx) {
@@ -177,24 +177,38 @@ class AudioSystem {
   // ── Source: Microphone ───────────────────────────────────────────────────
 
   /**
-   * Request microphone access and connect it to the analyser pipeline.
-   * Throws if permission is denied.
+   * Request microphone (or loopback monitor) access and connect it to the
+   * analyser pipeline.
+   *
+   * @param {string|null} preferredDeviceId - deviceId from enumerateDevices(),
+   *   or null to use the browser default. Passing a specific device lets users
+   *   pick a PulseAudio monitor, VB-Cable output, or BlackHole for system audio
+   *   capture in Firefox and other browsers that lack getDisplayMedia() audio.
    */
-  async setSourceMic() {
+  async setSourceMic(preferredDeviceId = null) {
     await this._teardown();
 
     this.sourceType = "mic";
     this._ctx = new AudioContext();
     this._sampleRate = this._ctx.sampleRate;
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    this._stream = stream;
+    // Build the audio constraints — use exact deviceId when one was chosen,
+    // otherwise fall back to the browser's default input.
+    const audioConstraints = preferredDeviceId
+      ? { deviceId: { exact: preferredDeviceId } }
+      : true;
+
+    const audioInputStream = await navigator.mediaDevices.getUserMedia({
+      audio: audioConstraints,
+      video: false,
+    });
+    this._stream = audioInputStream;
 
     this._initAnalyser();
 
-    const source = this._ctx.createMediaStreamSource(stream);
-    source.connect(this._analyser);
-    this._source = source;
+    const mediaStreamSource = this._ctx.createMediaStreamSource(audioInputStream);
+    mediaStreamSource.connect(this._analyser);
+    this._source = mediaStreamSource;
 
     this._fileName = "🎤 Microphone";
     this._duration = Infinity;
@@ -220,20 +234,26 @@ class AudioSystem {
     this._ctx = new AudioContext();
     this._sampleRate = this._ctx.sampleRate;
 
-    const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: false });
-    this._stream = stream;
+    const displayMediaStream = await navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: false,
+    });
+    this._stream = displayMediaStream;
 
-    const audioTracks = stream.getAudioTracks();
-    if (audioTracks.length === 0) {
+    const capturedAudioTracks = displayMediaStream.getAudioTracks();
+    if (capturedAudioTracks.length === 0) {
       await this._teardown();
-      throw new Error("No audio track in display media stream. Make sure to check 'Share audio' in the browser dialog.");
+      throw new Error(
+        "No audio track in display media stream. " +
+        "Make sure to check 'Share audio' in the browser dialog."
+      );
     }
 
     this._initAnalyser();
 
-    const source = this._ctx.createMediaStreamSource(stream);
-    source.connect(this._analyser);
-    this._source = source;
+    const mediaStreamSource = this._ctx.createMediaStreamSource(displayMediaStream);
+    mediaStreamSource.connect(this._analyser);
+    this._source = mediaStreamSource;
 
     this._fileName = "🖥️ System Audio";
     this._duration = Infinity;
@@ -248,36 +268,40 @@ class AudioSystem {
    * Build log-spaced FFT bands matching Minim's logAverages(minFreq, bandsPerOctave).
    * minFreq = 22 Hz, bandsPerOctave = 4 → ~30 bands across audible range.
    */
-  _buildLogBands(minFreq, bandsPerOctave) {
+  _buildLogBands(minFrequencyHz, bandsPerOctave) {
     this._logBands = [];
-    const nyquist = this._sampleRate / 2;
-    const binWidth = nyquist / (this._analyser.frequencyBinCount);
+    const nyquistFrequency = this._sampleRate / 2;
+    const hzPerBin = nyquistFrequency / (this._analyser.frequencyBinCount);
 
-    let freq = minFreq;
-    while (freq < nyquist) {
-      const bandTop = freq * Math.pow(2, 1 / bandsPerOctave);
-      const startBin = Math.round(freq / binWidth);
-      const endBin   = Math.round(bandTop / binWidth);
+    let currentFrequency = minFrequencyHz;
+    while (currentFrequency < nyquistFrequency) {
+      const bandTopFrequency = currentFrequency * Math.pow(2, 1 / bandsPerOctave);
+      const startBin = Math.round(currentFrequency / hzPerBin);
+      const endBin   = Math.round(bandTopFrequency / hzPerBin);
       if (startBin < this._analyser.frequencyBinCount) {
-        this._logBands.push({ startBin, endBin: Math.min(endBin, this._analyser.frequencyBinCount - 1), avg: 0 });
+        this._logBands.push({
+          startBin,
+          endBin: Math.min(endBin, this._analyser.frequencyBinCount - 1),
+          avg: 0,
+        });
       }
-      freq = bandTop;
+      currentFrequency = bandTopFrequency;
     }
     this._avgSize = this._logBands.length;
   }
 
-  _startPlayback(offset) {
+  _startPlayback(playbackOffset) {
     if (this._source) {
-      try { this._source.disconnect(); } catch(e) {}
-      try { this._source.stop(); } catch(e) {}
+      try { this._source.disconnect(); } catch (disconnectError) { /* already disconnected */ }
+      try { this._source.stop(); } catch (stopError) { /* already stopped */ }
     }
     this._source = this._ctx.createBufferSource();
     this._source.buffer = this._audioBuffer;
     this._source.loop = true;
     this._source.connect(this._gainNode);
-    this._source.start(0, offset % this._duration);
+    this._source.start(0, playbackOffset % this._duration);
     this._startTime = this._ctx.currentTime;
-    this._pauseOffset = offset;
+    this._pauseOffset = playbackOffset;
     this._paused = false;
   }
 
@@ -292,38 +316,43 @@ class AudioSystem {
     this._analyser.getFloatFrequencyData(this._freqData);
 
     // Convert dB frequency data to linear amplitude and compute band averages
-    for (let b = 0; b < this._logBands.length; b++) {
-      const band = this._logBands[b];
-      let sum = 0, count = 0;
-      for (let bin = band.startBin; bin <= band.endBin; bin++) {
-        // _freqData is in dBFS; convert to linear [0..1]
-        const lin = Math.pow(10, this._freqData[bin] / 20);
-        sum += lin;
-        count++;
+    for (let bandIndex = 0; bandIndex < this._logBands.length; bandIndex++) {
+      const band = this._logBands[bandIndex];
+      let binSum = 0;
+      let binCount = 0;
+      for (let binIndex = band.startBin; binIndex <= band.endBin; binIndex++) {
+        // _freqData values are in dBFS; convert to linear amplitude [0..1]
+        const linearAmplitude = Math.pow(10, this._freqData[binIndex] / 20);
+        binSum += linearAmplitude;
+        binCount++;
       }
-      band.avg = count > 0 ? sum / count : 0;
+      band.avg = binCount > 0 ? binSum / binCount : 0;
     }
 
     // Beat detection: compare current RMS energy to rolling average
-    // of the bass band (bands 0-5 roughly cover sub-bass/bass)
-    let energy = 0;
-    for (let i = 0; i < Math.min(6, this._logBands.length); i++) {
-      energy += this._logBands[i].avg;
+    // of the bass bands (bands 0-5 roughly cover sub-bass and bass)
+    let bassEnergy = 0;
+    const bassbandsToSample = Math.min(6, this._logBands.length);
+    for (let bassIndex = 0; bassIndex < bassbandsToSample; bassIndex++) {
+      bassEnergy += this._logBands[bassIndex].avg;
     }
-    energy /= Math.min(6, this._logBands.length);
+    bassEnergy /= bassbandsToSample;
 
-    // Rolling average
-    this._beatHistory[this._beatHistoryIdx] = energy;
+    // Rolling average of recent bass energy — used as the beat threshold baseline
+    this._beatHistory[this._beatHistoryIdx] = bassEnergy;
     this._beatHistoryIdx = (this._beatHistoryIdx + 1) % this._beatHistory.length;
 
-    let histAvg = 0;
-    for (let i = 0; i < this._beatHistory.length; i++) histAvg += this._beatHistory[i];
-    histAvg /= this._beatHistory.length;
+    let rollingAverageBassEnergy = 0;
+    for (let histIndex = 0; histIndex < this._beatHistory.length; histIndex++) {
+      rollingAverageBassEnergy += this._beatHistory[histIndex];
+    }
+    rollingAverageBassEnergy /= this._beatHistory.length;
 
-    // Beat fires when current energy is significantly above average
-    // Threshold ~1.5× history average, with a minimum level to avoid false positives in silence
-    const threshold = Math.max(0.001, histAvg * 1.5);
-    if (energy > threshold && !this._beatOnset) {
+    // Beat fires when current energy is significantly above the rolling average.
+    // Threshold is ~1.5× rolling average, with a minimum floor to avoid false
+    // positives during silence (when rolling average approaches zero).
+    const beatThreshold = Math.max(0.001, rollingAverageBassEnergy * 1.5);
+    if (bassEnergy > beatThreshold && !this._beatOnset) {
       this._beatOnset = true;
     }
   }
@@ -344,9 +373,9 @@ class AudioSystem {
     if (!this._ready) return;
     if (this.sourceType !== "file") return; // live stream — no-op
     if (this._paused) return;
-    const elapsed = this._ctx.currentTime - this._startTime;
-    this._pauseOffset = (this._pauseOffset + elapsed) % this._duration;
-    try { this._source.stop(); } catch(e) {}
+    const elapsedSeconds = this._ctx.currentTime - this._startTime;
+    this._pauseOffset = (this._pauseOffset + elapsedSeconds) % this._duration;
+    try { this._source.stop(); } catch (stopError) { /* already stopped */ }
     this._paused = true;
     Config.SONG_PLAYING = false;
   }
@@ -354,21 +383,24 @@ class AudioSystem {
   stop() {
     if (!this._ready) return;
     if (this.sourceType !== "file") return; // live stream — no-op
-    try { this._source.stop(); } catch(e) {}
+    try { this._source.stop(); } catch (stopError) { /* already stopped */ }
     this._paused = true;
     this._pauseOffset = 0;
     Config.SONG_PLAYING = false;
   }
 
-  /** Skip forward (positive) or backward (negative) by ms milliseconds. No-op for mic/system. */
-  skip(ms) {
+  /** Skip forward (positive) or backward (negative) by the given number of milliseconds. No-op for mic/system. */
+  skip(skipMilliseconds) {
     if (!this._ready) return;
     if (this.sourceType !== "file") return; // live stream — no-op
-    const offset = (this._pauseOffset + (this._paused ? 0 : this._ctx.currentTime - this._startTime) + ms / 1000 + this._duration * 2) % this._duration;
+    const currentPositionSeconds = this._pauseOffset +
+      (this._paused ? 0 : this._ctx.currentTime - this._startTime);
+    // Add duration * 2 before modulo to handle seeking before the start of the track
+    const newPositionSeconds = (currentPositionSeconds + skipMilliseconds / 1000 + this._duration * 2) % this._duration;
     if (this._paused) {
-      this._pauseOffset = offset;
+      this._pauseOffset = newPositionSeconds;
     } else {
-      this._startPlayback(offset);
+      this._startPlayback(newPositionSeconds);
     }
   }
 

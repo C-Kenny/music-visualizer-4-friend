@@ -162,6 +162,184 @@
       line-height: 1.6;
     }
 
+    /* ── Firefox-specific button state ───────────────────────────────── */
+    .source-btn.firefox-unsupported {
+      opacity: 0.42;
+      cursor: not-allowed;
+      border-color: #2a2a2a;
+      filter: grayscale(0.5);
+    }
+    .source-btn.firefox-unsupported:hover {
+      border-color: #2a2a2a;
+      background: rgba(255,255,255,0.04);
+      color: #ccc;
+      transform: none;
+    }
+    .source-btn .firefox-badge {
+      display: none;
+      font-size: 0.6rem;
+      color: #ff9933;
+      background: rgba(255,153,51,0.12);
+      border: 1px solid rgba(255,153,51,0.25);
+      border-radius: 4px;
+      padding: 2px 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* ── Device picker ───────────────────────────────────────────────── */
+    #device-picker {
+      display: none;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      width: min(440px, 90vw);
+      background: rgba(255,255,255,0.03);
+      border: 1.5px solid #252525;
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+    #device-picker.visible {
+      display: flex;
+    }
+    #device-picker label {
+      color: #aaa;
+      font-size: 0.82rem;
+    }
+    #device-picker select {
+      width: 100%;
+      padding: 8px 10px;
+      background: #161b22;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      cursor: pointer;
+      appearance: auto;
+    }
+    #device-picker select:focus {
+      outline: 1px solid #ff9933;
+      border-color: #ff9933;
+    }
+    #device-picker .device-actions {
+      display: flex;
+      gap: 10px;
+      align-self: flex-end;
+    }
+    #device-picker .connect-btn {
+      padding: 7px 22px;
+      background: rgba(255,153,51,0.1);
+      border: 1.5px solid #ff9933;
+      border-radius: 7px;
+      color: #ff9933;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: background 0.15s;
+    }
+    #device-picker .connect-btn:hover {
+      background: rgba(255,153,51,0.22);
+    }
+    #device-picker .cancel-btn {
+      padding: 7px 14px;
+      background: transparent;
+      border: 1.5px solid #333;
+      border-radius: 7px;
+      color: #666;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #device-picker .cancel-btn:hover {
+      border-color: #555;
+      color: #aaa;
+    }
+
+    /* ── Firefox help overlay ────────────────────────────────────────── */
+    #firefox-help-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.78);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+    }
+    #firefox-help-overlay.visible {
+      display: flex;
+    }
+    .firefox-help-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      padding: 28px 32px;
+      max-width: 500px;
+      width: 90vw;
+      font-family: 'Courier New', monospace;
+      color: #c9d1d9;
+      line-height: 1.6;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .firefox-help-card h2 {
+      color: #ff9933;
+      margin-bottom: 10px;
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+    }
+    .firefox-help-card > p {
+      color: #8b949e;
+      font-size: 0.88rem;
+      margin-bottom: 14px;
+    }
+    .firefox-help-card .platform-section {
+      margin: 10px 0;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      border-left: 2px solid #30363d;
+    }
+    .firefox-help-card .platform-title {
+      color: #e0e0e0;
+      font-weight: bold;
+      font-size: 0.88rem;
+      margin-bottom: 4px;
+    }
+    .firefox-help-card ol {
+      margin-left: 18px;
+      color: #8b949e;
+      font-size: 0.82rem;
+    }
+    .firefox-help-card ol li {
+      margin: 3px 0;
+    }
+    .firefox-help-card a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    .firefox-help-card a:hover {
+      text-decoration: underline;
+    }
+    .firefox-help-card .got-it-btn {
+      display: block;
+      width: 100%;
+      margin-top: 18px;
+      padding: 11px 20px;
+      background: rgba(255,153,51,0.12);
+      border: 1.5px solid #ff9933;
+      border-radius: 8px;
+      color: #ff9933;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.15s;
+      text-align: center;
+    }
+    .firefox-help-card .got-it-btn:hover {
+      background: rgba(255,153,51,0.24);
+    }
+
     /* ── Error toast ─────────────────────────────────────────────────── */
     #error-msg {
       display: none;
@@ -202,6 +380,7 @@
       <button class="source-btn" id="btn-mic" title="Visualize your microphone">
         <span class="btn-icon">🎤</span>
         <span class="btn-label">Mic</span>
+        <span class="firefox-badge" id="firefox-mic-badge">⬅️ use for system audio</span>
       </button>
       <button class="source-btn" id="btn-system" title="Visualize system audio (Spotify, foobar, etc.)">
         <span class="btn-icon">🖥️</span>
@@ -209,10 +388,20 @@
       </button>
     </div>
 
-    <p class="system-note">
+    <p class="system-note" id="system-note">
       System audio works natively on Chrome / Windows.<br>
       macOS users need <a href="https://existential.audio/blackhole/" target="_blank" style="color:#777;text-decoration:underline;">BlackHole</a> virtual audio device.
     </p>
+
+    <!-- Device picker (shown when multiple audio inputs found) -->
+    <div id="device-picker">
+      <label id="device-picker-label">🎤 Audio input device:</label>
+      <select id="device-select"></select>
+      <div class="device-actions">
+        <button class="cancel-btn" id="device-cancel-btn">Cancel</button>
+        <button class="connect-btn" id="device-connect-btn">Connect</button>
+      </div>
+    </div>
 
     <div class="divider">or drop a file</div>
 
@@ -228,6 +417,46 @@
       Press <kbd>?</kbd> after loading to see all keyboard shortcuts.<br>
       Works best in Chrome or Firefox at 120 Hz.
     </p>
+  </div>
+
+  <!-- ── Firefox system-audio help overlay ────────────────────────────── -->
+  <!--
+    Shown when Firefox users click the System button. Firefox can't capture
+    system audio via getDisplayMedia(), so we explain the loopback workaround.
+  -->
+  <div id="firefox-help-overlay">
+    <div class="firefox-help-card">
+      <h2>🦊 Firefox: How to capture system audio</h2>
+      <p>Firefox doesn't support direct system audio capture — but you can route it through the mic input using a free virtual audio loopback device.</p>
+
+      <div class="platform-section">
+        <div class="platform-title">🐧 Linux (easiest — no extra install needed)</div>
+        <ol>
+          <li>Click <strong>🎤 Mic</strong> above</li>
+          <li>Select <strong>"Monitor of [your soundcard]"</strong> from the device list</li>
+        </ol>
+      </div>
+
+      <div class="platform-section">
+        <div class="platform-title">🪟 Windows — VB-Audio Virtual Cable (free)</div>
+        <ol>
+          <li>Install <a href="https://vb-audio.com/Cable/" target="_blank">VB-Audio Virtual Cable</a></li>
+          <li>Set your audio output device to <strong>"CABLE Input"</strong></li>
+          <li>Click <strong>🎤 Mic</strong> → select <strong>"CABLE Output"</strong></li>
+        </ol>
+      </div>
+
+      <div class="platform-section">
+        <div class="platform-title">🍎 macOS — BlackHole (free)</div>
+        <ol>
+          <li>Install <a href="https://existential.audio/blackhole/" target="_blank">BlackHole</a></li>
+          <li>Set output to <strong>BlackHole</strong> in Sound settings</li>
+          <li>Click <strong>🎤 Mic</strong> → select <strong>"BlackHole"</strong></li>
+        </ol>
+      </div>
+
+      <button class="got-it-btn" id="firefox-help-got-it-btn">Got it — use Mic instead</button>
+    </div>
   </div>
 
   <!-- ── Error message toast ────────────────────────────────────────────── -->
