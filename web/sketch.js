@@ -156,47 +156,63 @@ function _drawSceneLobsters() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _drawNavBar() {
-  const barHeight  = 36;
-  const barTopY    = height - barHeight;
-  const badgeWidth = 90; // width reserved for the audio source badge on the right
-  const navWidth   = width - badgeWidth;
+  const barHeight      = 40;
+  const barTopY        = height - barHeight;
+  const sceneTabWidth  = 120; // fixed width per scene tab on the left
+  const badgeWidth     = 90;  // fixed width for source badge on the right
+  const songNameLeft   = sceneTabWidth * Object.keys(SCENE_NAMES).length + 10;
+  const songNameRight  = width - badgeWidth - 10;
+  const songNameWidth  = songNameRight - songNameLeft;
 
   push();
 
   // Semi-transparent black bar background
   noStroke();
-  fill(0, 0, 0, 170);
+  fill(0, 0, 0, 190);
   rect(0, barTopY, width, barHeight);
 
-  // ── Scene tabs ─────────────────────────────────────────────────────────
+  // ── Scene tabs (fixed width, left-anchored) ────────────────────────────
   const sceneEntries = Object.entries(SCENE_NAMES);
-  const slotWidth    = navWidth / sceneEntries.length;
-
   textSize(13);
   textAlign(CENTER, CENTER);
 
   for (let sceneIndex = 0; sceneIndex < sceneEntries.length; sceneIndex++) {
     const [sceneId, sceneName] = sceneEntries[sceneIndex];
     const isActiveScene = Config.STATE === parseInt(sceneId);
-    const slotCenterX   = slotWidth * sceneIndex + slotWidth / 2;
-    const slotCenterY   = barTopY + barHeight / 2;
+    const tabLeftX      = sceneTabWidth * sceneIndex;
+    const tabCenterX    = tabLeftX + sceneTabWidth / 2;
+    const tabCenterY    = barTopY + barHeight / 2;
 
     if (isActiveScene) {
-      // Highlight pill behind active scene name
-      fill(255, 160, 50, 220);
+      fill(255, 160, 50, 230);
       noStroke();
-      rect(slotWidth * sceneIndex + 2, barTopY + 3, slotWidth - 4, barHeight - 6, 4);
-      fill(10); // dark text on orange pill
+      rect(tabLeftX + 3, barTopY + 4, sceneTabWidth - 6, barHeight - 8, 4);
+      fill(10);
     } else {
-      fill(180, 180, 180, 200); // muted text for inactive scenes
+      fill(160, 160, 160, 200);
     }
-    text(sceneName, slotCenterX, slotCenterY);
+    text(sceneName, tabCenterX, tabCenterY);
+  }
+
+  // ── Song name (centre of remaining space) ─────────────────────────────
+  if (Config.SONG_NAME && songNameWidth > 40) {
+    // Truncate with ellipsis if too long for the available space
+    let displayName = Config.SONG_NAME;
+    textSize(12);
+    while (displayName.length > 4 && textWidth(displayName + '…') > songNameWidth) {
+      displayName = displayName.slice(0, -1);
+    }
+    if (displayName !== Config.SONG_NAME) displayName += '…';
+
+    fill(200, 200, 200, 180);
+    textAlign(CENTER, CENTER);
+    text(displayName, songNameLeft + songNameWidth / 2, barTopY + barHeight / 2);
   }
 
   // ── Audio source badge (right side) ───────────────────────────────────
-  const sourceLabels  = { file: '📁 File', mic: '🎤 Mic', system: '🖥️ System' };
-  const sourceLabel   = sourceLabels[audio.sourceType] || audio.sourceType;
-  const badgeLeftX    = width - badgeWidth;
+  const sourceLabels = { file: '📁 File', mic: '🎤 Mic', system: '🖥️ System' };
+  const sourceLabel  = sourceLabels[audio.sourceType] || audio.sourceType;
+  const badgeLeftX   = width - badgeWidth;
 
   noStroke();
   fill(30, 30, 30, 200);
