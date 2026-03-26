@@ -21,6 +21,9 @@ PrismCodexScene prismCodex;
 TableTennisScene tableTennis;
 WormScene wormScene;
 FFTWormScene fftWorm;
+AuroraRibbonsScene auroraRibbons;
+RadialFFTScene radialFFT;
+SpirographScene spirograph;
 PFont monoFont;
 
 BezierHeart bezier_heart_0;
@@ -369,8 +372,11 @@ void setup() {
   halo2Logo = new Halo2LogoScene();
   prismCodex = new PrismCodexScene();
   tableTennis = new TableTennisScene();
-  wormScene = new WormScene();
-  fftWorm   = new FFTWormScene();
+  wormScene     = new WormScene();
+  fftWorm       = new FFTWormScene();
+  auroraRibbons = new AuroraRibbonsScene();
+  radialFFT     = new RadialFFTScene();
+  spirograph    = new SpirographScene();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
@@ -663,8 +669,8 @@ void keyPressed() {
   if (key == 'i' || key == 'I') {
     config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
-  if (key >= '1' && key <= '9') {
-    int newState = (int) key - 48;
+  if ((key >= '1' && key <= '9') || key == '0') {
+    int newState = (key == '0') ? 10 : ((int) key - 48);
     // Only allow switching to active scenes (3 and 9 are disabled)
     if (_sceneOrderIndex(newState) >= 0 || newState == SCENE_ORDER[0]) {
       boolean inRotation = false;
@@ -728,6 +734,17 @@ void keyPressed() {
     if (key == 'a' || key == 'A') particleFountain.nudgeOrigin(-10, 0);
     if (key == 's' || key == 'S') particleFountain.nudgeOrigin(0, 10);
     if (key == 'd' || key == 'D') particleFountain.nudgeOrigin(10, 0);
+  }
+  // Aurora ribbons keys (state 10 only)
+  if (config.STATE == 10 && auroraRibbons != null) {
+    if (key == '[') auroraRibbons.adjustTurbulence(-0.05);
+    if (key == ']') auroraRibbons.adjustTurbulence(0.05);
+    if (key == '-' || key == '_') auroraRibbons.adjustLength(-0.05);
+    if (key == '=' || key == '+') auroraRibbons.adjustLength(0.05);
+    if (key == 'h' || key == 'H') auroraRibbons.adjustHue(-7);
+    if (key == 'j' || key == 'J') auroraRibbons.adjustHue(7);
+    if (key == 'k' || key == 'K') auroraRibbons.cyclePalette();
+    if (key == ' ') auroraRibbons.triggerFlash();
   }
   if (key == '`') {
     config.SHOW_CODE = !config.SHOW_CODE;
@@ -979,6 +996,22 @@ public void getUserInput(boolean usingController) {
     fftWorm.applyController(controller);
   }
 
+  // aurora ribbons
+  if (config.STATE == 10 && auroraRibbons != null) {
+    auroraRibbons.applyController(controller);
+  }
+
+  // radial fft
+  if (config.STATE == 11 && radialFFT != null) {
+    radialFFT.applyController(controller);
+  }
+
+  // spirograph
+  if (config.STATE == 12 && spirograph != null) {
+    spirograph.applyController(controller);
+  }
+
+
   // map controller sticks to Shapes3DScene parameters for live tuning
   if (config.STATE == 3 && shapes3D != null) {
     // controller.* values are mapped to screen coords (0..width or 0..height) by Controller
@@ -1051,7 +1084,7 @@ int previous_state = -1;
 // ── Active scene list ─────────────────────────────────────────────────────────
 // Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
 // in the codebase but excluded from rotation for now.
-final int[] SCENE_ORDER = {1, 3, 9, 8, 2, 4, 5, 6, 7};
+final int[] SCENE_ORDER = {1, 3, 9, 8, 2, 4, 5, 6, 7, 10, 11, 12};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -1396,12 +1429,31 @@ void draw() {
     fftWorm.drawScene();
     addFPSToTitleBar();
     break;
+  case 10:
+    getUserInput(config.USING_CONTROLLER);
+    auroraRibbons.drawScene();
+    if (config.SHOW_CODE) drawCodeOverlay(auroraRibbons.getCodeLines());
+    addFPSToTitleBar();
+    break;
+  case 11:
+    getUserInput(config.USING_CONTROLLER);
+    radialFFT.drawScene();
+    addFPSToTitleBar();
+    break;
+  case 12:
+    getUserInput(config.USING_CONTROLLER);
+    spirograph.drawScene();
+    addFPSToTitleBar();
+    break;
   }
 
   // ── Per-scene controls HUD (` to toggle) ────────────────────────────────────
   if (config.STATE == 1  && config.SHOW_CODE) drawControlsHUD();
   if (config.STATE == 3  && config.SHOW_CODE) drawSceneControlsHUD(wormScene.getCodeLines());
   if (config.STATE == 9  && config.SHOW_CODE) drawSceneControlsHUD(fftWorm.getCodeLines());
+  if (config.STATE == 10 && config.SHOW_CODE) drawSceneControlsHUD(auroraRibbons.getCodeLines());
+  if (config.STATE == 11 && config.SHOW_CODE) drawSceneControlsHUD(radialFFT.getCodeLines());
+  if (config.STATE == 12 && config.SHOW_CODE) drawSceneControlsHUD(spirograph.getCodeLines());
 
   // ── Crossfade overlay ───────────────────────────────────────────────────────
   // Drawn after every scene so it always sits on top.
@@ -1494,6 +1546,11 @@ void drawControlsHUD() {
     "9: L ↕           pulse sensitivity",
     "9: Y             cycle bg mode",
     "9: A             manual pulse",
+    "10: L ↔          wind drift",
+    "10: R ↕          ribbon length",
+    "10: R ↔          turbulence",
+    "10: A / Y        flash / hue shift",
+    "10: K / Space    palette / flash",
     "",
     "=== KEYBOARD ===",
     "0–9              switch scene",
@@ -1546,41 +1603,33 @@ void drawControlsHUD() {
 
 // Toggle with the backtick key (`).
 void drawCodeOverlay(String[] lines) {
+  // Same style as drawSceneControlsHUD but anchored to the left edge.
+  blendMode(BLEND);
   pushStyle();
   textFont(monoFont);
-  float lineH  = 20 * uiScale();
-  float pad    = 16 * uiScale();
-  float boxW   = width  * 0.55;
-  float boxH   = pad * 2 + lines.length * lineH;
-  float boxX   = (width  - boxW) / 2.0;
-  float boxY   = (height - boxH) / 2.0;
+  textSize(13 * uiScale());
+  float lineH = 18 * uiScale();
+  float pad   = 14 * uiScale();
+  float maxLineW = 0;
+  for (String l : lines) maxLineW = max(maxLineW, textWidth(l));
+  float boxW  = maxLineW + pad * 2;
+  float boxH  = pad * 2 + lines.length * lineH;
+  float boxX  = 12 * uiScale();
+  float boxY  = (height - boxH) / 2.0;
 
-  // dark terminal background
-  fill(0, 0, 0, 210);
-  noStroke();
-  rectMode(CORNER);
+  fill(0, 0, 0, 210); noStroke(); rectMode(CORNER);
+  rect(boxX, boxY, boxW, boxH, 6);
+  stroke(0, 220, 80, 180); strokeWeight(1.5); noFill();
   rect(boxX, boxY, boxW, boxH, 6);
 
-  // green border
-  stroke(0, 220, 80, 180);
-  strokeWeight(1.5);
-  noFill();
-  rect(boxX, boxY, boxW, boxH, 6);
-
-  // text
   textAlign(LEFT, TOP);
-  textSize(15 * uiScale());
-  float tx = boxX + pad;
-  float ty = boxY + pad;
+  float tx = boxX + pad, ty = boxY + pad;
   for (int i = 0; i < lines.length; i++) {
     String line = lines[i];
-    if (line.startsWith("//")) {
-      fill(120, 200, 120);   // comments → dim green
-    } else if (line.startsWith("===")) {
-      fill(0, 255, 120);     // title → bright green
-    } else {
-      fill(180, 255, 180);   // formula → light green
-    }
+    if      (line.startsWith("//"))  fill(120, 200, 120);  // comments → dim green
+    else if (line.startsWith("===")) fill(0, 255, 120);    // title → bright green
+    else if (line.equals(""))        fill(0, 0, 0, 0);     // invisible spacer
+    else                             fill(180, 255, 180);   // body → light green
     text(line, tx, ty + i * lineH);
   }
   popStyle();
