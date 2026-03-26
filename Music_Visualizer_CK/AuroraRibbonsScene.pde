@@ -1,256 +1,238 @@
 // Aurora Ribbons Scene — state 10
-//
-// Translucent curtains of colour hang from the top of the screen and sway
-// like the northern lights. Each ribbon is an independent TRIANGLE_STRIP
-// driven by Perlin noise. ADD blend mode creates the signature aurora glow
-// where overlapping ribbons brighten each other.
-//
-// Audio mapping:
-//   Bass   → ribbon length (how far they hang down)
-//   Mid    → sway speed and energy
-//   High   → brightness / shimmer intensity
-//   Beat   → ripple pulse shoots down each ribbon
-//
-// Controller:
-//   L Stick ↔   → horizontal wind drift (offset all ribbons sideways)
-//   L Stick ↕   → ribbon count (2–8)
-//   R Stick ↕   → length multiplier
-//   A           → trigger a wave burst
-//   Y           → cycle colour palette (aurora / fire / ice / mono)
+// Atmospheric triangle-strip curtains driven by low/mid/high energy.
 
 class AuroraRibbonsScene {
+  float drift = 0.0;
+  float wind = 0.35;
+  float ribbonLengthScale = 1.0;
+  float hueOffset = 190;
+  float turbulence = 1.0;
+  float beatFlash = 0.0;
+  float beatSplit = 0.0;
 
-  final int   COLS       = 48;   // horizontal control points per ribbon
-  final int   MAX_R      = 8;
-  final int   MIN_R      = 2;
+  // Adaptive band normalization (auto-gain): keeps the scene expressive
+  // across songs with very different loudness/arrangement.
+  float lowFloor = 0.4, lowCeil = 7.0;
+  float midFloor = 0.3, midCeil = 6.0;
+  float highFloor = 0.2, highCeil = 5.0;
 
-  int   numRibbons  = 5;
-  int   palette     = 0;         // 0=aurora, 1=fire, 2=ice, 3=mono
+  // Curated palette presets: hue shift + sat/bri scaling
+  int paletteIndex = 0;
+  String[] paletteNames = {"Arctic", "Neon", "Sunset", "Void"};
+  float[] paletteHueShift = {0, 28, -32, 180};
+  float[] paletteSatMult  = {0.70, 1.15, 0.95, 0.55};
+  float[] paletteBriMult  = {1.05, 1.20, 1.10, 0.78};
 
-  // Per-ribbon state
-  float[] noiseOff   = new float[MAX_R];
-  float[] hueBase    = new float[MAX_R];
-  float[] ripple     = new float[MAX_R];  // beat ripple per ribbon
+  AuroraRibbonsScene() {}
 
-  // Pre-generated star field (fixed positions, avoid re-seeding random each frame)
-  final int NUM_STARS = 220;
-  float[] starX    = new float[NUM_STARS];
-  float[] starY    = new float[NUM_STARS];
-  float[] starB    = new float[NUM_STARS];  // base brightness
-  float[] starA    = new float[NUM_STARS];  // alpha
-  float[] starSz   = new float[NUM_STARS];  // size
+  void applyController(Controller c) {
+    float lx = map(c.lx, 0, width, -1, 1);
+    float rx = map(c.rx, 0, width, -1, 1);
+    float ry = map(c.ry, 0, height, -1, 1);
 
-  // Controller state
-  float windDrift    = 0.0;      // horizontal offset applied to all ribbons
-  float lenMult      = 1.0;      // length multiplier
-  boolean burst      = false;
+    // L stick ↔ controls wind advection
+    wind = map(lx, -1, 1, -2.2, 2.2);
+    // R stick ↕ controls vertical ribbon length
+    ribbonLengthScale = constrain(map(ry, -1, 1, 1.65, 0.55), 0.45, 2.2);
+    // R stick ↔ controls turbulence/detail
+    turbulence = constrain(map(rx, -1, 1, 0.35, 2.2), 0.2, 2.4);
 
-  // Audio smoothing
-  float smoothBass   = 0;
-  float smoothMid    = 0;
-  float smoothHigh   = 0;
-  float hueShift     = 0;
+    if (c.a_just_pressed) triggerFlash();
+    if (c.y_just_pressed) hueOffset = (hueOffset + 24) % 360;
+  }
 
-  AuroraRibbonsScene() {
-    for (int i = 0; i < MAX_R; i++) {
-      noiseOff[i] = random(5000);
-      hueBase[i]  = (i * 360.0 / MAX_R) % 360;
-    }
-    for (int s = 0; s < NUM_STARS; s++) {
-      starX[s] = random(width);
-      starY[s] = random(height * 0.85);
-      starB[s] = random(60, 140);
-      starA[s] = random(80, 180);
-      starSz[s] = random(1.0, 2.2);
-    }
+  void triggerFlash() {
+    beatFlash = 1.0;
+    beatSplit = 1.0;
+  }
+
+  void cyclePalette() {
+    paletteIndex = (paletteIndex + 1) % paletteNames.length;
+  }
+
+  void adjustLength(float delta) {
+    ribbonLengthScale = constrain(ribbonLengthScale + delta, 0.45, 2.2);
+  }
+
+  void adjustTurbulence(float delta) {
+    turbulence = constrain(turbulence + delta, 0.2, 2.4);
+  }
+
+  void adjustHue(float delta) {
+    hueOffset = (hueOffset + delta + 360) % 360;
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Aurora Ribbons ===",
+      "",
+      "// Layered TRIANGLE_STRIP curtains with noise-driven sway",
+      "sway = (noise(x*freq + drift, t*speed) - 0.5) * width",
+      "length = base_len * ribbon_length_scale * (1 + low_norm*0.32)",
+      "",
+      "// Adaptive normalizer tracks each song's dynamic range",
+      "norm = clamp((raw - floor) / max(0.001, ceil-floor), 0, 1)",
+      "",
+      "// Beat onset -> flash + curtain split from center",
+      "x += sign(x-center) * beat_split * split_strength",
+      "beat_flash *= 0.90, beat_split *= 0.86"
+    };
   }
 
   void drawScene() {
-    // ── Audio ──────────────────────────────────────────────────────────────
-    int fftSize = audio.fft.avgSize();
-    int bassEnd = max(1, fftSize / 6);
-    int midEnd  = max(bassEnd + 1, fftSize / 2);
+    float lowRaw = bandEnergy(0.00, 0.20);
+    float midRaw = bandEnergy(0.20, 0.55);
+    float highRaw = bandEnergy(0.55, 1.00);
 
-    float rawBass = 0, rawMid = 0, rawHigh = 0;
-    for (int i = 0;       i < bassEnd; i++) rawBass += audio.fft.getAvg(i);
-    for (int i = bassEnd; i < midEnd;  i++) rawMid  += audio.fft.getAvg(i);
-    for (int i = midEnd;  i < fftSize; i++) rawHigh += audio.fft.getAvg(i);
-    rawBass /= bassEnd;
-    rawMid  /= max(1, midEnd - bassEnd);
-    rawHigh /= max(1, fftSize - midEnd);
+    float low = normalizeAdaptive(lowRaw,  0);
+    float mid = normalizeAdaptive(midRaw,  1);
+    float high = normalizeAdaptive(highRaw, 2);
 
-    smoothBass = lerp(smoothBass, rawBass, 0.15);
-    smoothMid  = lerp(smoothMid,  rawMid,  0.12);
-    smoothHigh = lerp(smoothHigh, rawHigh, 0.20);
-
-    boolean isBeat = audio.beat.isOnset();
-    if (isBeat || burst) {
-      for (int i = 0; i < numRibbons; i++) ripple[i] = 1.0;
-      burst = false;
+    if (audio.beat.isOnset()) {
+      triggerFlash();
+      drift += 0.35;
     }
-    for (int i = 0; i < numRibbons; i++) ripple[i] *= 0.88;
+    beatFlash *= 0.90;
+    beatSplit *= 0.86;
 
-    hueShift = (hueShift + smoothMid * 0.15 + 0.08) % 360;
+    drift += 0.0035 * wind * (1.0 + high * 0.9);
 
-    // ── Background ─────────────────────────────────────────────────────────
-    background(2, 4, 12);
-
-    // Subtle star field — pre-generated fixed positions
-    colorMode(RGB, 255);
-    for (int s = 0; s < NUM_STARS; s++) {
-      float sb = starB[s] + smoothHigh * 4;
-      stroke(sb, sb, sb + 20, starA[s]);
-      strokeWeight(starSz[s]);
-      point(starX[s], starY[s]);
-    }
-    noStroke();
-
-    // ── Ribbons ────────────────────────────────────────────────────────────
-    blendMode(ADD);
     colorMode(HSB, 360, 255, 255, 255);
     noStroke();
 
-    float spacing   = (width + 100) / (float)(numRibbons);
-    float baseLen   = height * (0.45 + smoothBass * 0.05) * lenMult;
-    float swaySpeed = frameCount * (0.003 + smoothMid * 0.0006);
+    float pSat = paletteSatMult[paletteIndex];
+    float pBri = paletteBriMult[paletteIndex];
+    float pHue = paletteHueShift[paletteIndex];
 
-    for (int ri = 0; ri < numRibbons; ri++) {
-      float ribbonX = -50 + ri * spacing + windDrift;
-      float rip     = ripple[ri];
+    // dark sky gradient-ish wash
+    for (int i = 0; i < 7; i++) {
+      float yy = map(i, 0, 6, 0, height);
+      float bgHue = (hueOffset + pHue + 220 + i * 2) % 360;
+      float bgSat = constrain((170 - i * 18) * pSat * 0.8, 0, 255);
+      float bgBri = constrain((20 + i * 8) * pBri, 0, 255);
+      fill(bgHue, bgSat, bgBri, 255);
+      rect(0, yy, width, height / 7.0 + 1);
+    }
 
-      // Hue for this ribbon — spreads across palette based on index
-      float hue = getRibbonHue(ri, rip);
-      float sat = 200 + smoothHigh * 8;
-      float topAlpha = constrain(55 + smoothHigh * 6 + rip * 90, 0, 180);
+    blendMode(ADD);
+    int layers = 6;
+    for (int layer = 0; layer < layers; layer++) {
+      float layerMix = layer / float(max(1, layers - 1));
+      float len = (height * (0.22 + layerMix * 0.12)) * ribbonLengthScale * (1.0 + low * 0.32);
+      float spacing = max(8, width / 70.0);
+      float freq = (0.004 + layerMix * 0.003) * turbulence;
+      float speed = 0.35 + layerMix * 0.6 + high * 0.35;
+      float swayAmp = (34 + layer * 12 + high * 22) * turbulence;
+      float splitStrength = (10 + layer * 8) * beatSplit;
 
-      // Build the TRIANGLE_STRIP across COLS columns
       beginShape(TRIANGLE_STRIP);
-      for (int col = 0; col <= COLS; col++) {
-        float tx = ribbonX + col * (spacing * 1.2 / COLS);
+      for (float x = 0; x <= width + spacing; x += spacing) {
+        float nx = x * freq;
+        float n1 = noise(nx + drift * speed, frameCount * 0.0035 + layer * 13.0);
+        float n2 = noise(nx + drift * speed + 33.0, frameCount * 0.0045 + layer * 19.0);
+        float sway = (n1 - 0.5) * swayAmp;
+        float centerSide = (x < width * 0.5) ? -1.0 : 1.0;
 
-        // Perlin noise sway — slow for a dreamy feel
-        float nx   = col * 0.06 + noiseOff[ri];
-        float ny   = swaySpeed + noiseOff[ri] * 0.5;
-        float sway = (noise(nx, ny) - 0.5) * (60 + smoothMid * 8);
+        float topY = map(n2, 0, 1, -20, 45 + layer * 14);
+        float bottomY = topY + len + (n1 - 0.5) * (65 + low * 35.0);
 
-        // Extra shimmer on high frequencies at tail
-        float shimmer = sin(frameCount * 0.09 + col * 0.4 + ri * 1.2)
-                        * smoothHigh * 4;
+        float hue = (hueOffset + pHue + layer * 17 + sin(frameCount * 0.01 + x * 0.015) * 16 + mid * 26) % 360;
+        float sat = constrain((170 + 65 * (1.0 - layerMix)) * pSat, 0, 255);
+        float bri = constrain((145 + layer * 14 + high * 90) * pBri, 0, 255);
+        float aTop = 42 + layer * 10 + beatFlash * 65;
+        float aBot = 8 + layer * 3 + beatFlash * 20;
 
-        float topX  = tx + sway;
-        float botX  = tx + sway * 0.35 + shimmer;
-        float botY  = baseLen * (0.6 + noise(nx * 0.5, ny * 0.3) * 0.5)
-                      + rip * height * 0.08;
+        float split = centerSide * splitStrength;
 
-        // Fade alpha from bright at top to transparent at bottom
-        float tAlpha = topAlpha;
-        float bAlpha = topAlpha * 0.05;
-
-        fill(hue, sat, 255, tAlpha);
-        vertex(topX, 0);
-        fill(hue, sat * 0.6, 200 + smoothHigh * 4, bAlpha);
-        vertex(botX, botY);
+        fill(hue, sat, bri, aTop);
+        vertex(x + sway + split, topY);
+        fill(hue, sat * 0.8, bri * 0.8, aBot);
+        vertex(x + sway * 0.35 + split * 0.38, bottomY);
       }
       endShape();
+    }
 
-      // Soft glow at ribbon base — brightens on beat
-      if (rip > 0.1) {
-        float gx = ribbonX + spacing * 0.5;
-        float glowA = rip * 60;
-        fill(hue, 180, 255, glowA);
-        ellipse(gx, baseLen * 0.5, spacing * 0.8, baseLen * 0.3);
-      }
+    drawMist(high, pHue, pSat, pBri);
+
+    // beat veil
+    if (beatFlash > 0.01) {
+      blendMode(SCREEN);
+      fill((hueOffset + pHue + 120) % 360, 40, 255, 80 * beatFlash);
+      rect(0, 0, width, height);
     }
 
     blendMode(BLEND);
     colorMode(RGB, 255);
 
-    // ── Ground glow ────────────────────────────────────────────────────────
-    // Soft horizon bloom where ribbons terminate
-    colorMode(HSB, 360, 255, 255, 255);
-    noStroke();
-    float horizY = baseLen * 0.92;
-    for (int r = 3; r >= 1; r--) {
-      float a = (smoothBass * 8 + 12) * r * 0.4;
-      fill((hueShift + 20) % 360, 160, 255, constrain(a, 0, 80));
-      ellipse(width / 2.0, horizY, width * 1.1, height * 0.12 * r);
-    }
-    colorMode(RGB, 255);
-
-    // ── HUD ────────────────────────────────────────────────────────────────
-    String[] palNames = {"Aurora", "Fire", "Ice", "Mono"};
-    pushStyle();
-      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
-      fill(0, 160); noStroke(); rectMode(CORNER);
-      rect(8, 8, 310 * uiScale(), mg + lh * 5);
-      fill(100, 220, 255); textSize(ts); textAlign(LEFT, TOP);
-      text("Aurora Ribbons",                                         12, 8 + mg);
-      fill(200, 235, 255);
-      text("Palette: " + palNames[palette] + "  (Y cycle)",         12, 8 + mg + lh);
-      text("Ribbons: " + numRibbons + "  (L ↕)",                    12, 8 + mg + lh * 2);
-      text("Length: "  + nf(lenMult, 1, 2) + "x  (R ↕)",           12, 8 + mg + lh * 3);
-      text("Wind: " + nf(windDrift, 1, 0) + "px  (L ↔)   A=burst", 12, 8 + mg + lh * 4);
-    popStyle();
-
     drawSongNameOnScreen(config.SONG_NAME, width / 2.0, height - 5);
+    drawHud(low, mid, high);
   }
 
-  // Returns hue for ribbon ri based on current palette and beat ripple
-  float getRibbonHue(int ri, float rip) {
-    float t = (float)ri / max(1, numRibbons - 1);
-    float h;
-    switch (palette) {
-      case 1:  h = map(t, 0, 1, 0,   60);  break;  // fire: red→yellow
-      case 2:  h = map(t, 0, 1, 170, 240); break;  // ice: cyan→blue
-      case 3:  h = 140; break;                       // mono: teal
-      default: h = (hueShift + t * 120) % 360; break; // aurora: green→purple sweep
+  void drawMist(float highNorm, float pHue, float pSat, float pBri) {
+    int pCount = int(24 + highNorm * 42);
+    for (int i = 0; i < pCount; i++) {
+      float t = frameCount * 0.004 + i * 0.17;
+      float x = noise(i * 2.7, t + drift * 0.2) * width;
+      float y = height * (0.22 + noise(i * 5.1, t * 0.9) * 0.72);
+      float r = 1.2 + noise(i * 7.3, t * 1.1) * (2.0 + highNorm * 5.5);
+      float hue = (hueOffset + pHue + 170 + noise(i * 9.7, t * 0.6) * 45) % 360;
+      float sat = constrain((90 + highNorm * 120) * pSat, 0, 255);
+      float bri = constrain((130 + highNorm * 105) * pBri, 0, 255);
+      float a = 10 + highNorm * 45;
+      fill(hue, sat, bri, a);
+      ellipse(x, y, r * 2.0, r * 2.0);
     }
-    // Beat ripple flashes toward white
-    return h;
   }
 
-  // ── Controller ─────────────────────────────────────────────────────────────
-
-  void applyController(Controller c) {
-    // L stick ↔ = wind drift
-    float lx = map(c.lx, 0, width, -1, 1);
-    if (abs(lx) > 0.12) windDrift = constrain(windDrift + lx * 4, -width * 0.3, width * 0.3);
-
-    // L stick ↕ = ribbon count
-    float ly = map(c.ly, 0, height, -1, 1);
-    if (abs(ly) > 0.5) {
-      numRibbons = constrain(numRibbons + (ly > 0 ? -1 : 1), MIN_R, MAX_R);
+  float normalizeAdaptive(float raw, int band) {
+    float floor, ceil;
+    if (band == 0) {
+      lowFloor = lerp(lowFloor, min(lowFloor, raw), 0.035);
+      lowCeil  = lerp(lowCeil,  max(lowCeil * 0.997, raw), 0.04);
+      floor = lowFloor;
+      ceil = lowCeil;
+    } else if (band == 1) {
+      midFloor = lerp(midFloor, min(midFloor, raw), 0.035);
+      midCeil  = lerp(midCeil,  max(midCeil * 0.997, raw), 0.04);
+      floor = midFloor;
+      ceil = midCeil;
+    } else {
+      highFloor = lerp(highFloor, min(highFloor, raw), 0.035);
+      highCeil  = lerp(highCeil,  max(highCeil * 0.997, raw), 0.04);
+      floor = highFloor;
+      ceil = highCeil;
     }
 
-    // R stick ↕ = length multiplier
-    float ry = map(c.ry, 0, height, -1, 1);
-    lenMult = map(ry, -1, 1, 2.0, 0.4);
-
-    // Buttons
-    if (c.a_just_pressed) burst = true;
-    if (c.y_just_pressed) palette = (palette + 1) % 4;
+    float n = (raw - floor) / max(0.001, ceil - floor);
+    return constrain(n, 0, 1);
   }
 
-  String[] getCodeLines() {
-    return new String[] {
-      "=== Aurora Ribbons Controls ===",
-      "",
-      "L Stick ↔    horizontal wind drift",
-      "L Stick ↕    ribbon count (2–8)",
-      "R Stick ↕    ribbon length",
-      "",
-      "A            wave burst",
-      "Y            cycle palette",
-      "             (Aurora/Fire/Ice/Mono)",
-      "",
-      "LB / RB      prev / next scene",
-      "` (backtick) toggle this overlay",
-      "",
-      "=== Audio ===",
-      "Bass    ribbon length",
-      "Mid     sway speed",
-      "High    brightness / shimmer",
-      "Beat    ripple down ribbons",
-    };
+  float bandEnergy(float startNorm, float endNorm) {
+    int n = max(1, audio.fft.avgSize());
+    int s = constrain(int(n * startNorm), 0, n - 1);
+    int e = constrain(int(n * endNorm), s + 1, n);
+    float total = 0;
+    for (int i = s; i < e; i++) total += audio.fft.getAvg(i);
+    return total / max(1, e - s);
+  }
+
+  void drawHud(float low, float mid, float high) {
+    pushStyle();
+      float ts = 11 * uiScale();
+      float lh = ts * 1.3;
+      fill(0, 125);
+      noStroke();
+      rectMode(CORNER);
+      rect(8, 8, 390 * uiScale(), 8 + lh * 6.2);
+      fill(255);
+      textSize(ts);
+      textAlign(LEFT, TOP);
+      text("Scene: Aurora Ribbons", 12, 12);
+      text("low / mid / high (norm): " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh);
+      text("wind: " + nf(wind, 1, 2) + "  len: " + nf(ribbonLengthScale, 1, 2) + "x", 12, 12 + lh * 2);
+      text("turbulence: " + nf(turbulence, 1, 2) + "  hue: " + nf(hueOffset, 1, 1), 12, 12 + lh * 3);
+      text("palette: " + paletteNames[paletteIndex] + "  split: " + nf(beatSplit, 1, 2), 12, 12 + lh * 4);
+      text("A flash  Y hue step  K palette  [ ] turbulence  -/= length", 12, 12 + lh * 5);
+    popStyle();
   }
 }

@@ -81,6 +81,17 @@ All scenes support a controller (Xbox-style via GameControlPlus).
 | R Stick ↕ | Drift speed |
 | A | Trigger beat glow |
 
+### Scene 10 — Aurora Ribbons
+| Control | Action |
+|---------|--------|
+| L Stick ↔ | Wind drift direction/speed |
+| R Stick ↕ | Ribbon length |
+| R Stick ↔ | Turbulence/detail |
+| A | Manual flash |
+| Y | Hue offset step |
+
+Keyboard (state 10): `K` cycles palette, `Space` triggers manual flash, `[ ]` turbulence, `- / =` length, `H / J` hue.
+
 ## Technical notes
 
 - The Xbox controller on Linux exposes LT and RT as a **single combined "z" axis** via GameControlPlus (`getSlider("z")`). Values: `-1.0` = LT fully pressed, `+1.0` = RT fully pressed.

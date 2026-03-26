@@ -669,8 +669,8 @@ void keyPressed() {
   if (key == 'i' || key == 'I') {
     config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
-  if (key >= '1' && key <= '9') {
-    int newState = (int) key - 48;
+  if ((key >= '1' && key <= '9') || key == '0') {
+    int newState = (key == '0') ? 10 : ((int) key - 48);
     // Only allow switching to active scenes (3 and 9 are disabled)
     if (_sceneOrderIndex(newState) >= 0 || newState == SCENE_ORDER[0]) {
       boolean inRotation = false;
@@ -734,6 +734,17 @@ void keyPressed() {
     if (key == 'a' || key == 'A') particleFountain.nudgeOrigin(-10, 0);
     if (key == 's' || key == 'S') particleFountain.nudgeOrigin(0, 10);
     if (key == 'd' || key == 'D') particleFountain.nudgeOrigin(10, 0);
+  }
+  // Aurora ribbons keys (state 10 only)
+  if (config.STATE == 10 && auroraRibbons != null) {
+    if (key == '[') auroraRibbons.adjustTurbulence(-0.05);
+    if (key == ']') auroraRibbons.adjustTurbulence(0.05);
+    if (key == '-' || key == '_') auroraRibbons.adjustLength(-0.05);
+    if (key == '=' || key == '+') auroraRibbons.adjustLength(0.05);
+    if (key == 'h' || key == 'H') auroraRibbons.adjustHue(-7);
+    if (key == 'j' || key == 'J') auroraRibbons.adjustHue(7);
+    if (key == 'k' || key == 'K') auroraRibbons.cyclePalette();
+    if (key == ' ') auroraRibbons.triggerFlash();
   }
   if (key == '`') {
     config.SHOW_CODE = !config.SHOW_CODE;
@@ -999,6 +1010,7 @@ public void getUserInput(boolean usingController) {
   if (config.STATE == 12 && spirograph != null) {
     spirograph.applyController(controller);
   }
+
 
   // map controller sticks to Shapes3DScene parameters for live tuning
   if (config.STATE == 3 && shapes3D != null) {
@@ -1420,6 +1432,7 @@ void draw() {
   case 10:
     getUserInput(config.USING_CONTROLLER);
     auroraRibbons.drawScene();
+    if (config.SHOW_CODE) drawCodeOverlay(auroraRibbons.getCodeLines());
     addFPSToTitleBar();
     break;
   case 11:
@@ -1533,6 +1546,11 @@ void drawControlsHUD() {
     "9: L ↕           pulse sensitivity",
     "9: Y             cycle bg mode",
     "9: A             manual pulse",
+    "10: L ↔          wind drift",
+    "10: R ↕          ribbon length",
+    "10: R ↔          turbulence",
+    "10: A / Y        flash / hue shift",
+    "10: K / Space    palette / flash",
     "",
     "=== KEYBOARD ===",
     "0–9              switch scene",
