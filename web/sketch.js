@@ -91,8 +91,10 @@ function draw() {
 
   switch (Config.STATE) {
     case 0:
-      // File picker UI — handled by HTML/CSS, just show a dark background
-      background(10);
+      // File picker UI is overlaid in HTML — draw a subtle animated background
+      // so the canvas isn't just a dead black rectangle behind the picker
+      background(8);
+      _drawIdlePulse();
       break;
 
     case 1:
@@ -154,6 +156,26 @@ function _drawSceneLobsters() {
 // ─────────────────────────────────────────────────────────────────────────────
 // UI helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Subtle animated pulse shown behind the file picker while waiting for audio source. */
+function _drawIdlePulse() {
+  const centerX      = width / 2;
+  const centerY      = height / 2;
+  const pulseCount   = 4;
+  const baseRadius   = 80;
+  const radiusSpread = 60;
+  const timeOffset   = frameCount * 0.02;
+
+  noFill();
+  for (let ringIndex = 0; ringIndex < pulseCount; ringIndex++) {
+    const phaseOffset = (ringIndex / pulseCount) * Math.PI * 2;
+    const ringAlpha   = 20 + Math.sin(timeOffset + phaseOffset) * 15;
+    const ringRadius  = baseRadius + ringIndex * radiusSpread + Math.sin(timeOffset * 0.5 + phaseOffset) * 10;
+    stroke(80, 160, 200, ringAlpha);
+    strokeWeight(1.5);
+    ellipse(centerX, centerY, ringRadius * 2, ringRadius * 2);
+  }
+}
 
 function _drawNavBar() {
   const barHeight      = 40;
@@ -326,6 +348,16 @@ function keyPressed() {
   // Ignore keys until audio source is active (except ?)
   if (Config.STATE === 0 && key !== '?') return;
 
+  // ── Scene 11: Lobster steering ─────────────────────────────────────────
+  if (Config.STATE === 11) {
+    if (keyCode === LEFT_ARROW  || key === 'a' || key === 'A') sceneLobsters.keyLeftHeld  = true;
+    if (keyCode === RIGHT_ARROW || key === 'd' || key === 'D') sceneLobsters.keyRightHeld = true;
+    if (keyCode === UP_ARROW    || key === 'w' || key === 'W') sceneLobsters.keyUpHeld    = true;
+    if (keyCode === DOWN_ARROW  || key === 's' || key === 'S') sceneLobsters.keyDownHeld  = true;
+    if (key === ' ') sceneLobsters.scatterLobsters();
+    return false;
+  }
+
   // ── Scene switching ─────────────────────────────────────────────────────
   if (key === '1') switchScene(1);
   if (key === '-') switchScene(11);
@@ -414,6 +446,16 @@ function keyPressed() {
   return false;
 }
 
+function keyReleased() {
+  if (Config.STATE === 11) {
+    if (keyCode === LEFT_ARROW  || key === 'a' || key === 'A') sceneLobsters.keyLeftHeld  = false;
+    if (keyCode === RIGHT_ARROW || key === 'd' || key === 'D') sceneLobsters.keyRightHeld = false;
+    if (keyCode === UP_ARROW    || key === 'w' || key === 'W') sceneLobsters.keyUpHeld    = false;
+    if (keyCode === DOWN_ARROW  || key === 's' || key === 'S') sceneLobsters.keyDownHeld  = false;
+  }
+  return false;
+}
+
 function _enableOneBg(which) {
   Config.DRAW_TUNNEL      = (which === 'tunnel');
   Config.DRAW_PLASMA      = (which === 'plasma');
@@ -463,22 +505,29 @@ function _handleControllerInput() {
     Config.DIAMOND_HEIGHT_OFFSET = ((c.ry - height/10) / 5.0) - 80;
   }
 
-  if (c.b_just_pressed) {
-    Config.CURRENT_BLEND_MODE_INDEX = (Config.CURRENT_BLEND_MODE_INDEX + 1) % BLEND_MODES.length;
-  }
-  if (c.a_just_pressed) Config.RAINBOW_FINS = !Config.RAINBOW_FINS;
-  if (c.y_just_pressed) { Config.finRotationClockWise = !Config.finRotationClockWise; }
-  if (c.back_just_pressed)  audio.pause();
-  if (c.start_just_pressed) audio.play();
+  // LB/RB: always switch scenes regardless of current scene
   if (c.lb_just_pressed) {
-    const idx = SCENE_ORDER.indexOf(Config.STATE);
-    const prev = SCENE_ORDER[(idx - 1 + SCENE_ORDER.length) % SCENE_ORDER.length];
-    switchScene(prev);
+    const prevIdx = SCENE_ORDER.indexOf(Config.STATE);
+    switchScene(SCENE_ORDER[(prevIdx - 1 + SCENE_ORDER.length) % SCENE_ORDER.length]);
   }
   if (c.rb_just_pressed) {
-    const idx = SCENE_ORDER.indexOf(Config.STATE);
-    const next = SCENE_ORDER[(idx + 1) % SCENE_ORDER.length];
-    switchScene(next);
+    const nextIdx = SCENE_ORDER.indexOf(Config.STATE);
+    switchScene(SCENE_ORDER[(nextIdx + 1) % SCENE_ORDER.length]);
+  }
+
+  if (Config.STATE === 11) {
+    // Lobster scene: A=scatter, B=gather
+    if (c.a_just_pressed) sceneLobsters.scatterLobsters();
+    if (c.b_just_pressed) sceneLobsters.gatherLobsters();
+  } else {
+    // Scene 1 controls
+    if (c.b_just_pressed) {
+      Config.CURRENT_BLEND_MODE_INDEX = (Config.CURRENT_BLEND_MODE_INDEX + 1) % BLEND_MODES.length;
+    }
+    if (c.a_just_pressed) Config.RAINBOW_FINS = !Config.RAINBOW_FINS;
+    if (c.y_just_pressed) Config.finRotationClockWise = !Config.finRotationClockWise;
+    if (c.back_just_pressed)  audio.pause();
+    if (c.start_just_pressed) audio.play();
   }
 }
 
@@ -723,6 +772,10 @@ function _launchVisualizer() {
   // Hide picker, show canvas full-screen
   const pickerUI = document.getElementById('picker-ui');
   if (pickerUI) pickerUI.style.display = 'none';
+
+  // Set a display name for the nav bar based on source type
+  if (audio.sourceType === 'mic')    Config.SONG_NAME = '🎤 Microphone';
+  if (audio.sourceType === 'system') Config.SONG_NAME = '🖥️ System Audio';
 
   Config.STATE = 1;
   switchScene(1);

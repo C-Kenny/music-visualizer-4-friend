@@ -143,14 +143,15 @@ class SceneMandala {
     // Song name is displayed in the nav bar by sketch.js — no need to draw it here too
 
     // ── Playback position bar ─────────────────────────────────────────────────
-    if (audio.ready) {
-      const dur = audio.player.length();
-      if (dur > 0) {
-        const posx = p.map(audio.player.position(), 0, dur, 0, s);
+    // Only shown for file playback — mic/system have no position to track
+    if (audio.ready && audio.sourceType === 'file') {
+      const songDuration = audio.player.length();
+      if (songDuration > 0) {
+        const playheadX = p.map(audio.player.position(), 0, songDuration, 0, s);
         p.push();
         p.stroke(252, 4, 243);
         p.strokeWeight(2);
-        p.line(posx, s, posx, s * 0.975);
+        p.line(playheadX, s, playheadX, s * 0.975);
         p.pop();
       }
     }
@@ -360,7 +361,7 @@ class SceneMandala {
   }
 
   _modifyDiamondCenterPoint(closer) {
-    const delta = (typeof width !== 'undefined' ? width : 1200) * 0.02;
+    const delta = (this.s1Size || 1080) * 0.02;
     if (closer) {
       Config.DIAMOND_DISTANCE_FROM_CENTER += delta;
     } else {
@@ -562,3 +563,4 @@ class PolarPlasmaEffect {
 
 // Export as global
 const sceneMandala = new SceneMandala(null); // p5 instance injected later in sketch.js
+jected later in sketch.js
