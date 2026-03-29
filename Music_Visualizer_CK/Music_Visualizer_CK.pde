@@ -24,6 +24,9 @@ FFTWormScene fftWorm;
 AuroraRibbonsScene auroraRibbons;
 RadialFFTScene radialFFT;
 SpirographScene spirograph;
+GravityStringsScene gravityStrings;
+NeuralWeaveScene neuralWeave;
+ShoalLuminaScene shoalLumina;
 PFont monoFont;
 
 BezierHeart bezier_heart_0;
@@ -377,6 +380,9 @@ void setup() {
   auroraRibbons = new AuroraRibbonsScene();
   radialFFT     = new RadialFFTScene();
   spirograph    = new SpirographScene();
+  gravityStrings = new GravityStringsScene();
+  neuralWeave = new NeuralWeaveScene();
+  shoalLumina = new ShoalLuminaScene();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
@@ -595,7 +601,8 @@ void mousePressed() {
 }
 
 void keyPressed() {
-  if ((key == 'b' || key == 'B') && config.STATE != 9) {
+  // State 14: B/G used by Neural Weave — skip global blend (same pattern as other scene-specific keys)
+  if ((key == 'b' || key == 'B') && config.STATE != 9 && config.STATE != 14) {
     changeBlendMode();
   }
   if (key == 'h') {
@@ -645,7 +652,8 @@ void keyPressed() {
     config.DIAMOND_RIGHT_EDGE_Y -= 20;
     config.DIAMOND_LEFT_EDGE_Y += 20;
   }
-  if (key == 'g' || key == 'G') {
+  // State 14: G cycles Neural Weave growth — skip global background toggle
+  if ((key == 'g' || key == 'G') && config.STATE != 14) {
     config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
   }
   if (key == '<' || key == '>') {
@@ -735,6 +743,34 @@ void keyPressed() {
     if (key == 's' || key == 'S') particleFountain.nudgeOrigin(0, 10);
     if (key == 'd' || key == 'D') particleFountain.nudgeOrigin(10, 0);
   }
+  // Radial FFT keys (state 11 only)
+  if (config.STATE == 11 && radialFFT != null) {
+    if (key == 'r' || key == 'R') radialFFT.reverseDirection();
+    if (key == '[') radialFFT.adjustSpeed(-0.001);
+    if (key == ']') radialFFT.adjustSpeed(0.001);
+  }
+  // Neural Weave (state 14) — see documentation/neural_weave.md
+  if (config.STATE == 14 && neuralWeave != null) {
+    if (key == '[') neuralWeave.adjustCols(-1);
+    if (key == ']') neuralWeave.adjustCols(1);
+    if (key == '-' || key == '_') neuralWeave.adjustEdgeGain(-0.08);
+    if (key == '=' || key == '+') neuralWeave.adjustEdgeGain(0.08);
+    if (key == 'k' || key == 'K') neuralWeave.cyclePalette();
+    if (key == ' ') neuralWeave.triggerRipple();
+    if (key == 'e' || key == 'E') neuralWeave.toggleLabMode();
+    if (key == 'g' || key == 'G' || key == 'b' || key == 'B') neuralWeave.cycleGrowthMode();
+    if (key == 'v' || key == 'V') neuralWeave.toggleVesicles();
+  }
+
+  // Shoal Lumina (state 15)
+  if (config.STATE == 15 && shoalLumina != null) {
+    if (key == '[') shoalLumina.adjustLayers(-1);
+    if (key == ']') shoalLumina.adjustLayers(1);
+    if (key == '-' || key == '_') shoalLumina.adjustSpeed(-0.0025);
+    if (key == '=' || key == '+') shoalLumina.adjustSpeed(0.0025);
+    if (key == ' ') shoalLumina.triggerSurge();
+  }
+
   // Aurora ribbons keys (state 10 only)
   if (config.STATE == 10 && auroraRibbons != null) {
     if (key == '[') auroraRibbons.adjustTurbulence(-0.05);
@@ -1011,6 +1047,20 @@ public void getUserInput(boolean usingController) {
     spirograph.applyController(controller);
   }
 
+  // gravity strings
+  if (config.STATE == 13 && gravityStrings != null) {
+    gravityStrings.applyController(controller);
+  }
+
+  // Neural Weave — documentation/neural_weave.md
+  if (config.STATE == 14 && neuralWeave != null) {
+    neuralWeave.applyController(controller);
+  }
+
+  // Shoal Lumina
+  if (config.STATE == 15 && shoalLumina != null) {
+    shoalLumina.applyController(controller);
+  }
 
   // map controller sticks to Shapes3DScene parameters for live tuning
   if (config.STATE == 3 && shapes3D != null) {
@@ -1036,22 +1086,27 @@ public void getUserInput(boolean usingController) {
 
   boolean wormScene_active = (config.STATE == 3 || config.STATE == 9);
 
-  if (controller.b_just_pressed && !wormScene_active) {
+  // State 14: B cycles growth — skip global blend
+  if (controller.b_just_pressed && !wormScene_active && config.STATE != 14) {
     changeBlendMode();
   }
 
   if (controller.a_just_pressed && !wormScene_active) {
     switch (config.STATE) {
       case 8:  if (particleFountain != null) particleFountain.triggerBurst(); break;
+      case 14: if (neuralWeave != null) neuralWeave.triggerRipple(); break; // not rainbow_fins
+      case 15: break; // surge handled in ShoalLuminaScene.applyController
       default: config.RAINBOW_FINS = !config.RAINBOW_FINS; break;
     }
   }
 
-  if (controller.y_just_pressed && !wormScene_active) {
+  // State 14 (Neural Weave) opts out so Y only runs scene palette there — see documentation/neural_weave.md
+  if (controller.y_just_pressed && !wormScene_active && config.STATE != 14 && config.STATE != 15) {
     if (config.STATE != 9) changeFinRotation();
   }
 
-  if (controller.x_just_pressed && !wormScene_active) {
+  // State 14: X toggles lab mode in NeuralWeaveScene.applyController
+  if (controller.x_just_pressed && !wormScene_active && config.STATE != 14) {
     config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
   }
 
@@ -1066,11 +1121,12 @@ public void getUserInput(boolean usingController) {
   if (controller.lb_just_pressed) switchScene(prevActiveScene());
   if (controller.rb_just_pressed) switchScene(nextActiveScene());
 
-  if (controller.lstickclick_just_pressed) {
+  // State 14: stick clicks handled by NeuralWeaveScene (reset view / reshuffle bridges)
+  if (controller.lstickclick_just_pressed && config.STATE != 14) {
     config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
   }
 
-  if (controller.rstickclick_just_pressed) {
+  if (controller.rstickclick_just_pressed && config.STATE != 14) {
     config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
 }
@@ -1084,7 +1140,7 @@ int previous_state = -1;
 // ── Active scene list ─────────────────────────────────────────────────────────
 // Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
 // in the codebase but excluded from rotation for now.
-final int[] SCENE_ORDER = {1, 3, 9, 8, 2, 4, 5, 6, 7, 10, 11, 12};
+final int[] SCENE_ORDER = {1, 3, 2, 4, 5, 6, 7, 11, 12, 13, 14, 15};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -1445,6 +1501,21 @@ void draw() {
     spirograph.drawScene();
     addFPSToTitleBar();
     break;
+  case 13:
+    getUserInput(config.USING_CONTROLLER);
+    gravityStrings.drawScene();
+    addFPSToTitleBar();
+    break;
+  case 14:
+    getUserInput(config.USING_CONTROLLER);
+    neuralWeave.drawScene();
+    addFPSToTitleBar();
+    break;
+  case 15:
+    getUserInput(config.USING_CONTROLLER);
+    shoalLumina.drawScene();
+    addFPSToTitleBar();
+    break;
   }
 
   // ── Per-scene controls HUD (` to toggle) ────────────────────────────────────
@@ -1454,6 +1525,9 @@ void draw() {
   if (config.STATE == 10 && config.SHOW_CODE) drawSceneControlsHUD(auroraRibbons.getCodeLines());
   if (config.STATE == 11 && config.SHOW_CODE) drawSceneControlsHUD(radialFFT.getCodeLines());
   if (config.STATE == 12 && config.SHOW_CODE) drawSceneControlsHUD(spirograph.getCodeLines());
+  if (config.STATE == 13 && config.SHOW_CODE) drawCodeOverlay(gravityStrings.getCodeLines());
+  if (config.STATE == 14 && config.SHOW_CODE) drawSceneControlsHUD(neuralWeave.getCodeLines());
+  if (config.STATE == 15 && config.SHOW_CODE) drawSceneControlsHUD(shoalLumina.getCodeLines());
 
   // ── Crossfade overlay ───────────────────────────────────────────────────────
   // Drawn after every scene so it always sits on top.
@@ -1551,6 +1625,7 @@ void drawControlsHUD() {
     "10: R ↔          turbulence",
     "10: A / Y        flash / hue shift",
     "10: K / Space    palette / flash",
+    "14: L pan  R zoom/spin  LT/RT bio/tech  A ripple  B growth  X lab",
     "",
     "=== KEYBOARD ===",
     "0–9              switch scene",

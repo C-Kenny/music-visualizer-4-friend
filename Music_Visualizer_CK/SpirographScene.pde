@@ -154,9 +154,10 @@ class SpirographScene {
     }
 
     // ── Background ─────────────────────────────────────────────────────────
-    // Phosphor persistence: semi-transparent fill each frame gives a trail
+    // Phosphor persistence: semi-transparent fill each frame gives a trail.
+    // Decay faster while fading so old curves clear before the new one starts.
     noStroke();
-    fill(0, 0, 0, 28);
+    fill(0, 0, 0, fading ? 80 : 45);
     rectMode(CORNER);
     rect(0, 0, width, height);
 
