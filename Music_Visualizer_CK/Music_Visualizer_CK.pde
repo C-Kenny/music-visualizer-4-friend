@@ -27,30 +27,15 @@ SpirographScene spirograph;
 GravityStringsScene gravityStrings;
 NeuralWeaveScene neuralWeave;
 ShoalLuminaScene shoalLumina;
+AntigravityScene antigravity;
+FractalScene fractalScene;
+ShaderScene shaderScene;
 PFont monoFont;
 
-BezierHeart bezier_heart_0;
-BezierHeart bezier_heart_1;
-BezierHeart bezier_heart_2;
-BezierHeart bezier_heart_3;
-ArrayList<BezierHeart> bezier_hearts;
 
-DashedLines dash;
-float dash_dist;
+OriginalScene originalScene;
+HeartGridScene heartGridScene;
 
-// Scene 1 is designed as a square. On widescreen we render it into a
-// centered square of side s1Size and leave the sides as plain background.
-int   s1Size    = 1200;
-float s1OffsetX = 0;
-
-float heartBeatDecay   = 0;    // beat impulse, decays to 0 between beats
-float heartHue         = 0;    // current hue (0–360), smoothly lerped
-float heartTargetHue   = 0;    // hue we're drifting toward
-
-// Scene 2 zoom/pan — R stick zooms toward stick direction, releases ease back out
-float heartZoom        = 1.0;  // current zoom level (1.0 = no zoom)
-float heartFocusNX     = 0.0;  // zoom focus, normalised -1..1 from center (X)
-float heartFocusNY     = 0.0;  // zoom focus, normalised -1..1 from center (Y)
 
 // UI scale: 1.0 at 1080p, grows proportionally for higher resolutions.
 // Use uiScale() for textSize, strokeWeight, and HUD rect sizes.
@@ -67,76 +52,6 @@ int[] modes;
 String[]modeNames;
 
 PeasyCam cam;
-
-class BezierHeart {
-  float bezier_angle, bezier_speed, bezier_range;
-
-  float bezier_heart_l_x1, bezier_heart_l_y1;
-  float bezier_heart_l_x2, bezier_heart_l_y2;
-  float bezier_heart_l_x3, bezier_heart_l_y3;
-  float bezier_heart_l_x4, bezier_heart_l_y4;
-
-  float bezier_heart_r_x1, bezier_heart_r_y1;
-  float bezier_heart_r_x2, bezier_heart_r_y2;
-  float bezier_heart_r_x3, bezier_heart_r_y3;
-  float bezier_heart_r_x4, bezier_heart_r_y4;
-
-  float bezier_heart_fill_color_r = random(255);
-  float bezier_heart_fill_color_g = 100.0;
-  float bezier_heart_fill_color_b = random(255);
-
-
-  BezierHeart (float b_angle, float b_speed, float b_range) {
-    bezier_angle = b_angle;
-    bezier_speed = b_speed;
-    bezier_range = b_range;
-
-    bezier_heart_l_x1 = 0;  bezier_heart_l_y1 = 562;
-    bezier_heart_l_x2 = -443;    bezier_heart_l_y2 = 88;
-    bezier_heart_l_x3 = -70;  bezier_heart_l_y3 = 0;
-    bezier_heart_l_x4 = 0;  bezier_heart_l_y4 = 178;
-
-    bezier_heart_r_x1 = 0;  bezier_heart_r_y1 = 562;
-    bezier_heart_r_x2 = 388;  bezier_heart_r_y2 = 58;
-    bezier_heart_r_x3 = 17;  bezier_heart_r_y3 = 0;
-    bezier_heart_r_x4 = 0;  bezier_heart_r_y4 = 178;
-  }
-
-  void BezierUpdateAngle () {
-    bezier_angle += bezier_speed;
-  }
-
-  void BezierUpdateFillColor (float new_heart_color_g) {
-    bezier_heart_fill_color_g = new_heart_color_g;
-  }
-
-  // Scale-aware overload — s replaces the hardcoded 0.75.
-  // xOffset / yOffset are in natural (unscaled) heart coordinates.
-  void drawBezierHeart(float xHeartOffset, float yHeartOffset, float s) {
-      pushMatrix();
-        scale(s);
-        translate(xHeartOffset, yHeartOffset);
-
-        fill(bezier_heart_fill_color_r, bezier_heart_fill_color_g, bezier_heart_fill_color_b);
-        stroke(255, 1, 1);
-        strokeWeight(1.0);
-
-        bezier(
-          bezier_heart_l_x1,                        bezier_heart_l_y1,
-          bezier_heart_l_x2 - (config.HEART_PULSE),        bezier_heart_l_y2,
-          bezier_heart_l_x3 - (config.HEART_PULSE / 2.0),  bezier_heart_l_y3,
-          bezier_heart_l_x4,                        bezier_heart_l_y4
-        );
-        bezier(
-          bezier_heart_r_x1,                        bezier_heart_r_y1,
-          bezier_heart_r_x2 + (config.HEART_PULSE),        bezier_heart_r_y2,
-          bezier_heart_r_x3 + (config.HEART_PULSE / 2.0),  bezier_heart_r_y3,
-          bezier_heart_r_x4,                        bezier_heart_r_y4
-        );
-      popMatrix();
-  }
-
-}
 
 void loadSongToVisualize() {
   log_to_stdo("Loading song to visualize");
@@ -162,17 +77,6 @@ void initializeGlobals() {
   ellipseMode(CENTER);
   blendMode(BLEND);
 
-  bezier_heart_0 = new BezierHeart(0.0, 0.25, 300);
-  bezier_heart_1 = new BezierHeart(0.0, 0.25, 300);
-  bezier_heart_2 = new BezierHeart(0.0, 0.25, 300);
-  bezier_heart_3 = new BezierHeart(0.0, 0.25, 300);
-
-  bezier_hearts = new ArrayList<BezierHeart>();
-  bezier_hearts.add(bezier_heart_0);
-
-  dash = new DashedLines(this);
-  dash.pattern(130, 110);
-  dash_dist = 0;
 
   HANDY_RENDERERS = new HandyRenderer[3];
   config.HANDY_RENDERERS_COUNT = HANDY_RENDERERS.length;
@@ -354,8 +258,6 @@ void settings() {
 
 void setup() {
   background(200);
-  s1Size    = min(width, height);
-  s1OffsetX = (width - s1Size) / 2.0;
   config = new Config();
   log_to_stdo("canvas spawned");
   initializeGlobals();
@@ -383,6 +285,11 @@ void setup() {
   gravityStrings = new GravityStringsScene();
   neuralWeave = new NeuralWeaveScene();
   shoalLumina = new ShoalLuminaScene();
+  antigravity = new AntigravityScene();
+  fractalScene = new FractalScene();
+  shaderScene = new ShaderScene();
+  originalScene = new OriginalScene(this);
+  heartGridScene = new HeartGridScene();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
@@ -397,173 +304,10 @@ void setup() {
   h3_emblem = loadImage("../media/h3_emblem.jpg");
 }
 
-void drawDiamond(float dash_distanceFromCenter) {
-  float innerXY = s1Size / 2.0 + config.DIAMOND_DISTANCE_FROM_CENTER;
-  CURRENT_HANDY_RENDERER = HANDY_RENDERERS[config.CURRENT_HANDY_RENDERER_POSITION];
-  strokeWeight(5);
-  strokeCap(SQUARE);
-  dash.quad(
-    innerXY, innerXY,
-    config.DIAMOND_RIGHT_EDGE_X + config.DIAMOND_WIDTH_OFFSET, config.DIAMOND_RIGHT_EDGE_Y + config.DIAMOND_HEIGHT_OFFSET,
-    s1Size, s1Size,
-    config.DIAMOND_LEFT_EDGE_X - config.DIAMOND_WIDTH_OFFSET, config.DIAMOND_LEFT_EDGE_Y - config.DIAMOND_HEIGHT_OFFSET
-  );
-}
-
-void drawInnerDiamonds() {
-  pushMatrix();
-    fill(0,0,0);
-    scale(0.5, 0.5);
-    drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER);
-  popMatrix();
-
-  pushMatrix();
-    fill(0,0,0);
-    scale(-0.5, 0.5);
-    translate(-s1Size, 0);
-    drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER);
-  popMatrix();
-
-  pushMatrix();
-    fill(0,0,0);
-    scale(-0.5,-0.5);
-    translate(-s1Size, -s1Size);
-    drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER);
-  popMatrix();
-
-  pushMatrix();
-    fill(0,0,0);
-    scale(0.5,-0.5);
-    translate(0, -s1Size);
-    drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER);
-  popMatrix();
-}
-
-void drawDiamonds() {
-  pushMatrix();
-    fill(255, 76, 52);
-    scale(-1,1);
-    translate(-s1Size, 0);
-    drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER);
-  popMatrix();
-
-  pushMatrix();
-    fill(255, 76, 52);
-    scale(1, 1);
-    drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER);
-  popMatrix();
-
-  pushMatrix();
-    fill(255, 76, 52);
-    scale(-1,-1);
-    translate(-s1Size, -s1Size);
-    drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER);
-  popMatrix();
-
-  pushMatrix();
-    fill(255, 76, 52);
-    scale(1,-1);
-    translate(0, -s1Size);
-    drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER);
-  popMatrix();
-}
-
-void drawInnerCircle() {
-  ellipseMode(RADIUS);
-  stroke(204, 39, 242);
-  strokeWeight(8);
-  noFill();
-  h.ellipse(s1Size/2.0, s1Size/2.0, 110, 110);
-}
-
 void stop() {
   if (tableTennis != null) tableTennis.closeScoreLog();
   audio.stop();
   super.stop();
-}
-
-void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
-  strokeWeight(5);
-  float xOffset = -20;
-  float yOffset = config.BEZIER_Y_OFFSET;
-
-  // Switch colour mode once before the loop, not once per fin
-  if (config.RAINBOW_FINS) colorMode(HSB, 360, 255, 255);
-  for (int i = 0; i < fins; i++) {
-    // Per-fin colour: in rainbow mode each fin gets its own hue, slowly cycling.
-    // The hue drifts with frameCount so the whole mandala shifts over time,
-    // and the GLOBAL_REDNESS ties it loosely to the music energy.
-    if (config.RAINBOW_FINS) {
-      float hue = (((float)i / fins) * 360 + frameCount * 0.4 + config.GLOBAL_REDNESS * 60) % 360;
-      stroke(hue, 220, 255);
-      fill(config.APPEAR_HAND_DRAWN ? color(hue, 200, 200, 100) : color(0, 0));
-    } else {
-      stroke(7);
-      if (config.APPEAR_HAND_DRAWN) fill(247, 9, 143, 100);
-      else noFill();
-    }
-
-    pushMatrix();
-      float rotationAmount = (2 * (i / fins) * PI);
-      if (finRotationClockWise == true) {
-        rotationAmount = 0 - rotationAmount;
-      }
-      translate(s1Size/2.0, s1Size/2.0);
-      scale(1.75 * uiScale());
-      float random_noise_spin = random(0.01, 0.99);
-      rotate( (radians(frameCount + random_noise_spin) / 2.0) );
-      rotate(rotationAmount);
-      bezier(
-        -36 + xOffset,-126 + yOffset,
-        -36 + xOffset,-126 + yOffset,
-        32 + xOffset,-118 + yOffset,
-        68 + xOffset,-52 + yOffset
-      );
-      bezier(
-        -36 + xOffset,-126 + yOffset,
-        -36 + xOffset,-126 + yOffset,
-        -10 + xOffset,-88 + yOffset,
-        -22 + xOffset,-52 + yOffset
-      );
-      bezier(
-        -22 + xOffset,-52 + yOffset,
-        -22 + xOffset,-52 + yOffset,
-        20 + xOffset,-74 + yOffset,
-        68 + xOffset,-52 + yOffset
-      );
-    popMatrix();
-  }
-  if (config.RAINBOW_FINS) colorMode(RGB, 255);
-}
-
-void applyBlendModeOnDrop(int intensityOutOfTen) {
-  config.FIN_REDNESS_ANGRY = true;
-  float randomNumber = random(1, 10);
-  if (intensityOutOfTen > randomNumber) {
-    changeBlendMode();
-  }
-}
-
-void changeBlendMode() {
-  if (config.CURRENT_BLEND_MODE_INDEX == modes.length - 1) {
-    config.CURRENT_BLEND_MODE_INDEX = 0;
-  } else {
-    config.CURRENT_BLEND_MODE_INDEX += 1;
-  }
-  blendMode(config.CURRENT_BLEND_MODE_INDEX);
-}
-
-void changeFinRotation() {
-  config.finRotationClockWise = !config.finRotationClockWise;
-  config.canChangeFinDirection = false;
-}
-
-void modifyDiamondCenterPoint(boolean closerToCenter) {
-  if (closerToCenter) {
-    config.DIAMOND_DISTANCE_FROM_CENTER = config.DIAMOND_DISTANCE_FROM_CENTER + (width * 0.02);
-  } else {
-    config.DIAMOND_DISTANCE_FROM_CENTER = config.DIAMOND_DISTANCE_FROM_CENTER - (width * 0.02);
-  }
 }
 
 void toggleHandDrawn(){
@@ -615,11 +359,11 @@ void keyPressed() {
   if (key == 'f' || key == 'F') {
     changeFinRotation();
   }
-  if (key == 'd') {
-    modifyDiamondCenterPoint(false);
+  if (key == 'd' && config.STATE == 1) {
+    originalScene.modifyDiamondCenterPoint(false);
   }
-  if (key == 'D') {
-    modifyDiamondCenterPoint(true);
+  if (key == 'D' && config.STATE == 1) {
+    originalScene.modifyDiamondCenterPoint(true);
   }
   if (key == 'r' || key == 'R') {
     config.SCREEN_RECORDING = !config.SCREEN_RECORDING;
@@ -771,6 +515,42 @@ void keyPressed() {
     if (key == ' ') shoalLumina.triggerSurge();
   }
 
+  // Antigravity (state 16 only)
+  if (config.STATE == 16 && antigravity != null) {
+    if (key == '[') antigravity.adjustGravity(-0.1);
+    if (key == ']') antigravity.adjustGravity(0.1);
+    if (key == '-' || key == '_') antigravity.adjustWind(-0.1);
+    if (key == '=' || key == '+') antigravity.adjustWind(0.1);
+    if (key == 'y' || key == 'Y') antigravity.cyclePalette();
+    if (key == ' ') antigravity.triggerPulse();
+  }
+
+  // Fractal Scene (state 17 only)
+  if (config.STATE == 17 && fractalScene != null) {
+    if (key == '[') fractalScene.adjustZoom(-0.1);
+    if (key == ']') fractalScene.adjustZoom(0.1);
+    if (key == '-' || key == '_') fractalScene.adjustRotationSpeed(-0.01);
+    if (key == '=' || key == '+') fractalScene.adjustRotationSpeed(0.01);
+    if (key == 'y' || key == 'Y') fractalScene.cyclePalette();
+    if (key == 'x' || key == 'X') {
+      fractalScene.globalZoom = 0;
+      fractalScene.rotationSpeed = 0.005;
+    }
+    if (key == 'A' || key == 'a') {
+      fractalScene.symmetries = (fractalScene.symmetries % 8) + 3;
+    }
+  }
+
+  // Shader Scene (state 18 only)
+  if (config.STATE == 18 && shaderScene != null) {
+    if (key == 'y' || key == 'Y') shaderScene.loadMyShader();
+    if (key == 'A' || key == 'a') {
+      shaderScene.panX = 0;
+      shaderScene.panY = 0;
+      shaderScene.twist = 0;
+    }
+  }
+
   // Aurora ribbons keys (state 10 only)
   if (config.STATE == 10 && auroraRibbons != null) {
     if (key == '[') auroraRibbons.adjustTurbulence(-0.05);
@@ -867,60 +647,7 @@ void log_to_stdo(String message_to_log) {
   }
 }
 
-void changeDashedLineSpeed(float amountToChange) {
-  if (config.DASH_LINE_SPEED > config.DASH_LINE_SPEED_LIMIT) {
-    config.DASH_LINE_SPEED_INCREASING = false;
-  } else if (config.DASH_LINE_SPEED < -config.DASH_LINE_SPEED_LIMIT) {
-    config.DASH_LINE_SPEED_INCREASING = true;
-  }
-  
-  config.DASH_LINE_SPEED = config.DASH_LINE_SPEED_INCREASING ? config.DASH_LINE_SPEED + amountToChange: config.DASH_LINE_SPEED - amountToChange;
-}
 
-void splitFrequencyIntoLogBands() {
-  audio.fft.avgSize();
-
-  for(int i = 0; i < audio.fft.avgSize(); i++ ){
-    float amplitude = audio.fft.getAvg(i);
-    float bandDB = 20 * log(2 * amplitude / audio.fft.timeSize());
-
-    if ((i >= 0 && i <= 5) && bandDB > -10) {
-      applyBlendModeOnDrop(3);
-      changeDashedLineSpeed(0.2);
-    }
-
-    if ((i >=6 && i<= 15) && bandDB >-27) {
-      modifyDiamondCenterPoint(config.INCREMENT_DIAMOND_DISTANCE);
-    }
-
-    if (config.canChangeFinDirection == true) {
-      if ((i >=16 && i <= 35) && bandDB > -150) {
-        changeFinRotation();
-      }
-    }
-    
-    if ((i >=35 && i<=36) && bandDB > -130) {
-      changePlasmaFlow(1);
-      changeDashedLineSpeed(0.1);
-    }
-  
-    if ((i >=40 && i<=41) && bandDB > -130) {
-      config.PLASMA_INCREMENTING = !config.PLASMA_INCREMENTING;
-    }
-  }
-}
-
-void changePlasmaFlow(int amountToChange){
-    if (random(0, 10) > 6) {
-      if (config.canChangePlasmaFlow) {
-        if(config.PLASMA_INCREMENTING) {
-            config.PLASMA_SEED = (config.PLASMA_SEED + abs(amountToChange))  % (config.PLASMA_SIZE/2 -1);
-        } else {
-            config.PLASMA_SEED = (config.PLASMA_SEED - amountToChange)  % (config.PLASMA_SIZE/2 -1);
-        }
-      }
-    }
-}
 
 public void getUserInput(boolean usingController) {
 
@@ -930,17 +657,8 @@ public void getUserInput(boolean usingController) {
 
   controller.read();
 
-  // Scene 1 exclusive: sticks control fins/wave/diamonds and tunnel zoom
   if (config.STATE == 1) {
-    config.BEZIER_Y_OFFSET = (controller.ly - (height/2)) - 12;
-    config.WAVE_MULTIPLIER = (controller.ry % (height/5)) + 25;
-    config.DIAMOND_WIDTH_OFFSET = ((controller.rx - (height/10)) / 5.0) - 80;
-    config.DIAMOND_HEIGHT_OFFSET = ((controller.ry - (height/10)) / 5.0) - 80;
-
-    try {
-      float l_trigger_depletion = map(controller.stick.getSlider("lt").getValue(), -1, 1, -2, 6);
-      config.TUNNEL_ZOOM_INCREMENT += int(l_trigger_depletion);
-    } catch (Exception e) { /* no lt axis */ }
+    originalScene.applyController(controller);
   }
 
   if (controller.dpad_hat_switch_up) {
@@ -970,25 +688,8 @@ public void getUserInput(boolean usingController) {
    config.DRAW_PLASMA = false;
   }
 
-  // Scene 2: heart grid
   if (config.STATE == 2) {
-    // L Stick ↔ → number of columns
-    float lx_norm = map(controller.lx, 0, width, -1, 1);
-    config.HEART_COLS = constrain(round(map(lx_norm, -1, 1, 3, 15)), 3, 15);
-
-    // R Stick → zoom toward stick direction; release to ease back out
-    float rx_norm = map(controller.rx, 0, width, -1, 1);
-    float ry_norm = map(controller.ry, 0, height, -1, 1);
-    float stickMag = sqrt(rx_norm * rx_norm + ry_norm * ry_norm);
-    if (stickMag > 0.15) {
-      heartZoom = min(heartZoom + 0.02, 3.5);
-      heartFocusNX = lerp(heartFocusNX, rx_norm, 0.04);
-      heartFocusNY = lerp(heartFocusNY, ry_norm, 0.04);
-    } else {
-      heartZoom = max(heartZoom - 0.015, 1.0);
-      heartFocusNX *= 0.95;
-      heartFocusNY *= 0.95;
-    }
+    heartGridScene.applyController(controller);
   }
 
   // oscilloscope live tuning via controller (only when on that scene)
@@ -1060,6 +761,21 @@ public void getUserInput(boolean usingController) {
   // Shoal Lumina
   if (config.STATE == 15 && shoalLumina != null) {
     shoalLumina.applyController(controller);
+  }
+
+  // Antigravity
+  if (config.STATE == 16 && antigravity != null) {
+    antigravity.applyController(controller);
+  }
+
+  // Fractal
+  if (config.STATE == 17 && fractalScene != null) {
+    fractalScene.applyController(controller);
+  }
+
+  // Shader
+  if (config.STATE == 18 && shaderScene != null) {
+    shaderScene.applyController(controller);
   }
 
   // map controller sticks to Shapes3DScene parameters for live tuning
@@ -1140,7 +856,7 @@ int previous_state = -1;
 // ── Active scene list ─────────────────────────────────────────────────────────
 // Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
 // in the codebase but excluded from rotation for now.
-final int[] SCENE_ORDER = {1, 3, 2, 4, 5, 6, 7, 11, 12, 13, 14, 15};
+final int[] SCENE_ORDER = {1, 3, 2, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -1197,251 +913,14 @@ void draw() {
       text("RIP Sam", width/2, height/2);
       break;
    
-   case 1:
+  case 1:
     getUserInput(config.USING_CONTROLLER);
-    stroke(0);
-    noStroke();
-
-    // Full-screen background first (sides stay gray)
-    if(config.BACKGROUND_ENABLED) {
-      background(200);
-    }
-
-    // Constrain all art to the centered square
-    clip((int)s1OffsetX, 0, s1Size, s1Size);
-    pushMatrix();
-    translate(s1OffsetX, 0);
-  
-    if (!config.EPILEPSY_MODE_ON) {
-      h.setSeed(117);
-      h1.setSeed(322);
-      h2.setSeed(420);
-    }
-  
-    stroke(216, 16, 246, 128);
-    strokeWeight(8);
-  
-    int msSinceProgStart = millis();
-    if (msSinceProgStart > config.LAST_FIN_CHECK + 10000) {
-      config.canChangeFinDirection = true;
-      config.LAST_FIN_CHECK = msSinceProgStart;
-    }
-
-    if (msSinceProgStart > config.LAST_PLASMA_CHECK + 10000) {
-      config.canChangePlasmaFlow = true;
-      config.PLASMA_INCREMENTING = !config.PLASMA_INCREMENTING;
-      config.LAST_PLASMA_CHECK = msSinceProgStart;
-    }
-  
-    splitFrequencyIntoLogBands();
-  
-    strokeWeight(2);
-  
-    stroke(255);
-
-    if (audio.beat.isOnset() ){
-      log_to_stdo("Beat onset detected");
-      config.TUNNEL_ZOOM_INCREMENT = (config.TUNNEL_ZOOM_INCREMENT + 3) % 10000;
-    }
-    
-    stroke(255);
-  
-    if (config.DIAMOND_DISTANCE_FROM_CENTER >= config.MAX_DIAMOND_DISTANCE) {
-      config.INCREMENT_DIAMOND_DISTANCE = false;
-    } else if (config.DIAMOND_DISTANCE_FROM_CENTER <= config.MIN_DIAMOND_DISTANCE) {
-      config.INCREMENT_DIAMOND_DISTANCE = true;
-    }
-  
-    if (config.APPEAR_HAND_DRAWN) {
-      fill(255, 76, 52);
-    } else {
-      fill(255);
-      if (config.BACKGROUND_ENABLED) background(200);
-    }
-    
-    if (config.DRAW_TUNNEL) {
-      tunnel.draw(config.TUNNEL_ZOOM_INCREMENT);
-    }
-    
-    if (config.DRAW_PLASMA) {
-      plasma.draw(config.PLASMA_SEED);
-    }
-    
-    if (config.DRAW_POLAR_PLASMA) {
-      polarPlasma.draw();
-    }
-    
-     if (config.DRAW_WAVEFORM) {
-      // Colour computed here — only when waveform is actually visible
-      float r_line = (frameCount % 255) / 10.0;
-      float g_line = (frameCount % 255) - 75;
-      float b_line = (frameCount % 255);
-      int   wBufSz = audio.player.bufferSize();
-      pushStyle();
-        strokeWeight(4);
-        strokeCap(ROUND);
-        stroke(r_line, g_line, b_line);  // set once, not inside the loop
-        for(int i = 0; i < wBufSz - 1; i++) {
-          float x1 = map( i,   0, wBufSz, 0, s1Size );
-          float x2 = map( i+1, 0, wBufSz, 0, s1Size );
-          line( x1, s1Size/2.0 + audio.player.right.get(i)*config.WAVE_MULTIPLIER, x2, s1Size/2.0 + audio.player.right.get(i+1)*config.WAVE_MULTIPLIER );
-        }
-      popStyle();
-    }
-    strokeWeight(2);
-  
-    if (config.DRAW_DIAMONDS) {
-      pushMatrix();
-        drawDiamonds();
-        if (config.DRAW_INNER_DIAMONDS) {
-          pushMatrix();
-            drawInnerDiamonds();
-          popMatrix();
-          
-          pushMatrix();
-            translate(0, s1Size/2.0);
-            drawInnerDiamonds();
-          popMatrix();
-
-          pushMatrix();
-            translate(s1Size/2.0, 0);
-            drawInnerDiamonds();
-          popMatrix();
-
-          pushMatrix();
-            translate(s1Size/2.0, s1Size/2.0);
-            drawInnerDiamonds();
-          popMatrix();
-        }
-        popMatrix();
-    }
-    
-    noFill();
-  
-    if (config.FIN_REDNESS >= 255) {
-      config.FIN_REDNESS_ANGRY = false;
-    } else if (config.FIN_REDNESS <= 0) {
-      config.FIN_REDNESS_ANGRY = true;
-    }
-  
-    if (config.ANIMATED) {
-      if (config.FIN_REDNESS_ANGRY) {
-        config.FIN_REDNESS += 1;
-        config.FINS += 0.02;
-      } else {
-        config.FIN_REDNESS -= 1;
-        config.FINS -= 0.02;
-      }
-    }
-    
-    if (config.DRAW_FINS) {
-        drawBezierFins(config.FIN_REDNESS, config.FINS, config.finRotationClockWise);
-    }
-    
-    dash.offset(dash_dist);
-    
-    dash_dist = dash_dist + (.2 * config.DASH_LINE_SPEED);
-    if (dash_dist >= 10000 || dash_dist <= -10000) {
-      dash_dist = 0;
-    }
-    
-    drawSongNameOnScreen(config.SONG_NAME, s1Size/2.0, s1Size-5);
-
-    if (config.SCREEN_RECORDING) {
-      saveFrame("/tmp/output/frames####.png");
-    }
-
-    float posx = map(audio.player.position(), 0, audio.player.length(), 0, s1Size);
-    pushStyle();
-      stroke(252,4,243);
-      line(posx, s1Size, posx, s1Size * .975);
-    popStyle();
-
-    popMatrix();  // end square canvas translate
-    noClip();
-
+    originalScene.drawScene();
     addFPSToTitleBar();
-   break;
+    break;
   case 2:
     getUserInput(config.USING_CONTROLLER);
-    background(0);
-
-    // Natural bounding box of one heart at scale=1:
-    //   x: -443 (leftmost ctrl pt) to 388 (rightmost ctrl pt)  → width  = 831
-    //   y:    0 (top)              to 562 (bottom tip)          → height = 562
-    // We compute scale s so that exactly HEART_COLS hearts span the screen width.
-    {
-      final float HEART_NAT_W = 831.0;
-      final float HEART_NAT_H = 562.0;
-      float baseScale = width / (config.HEART_COLS * HEART_NAT_W);
-      float cellH     = HEART_NAT_H;
-      int   rows      = ceil(height / (cellH * baseScale)) + 1;
-
-      // Baseline breath: gentle sine wave so hearts always move subtly
-      float breath = sin(frameCount * 0.03) * 12;
-
-      // Beat impulse: snaps up on onset, decays back to 0
-      if (audio.beat.isOnset()) {
-        heartBeatDecay = 35.0;
-        // Shift target hue by 60–120 degrees so colour changes are meaningful
-        // but never jarring. Wrap-aware so we always go the short way around.
-        heartTargetHue = (heartTargetHue + random(60, 120)) % 360;
-      }
-      heartBeatDecay *= 0.95;
-
-      // Lerp heartHue toward target via the shortest arc
-      float hueDiff = heartTargetHue - heartHue;
-      if (hueDiff >  180) hueDiff -= 360;
-      if (hueDiff < -180) hueDiff += 360;
-      heartHue = (heartHue + hueDiff * 0.012 + 360) % 360;
-
-      // Apply complementary colours: heart_1 is always 180° opposite heart_0
-      colorMode(HSB, 360, 255, 255);
-      color c0 = color(heartHue,              210, 220);
-      color c1 = color((heartHue + 180) % 360, 210, 220);
-      colorMode(RGB, 255);
-      bezier_heart_0.bezier_heart_fill_color_r = red(c0);
-      bezier_heart_0.bezier_heart_fill_color_g = green(c0);
-      bezier_heart_0.bezier_heart_fill_color_b = blue(c0);
-      bezier_heart_1.bezier_heart_fill_color_r = red(c1);
-      bezier_heart_1.bezier_heart_fill_color_g = green(c1);
-      bezier_heart_1.bezier_heart_fill_color_b = blue(c1);
-
-      config.HEART_PULSE = breath + heartBeatDecay;
-
-      // Zoom toward R-stick direction
-      float focusX = width / 2.0 + heartFocusNX * width  * 0.25;
-      float focusY = height / 2.0 + heartFocusNY * height * 0.25;
-      pushMatrix();
-        translate(focusX, focusY);
-        scale(heartZoom);
-        translate(-focusX, -focusY);
-        for (int row = 0; row < rows; row++) {
-          for (int col = 0; col < config.HEART_COLS; col++) {
-            float xOff = col * HEART_NAT_W + 443.0;
-            float yOff = row * HEART_NAT_H;
-            BezierHeart heart = ((row + col) % 2 == 0) ? bezier_heart_0 : bezier_heart_1;
-            heart.drawBezierHeart(xOff, yOff, baseScale);
-          }
-        }
-      popMatrix();
-    }
-
-    // HUD
-    pushStyle();
-      float ts = 11 * uiScale();
-      float lh = ts * 1.3;
-      fill(0, 140);
-      noStroke();
-      rectMode(CORNER);
-      rect(8, 8, 280 * uiScale(), 8 + lh * 2);
-      fill(255);
-      textSize(ts);
-      textAlign(LEFT, TOP);
-      text("Hearts: " + config.HEART_COLS + " cols  (L ↔ to adjust)", 12, 12);
-      text("Zoom: " + nf(heartZoom, 1, 2) + "x  (R stick to zoom)", 12, 12 + lh);
-    popStyle();
-
+    heartGridScene.drawScene();
     addFPSToTitleBar();
     break;
   case 3:
@@ -1516,6 +995,21 @@ void draw() {
     shoalLumina.drawScene();
     addFPSToTitleBar();
     break;
+  case 16:
+    getUserInput(config.USING_CONTROLLER);
+    antigravity.drawScene();
+    addFPSToTitleBar();
+    break;
+  case 17:
+    getUserInput(config.USING_CONTROLLER);
+    fractalScene.drawScene();
+    addFPSToTitleBar();
+    break;
+  case 18:
+    getUserInput(config.USING_CONTROLLER);
+    shaderScene.drawScene();
+    addFPSToTitleBar();
+    break;
   }
 
   // ── Per-scene controls HUD (` to toggle) ────────────────────────────────────
@@ -1528,6 +1022,7 @@ void draw() {
   if (config.STATE == 13 && config.SHOW_CODE) drawCodeOverlay(gravityStrings.getCodeLines());
   if (config.STATE == 14 && config.SHOW_CODE) drawSceneControlsHUD(neuralWeave.getCodeLines());
   if (config.STATE == 15 && config.SHOW_CODE) drawSceneControlsHUD(shoalLumina.getCodeLines());
+  if (config.STATE == 18 && config.SHOW_CODE && shaderScene.shaderLoaded) drawCodeOverlay(shaderScene.getCodeLines());
 
   // ── Crossfade overlay ───────────────────────────────────────────────────────
   // Drawn after every scene so it always sits on top.
@@ -1740,3 +1235,19 @@ void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocat
 void mouseClicked() {
   config.ANIMATED = !config.ANIMATED;
 }
+
+void changeBlendMode() {
+  if (config.CURRENT_BLEND_MODE_INDEX == modes.length - 1) {
+    config.CURRENT_BLEND_MODE_INDEX = 0;
+  } else {
+    config.CURRENT_BLEND_MODE_INDEX += 1;
+  }
+  blendMode(config.CURRENT_BLEND_MODE_INDEX);
+}
+
+void changeFinRotation() {
+  config.finRotationClockWise = !config.finRotationClockWise;
+  config.canChangeFinDirection = false;
+}
+
+
