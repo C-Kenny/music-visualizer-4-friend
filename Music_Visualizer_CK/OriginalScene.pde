@@ -1,15 +1,32 @@
-class OriginalScene {
+class OriginalScene implements IScene {
   DashedLines dash;
   float dash_dist;
   int s1Size;
   float s1OffsetX;
 
+  // Background effects now encapsulated within the scene
+  Tunnel tunnel;
+  Plasma plasma;
+  PolarPlasma polarPlasma;
+
   OriginalScene(PApplet parent) {
+    this.tunnel = new Tunnel();
+    this.plasma = new Plasma();
+    this.polarPlasma = new PolarPlasma();
     dash = new DashedLines(parent);
     dash.pattern(130, 110);
-    dash_dist = 0;
-    s1Size    = min(width, height);
-    s1OffsetX = (width - s1Size) / 2.0;
+    dash_dist    = 0;
+    s1Size       = min(width, height);
+    s1OffsetX    = (width - s1Size) / 2.0;
+
+    // Initialize diamond variables formerly in Config.pde
+    config.DIAMOND_DISTANCE_FROM_CENTER = s1Size * 0.07;
+    config.DIAMOND_RIGHT_EDGE_X          = s1Size * 0.92;
+    config.DIAMOND_LEFT_EDGE_X           = s1Size * 0.74;
+    config.DIAMOND_RIGHT_EDGE_Y          = s1Size * 0.71;
+    config.DIAMOND_LEFT_EDGE_Y           = s1Size * 0.92;
+    config.MAX_DIAMOND_DISTANCE          = s1Size * 0.3;
+    config.MIN_DIAMOND_DISTANCE          = s1Size * 0.1;
   }
 
   void applyController(Controller c) {
@@ -22,6 +39,12 @@ class OriginalScene {
       float l_trigger_depletion = map(c.stick.getSlider("lt").getValue(), -1, 1, -2, 6);
       config.TUNNEL_ZOOM_INCREMENT += int(l_trigger_depletion);
     } catch (Exception e) {}
+
+    if (c.a_just_pressed) config.RAINBOW_FINS = !config.RAINBOW_FINS;
+    if (c.b_just_pressed) changeBlendMode();
+    if (c.x_just_pressed) config.ANIMATED = !config.ANIMATED;
+    if (c.y_just_pressed) config.finRotationClockWise = !config.finRotationClockWise;
+    if (c.stick.getButton("Right Thumb").pressed()) config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
 
   void drawDiamond(float dash_distanceFromCenter) {
@@ -83,7 +106,7 @@ class OriginalScene {
         }
         translate(s1Size/2.0, s1Size/2.0);
         scale(1.75 * uiScale());
-        float random_noise_spin = random(0.01, 0.99);
+        float random_noise_spin = noise(i * 0.3, frameCount * 0.01);
         rotate( (radians(frameCount + random_noise_spin) / 2.0) );
         rotate(rotationAmount);
         bezier(-36 + xOffset,-126 + yOffset, -36 + xOffset,-126 + yOffset, 32 + xOffset,-118 + yOffset, 68 + xOffset,-52 + yOffset);
@@ -111,6 +134,10 @@ class OriginalScene {
   }
 
   void drawScene() {
+    // Dynamic viewport sizing to handle resizing
+    s1Size = min(width, height);
+    s1OffsetX = (width - s1Size) / 2.0;
+
     stroke(0);
     noStroke();
 
@@ -148,7 +175,7 @@ class OriginalScene {
     strokeWeight(2);
     stroke(255);
 
-    if (audio.beat.isOnset() ){
+    if (analyzer.isBeat) {
       config.TUNNEL_ZOOM_INCREMENT = (config.TUNNEL_ZOOM_INCREMENT + 3) % 10000;
     }
     
@@ -239,35 +266,24 @@ class OriginalScene {
   }
 
   void splitFrequencyIntoLogBands() {
-    audio.fft.avgSize();
+    // Phase 2: Use centralized analyzer instead of redundant FFT loops
+    if (analyzer.bass > 0.9) {
+      applyBlendModeOnDrop(3);
+      changeDashedLineSpeed(0.2);
+    }
 
-    for(int i = 0; i < audio.fft.avgSize(); i++ ){
-      float amplitude = audio.fft.getAvg(i);
-      float bandDB = 20 * log(2 * amplitude / audio.fft.timeSize());
+    if (analyzer.mid > 0.8) {
+      modifyDiamondCenterPoint(config.INCREMENT_DIAMOND_DISTANCE);
+    }
 
-      if ((i >= 0 && i <= 5) && bandDB > -10) {
-        applyBlendModeOnDrop(3);
-        changeDashedLineSpeed(0.2);
-      }
-
-      if ((i >=6 && i<= 15) && bandDB >-27) {
-        modifyDiamondCenterPoint(config.INCREMENT_DIAMOND_DISTANCE);
-      }
-
-      if (config.canChangeFinDirection == true) {
-        if ((i >=16 && i <= 35) && bandDB > -150) {
-          changeFinRotation();
-        }
-      }
-      
-      if ((i >=35 && i<=36) && bandDB > -130) {
-        changePlasmaFlow(1);
-        changeDashedLineSpeed(0.1);
-      }
+    if (config.canChangeFinDirection && analyzer.high > 0.1) {
+      changeFinRotation();
+    }
     
-      if ((i >=40 && i<=41) && bandDB > -130) {
-        config.PLASMA_INCREMENTING = !config.PLASMA_INCREMENTING;
-      }
+    if (analyzer.master > 0.05) {
+      changePlasmaFlow(1);
+      changeDashedLineSpeed(0.1);
+      if (random(1) < 0.05) config.PLASMA_INCREMENTING = !config.PLASMA_INCREMENTING;
     }
   }
 
@@ -281,5 +297,46 @@ class OriginalScene {
           }
         }
       }
+  }
+
+  void onEnter() {
+    background(200);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == 'd') {
+      modifyDiamondCenterPoint(false);
+    } else if (k == 'D') {
+      modifyDiamondCenterPoint(true);
+    } else if (k == 'r') {
+      config.DIAMOND_RIGHT_EDGE_X += 20;
+      config.DIAMOND_LEFT_EDGE_X -= 20;
+    } else if (k == 'R') {
+      config.DIAMOND_RIGHT_EDGE_X -= 20;
+      config.DIAMOND_LEFT_EDGE_X += 20;
+    } else if (k == 'f') {
+      config.DRAW_FINS = !config.DRAW_FINS;
+    } else if (k == 'F') {
+      config.RAINBOW_FINS = !config.RAINBOW_FINS;
+    } else if (k == 'x' || k == 'X') {
+      config.ANIMATED = !config.ANIMATED;
+    } else if (k == 'z' || k == 'Z') {
+      config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
+    } else if (k == 'y' || k == 'Y') {
+      config.finRotationClockWise = !config.finRotationClockWise;
+    } else if (k == 'b' || k == 'B') {
+      changeBlendMode();
+    }
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Original Scene (Mandala) ===",
+      "// Logic: logarithmic FFT bands -> diamond depth & fin rotation",
+      "dist = sin(t) * amplitude",
+      "rotation = frameCount * speed + bass_energy"
+    };
   }
 }

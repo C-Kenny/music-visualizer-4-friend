@@ -23,7 +23,7 @@
 //   A           → force new curve now
 //   Y           → cycle colour palette
 
-class SpirographScene {
+class SpirographScene implements IScene {
 
   // Curve state
   float t        = 0;       // current angle parameter
@@ -97,17 +97,9 @@ class SpirographScene {
 
   void drawScene() {
     // ── Audio ──────────────────────────────────────────────────────────────
-    int fftSize = audio.fft.avgSize();
-    int bassEnd = max(1, fftSize / 6);
-    int midEnd  = max(bassEnd + 1, fftSize / 2);
-
-    float rawBass = 0, rawMid = 0, rawHigh = 0;
-    for (int i = 0;       i < bassEnd; i++) rawBass += audio.fft.getAvg(i);
-    for (int i = bassEnd; i < midEnd;  i++) rawMid  += audio.fft.getAvg(i);
-    for (int i = midEnd;  i < fftSize; i++) rawHigh += audio.fft.getAvg(i);
-    rawBass /= bassEnd;
-    rawMid  /= max(1, midEnd - bassEnd);
-    rawHigh /= max(1, fftSize - midEnd);
+    float rawBass = analyzer.bass;
+    float rawMid  = analyzer.mid;
+    float rawHigh = analyzer.high;
 
     smoothBass = lerp(smoothBass, rawBass, 0.18);
     smoothMid  = lerp(smoothMid,  rawMid,  0.12);
@@ -116,7 +108,7 @@ class SpirographScene {
     hueShift = (hueShift + 0.12 + smoothMid * 0.06) % 360;
 
     // Beat → skip to next curve
-    if (audio.beat.isOnset()) {
+    if (analyzer.isBeat) {
       fading = true;
     }
 
@@ -272,4 +264,13 @@ class SpirographScene {
       "Beat   skip to next curve",
     };
   }
+
+  void onEnter() {
+    background(0);
+    loadPreset(presetIdx);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {}
 }

@@ -3,7 +3,7 @@
 // Strings vibrate perpendicular to their axis, driven by FFT bands.
 // Beat onsets pulse the anchor ring outward and spin it.
 
-class CatsCradleScene {
+class CatsCradleScene implements IScene {
   int    numAnchors   = 8;     // points evenly spaced on the ring
   int    subdivisions = 28;    // segments per string (more = smoother vibration)
   float  phase        = 0;     // master phase for string oscillation
@@ -54,16 +54,14 @@ class CatsCradleScene {
   void drawScene() {
     // --- audio sampling -------------------------------------------------
     float amplitude = 0;
-    if (audio != null) {
-      if (audio.beat.isOnset()) {
-        pulse    = 1.0;
-        rotation += 0.08;      // spin jolt on beat
-      }
-      for (int i = 0; i < audio.fft.avgSize(); i++) {
-        amplitude += audio.fft.getAvg(i);
-      }
-      amplitude /= audio.fft.avgSize();
+    if (analyzer.isBeat) {
+      pulse    = 1.0;
+      rotation += 0.08;      // spin jolt on beat
     }
+    for (int i = 0; i < analyzer.spectrum.length; i++) {
+      amplitude += analyzer.spectrum[i];
+    }
+    amplitude /= analyzer.spectrum.length;
     pulse    *= 0.88;
     phase    += 0.04;
     rotation += rotationSpeed;
@@ -89,11 +87,8 @@ class CatsCradleScene {
         int j = (i + skip) % numAnchors;
 
         // map this string to an FFT band
-        float bandAmp = 0;
-        if (audio != null) {
-          int band = ((skip - 1) * numAnchors + i) % audio.fft.avgSize();
-          bandAmp = audio.fft.getAvg(band) * 3.0;
-        }
+        int band = ((skip - 1) * numAnchors + i) % analyzer.spectrum.length;
+        float bandAmp = analyzer.spectrum[band] * 3.0;
 
         // colour: hue sweeps from purple → cyan as skip increases
         colorMode(HSB, 360, 255, 255, 255);
@@ -153,4 +148,12 @@ class CatsCradleScene {
     }
     endShape();
   }
+
+  void onEnter() {
+    background(0);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {}
 }

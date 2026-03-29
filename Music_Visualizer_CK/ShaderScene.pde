@@ -1,4 +1,4 @@
-class ShaderScene {
+class ShaderScene implements IScene {
   PShader milkdropShader;
   boolean shaderLoaded = false;
   
@@ -60,9 +60,9 @@ class ShaderScene {
     }
 
     // Capture the audio analytics
-    float basRaw = audio.normalisedAvg(2); // Low freq (bass)
-    float midRaw = audio.normalisedAvg(8); // Mid freq
-    float higRaw = audio.normalisedAvg(18); // High freq
+    float basRaw = analyzer.bass; 
+    float midRaw = analyzer.mid; 
+    float higRaw = analyzer.high; 
 
     // 1. SET THE UNIFORMS (Talk to the GPU!)
     // Pass the standard screen and time values
@@ -147,5 +147,19 @@ class ShaderScene {
       text("Press ` (backtick) to view the GLSL Shader lesson code overlay!", 12, 12 + lh * 4);
       text("FPS varies by GPU. CPU usage should be ~0%.", 12, 12 + lh * 5);
     popStyle();
+  }
+
+  void onEnter() {
+    background(0);
+  }
+
+  void onExit() {
+    resetShader();
+  }
+
+  void handleKey(char k) {
+    if (k == 'y' || k == 'Y') {
+      loadMyShader();
+    }
   }
 }

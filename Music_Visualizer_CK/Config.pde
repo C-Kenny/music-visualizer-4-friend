@@ -153,22 +153,11 @@ class Config {
 
     WAVE_MULTIPLIER = 50.0;
 
-    DIAMOND_DISTANCE_FROM_CENTER = min(width, height) * 0.07;
-
-    DIAMOND_RIGHT_EDGE_X = min(width, height) * 0.92;
-    DIAMOND_LEFT_EDGE_X  = min(width, height) * 0.74;
-
-    DIAMOND_RIGHT_EDGE_Y = min(width, height) * 0.71;
-    DIAMOND_LEFT_EDGE_Y  = min(width, height) * 0.92;
-
     DIAMOND_CAN_CHANGE_CENTER_DISANCE = true;
     DIAMON_CAN_CHANGE_X_WIDTH = true;
 
     DIAMOND_WIDTH_OFFSET = 0.0;
     DIAMOND_HEIGHT_OFFSET = 0.0;
-
-    MAX_DIAMOND_DISTANCE = min(width, height) * 0.3;
-    MIN_DIAMOND_DISTANCE = min(width, height) * 0.1;
 
     INCREMENT_DIAMOND_DISTANCE = true;
 
@@ -197,7 +186,7 @@ class Config {
 
     SCREEN_RECORDING = false;
     SHOW_CODE = false;
-    LOGGING_ENABLED = true;
+    LOGGING_ENABLED = false;
 
     songList = new ArrayList<String>();
     currentSongIndex = 0;

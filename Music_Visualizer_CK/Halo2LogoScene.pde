@@ -11,7 +11,7 @@
 // It should be black logo on white (or white logo on black) — both work,
 // the scene auto-detects and inverts if needed.
 
-class Halo2LogoScene {
+class Halo2LogoScene implements IScene {
 
   PImage logo;          // original logo image
   PImage maskImg;       // white-where-logo-is mask
@@ -141,19 +141,10 @@ class Halo2LogoScene {
     }
 
     // --- audio analysis ---------------------------------------------------
-    int fft_size = audio.fft.avgSize();
-    int bass_end = max(1, fft_size / 6);
-    int mid_end  = max(bass_end + 1, fft_size / 2);
-
-    float bass  = 0, mid = 0, high = 0;
-    for (int i = 0;        i < bass_end; i++) bass += audio.fft.getAvg(i);
-    for (int i = bass_end; i < mid_end;  i++) mid  += audio.fft.getAvg(i);
-    for (int i = mid_end;  i < fft_size; i++) high += audio.fft.getAvg(i);
-    bass /= bass_end;
-    mid  /= max(1, mid_end  - bass_end);
-    high /= max(1, fft_size - mid_end);
-
-    boolean is_beat = audio.beat.isOnset();
+    float bass  = analyzer.bass;
+    float mid   = analyzer.mid;
+    float high  = analyzer.high;
+    boolean is_beat = analyzer.isBeat;
 
     // --- beat pulse -------------------------------------------------------
     if (is_beat) {
@@ -312,5 +303,19 @@ class Halo2LogoScene {
 
     // A button → trigger a manual scale pulse
     if (c.a_just_pressed) targetScale = 1.0 + pulseSens * 0.9;
+  }
+
+  void onEnter() {
+    background(0);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == 'b' || k == 'B') cycleBgMode();
+    else if (k == CODED) {
+      if (keyCode == UP)   adjustPulseSens(0.05);
+      if (keyCode == DOWN) adjustPulseSens(-0.05);
+    }
   }
 }

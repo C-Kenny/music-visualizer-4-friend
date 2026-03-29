@@ -2,7 +2,7 @@
 // Uses `h3_emblem` as a color reference only (not textured)
 // Activated by pressing '3' (config.STATE = 3).
 
-class Shapes3DScene {
+class Shapes3DScene implements IScene {
   float angle = 0.0;
   int blades = 8;
   float pulse = 0.0;
@@ -52,12 +52,6 @@ class Shapes3DScene {
   }
 
   void drawScene() {
-    // brief periodic log so we can confirm this method gets called
-    if (frameCount % 120 == 0) {
-      println("Shapes3DScene.drawScene called — blades=" + blades + " plateScale=" + plateScale + " finWOverride=" + finWidthOverride + " pulseSens=" + pulseSensitivity);
-    }
-
-    pushMatrix();
     // center scene
     translate(width/2.0, height/2.0);
 
@@ -73,11 +67,9 @@ class Shapes3DScene {
     }
 
     // audio-driven pulse
-    if (audio != null) {
-      if (audio.beat.isOnset()) {
-        pulse = 1.0;
-        angle += 0.18;
-      }
+    if (analyzer.isBeat) {
+      pulse = 1.0;
+      angle += 0.18;
     }
     pulse *= 0.86;
 
@@ -199,8 +191,54 @@ class Shapes3DScene {
           text("pulseSens: " + nf(pulseSensitivity, 1, 2), 12, 8 + margin + lh*4);
         popStyle();
       popMatrix();
-
-      popMatrix();
+      
     rectMode(CORNER); // restore after CENTER/CORNERS usage above
+  }
+
+  void onEnter() {
+    background(0);
+  }
+
+  void onExit() {}
+
+  void applyController(Controller c) {
+    // controller.* values are mapped to screen coords (0..width or 0..height) by Controller
+    // normalize them back to -1..1 before mapping to scene params
+    float nx = map(c.rx, 0, width, -1, 1);
+    float ny = map(c.ry, 0, height, -1, 1);
+    float lx = map(c.lx, 0, width, -1, 1);
+    float ly = map(c.ly, 0, height, -1, 1);
+
+    int bladesFromStick = int(map(nx, -1, 1, 4, 12));
+    setBlades(bladesFromStick);
+
+    float finW = map(ly, -1, 1, 8, min(width, height) * 0.08);
+    setFinWidth(finW);
+
+    float plateS = map(lx, -1, 1, 0.8, 1.6);
+    setPlateScale(plateS);
+
+    float pulseS = map(ny, -1, 1, 0.2, 1.2);
+    setPulseSensitivity(pulseS);
+  }
+
+  void handleKey(char k) {
+    if (k == 'k') incrementBlades(-1);
+    else if (k == 'K') incrementBlades(1);
+    else if (k == '[') adjustFinWidth(-2);
+    else if (k == ']') adjustFinWidth(2);
+    else if (k == ',') adjustPlateScale(-0.05);
+    else if (k == '.') adjustPlateScale(0.05);
+    else if (k == 'u') adjustPulseSensitivity(-0.05);
+    else if (k == 'U') adjustPulseSensitivity(0.05);
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== 3D-Style Shapes (Emblem) ===",
+      "// Logic: Symmetrical fins pulse with audio energy",
+      "fin_length = radius * (1.0 + pulse * sensitivity)",
+      "rotation = frameCount * speed + onset_kick"
+    };
   }
 }

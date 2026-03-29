@@ -7,7 +7,7 @@
 // Controller: sticks as before; LT/RT; A ripple; B growth stage; X lab HUD; Y palette;
 //            L3 reset view; R3 reshuffle bridges + pulse.
 
-class NeuralWeaveScene {
+class NeuralWeaveScene implements IScene {
 
   int   cols        = 12;
   int   rows        = 9;
@@ -171,28 +171,22 @@ class NeuralWeaveScene {
 
   void drawScene() {
     if (!initialised) {
-      smoothAmp = new float[audio.fft.avgSize()];
+      smoothAmp = new float[analyzer.spectrum.length];
       initialised = true;
     }
 
-    int N = audio.fft.avgSize();
+    int N = analyzer.spectrum.length;
     for (int i = 0; i < N; i++) {
-      smoothAmp[i] = lerp(smoothAmp[i], audio.normalisedAvg(i), 0.24);
+      smoothAmp[i] = lerp(smoothAmp[i], analyzer.spectrum[i], 0.24);
     }
 
-    int   bassEnd = max(1, N / 6);
-    int   midEnd  = max(bassEnd + 1, N / 2);
-    float bass = 0, mid = 0, high = 0;
-    for (int i = 0;       i < bassEnd; i++) bass  += smoothAmp[i];
-    for (int i = bassEnd; i < midEnd;  i++) mid   += smoothAmp[i];
-    for (int i = midEnd;  i < N;       i++) high  += smoothAmp[i];
-    bass /= bassEnd;
-    mid  /= max(1, midEnd - bassEnd);
-    high /= max(1, N - midEnd);
+    float bass = analyzer.bass;
+    float mid  = analyzer.mid;
+    float high = analyzer.high;
 
     organicPhase += 0.0016 + mid * 0.001 + bass * 0.0004;
 
-    if (audio.beat.isOnset()) {
+    if (analyzer.isBeat) {
       ripple = 1.0;
       globalHue = (globalHue + random(28, 72)) % 360;
     }
@@ -455,5 +449,23 @@ class NeuralWeaveScene {
       "",
       "[ ]  grid   - =  edge   `  overlay",
     };
+  }
+
+  void onEnter() {
+    background(3, 5, 12);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') adjustCols(-1);
+    else if (k == ']') adjustCols(1);
+    else if (k == '-' || k == '_') adjustEdgeGain(-0.1);
+    else if (k == '=' || k == '+') adjustEdgeGain(0.1);
+    else if (k == 'v' || k == 'V') toggleVesicles();
+    else if (k == 'e' || k == 'E') toggleLabMode();
+    else if (k == 'g' || k == 'G') cycleGrowthMode();
+    else if (k == 'k' || k == 'K') cyclePalette();
+    else if (k == ' ') triggerRipple();
   }
 }

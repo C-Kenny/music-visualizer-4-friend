@@ -20,7 +20,7 @@
 //   A           → manual beat burst
 //   Y           → cycle colour palette
 
-class RadialFFTScene {
+class RadialFFTScene implements IScene {
 
   float rotation   = 0.0;
   float rotSpeed   = 0.001;   // signed: positive=CW, negative=CCW
@@ -37,30 +37,24 @@ class RadialFFTScene {
   RadialFFTScene() {}
 
   void drawScene() {
-    // ── Init smoothed array on first call (fftSize not available in constructor) ──
+    // ── Init smoothed array on first call ──
     if (!initialised) {
-      smoothAmp = new float[audio.fft.avgSize()];
+      smoothAmp = new float[analyzer.spectrum.length];
       initialised = true;
     }
 
     // ── Audio ──────────────────────────────────────────────────────────────
-    int   N       = audio.fft.avgSize();
-    float rawBass = 0, rawMid = 0, rawHigh = 0;
-    int   bassEnd = max(1, N / 6);
-    int   midEnd  = max(bassEnd + 1, N / 2);
+    int   N       = analyzer.spectrum.length;
+    float rawBass = analyzer.bass;
+    float rawMid  = analyzer.mid;
+    float rawHigh = analyzer.high;
 
     for (int i = 0; i < N; i++) {
-      float raw = audio.fft.getAvg(i);
+      float raw = analyzer.spectrum[i];
       smoothAmp[i] = lerp(smoothAmp[i], raw * scaleMult, 0.25);
     }
-    for (int i = 0;       i < bassEnd; i++) rawBass += smoothAmp[i];
-    for (int i = bassEnd; i < midEnd;  i++) rawMid  += smoothAmp[i];
-    for (int i = midEnd;  i < N;       i++) rawHigh += smoothAmp[i];
-    rawBass /= bassEnd;
-    rawMid  /= max(1, midEnd - bassEnd);
-    rawHigh /= max(1, N - midEnd);
 
-    boolean isBeat = audio.beat.isOnset();
+    boolean isBeat = analyzer.isBeat;
     if (isBeat) {
       beatPulse = 1.0;
       hueShift  = (hueShift + random(40, 90)) % 360;
@@ -226,5 +220,17 @@ class RadialFFTScene {
       "High         glow halo",
       "Beat         outward burst + hue snap",
     };
+  }
+
+  void onEnter() {
+    background(4, 6, 16);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == 'r' || k == 'R') reverseDirection();
+    else if (k == '[') adjustSpeed(-0.001);
+    else if (k == ']') adjustSpeed(0.001);
   }
 }

@@ -2,7 +2,7 @@
 // Night sea: stacked FFT wave trains (bioluminescent ADD), starfield twinkles with highs,
 // beat surge, foam sparks on mids. LT/RT = glow vs sparkle; sticks = drift, tide, hue, density.
 
-class ShoalLuminaScene {
+class ShoalLuminaScene implements IScene {
 
   static final int NUM_STARS = 160;
   static final int NUM_SPARKS = 48;
@@ -23,7 +23,6 @@ class ShoalLuminaScene {
   int   waveLayers = 26;
   int   palette    = 0;
 
-  float beatSurge = 0;
   float surge     = 0;
 
   ShoalLuminaScene() {
@@ -45,15 +44,19 @@ class ShoalLuminaScene {
     }
   }
 
+  void onEnter() {
+    background(0);
+  }
+
   void ensureAudio() {
-    int N = audio.fft.avgSize();
+    int N = analyzer.spectrum.length;
     if (!initialised || smoothAmp == null || smoothAmp.length != N) {
       smoothAmp = new float[N];
       for (int i = 0; i < N; i++) smoothAmp[i] = 0;
       initialised = true;
     }
     for (int i = 0; i < N; i++) {
-      smoothAmp[i] = lerp(smoothAmp[i], audio.normalisedAvg(i), 0.22);
+      smoothAmp[i] = lerp(smoothAmp[i], analyzer.spectrum[i], 0.22);
     }
   }
 
@@ -75,23 +78,14 @@ class ShoalLuminaScene {
 
   void drawScene() {
     ensureAudio();
-    int N = audio.fft.avgSize();
-    int bassEnd = max(1, N / 6);
-    int midEnd  = max(bassEnd + 1, N / 2);
+    float bass = analyzer.bass;
+    float mid = analyzer.mid;
+    float high = analyzer.high;
 
-    float bass = 0, mid = 0, high = 0;
-    for (int i = 0;       i < bassEnd; i++) bass += smoothAmp[i];
-    for (int i = bassEnd; i < midEnd;  i++) mid  += smoothAmp[i];
-    for (int i = midEnd;  i < N;       i++) high += smoothAmp[i];
-    bass /= bassEnd;
-    mid  /= max(1, midEnd - bassEnd);
-    high /= max(1, N - midEnd);
-
-    if (audio.beat.isOnset()) {
-      beatSurge = 1.0;
+    if (analyzer.isBeat) {
+      surge = 1.0;
     }
-    beatSurge *= 0.88;
-    surge = max(surge * 0.86, beatSurge);
+    surge *= 0.86;
 
     phase += phaseSpeed * (0.85 + mid * 0.5);
 
@@ -119,7 +113,7 @@ class ShoalLuminaScene {
     float layerBoost = layerScale * (0.92 + glow * 0.35 + surge * 0.4);
     for (int layer = 0; layer < layers; layer++) {
       float t = (layers > 1) ? (float)layer / (layers - 1) : 0;
-      int bi = constrain((int)(t * (N - 1)), 0, N - 1);
+      int bi = constrain((int)(t * (analyzer.spectrum.length - 1)), 0, analyzer.spectrum.length - 1);
       float amp = smoothAmp[bi] * (14 + layer * 1.1) * layerBoost;
       float wlen = 0.0028 + t * 0.006 + bass * 0.0015;
       float h = paletteHue(t, smoothAmp[bi]);
@@ -152,7 +146,7 @@ class ShoalLuminaScene {
       float sy = baseY + bob;
       sparkX[i] += sparkV[i] * 0.0004 * (1 + mid);
       if (sparkX[i] >= 1.0) sparkX[i] -= 1.0;
-      int bi = (i * 7) % N;
+      int bi = (i * 7) % analyzer.spectrum.length;
       float a = smoothAmp[bi] * mid * (40 + sparkle * 80);
       fill(paletteHue((float)i / NUM_SPARKS, smoothAmp[bi]), 140, 255, constrain(a, 0, 200));
       ellipse(sx, sy, 2 + smoothAmp[bi] * 5, 2 + smoothAmp[bi] * 5);
@@ -177,7 +171,7 @@ class ShoalLuminaScene {
     text("Layers " + layers + "   [`] adjust   - / = speed", 12, 8 + mg + lh);
     text("LT glow " + nf(glow, 1, 2) + "   RT sparkle " + nf(sparkle, 1, 2), 12, 8 + mg + lh * 2);
     text("L drift   R tide / hue / density   Y palette", 12, 8 + mg + lh * 3);
-    text("A surge   beat " + nf(beatSurge, 1, 2), 12, 8 + mg + lh * 4);
+    text("A surge   surge amt " + nf(surge, 1, 2), 12, 8 + mg + lh * 4);
     text("Palette " + palette + "   `  HUD", 12, 8 + mg + lh * 5);
     popStyle();
   }
@@ -227,5 +221,15 @@ class ShoalLuminaScene {
       "Y / pad Y   palette (3)",
       "`  HUD   [ ] layers   - = speed",
     };
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') adjustLayers(-2);
+    else if (k == ']') adjustLayers(2);
+    else if (k == '-' || k == '_') adjustSpeed(-0.002);
+    else if (k == '=' || k == '+') adjustSpeed(0.002);
+    else if (k == ' ') triggerSurge();
   }
 }

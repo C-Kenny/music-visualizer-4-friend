@@ -9,32 +9,12 @@ import peasy.*;
 Config config;
 Audio audio;
 Controller controller;
-Tunnel tunnel;
-Plasma plasma;
-PolarPlasma polarPlasma;
-Shapes3DScene shapes3D;
-CatsCradleScene catsCradle;
-OscilloscopeScene oscilloscope;
-ParticleFountainScene particleFountain;
-Halo2LogoScene halo2Logo;
-PrismCodexScene prismCodex;
-TableTennisScene tableTennis;
-WormScene wormScene;
-FFTWormScene fftWorm;
-AuroraRibbonsScene auroraRibbons;
-RadialFFTScene radialFFT;
-SpirographScene spirograph;
-GravityStringsScene gravityStrings;
-NeuralWeaveScene neuralWeave;
-ShoalLuminaScene shoalLumina;
-AntigravityScene antigravity;
-FractalScene fractalScene;
-ShaderScene shaderScene;
+IScene[] scenes;
+final int SCENE_COUNT = 19;
+int previousState = -1;
+
+AudioAnalyser analyzer;
 PFont monoFont;
-
-
-OriginalScene originalScene;
-HeartGridScene heartGridScene;
 
 
 // UI scale: 1.0 at 1080p, grows proportionally for higher resolutions.
@@ -259,6 +239,7 @@ void settings() {
 void setup() {
   background(200);
   config = new Config();
+  analyzer = new AudioAnalyser();
   log_to_stdo("canvas spawned");
   initializeGlobals();
   setSongToVisualize();
@@ -267,29 +248,32 @@ void setup() {
   surface.setTitle(config.TITLE_BAR);
   setupController();
   loadSongToVisualize();
-  tunnel = new Tunnel();
-  plasma = new Plasma();
-  polarPlasma = new PolarPlasma();
-  shapes3D = new Shapes3DScene();
-  catsCradle = new CatsCradleScene();
-  oscilloscope = new OscilloscopeScene();
-  particleFountain = new ParticleFountainScene();
-  halo2Logo = new Halo2LogoScene();
-  prismCodex = new PrismCodexScene();
-  tableTennis = new TableTennisScene();
-  wormScene     = new WormScene();
-  fftWorm       = new FFTWormScene();
-  auroraRibbons = new AuroraRibbonsScene();
-  radialFFT     = new RadialFFTScene();
-  spirograph    = new SpirographScene();
-  gravityStrings = new GravityStringsScene();
-  neuralWeave = new NeuralWeaveScene();
-  shoalLumina = new ShoalLuminaScene();
-  antigravity = new AntigravityScene();
-  fractalScene = new FractalScene();
-  shaderScene = new ShaderScene();
-  originalScene = new OriginalScene(this);
-  heartGridScene = new HeartGridScene();
+
+  // Initialize scene registry (0-18)
+  scenes = new IScene[SCENE_COUNT];
+  scenes[0]  = new RIPScene();
+  scenes[1]  = new OriginalScene(this);
+  scenes[2]  = new HeartGridScene();
+  scenes[3]  = new Shapes3DScene();
+  scenes[4]  = new CatsCradleScene();
+  scenes[5]  = new OscilloscopeScene();
+  scenes[6]  = new TableTennisScene();
+  scenes[7]  = new PrismCodexScene();
+  scenes[8]  = new ParticleFountainScene();
+  scenes[9]  = new Halo2LogoScene();
+  scenes[10] = new AuroraRibbonsScene();
+  scenes[11] = new RadialFFTScene();
+  scenes[12] = new SpirographScene();
+  scenes[13] = new GravityStringsScene();
+  scenes[14] = new NeuralWeaveScene();
+  scenes[15] = new ShoalLuminaScene();
+  scenes[16] = new AntigravityScene();
+  scenes[17] = new FractalScene();
+  scenes[18] = new ShaderScene();
+
+  // Initial lifecycle trigger
+  previousState = config.STATE;
+  scenes[config.STATE].onEnter();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
@@ -305,7 +289,6 @@ void setup() {
 }
 
 void stop() {
-  if (tableTennis != null) tableTennis.closeScoreLog();
   audio.stop();
   super.stop();
 }
@@ -339,273 +322,63 @@ void startSong(){
 }
 
 void mousePressed() {
-  if (config.STATE == 8 && particleFountain != null) {
-    particleFountain.triggerBurstAt(mouseX, mouseY);
-  }
+  scenes[config.STATE].handleKey(' '); // reuse handleKey for simple click-bursts if scene desires
 }
 
 void keyPressed() {
-  // State 14: B/G used by Neural Weave — skip global blend (same pattern as other scene-specific keys)
-  if ((key == 'b' || key == 'B') && config.STATE != 9 && config.STATE != 14) {
-    changeBlendMode();
+  // 1. Delegate to current scene first
+  if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+    scenes[config.STATE].handleKey(key);
   }
-  if (key == 'h') {
-    cycleHandDrawn();
-  }
+
+  // 2. Global Shortcuts
+  if (key == 'h') cycleHandDrawn();
   if (key == 'H') {
     config.APPEAR_HAND_DRAWN = !config.APPEAR_HAND_DRAWN;
     CURRENT_HANDY_RENDERER.setIsHandy(config.APPEAR_HAND_DRAWN);
   }
-  if (key == 'f' || key == 'F') {
-    changeFinRotation();
-  }
-  if (key == 'd' && config.STATE == 1) {
-    originalScene.modifyDiamondCenterPoint(false);
-  }
-  if (key == 'D' && config.STATE == 1) {
-    originalScene.modifyDiamondCenterPoint(true);
-  }
-  if (key == 'r' || key == 'R') {
-    config.SCREEN_RECORDING = !config.SCREEN_RECORDING;
-  }
-  if (key == 's' || key == 'S') {
-    toggleSongPlaying();
-  }
-  if (key == 'l' || key == 'L') {
-    config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
-  }
-  if (key == 'y') {
-    config.BEZIER_Y_OFFSET -= 10;
-  }
-  if (key == 'Y') {
-    config.BEZIER_Y_OFFSET += 10;
-  }
-  if (config.STATE == 1 && key == 'r') {
-    config.DIAMOND_RIGHT_EDGE_X += 20;
-    config.DIAMOND_LEFT_EDGE_X -= 20;
-  }
-  if (config.STATE == 1 && key == 'R') {
-    config.DIAMOND_RIGHT_EDGE_X -= 20;
-    config.DIAMOND_LEFT_EDGE_X += 20;
-  }
-  if (key == 'c') {
-    config.DIAMOND_RIGHT_EDGE_Y += 20;
-    config.DIAMOND_LEFT_EDGE_Y -= 20;
-  }
-  if (key == 'C') {
-    config.DIAMOND_RIGHT_EDGE_Y -= 20;
-    config.DIAMOND_LEFT_EDGE_Y += 20;
-  }
-  // State 14: G cycles Neural Weave growth — skip global background toggle
-  if ((key == 'g' || key == 'G') && config.STATE != 14) {
-    config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
-  }
-  if (key == '<' || key == '>') {
-    config.DRAW_DIAMONDS = !config.DRAW_DIAMONDS;
-  }
-  if (key == 'w' || key == 'W') {
-    config.DRAW_WAVEFORM = !config.DRAW_WAVEFORM;
-  }
-  if (key == '/') {
-    config.DRAW_FINS = !config.DRAW_FINS;
-  }
-  if (key == 'o' || key == 'O') {
-    reset();
-  }
-  if (key == 'n') {
-    nextSong();
-  }
-  if (key == 'N') {
-    shuffleSong();
-  }
-  if (key == 'i' || key == 'I') {
-    config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
-  }
-  if ((key >= '1' && key <= '9') || key == '0') {
-    int newState = (key == '0') ? 10 : ((int) key - 48);
-    // Only allow switching to active scenes (3 and 9 are disabled)
-    if (_sceneOrderIndex(newState) >= 0 || newState == SCENE_ORDER[0]) {
-      boolean inRotation = false;
-      for (int s : SCENE_ORDER) { if (s == newState) { inRotation = true; break; } }
-      if (inRotation) {
-        log_to_stdo("Switching to state: " + newState);
-        switchScene(newState);
-      }
-    }
-  }
-  // Table Tennis tuning keys (state 6 only)
-  if (config.STATE == 6 && tableTennis != null) {
-    if (key == '+' || key == '=') tableTennis.adjustGravity(0.02);
-    if (key == '-')               tableTennis.adjustGravity(-0.02);
-    if (key == '[')               tableTennis.adjustMagnus(-0.005);
-    if (key == ']')               tableTennis.adjustMagnus(0.005);
-  }
-
-  // Shapes3DScene live tuning keys (state 3 only)
-  if (config.STATE == 3 && shapes3D != null) {
-    if (key == 'k') shapes3D.incrementBlades(-1);
-    if (key == 'K') shapes3D.incrementBlades(1);
-    if (key == '[') shapes3D.adjustFinWidth(-2);
-    if (key == ']') shapes3D.adjustFinWidth(2);
-    if (key == ',') shapes3D.adjustPlateScale(-0.05);
-    if (key == '.') shapes3D.adjustPlateScale(0.05);
-    if (key == 'u') shapes3D.adjustPulseSensitivity(-0.05);
-    if (key == 'U') shapes3D.adjustPulseSensitivity(0.05);
-  }
-  // Oscilloscope live tuning keys (state 5 only)
-  if (config.STATE == 5 && oscilloscope != null) {
-    if (key == '[') oscilloscope.adjustGainX(-0.1);
-    if (key == ']') oscilloscope.adjustGainX(0.1);
-    if (key == '-') oscilloscope.adjustGainY(-0.1);
-    if (key == '=') oscilloscope.adjustGainY(0.1);
-    if (key == ';') oscilloscope.adjustTrail(-2);
-    if (key == '\'') oscilloscope.adjustTrail(2);
-  }
-
-  // Heart grid keys (state 2 only)
-  if (config.STATE == 2) {
-    if (key == '[') config.HEART_COLS = max(1, config.HEART_COLS - 1);
-    if (key == ']') config.HEART_COLS = min(10, config.HEART_COLS + 1);
-  }
-
-  // Halo 2 Logo keys (state 9 only)
-  if (config.STATE == 9 && halo2Logo != null) {
-    if (key == 'b' || key == 'B') halo2Logo.cycleBgMode();
-    if (key == CODED) {
-      if (keyCode == UP)   halo2Logo.adjustPulseSens(0.05);
-      if (keyCode == DOWN) halo2Logo.adjustPulseSens(-0.05);
-    }
-  }
-
-  // Particle Fountain keys (state 8 only)
-  if (config.STATE == 8 && particleFountain != null) {
-    if (key == ' ')  particleFountain.triggerBurst();
-    if (key == '[')  particleFountain.adjustSpread(-radians(5));
-    if (key == ']')  particleFountain.adjustSpread(radians(5));
-    if (key == 'w' || key == 'W') particleFountain.nudgeOrigin(0, -10);
-    if (key == 'a' || key == 'A') particleFountain.nudgeOrigin(-10, 0);
-    if (key == 's' || key == 'S') particleFountain.nudgeOrigin(0, 10);
-    if (key == 'd' || key == 'D') particleFountain.nudgeOrigin(10, 0);
-  }
-  // Radial FFT keys (state 11 only)
-  if (config.STATE == 11 && radialFFT != null) {
-    if (key == 'r' || key == 'R') radialFFT.reverseDirection();
-    if (key == '[') radialFFT.adjustSpeed(-0.001);
-    if (key == ']') radialFFT.adjustSpeed(0.001);
-  }
-  // Neural Weave (state 14) — see documentation/neural_weave.md
-  if (config.STATE == 14 && neuralWeave != null) {
-    if (key == '[') neuralWeave.adjustCols(-1);
-    if (key == ']') neuralWeave.adjustCols(1);
-    if (key == '-' || key == '_') neuralWeave.adjustEdgeGain(-0.08);
-    if (key == '=' || key == '+') neuralWeave.adjustEdgeGain(0.08);
-    if (key == 'k' || key == 'K') neuralWeave.cyclePalette();
-    if (key == ' ') neuralWeave.triggerRipple();
-    if (key == 'e' || key == 'E') neuralWeave.toggleLabMode();
-    if (key == 'g' || key == 'G' || key == 'b' || key == 'B') neuralWeave.cycleGrowthMode();
-    if (key == 'v' || key == 'V') neuralWeave.toggleVesicles();
-  }
-
-  // Shoal Lumina (state 15)
-  if (config.STATE == 15 && shoalLumina != null) {
-    if (key == '[') shoalLumina.adjustLayers(-1);
-    if (key == ']') shoalLumina.adjustLayers(1);
-    if (key == '-' || key == '_') shoalLumina.adjustSpeed(-0.0025);
-    if (key == '=' || key == '+') shoalLumina.adjustSpeed(0.0025);
-    if (key == ' ') shoalLumina.triggerSurge();
-  }
-
-  // Antigravity (state 16 only)
-  if (config.STATE == 16 && antigravity != null) {
-    if (key == '[') antigravity.adjustGravity(-0.1);
-    if (key == ']') antigravity.adjustGravity(0.1);
-    if (key == '-' || key == '_') antigravity.adjustWind(-0.1);
-    if (key == '=' || key == '+') antigravity.adjustWind(0.1);
-    if (key == 'y' || key == 'Y') antigravity.cyclePalette();
-    if (key == ' ') antigravity.triggerPulse();
-  }
-
-  // Fractal Scene (state 17 only)
-  if (config.STATE == 17 && fractalScene != null) {
-    if (key == '[') fractalScene.adjustZoom(-0.1);
-    if (key == ']') fractalScene.adjustZoom(0.1);
-    if (key == '-' || key == '_') fractalScene.adjustRotationSpeed(-0.01);
-    if (key == '=' || key == '+') fractalScene.adjustRotationSpeed(0.01);
-    if (key == 'y' || key == 'Y') fractalScene.cyclePalette();
-    if (key == 'x' || key == 'X') {
-      fractalScene.globalZoom = 0;
-      fractalScene.rotationSpeed = 0.005;
-    }
-    if (key == 'A' || key == 'a') {
-      fractalScene.symmetries = (fractalScene.symmetries % 8) + 3;
-    }
-  }
-
-  // Shader Scene (state 18 only)
-  if (config.STATE == 18 && shaderScene != null) {
-    if (key == 'y' || key == 'Y') shaderScene.loadMyShader();
-    if (key == 'A' || key == 'a') {
-      shaderScene.panX = 0;
-      shaderScene.panY = 0;
-      shaderScene.twist = 0;
-    }
-  }
-
-  // Aurora ribbons keys (state 10 only)
-  if (config.STATE == 10 && auroraRibbons != null) {
-    if (key == '[') auroraRibbons.adjustTurbulence(-0.05);
-    if (key == ']') auroraRibbons.adjustTurbulence(0.05);
-    if (key == '-' || key == '_') auroraRibbons.adjustLength(-0.05);
-    if (key == '=' || key == '+') auroraRibbons.adjustLength(0.05);
-    if (key == 'h' || key == 'H') auroraRibbons.adjustHue(-7);
-    if (key == 'j' || key == 'J') auroraRibbons.adjustHue(7);
-    if (key == 'k' || key == 'K') auroraRibbons.cyclePalette();
-    if (key == ' ') auroraRibbons.triggerFlash();
-  }
-  if (key == '`') {
-    config.SHOW_CODE = !config.SHOW_CODE;
-  }
-  if (key == 'x' || key == 'X') {
+  if (key == 's' || key == 'S') toggleSongPlaying();
+  if (key == 'n') nextSong();
+  if (key == 'N') shuffleSong();
+  if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
+  if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
+  if (key == 'q' || key == 'Q' || key == 'x' || key == 'X') {
     audio.stop();
     exit();
   }
-  if (key == 'q' || key == 'Q') {
-    exit();
+
+  // Scene Switching (0-9)
+  if ((key >= '1' && key <= '9') || key == '0') {
+    int newState = (key == '0') ? 10 : ((int) key - 48);
+    if (newState >= 0 && newState < SCENE_COUNT) {
+      switchScene(newState);
+    }
   }
+
+  // Global background toggles
   if (key == 't' || key == 'T') {
     config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
-    if (config.DRAW_TUNNEL) {enableOneBackgroundAndDisableOthers("tunnel");}
+    if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
   }
   if (key == 'p') {
     config.DRAW_PLASMA = !config.DRAW_PLASMA;
-    if (config.DRAW_PLASMA) {
-      plasma = new Plasma();
-      enableOneBackgroundAndDisableOthers("plasma");
-      }
+    if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
   }
   if (key == 'P') {
     config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
-    if (config.DRAW_POLAR_PLASMA) {enableOneBackgroundAndDisableOthers("polar_plasma");}
+    if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
   }
+
   if (key == CODED) {
-    if (keyCode == LEFT) {
-      audio.skip(-10000);
+    if (keyCode == LEFT)  audio.skip(-10000);
+    if (keyCode == RIGHT) audio.skip(10000);
+    if (keyCode == UP) {
+      float current_gain = audio.getGain();
+      audio.setGain(current_gain + 5);
     }
-    if (keyCode == RIGHT) {
-      audio.skip(10000);
-    }
-    if (config.STATE == 8 && particleFountain != null) {
-      if (keyCode == UP)   particleFountain.adjustGravity(-0.01);
-      if (keyCode == DOWN) particleFountain.adjustGravity(0.01);
-    } else {
-      if (keyCode == UP) {
-        float current_gain = audio.getGain();
-        audio.setGain(current_gain + 5);
-      }
-      if (keyCode == DOWN) {
-        float current_gain = audio.getGain();
-        audio.setGain(current_gain - 5);
-      }
+    if (keyCode == DOWN) {
+      float current_gain = audio.getGain();
+      audio.setGain(current_gain - 5);
     }
   }
 }
@@ -650,203 +423,39 @@ void log_to_stdo(String message_to_log) {
 
 
 public void getUserInput(boolean usingController) {
-
-  if (!usingController) {
-    return ;
-  }
-
+  if (!usingController) return;
   controller.read();
 
-  if (config.STATE == 1) {
-    originalScene.applyController(controller);
+  // 1. Delegate to active scene
+  if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+    scenes[config.STATE].applyController(controller);
   }
 
+  // 2. Global Controller Shortcuts
   if (controller.dpad_hat_switch_up) {
-   config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
-   if (config.DRAW_TUNNEL) {
-    enableOneBackgroundAndDisableOthers("tunnel");
-   }
+    config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
+    if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
   }
-
   if (controller.dpad_hat_switch_left) {
-   config.DRAW_PLASMA = !config.DRAW_PLASMA;
-   if (config.DRAW_PLASMA) {
-    plasma = new Plasma();
-    enableOneBackgroundAndDisableOthers("plasma");
-   }
+    config.DRAW_PLASMA = !config.DRAW_PLASMA;
+    if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
   }
-
   if (controller.dpad_hat_switch_right) {
-   config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
-   if (config.DRAW_POLAR_PLASMA) {
-    enableOneBackgroundAndDisableOthers("polar_plasma");
-   }
+    config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
+    if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
   }
   if (controller.dpad_hat_switch_down) {
-   config.DRAW_TUNNEL = false;
-   config.DRAW_POLAR_PLASMA = false;
-   config.DRAW_PLASMA = false;
-  }
-
-  if (config.STATE == 2) {
-    heartGridScene.applyController(controller);
-  }
-
-  // oscilloscope live tuning via controller (only when on that scene)
-  if (config.STATE == 5 && oscilloscope != null) {
-    oscilloscope.applyController(controller);
-  }
-
-  // particle fountain controller input
-  if (config.STATE == 8 && particleFountain != null) {
-    particleFountain.applyController(controller);
-    if (controller.b_just_pressed) particleFountain.long_trail = !particleFountain.long_trail;
-  }
-
-  // cats cradle live tuning
-  if (config.STATE == 4 && catsCradle != null) {
-    catsCradle.applyController(controller);
-  }
-
-  // table tennis live tuning
-  if (config.STATE == 6 && tableTennis != null) {
-    tableTennis.applyController(controller);
-  }
-
-  // prism codex live tuning
-  if (config.STATE == 7 && prismCodex != null) {
-    prismCodex.applyController(controller);
-  }
-
-  // halo 2 logo live tuning
-  if (config.STATE == 9 && halo2Logo != null) {
-    halo2Logo.applyController(controller);
-  }
-
-  // worm colony
-  if (config.STATE == 3 && wormScene != null) {
-    wormScene.applyController(controller);
-  }
-
-  // fft worm
-  if (config.STATE == 9 && fftWorm != null) {
-    fftWorm.applyController(controller);
-  }
-
-  // aurora ribbons
-  if (config.STATE == 10 && auroraRibbons != null) {
-    auroraRibbons.applyController(controller);
-  }
-
-  // radial fft
-  if (config.STATE == 11 && radialFFT != null) {
-    radialFFT.applyController(controller);
-  }
-
-  // spirograph
-  if (config.STATE == 12 && spirograph != null) {
-    spirograph.applyController(controller);
-  }
-
-  // gravity strings
-  if (config.STATE == 13 && gravityStrings != null) {
-    gravityStrings.applyController(controller);
-  }
-
-  // Neural Weave — documentation/neural_weave.md
-  if (config.STATE == 14 && neuralWeave != null) {
-    neuralWeave.applyController(controller);
-  }
-
-  // Shoal Lumina
-  if (config.STATE == 15 && shoalLumina != null) {
-    shoalLumina.applyController(controller);
-  }
-
-  // Antigravity
-  if (config.STATE == 16 && antigravity != null) {
-    antigravity.applyController(controller);
-  }
-
-  // Fractal
-  if (config.STATE == 17 && fractalScene != null) {
-    fractalScene.applyController(controller);
-  }
-
-  // Shader
-  if (config.STATE == 18 && shaderScene != null) {
-    shaderScene.applyController(controller);
-  }
-
-  // map controller sticks to Shapes3DScene parameters for live tuning
-  if (config.STATE == 3 && shapes3D != null) {
-    // controller.* values are mapped to screen coords (0..width or 0..height) by Controller
-    // normalize them back to -1..1 before mapping to scene params
-    float nx = map(controller.rx, 0, width, -1, 1);
-    float ny = map(controller.ry, 0, height, -1, 1);
-    float lx = map(controller.lx, 0, width, -1, 1);
-    float ly = map(controller.ly, 0, height, -1, 1);
-
-    int bladesFromStick = int(map(nx, -1, 1, 4, 12));
-    shapes3D.setBlades(bladesFromStick);
-
-    float finW = map(ly, -1, 1, 8, min(width, height) * 0.08);
-    shapes3D.setFinWidth(finW);
-
-    float plateS = map(lx, -1, 1, 0.8, 1.6);
-    shapes3D.setPlateScale(plateS);
-
-    float pulseS = map(ny, -1, 1, 0.2, 1.2);
-    shapes3D.setPulseSensitivity(pulseS);
-  }
-
-  boolean wormScene_active = (config.STATE == 3 || config.STATE == 9);
-
-  // State 14: B cycles growth — skip global blend
-  if (controller.b_just_pressed && !wormScene_active && config.STATE != 14) {
-    changeBlendMode();
-  }
-
-  if (controller.a_just_pressed && !wormScene_active) {
-    switch (config.STATE) {
-      case 8:  if (particleFountain != null) particleFountain.triggerBurst(); break;
-      case 14: if (neuralWeave != null) neuralWeave.triggerRipple(); break; // not rainbow_fins
-      case 15: break; // surge handled in ShoalLuminaScene.applyController
-      default: config.RAINBOW_FINS = !config.RAINBOW_FINS; break;
-    }
-  }
-
-  // State 14 (Neural Weave) opts out so Y only runs scene palette there — see documentation/neural_weave.md
-  if (controller.y_just_pressed && !wormScene_active && config.STATE != 14 && config.STATE != 15) {
-    if (config.STATE != 9) changeFinRotation();
-  }
-
-  // State 14: X toggles lab mode in NeuralWeaveScene.applyController
-  if (controller.x_just_pressed && !wormScene_active && config.STATE != 14) {
-    config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
-  }
-
-  if (controller.back_just_pressed) {
-    stopSong();
-  }
-
-  if (controller.start_just_pressed) {
-    startSong();
+    config.DRAW_TUNNEL = false;
+    config.DRAW_POLAR_PLASMA = false;
+    config.DRAW_PLASMA = false;
   }
 
   if (controller.lb_just_pressed) switchScene(prevActiveScene());
   if (controller.rb_just_pressed) switchScene(nextActiveScene());
-
-  // State 14: stick clicks handled by NeuralWeaveScene (reset view / reshuffle bridges)
-  if (controller.lstickclick_just_pressed && config.STATE != 14) {
-    config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
-  }
-
-  if (controller.rstickclick_just_pressed && config.STATE != 14) {
-    config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
-  }
+  
+  if (controller.back_just_pressed) stopSong();
+  if (controller.start_just_pressed) startSong();
 }
-
 void setBackGroundFillMode(){
     fill(#fbfafa); 
 }
@@ -893,143 +502,45 @@ void switchScene(int newState) {
 }
 
 void draw() {
-  // occasional log to show current state
-  if (frameCount % 240 == 0) println("Main draw state=" + config.STATE);
-
-  if (config.STATE != previous_state) {
-    previous_state = config.STATE;
+  // 1. Scene Lifecycle Management
+  if (config.STATE != previousState) {
+    if (previousState >= 0 && previousState < SCENE_COUNT) {
+      scenes[previousState].onExit();
+    }
+    previousState = config.STATE;
+    if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+      scenes[config.STATE].onEnter();
+    }
   }
 
-  // Audio analysis — run once per frame so every scene reads the same snapshot.
-  // Calling forward() or beat.detect() inside individual scenes is redundant and wastes CPU.
+  // 2. Continuous Logic Updates
+  if (frameCount % 480 == 0) log_to_stdo("Draw state=" + config.STATE);
+
+  // Audio update
   audio.forward();
   audio.beat.detect(audio.player.mix);
+  analyzer.update(audio);
 
-  switch(config.STATE){
-    case 0:
-      background(200);
-      textSize(48 * uiScale());
-      fill(0,255,0);
-      text("RIP Sam", width/2, height/2);
-      break;
-   
-  case 1:
-    getUserInput(config.USING_CONTROLLER);
-    originalScene.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 2:
-    getUserInput(config.USING_CONTROLLER);
-    heartGridScene.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 3:
-    getUserInput(config.USING_CONTROLLER);
-    wormScene.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 4:
-    getUserInput(config.USING_CONTROLLER);
-    background(0);
-    catsCradle.drawScene();
-    if (config.SHOW_CODE) drawCodeOverlay(catsCradle.getCodeLines());
-    addFPSToTitleBar();
-    break;
-  case 5:
-    getUserInput(config.USING_CONTROLLER);
-    oscilloscope.drawScene();
-    if (config.SHOW_CODE) drawCodeOverlay(oscilloscope.getCodeLines());
-    addFPSToTitleBar();
-    break;
-  case 6:
-    getUserInput(config.USING_CONTROLLER);
-    tableTennis.drawScene();
-    if (config.SHOW_CODE) drawCodeOverlay(tableTennis.getCodeLines());
-    addFPSToTitleBar();
-    break;
-  case 7:
-    getUserInput(config.USING_CONTROLLER);
-    prismCodex.drawScene();
-    if (config.SHOW_CODE) drawCodeOverlay(prismCodex.getCodeLines());
-    addFPSToTitleBar();
-    break;
-  case 8:
-    getUserInput(config.USING_CONTROLLER);
-    particleFountain.drawScene();
-    if (config.SHOW_CODE) drawCodeOverlay(particleFountain.getCodeLines());
-    addFPSToTitleBar();
-    break;
-  case 9:
-    getUserInput(config.USING_CONTROLLER);
-    fftWorm.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 10:
-    getUserInput(config.USING_CONTROLLER);
-    auroraRibbons.drawScene();
-    if (config.SHOW_CODE) drawCodeOverlay(auroraRibbons.getCodeLines());
-    addFPSToTitleBar();
-    break;
-  case 11:
-    getUserInput(config.USING_CONTROLLER);
-    radialFFT.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 12:
-    getUserInput(config.USING_CONTROLLER);
-    spirograph.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 13:
-    getUserInput(config.USING_CONTROLLER);
-    gravityStrings.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 14:
-    getUserInput(config.USING_CONTROLLER);
-    neuralWeave.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 15:
-    getUserInput(config.USING_CONTROLLER);
-    shoalLumina.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 16:
-    getUserInput(config.USING_CONTROLLER);
-    antigravity.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 17:
-    getUserInput(config.USING_CONTROLLER);
-    fractalScene.drawScene();
-    addFPSToTitleBar();
-    break;
-  case 18:
-    getUserInput(config.USING_CONTROLLER);
-    shaderScene.drawScene();
-    addFPSToTitleBar();
-    break;
+  // Input update
+  getUserInput(config.USING_CONTROLLER);
+
+  // 3. Render Active Scene
+  if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+    pushMatrix();
+    scenes[config.STATE].drawScene();
+    popMatrix();
+    
+    // Global overlays
+    if (config.SHOW_CODE) {
+      drawCodeOverlay(scenes[config.STATE].getCodeLines());
+    }
   }
 
-  // ── Per-scene controls HUD (` to toggle) ────────────────────────────────────
-  if (config.STATE == 1  && config.SHOW_CODE) drawControlsHUD();
-  if (config.STATE == 3  && config.SHOW_CODE) drawSceneControlsHUD(wormScene.getCodeLines());
-  if (config.STATE == 9  && config.SHOW_CODE) drawSceneControlsHUD(fftWorm.getCodeLines());
-  if (config.STATE == 10 && config.SHOW_CODE) drawSceneControlsHUD(auroraRibbons.getCodeLines());
-  if (config.STATE == 11 && config.SHOW_CODE) drawSceneControlsHUD(radialFFT.getCodeLines());
-  if (config.STATE == 12 && config.SHOW_CODE) drawSceneControlsHUD(spirograph.getCodeLines());
-  if (config.STATE == 13 && config.SHOW_CODE) drawCodeOverlay(gravityStrings.getCodeLines());
-  if (config.STATE == 14 && config.SHOW_CODE) drawSceneControlsHUD(neuralWeave.getCodeLines());
-  if (config.STATE == 15 && config.SHOW_CODE) drawSceneControlsHUD(shoalLumina.getCodeLines());
-  if (config.STATE == 18 && config.SHOW_CODE && shaderScene.shaderLoaded) drawCodeOverlay(shaderScene.getCodeLines());
+  addFPSToTitleBar();
 
   // ── Crossfade overlay ───────────────────────────────────────────────────────
-  // Drawn after every scene so it always sits on top.
-  // The snapshot fades out while the new scene plays live underneath.
   if (crossfadeSnapshot != null) {
     crossfadeFrame++;
-
     // Beat-snap: if a beat lands when we're past the halfway point, finish early
     if (audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
       crossfadeFrame = CROSSFADE_DURATION;
@@ -1039,7 +550,7 @@ void draw() {
       crossfadeSnapshot = null;
     } else {
       float alpha = map(crossfadeFrame, 0, CROSSFADE_DURATION, 255, 0);
-      blendMode(BLEND);  // snapshot must use normal alpha blend, not the scene's blend mode
+      blendMode(BLEND); 
       tint(255, alpha);
       image(crossfadeSnapshot, 0, 0);
       noTint();

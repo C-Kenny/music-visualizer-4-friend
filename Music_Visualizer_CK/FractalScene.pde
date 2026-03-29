@@ -1,4 +1,4 @@
-class FractalScene {
+class FractalScene implements IScene {
   float globalZoom = 0.0;
   float globalRotation = 0.0;
   float rotationSpeed = 0.005;
@@ -64,9 +64,9 @@ class FractalScene {
     background(5, 5, 10);
 
     // Get frequencies
-    float basRaw = audio.normalisedAvg(1);
-    float midRaw = audio.normalisedAvg(12);
-    float higRaw = audio.normalisedAvg(22);
+    float basRaw = analyzer.bass;
+    float midRaw = analyzer.mid;
+    float higRaw = analyzer.high;
 
     globalRotation += rotationSpeed + (higRaw * 0.01 * sign(rotationSpeed));
 
@@ -187,5 +187,37 @@ class FractalScene {
       text("palette: " + paletteNames[paletteIndex], 12, 12 + lh * 4);
       text("A symmetries  Y palette  X reset zoom  [ ] zoom  -/= rotate", 12, 12 + lh * 5);
     popStyle();
+  }
+  void onEnter() {
+    globalZoom = 0;
+    globalRotation = 0;
+    background(5, 5, 10);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') adjustZoom(-0.1);
+    else if (k == ']') adjustZoom(0.1);
+    else if (k == '-' || k == '_') adjustRotationSpeed(-0.01);
+    else if (k == '=' || k == '+') adjustRotationSpeed(0.01);
+    else if (k == 'y' || k == 'Y') cyclePalette();
+    else if (k == 'x' || k == 'X') {
+      globalZoom = 0;
+      rotationSpeed = 0.005;
+    }
+    else if (k == 'a' || k == 'A') {
+      symmetries = (symmetries % 8) + 3;
+    }
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Recursive Fractal ===",
+      "// Infinite zoom illusion via modulo and log-scaling",
+      "actual_zoom = global_zoom % 1.0",
+      "scale_factor = pow(1.0 / shrink_factor, actual_zoom)",
+      "draw_branch(len * shrink_factor, angle + mid * offset)"
+    };
   }
 }

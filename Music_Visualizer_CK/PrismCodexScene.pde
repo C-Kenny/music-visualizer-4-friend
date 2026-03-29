@@ -1,7 +1,7 @@
 // Prism Orbit scene — audio-reactive lattice intended to feel pleasing to both
 // humans and machines. Switch to it with the '7' key.
 
-class PrismCodexScene {
+class PrismCodexScene implements IScene {
   float spin = 0.0;
   float beatGlow = 0.0;
   float latticeDrift = 0.0;
@@ -48,7 +48,7 @@ class PrismCodexScene {
   }
 
   void drawScene() {
-    if (audio.beat.isOnset()) {
+    if (analyzer.isBeat) {
       beatGlow = 1.0;
     }
     beatGlow *= 0.92;
@@ -73,14 +73,14 @@ class PrismCodexScene {
   }
 
   float getAverageBandEnergy(float startNorm, float endNorm) {
-    int fftSize = max(1, audio.fft.avgSize());
-    int start = constrain(int(fftSize * startNorm), 0, fftSize - 1);
-    int end = constrain(int(fftSize * endNorm), start + 1, fftSize);
+    int specLen = analyzer.spectrum.length;
+    int start = constrain(int(specLen * startNorm), 0, specLen - 1);
+    int end = constrain(int(specLen * endNorm), start + 1, specLen);
     float total = 0;
     for (int i = start; i < end; i++) {
-      total += audio.fft.getAvg(i);
+      total += analyzer.spectrum[i];
     }
-    return constrain(total / max(1, end - start), 0, 14);
+    return constrain(total / max(1, end - start) * 14.0, 0, 14);
   }
 
   void drawBackdrop(float lowEnergy, float midEnergy, float highEnergy) {
@@ -234,4 +234,12 @@ class PrismCodexScene {
       text("intent: symmetry + signal + soft neon", 12, 8 + margin + lh * 4);
     popStyle();
   }
+
+  void onEnter() {
+    background(0);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {}
 }

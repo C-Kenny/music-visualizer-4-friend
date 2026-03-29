@@ -1,4 +1,4 @@
-class AntigravityScene {
+class AntigravityScene implements IScene {
   float gravity = -1.5;
   float wind = 0.0;
   float baseSpawningSpeed = 1.0;
@@ -14,6 +14,11 @@ class AntigravityScene {
 
   AntigravityScene() {
     particles = new ArrayList<AntigravParticle>();
+  }
+
+  void onEnter() {
+    particles.clear();
+    background(0);
   }
 
   void applyController(Controller c) {
@@ -49,9 +54,9 @@ class AntigravityScene {
     background(10, 12, 18);
     
     // Audio processing
-    float basRaw = audio.normalisedAvg(2); // Low freq (bass)
-    float midRaw = audio.normalisedAvg(8); // Mid freq
-    float higRaw = audio.normalisedAvg(18); // High freq
+    float basRaw = analyzer.bass; 
+    float midRaw = analyzer.mid; 
+    float higRaw = analyzer.high; 
 
     // Draw the frequency meters on the side
     drawEnergyMeters(basRaw, midRaw, higRaw);
@@ -60,7 +65,7 @@ class AntigravityScene {
     blendMode(ADD);
 
     // On beat, trigger a visual pulse effect spanning outward
-    if (audio.beat.isOnset()) {
+    if (analyzer.isBeat) {
       triggerPulse();
       // Increase spawn rate slightly on beat for Bass
       for (int i=0; i<3; i++) spawnParticle("BASS");
@@ -268,5 +273,24 @@ class AntigravityScene {
     boolean isDead() {
       return (lifespan < 0 || loc.y < -100 || loc.y > height + 200 || loc.x < -100 || loc.x > width + 100);
     }
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') adjustGravity(-0.05);
+    else if (k == ']') adjustGravity(0.05);
+    else if (k == '-' || k == '_') adjustWind(-0.2);
+    else if (k == '=' || k == '+') adjustWind(0.2);
+    else if (k == ' ') triggerPulse();
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Antigravity ===",
+      "// Upward particle flow driven by bass spikes",
+      "p.applyForce(new PVector(wind, gravity + bass * -2.0))",
+      "p.loc.x += jitter(highHat)"
+    };
   }
 }

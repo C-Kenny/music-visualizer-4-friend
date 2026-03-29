@@ -1,7 +1,7 @@
 // Aurora Ribbons Scene — state 10
 // Atmospheric triangle-strip curtains driven by low/mid/high energy.
 
-class AuroraRibbonsScene {
+class AuroraRibbonsScene implements IScene {
   float drift = 0.0;
   float wind = 0.35;
   float ribbonLengthScale = 1.0;
@@ -9,12 +9,6 @@ class AuroraRibbonsScene {
   float turbulence = 1.0;
   float beatFlash = 0.0;
   float beatSplit = 0.0;
-
-  // Adaptive band normalization (auto-gain): keeps the scene expressive
-  // across songs with very different loudness/arrangement.
-  float lowFloor = 0.4, lowCeil = 7.0;
-  float midFloor = 0.3, midCeil = 6.0;
-  float highFloor = 0.2, highCeil = 5.0;
 
   // Curated palette presets: hue shift + sat/bri scaling
   int paletteIndex = 0;
@@ -82,15 +76,11 @@ class AuroraRibbonsScene {
   void drawScene() {
     background(4, 6, 14);  // clear in RGB before switching colorMode — prevents previous-scene bleed
     blendMode(BLEND);
-    float lowRaw = bandEnergy(0.00, 0.20);
-    float midRaw = bandEnergy(0.20, 0.55);
-    float highRaw = bandEnergy(0.55, 1.00);
+    float low = analyzer.bass;
+    float mid = analyzer.mid;
+    float high = analyzer.high;
 
-    float low = normalizeAdaptive(lowRaw,  0);
-    float mid = normalizeAdaptive(midRaw,  1);
-    float high = normalizeAdaptive(highRaw, 2);
-
-    if (audio.beat.isOnset()) {
+    if (analyzer.isBeat) {
       triggerFlash();
       drift += 0.35;
     }
@@ -186,38 +176,6 @@ class AuroraRibbonsScene {
     }
   }
 
-  float normalizeAdaptive(float raw, int band) {
-    float floor, ceil;
-    if (band == 0) {
-      lowFloor = lerp(lowFloor, min(lowFloor, raw), 0.035);
-      lowCeil  = lerp(lowCeil,  max(lowCeil * 0.997, raw), 0.04);
-      floor = lowFloor;
-      ceil = lowCeil;
-    } else if (band == 1) {
-      midFloor = lerp(midFloor, min(midFloor, raw), 0.035);
-      midCeil  = lerp(midCeil,  max(midCeil * 0.997, raw), 0.04);
-      floor = midFloor;
-      ceil = midCeil;
-    } else {
-      highFloor = lerp(highFloor, min(highFloor, raw), 0.035);
-      highCeil  = lerp(highCeil,  max(highCeil * 0.997, raw), 0.04);
-      floor = highFloor;
-      ceil = highCeil;
-    }
-
-    float n = (raw - floor) / max(0.001, ceil - floor);
-    return constrain(n, 0, 1);
-  }
-
-  float bandEnergy(float startNorm, float endNorm) {
-    int n = max(1, audio.fft.avgSize());
-    int s = constrain(int(n * startNorm), 0, n - 1);
-    int e = constrain(int(n * endNorm), s + 1, n);
-    float total = 0;
-    for (int i = s; i < e; i++) total += audio.fft.getAvg(i);
-    return total / max(1, e - s);
-  }
-
   void drawHud(float low, float mid, float high) {
     pushStyle();
       float ts = 11 * uiScale();
@@ -236,5 +194,22 @@ class AuroraRibbonsScene {
       text("palette: " + paletteNames[paletteIndex] + "  split: " + nf(beatSplit, 1, 2), 12, 12 + lh * 4);
       text("A flash  Y hue step  K palette  [ ] turbulence  -/= length", 12, 12 + lh * 5);
     popStyle();
+  }
+
+  void onEnter() {
+    background(4, 6, 14);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') adjustTurbulence(-0.05);
+    else if (k == ']') adjustTurbulence(0.05);
+    else if (k == '-' || k == '_') adjustLength(-0.05);
+    else if (k == '=' || k == '+') adjustLength(0.05);
+    else if (k == 'h' || k == 'H') adjustHue(-7);
+    else if (k == 'j' || k == 'J') adjustHue(7);
+    else if (k == 'k' || k == 'K') cyclePalette();
+    else if (k == ' ') triggerFlash();
   }
 }

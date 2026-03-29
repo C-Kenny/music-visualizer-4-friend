@@ -1,4 +1,4 @@
-class HeartGridScene {
+class HeartGridScene implements IScene {
   BezierHeart bezier_heart_0;
   BezierHeart bezier_heart_1;
   BezierHeart bezier_heart_2;
@@ -47,7 +47,7 @@ class HeartGridScene {
 
     float breath = sin(frameCount * 0.03) * 12;
 
-    if (audio.beat.isOnset()) {
+    if (analyzer.isBeat) {
       heartBeatDecay = 35.0;
       heartTargetHue = (heartTargetHue + random(60, 120)) % 360;
     }
@@ -129,5 +129,28 @@ class HeartGridScene {
     line(focusX, focusY - 30, focusX, focusY - 10);
     line(focusX, focusY + 10, focusX, focusY + 30);
     popStyle();
+  }
+
+  void onEnter() {
+    background(0);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') {
+      config.HEART_COLS = max(1, config.HEART_COLS - 1);
+    } else if (k == ']') {
+      config.HEART_COLS = min(10, config.HEART_COLS + 1);
+    }
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Heart Grid Scene ===",
+      "// Logic: Bezier-curve hearts in a dynamic grid",
+      "cols = lerp(cols, target_cols, 0.1)",
+      "beat = onset ? flash : decay"
+    };
   }
 }

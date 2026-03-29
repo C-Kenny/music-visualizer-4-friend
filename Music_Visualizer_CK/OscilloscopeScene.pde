@@ -22,7 +22,7 @@
 //   Right stick Y →  trail fade speed
 //   Right stick X →  overall brightness
 
-class OscilloscopeScene {
+class OscilloscopeScene implements IScene {
   float gainX       = 2.2;   // user-adjustable X axis gain
   float gainY       = 2.2;   // user-adjustable Y axis gain
   float trailAlpha  = 28;    // phosphor fade opacity (lower = longer trail)
@@ -112,20 +112,12 @@ class OscilloscopeScene {
     }
 
     // --- frequency band levels -------------------------------------
-    int bassEnd = max(1, fftSize / 6);
-    int midEnd  = max(bassEnd + 1, fftSize / 2);
-
-    float bassAmp = 0, midAmp = 0, highAmp = 0;
-    for (int i = 0;       i < bassEnd; i++) bassAmp += audio.fft.getAvg(i);
-    for (int i = bassEnd; i < midEnd;  i++) midAmp  += audio.fft.getAvg(i);
-    for (int i = midEnd;  i < fftSize; i++) highAmp += audio.fft.getAvg(i);
-    bassAmp /= bassEnd;
-    midAmp  /= max(1, midEnd  - bassEnd);
-    highAmp /= max(1, fftSize - midEnd);
-
+    float bassAmp = analyzer.bass;
+    float midAmp  = analyzer.mid;
+    float highAmp = analyzer.high;
     float amplitude = (bassAmp + midAmp + highAmp) / 3.0;
 
-    if (audio.beat.isOnset()) pulse = 1.0;
+    if (analyzer.isBeat) pulse = 1.0;
     pulse *= 0.90;
     hue    = (hue + 0.5) % 360;
 
@@ -253,5 +245,22 @@ class OscilloscopeScene {
       int secLeft = max(0, CYCLE_SECONDS - elapsedMs / 1000);
       text("reset in: " + secLeft + "s" + (fadingOut ? "  (fading...)" : ""), 12, 8 + mg + lh * 4);
     popStyle();
+  }
+
+  void onEnter() {
+    background(0);
+    cycleStartMs = millis();
+    fadingOut = false;
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') adjustGainX(-0.1);
+    else if (k == ']') adjustGainX(0.1);
+    else if (k == '-') adjustGainY(-0.1);
+    else if (k == '=') adjustGainY(0.1);
+    else if (k == ';') adjustTrail(-2);
+    else if (k == '\'') adjustTrail(2);
   }
 }

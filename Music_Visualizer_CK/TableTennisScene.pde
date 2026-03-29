@@ -8,7 +8,7 @@
 //
 // Controls: +/-  gravity    [/]  Magnus strength
 
-class TableTennisScene {
+class TableTennisScene implements IScene {
 
   // ── ball ──────────────────────────────────────────────────────────────────
   float ballX, ballY;
@@ -118,17 +118,13 @@ class TableTennisScene {
   void drawScene() {
     background(15, 35, 15);
 
-    int fftSize = audio.fft.avgSize();
-    int bassEnd = max(1, fftSize / 6);
-    int midEnd  = max(bassEnd + 1, fftSize / 2);
-
     float bass = 0, mid = 0;
-    for (int i = 0;       i < bassEnd; i++) bass += audio.fft.getAvg(i);
-    for (int i = bassEnd; i < midEnd;  i++) mid  += audio.fft.getAvg(i);
-    bass /= bassEnd;
-    mid  /= max(1, midEnd - bassEnd);
+    for (int i = 0; i < 8; i++) bass += analyzer.spectrum[i];
+    for (int i = 8; i < 24; i++) mid += analyzer.spectrum[i];
+    bass /= 8.0;
+    mid /= 16.0;
 
-    if (audio.beat.isOnset()) onBeat(bass, mid);
+    if (analyzer.isBeat) onBeat(bass, mid);
     impactFlash *= 0.82;
     pointFlash  *= 0.88;
 
@@ -675,5 +671,18 @@ class TableTennisScene {
       "// Miss offset reset each rally",
       "// 15% miss chance → ~6 hit rallies"
     };
+  }
+
+  void onEnter() {
+    background(15, 35, 15);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '+' || k == '=') adjustGravity(0.02);
+    else if (k == '-') adjustGravity(-0.02);
+    else if (k == '[') adjustMagnus(-0.005);
+    else if (k == ']') adjustMagnus(0.005);
   }
 }
