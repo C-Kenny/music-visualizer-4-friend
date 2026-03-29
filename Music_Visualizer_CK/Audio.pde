@@ -7,6 +7,9 @@ class Audio {
   BeatDetect beat;
   FFT fft;
 
+  // Per-band rolling max for normalization (lazy-initialized after first forward())
+  private float[] _bandMax;
+
   Audio(PApplet applet, String songToVisualize, int bandsPerOctave) {
     minim = new Minim(applet);
     player = minim.loadFile(songToVisualize);
@@ -18,6 +21,18 @@ class Audio {
 
   void forward() {
     fft.forward(player.mix);
+    if (_bandMax == null) _bandMax = new float[fft.avgSize()];
+    for (int i = 0; i < fft.avgSize(); i++) {
+      _bandMax[i] = max(_bandMax[i] * 0.997, fft.getAvg(i));
+    }
+  }
+
+  // Returns FFT band value normalised to ~0..1 relative to that band's recent peak.
+  // Use this instead of fft.getAvg(band) to make scenes song-loudness-agnostic.
+  float normalisedAvg(int band) {
+    float raw = fft.getAvg(band);
+    if (_bandMax == null || _bandMax[band] < 0.0001) return 0;
+    return constrain(raw / _bandMax[band], 0, 1);
   }
 
   void play() {

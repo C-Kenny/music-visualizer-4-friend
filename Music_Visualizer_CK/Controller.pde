@@ -9,6 +9,9 @@ class Controller {
   float lx, ly;
   float rx, ry;
 
+  /** Left / right trigger depression, ~0 (released) … 1 (full). Absent axes stay 0. */
+  float lt, rt;
+
   boolean a_button, b_button, x_button, y_button;
   boolean back_button, start_button;
   boolean lb_button, rb_button;
@@ -56,6 +59,17 @@ class Controller {
     rx = map(stick.getSlider("rx").getValue(), -1, 1, 0, width);
     ry = map(stick.getSlider("ry").getValue(), -1, 1, 0, height);
 
+    try {
+      lt = constrain(map(stick.getSlider("lt").getValue(), -1, 1, 0, 1), 0, 1);
+    } catch (Exception e) {
+      lt = 0;
+    }
+    try {
+      rt = constrain(map(stick.getSlider("rt").getValue(), -1, 1, 0, 1), 0, 1);
+    } catch (Exception e) {
+      rt = 0;
+    }
+
     a_button = stick.getButton("a").pressed();
     b_button = stick.getButton("b").pressed();
     x_button = stick.getButton("x").pressed();
@@ -74,13 +88,6 @@ class Controller {
     dpad_hat_switch_down = stick.getHat("dpad").down();
     dpad_hat_switch_left = stick.getHat("dpad").left();
     dpad_hat_switch_right = stick.getHat("dpad").right();
-
-    // Debug: log values every 180 frames (~3s) so we can see if reads change
-    if (frameCount % 180 == 0) {
-      println("CTRL lx=" + nf(lx,1,2) + " ly=" + nf(ly,1,2) + " rx=" + nf(rx,1,2) + " ry=" + nf(ry,1,2)
-            + " A=" + a_button + " B=" + b_button + " X=" + x_button + " Y=" + y_button
-            + " dpad↑=" + dpad_hat_switch_up + " ↓=" + dpad_hat_switch_down);
-    }
 
     // Compute rising-edge flags
     a_just_pressed = a_button && !prev_a;
