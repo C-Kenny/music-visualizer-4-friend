@@ -6,6 +6,11 @@
 //   High  → boosts X scale (treble widens the figure horizontally)
 //   Mid   → speeds up the phosphor trail fade (busier mid = shorter trail)
 //
+// Vignette: a dark ring is drawn each frame outside a circular viewport.
+// Lines that escape the circle are erased almost immediately; content inside
+// accumulates as a phosphor glow. After CYCLE_SECONDS the canvas fades out
+// and restarts fresh so the current figure stays readable.
+//
 // User controls (keyboard, active when STATE == 5):
 //   [ / ]   increase / decrease X gain
 //   - / =   increase / decrease Y gain
@@ -26,6 +31,13 @@ class OscilloscopeScene {
   // internal state
   float hue   = 180;
   float pulse = 0;
+
+  // Cycle: fade out after CYCLE_SECONDS and restart
+  final int CYCLE_SECONDS   = 20;
+  final int FADE_OUT_FRAMES = 50;   // ~0.8 s fade before reset
+  int  cycleStartMs  = 0;
+  boolean fadingOut  = false;
+  int  fadeOutFrame  = 0;
 
   OscilloscopeScene() {}
 
@@ -48,7 +60,6 @@ class OscilloscopeScene {
   }
 
   void applyController(Controller c) {
-    // normalize sticks from screen-space back to -1..1
     float lx = map(c.lx, 0, width,  -1, 1);
     float ly = map(c.ly, 0, height, -1, 1);
     float rx = map(c.rx, 0, width,  -1, 1);
@@ -73,11 +84,8 @@ class OscilloscopeScene {
       "// Phosphor trail: old frames fade instead of clearing",
       "trail_fade = base_fade + mid_level * 8",
       "",
-      "// Stroke gets thicker on loud passages",
-      "stroke_weight = 1.0 + overall_volume * 3.5",
-      "",
-      "// Colour shifts warm on bass, cool on treble",
-      "hue = hue + bass * 30 - treble * 30",
+      "// Vignette ring: outside circle fades at trail + 160 per frame",
+      "// so content can't accumulate beyond the circular boundary",
       "",
       "// Controls (keyboard):  [ ]  x_gain    - =  y_gain    ; '  trail"
     };
@@ -89,8 +97,21 @@ class OscilloscopeScene {
     int bufSize = audio.player.bufferSize();
     int fftSize = audio.fft.avgSize();
 
-    // --- frequency band levels --------------------------------------
-    // Split FFT into bass / mid / high thirds
+    float cx = width  / 2.0;
+    float cy = height / 2.0;
+    float vigR = min(width, height) * 0.44;   // circular viewport radius
+
+    // --- init cycle timer on first call ----------------------------
+    if (cycleStartMs == 0) cycleStartMs = millis();
+
+    // --- check if it's time to fade out ----------------------------
+    int elapsed = millis() - cycleStartMs;
+    if (!fadingOut && elapsed >= CYCLE_SECONDS * 1000) {
+      fadingOut   = true;
+      fadeOutFrame = 0;
+    }
+
+    // --- frequency band levels -------------------------------------
     int bassEnd = max(1, fftSize / 6);
     int midEnd  = max(bassEnd + 1, fftSize / 2);
 
@@ -102,35 +123,46 @@ class OscilloscopeScene {
     midAmp  /= max(1, midEnd  - bassEnd);
     highAmp /= max(1, fftSize - midEnd);
 
-    // overall amplitude for stroke weight
     float amplitude = (bassAmp + midAmp + highAmp) / 3.0;
 
-    // beat
     if (audio.beat.isOnset()) pulse = 1.0;
     pulse *= 0.90;
     hue    = (hue + 0.5) % 360;
 
-    // --- phosphor trail ---------------------------------------------
-    // mid frequencies speed up the fade (busy mid = snappier trail)
-    float dynamicFade = trailAlpha + midAmp * 8;
+    // --- phosphor trail: fade the whole canvas ---------------------
+    float dynamicFade = fadingOut
+        ? map(fadeOutFrame, 0, FADE_OUT_FRAMES, trailAlpha + midAmp * 8, 255)
+        : trailAlpha + midAmp * 8;
+    colorMode(RGB, 255);
     noStroke();
-    fill(0, 0, 0, constrain(dynamicFade, 5, 120));
+    fill(0, 0, 0, constrain(dynamicFade, 5, 255));
     rect(0, 0, width, height);
 
-    // --- axis ranges ------------------------------------------------
-    // Bass expands Y, highs expand X, user gain scales both
+    // --- handle fade-out completion --------------------------------
+    if (fadingOut) {
+      fadeOutFrame++;
+      if (fadeOutFrame >= FADE_OUT_FRAMES) {
+        background(0);
+        fadingOut    = false;
+        cycleStartMs = millis();
+      }
+      // skip drawing new content while fading out
+      drawVignette(cx, cy, vigR);
+      drawHUD(elapsed, vigR);
+      drawSongNameOnScreen(config.SONG_NAME, width / 2, height - 5);
+      return;
+    }
+
+    // --- axis ranges -----------------------------------------------
     float xRange = (width  / 2.0) * gainX * (1.0 + highAmp * 0.4);
     float yRange = (height / 2.0) * gainY * (1.0 + bassAmp * 0.4);
-    float cx = width  / 2.0;
-    float cy = height / 2.0;
 
-    // --- draw Lissajous figure --------------------------------------
-    float strokeB  = constrain(brightness * 220 + pulse * 35, 80, 255);
-    float weight   = constrain(1.0 + amplitude * 3.5, 0.8, 5.0);
+    // --- draw Lissajous figure -------------------------------------
+    float strokeB    = constrain(brightness * 220 + pulse * 35, 80, 255);
+    float weight     = constrain(1.0 + amplitude * 3.5, 0.8, 5.0);
+    float dynamicHue = (hue + bassAmp * 30 - highAmp * 30 + 360) % 360;
 
     colorMode(HSB, 360, 255, 255, 255);
-    // hue offset: bass shifts toward warm, highs toward cool
-    float dynamicHue = (hue + bassAmp * 30 - highAmp * 30 + 360) % 360;
     stroke(dynamicHue, 200, (int)strokeB, 210);
     strokeWeight(weight);
     noFill();
@@ -145,30 +177,81 @@ class OscilloscopeScene {
 
     colorMode(RGB, 255);
 
-    // --- beat pulse dot ---------------------------------------------
+    // --- beat pulse dot --------------------------------------------
     noStroke();
     fill(255, 220, 80, (int)(pulse * 200));
     float dotSize = 4 + pulse * 28;
     ellipse(cx, cy, dotSize, dotSize);
 
-    // --- HUD (gain + trail readout) ---------------------------------
-    pushStyle();
-      float ts = 11 * uiScale();
-      float lh = ts * 1.3;
-      float margin = 4 * uiScale();
-      fill(0, 120);
-      noStroke();
-      rectMode(CORNER);
-      rect(8, 8, 240 * uiScale(), margin + lh * 4);
-      fill(255);
-      textSize(ts);
-      textAlign(LEFT, TOP);
-      text("Scene: Oscilloscope",              12, 8 + margin);
-      text("gainX: "  + nf(gainX, 1, 2) + "  [ / ]",    12, 8 + margin + lh);
-      text("gainY: "  + nf(gainY, 1, 2) + "  - / =",    12, 8 + margin + lh*2);
-      text("trail: "  + nf(trailAlpha, 1, 1) + "  ; / '", 12, 8 + margin + lh*3);
-    popStyle();
+    // --- vignette: dark ring outside viewport ----------------------
+    drawVignette(cx, cy, vigR);
+
+    // --- HUD -------------------------------------------------------
+    drawHUD(elapsed, vigR);
 
     drawSongNameOnScreen(config.SONG_NAME, width / 2, height - 5);
+  }
+
+  // Draws a dark ring over everything outside the circular viewport.
+  // This prevents phosphor accumulation outside the circle and gives
+  // the scene a clear bounded shape.
+  void drawVignette(float cx, float cy, float vigR) {
+    colorMode(RGB, 255);
+    noStroke();
+    fill(0, 0, 0, 160);
+
+    // Full-screen rect with a circular hole punched in the center.
+    // The outer rectangle covers the whole canvas; the contour is the
+    // counter-clockwise hole (Processing cuts it out when filled).
+    beginShape();
+      vertex(0,     0);
+      vertex(width, 0);
+      vertex(width, height);
+      vertex(0,     height);
+      beginContour();
+        int pts = 80;
+        for (int i = 0; i < pts; i++) {
+          float a = -TWO_PI * i / pts;   // CCW = hole direction
+          vertex(cx + cos(a) * vigR, cy + sin(a) * vigR);
+        }
+      endContour();
+    endShape(CLOSE);
+
+    // Faint circle outline to define the viewport edge
+    noFill();
+    stroke(255, 40);
+    strokeWeight(1.2 * uiScale());
+    ellipse(cx, cy, vigR * 2, vigR * 2);
+  }
+
+  void drawHUD(int elapsedMs, float vigR) {
+    float cx = width / 2.0, cy = height / 2.0;
+
+    // Cycle progress arc drawn just outside the viewport ring
+    float progress = constrain((float)elapsedMs / (CYCLE_SECONDS * 1000), 0, 1);
+    float arcR = vigR + 6 * uiScale();
+    colorMode(RGB, 255);
+    noFill();
+    stroke(255, 255, 255, 35);
+    strokeWeight(2.5 * uiScale());
+    // background dim arc (full circle)
+    ellipse(cx, cy, arcR * 2, arcR * 2);
+    // progress arc (bright)
+    stroke(200, 220, 255, 120);
+    arc(cx, cy, arcR * 2, arcR * 2, -HALF_PI, -HALF_PI + TWO_PI * progress);
+
+    // Text panel
+    pushStyle();
+      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
+      fill(0, 120); noStroke(); rectMode(CORNER);
+      rect(8, 8, 240 * uiScale(), mg + lh * 5);
+      fill(255); textSize(ts); textAlign(LEFT, TOP);
+      text("Scene: Oscilloscope",                       12, 8 + mg);
+      text("gainX: "  + nf(gainX, 1, 2)      + "  [ / ]",   12, 8 + mg + lh);
+      text("gainY: "  + nf(gainY, 1, 2)      + "  - / =",   12, 8 + mg + lh * 2);
+      text("trail: "  + nf(trailAlpha, 1, 1) + "  ; / '",   12, 8 + mg + lh * 3);
+      int secLeft = max(0, CYCLE_SECONDS - elapsedMs / 1000);
+      text("reset in: " + secLeft + "s" + (fadingOut ? "  (fading...)" : ""), 12, 8 + mg + lh * 4);
+    popStyle();
   }
 }

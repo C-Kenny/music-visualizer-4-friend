@@ -23,7 +23,7 @@
 class RadialFFTScene {
 
   float rotation   = 0.0;
-  float rotSpeed   = 0.004;
+  float rotSpeed   = 0.001;   // signed: positive=CW, negative=CCW
   float scaleMult  = 1.0;
   float beatPulse  = 0.0;   // decaying outward burst on beat
   float spread     = 1.0;   // inner/outer ring gap multiplier
@@ -67,7 +67,7 @@ class RadialFFTScene {
     }
     beatPulse *= 0.88;
 
-    rotation += (rotSpeed + rawMid * 0.0003);
+    rotation += rotSpeed + (rotSpeed >= 0 ? 1 : -1) * rawMid * 0.00008;
 
     // ── Background ─────────────────────────────────────────────────────────
     background(4, 6, 16);
@@ -132,16 +132,16 @@ class RadialFFTScene {
     }
 
     // ── Central glow disc ──────────────────────────────────────────────────
-    float glowR = innerR * 0.85 + rawBass * 2 + beatPulse * innerR * 0.3;
-    // Outer glow halo
-    fill((hueShift + 20) % 360, 160, 255, 18 + beatPulse * 60);
-    ellipse(0, 0, glowR * 3.2, glowR * 3.2);
-    // Core disc
-    fill((hueShift) % 360, 200, 255, 120 + beatPulse * 80);
-    ellipse(0, 0, glowR * 2, glowR * 2);
-    // Bright centre
-    fill(0, 0, 255, 160 + beatPulse * 70);
-    ellipse(0, 0, glowR * 0.55, glowR * 0.55);
+    float glowR = innerR * 0.7 + rawBass * 1.2 + beatPulse * innerR * 0.12;
+    // Outer glow halo (soft, barely visible)
+    fill((hueShift + 20) % 360, 140, 255, 10 + beatPulse * 28);
+    ellipse(0, 0, glowR * 2.4, glowR * 2.4);
+    // Core disc (toned down, less opaque on beat)
+    fill((hueShift) % 360, 180, 255, 55 + beatPulse * 35);
+    ellipse(0, 0, glowR * 1.4, glowR * 1.4);
+    // Bright centre (small pinpoint)
+    fill(0, 0, 255, 130 + beatPulse * 50);
+    ellipse(0, 0, glowR * 0.45, glowR * 0.45);
 
     popMatrix();
 
@@ -158,7 +158,7 @@ class RadialFFTScene {
       fill(255, 220, 180);
       text("Palette: " + palNames[palette] + "  (Y cycle)",          12, 8 + mg + lh);
       text("Scale: "   + nf(scaleMult, 1, 2) + "  (L ↕)",           12, 8 + mg + lh * 2);
-      text("Spin: "    + nf(rotSpeed, 1, 4)  + "  (R ↕)",           12, 8 + mg + lh * 3);
+      text("Spin: "    + nf(rotSpeed, 1, 4)  + "  (R ↕ | r=reverse)", 12, 8 + mg + lh * 3);
       text("Spread: "  + nf(spread, 1, 2)    + "  (R ↔)   A=burst", 12, 8 + mg + lh * 4);
     popStyle();
 
@@ -174,6 +174,14 @@ class RadialFFTScene {
     }
   }
 
+  void reverseDirection() {
+    rotSpeed = -rotSpeed;
+  }
+
+  void adjustSpeed(float delta) {
+    rotSpeed = constrain(rotSpeed + delta, -0.015, 0.015);
+  }
+
   // ── Controller ─────────────────────────────────────────────────────────────
 
   void applyController(Controller c) {
@@ -181,11 +189,15 @@ class RadialFFTScene {
     float ly = map(c.ly, 0, height, -1, 1);
     scaleMult = map(ly, -1, 1, 3.0, 0.3);
 
-    // R stick ↕ = rotation speed, ↔ = spread
+    // R stick ↕ = rotation speed (center=stop, up=CW, down=CCW), ↔ = spread
     float ry = map(c.ry, 0, height, -1, 1);
     float rx = map(c.rx, 0, width,  -1, 1);
-    rotSpeed = map(ry, -1, 1, 0.020, 0.0002);
-    spread   = map(rx, -1, 1, 0.6,  1.6);
+    if (abs(ry) < 0.12) {
+      rotSpeed = 0;
+    } else {
+      rotSpeed = map(ry, -1, 1, -0.012, 0.012);
+    }
+    spread = map(rx, -1, 1, 0.6, 1.6);
 
     if (c.a_just_pressed) beatPulse = 1.0;
     if (c.y_just_pressed) palette = (palette + 1) % 4;
@@ -196,7 +208,8 @@ class RadialFFTScene {
       "=== Radial FFT Controls ===",
       "",
       "L Stick ↕    bar scale",
-      "R Stick ↕    rotation speed",
+      "R Stick ↕    rotation speed + direction (center=stop)",
+      "r            reverse spin direction",
       "R Stick ↔    inner ring spread",
       "",
       "A            manual beat burst",

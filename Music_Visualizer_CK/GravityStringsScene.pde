@@ -1,0 +1,187 @@
+// Gravity Strings scene — state 13
+// Cat's Cradle variant: strings sag under simulated gravity.
+// Beat onsets "pluck" them upward; they oscillate back down.
+// L stick ↕ controls gravity strength.  R stick ↔ controls anchor count.
+
+class GravityStringsScene {
+  int   numAnchors    = 8;
+  int   subdivisions  = 32;
+  float phase         = 0;
+  float pulse         = 0;
+  float rotation      = 0;
+  float rotationSpeed = 0.002;
+  float gravity       = 1.0;    // 0.1 (light) … 3.0 (heavy)
+
+  // Per-skip-level sag physics (max numAnchors/2 = 7 levels)
+  static final int MAX_SKIP = 7;
+  float[] sag     = new float[MAX_SKIP];
+  float[] sagVel  = new float[MAX_SKIP];
+
+  static final float SPRING_K = 0.03;
+  static final float DAMPING  = 0.93;
+  static final float SAG_SCALE = 0.14;  // sag * len * SAG_SCALE = pixel displacement
+
+  GravityStringsScene() {}
+
+  void applyController(Controller c) {
+    float ly = map(c.ly, 0, height, -1, 1);
+    gravity = map(ly, -1, 1, 3.0, 0.1);
+
+    float rx = map(c.rx, 0, width, -1, 1);
+    numAnchors = constrain(round(map(rx, -1, 1, 4, 14)), 4, 14);
+
+    if (c.a_just_pressed) pluck(2.5);
+  }
+
+  void pluck(float strength) {
+    for (int i = 0; i < MAX_SKIP; i++) {
+      sagVel[i] -= strength + i * 0.2;  // deeper skips get a slightly bigger kick
+    }
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Gravity Strings ===",
+      "",
+      "// Strings sag under gravity, plucked by beats",
+      "sag_vel += gravity * 0.02       // gravity pulls midpoint down",
+      "sag_vel -= sag * 0.03           // spring restores toward straight",
+      "sag_vel *= 0.93                 // damping",
+      "",
+      "// Catenary-ish sag shape (max at midpoint)",
+      "sag_disp_y = sin(t * PI) * sag * len * 0.14",
+      "",
+      "// Beat onset -> upward pluck velocity kick",
+      "sag_vel -= pluck_strength",
+      "",
+      "Controls: L stick ↕ gravity   R stick ↔ anchors   A pluck"
+    };
+  }
+
+  void drawScene() {
+    background(0);
+    // --- audio -----------------------------------------------------------
+    float amplitude = 0;
+    if (audio != null) {
+      if (audio.beat.isOnset()) {
+        pulse = 1.0;
+        rotation += 0.08;
+        pluck(2.2);
+      }
+      for (int i = 0; i < audio.fft.avgSize(); i++) {
+        amplitude += audio.normalisedAvg(i);
+      }
+      amplitude /= audio.fft.avgSize();
+    }
+
+    // --- sag physics (one integrator per skip level) ---------------------
+    int maxSkip = numAnchors / 2;
+    for (int si = 0; si < maxSkip; si++) {
+      sagVel[si] += gravity * 0.02;          // gravity
+      sagVel[si] -= sag[si] * SPRING_K;      // spring
+      sagVel[si] *= DAMPING;
+      sag[si] += sagVel[si];
+      sag[si] = constrain(sag[si], -4.0, 4.0);
+    }
+
+    pulse    *= 0.88;
+    phase    += 0.04;
+    rotation += rotationSpeed;
+
+    // --- anchor positions ------------------------------------------------
+    float baseRadius = min(width, height) * 0.38;
+    float r = baseRadius * (1.0 + pulse * 0.08);
+
+    float[] ax = new float[numAnchors];
+    float[] ay = new float[numAnchors];
+    for (int i = 0; i < numAnchors; i++) {
+      float a = TWO_PI * i / numAnchors + rotation;
+      ax[i] = width  / 2.0 + cos(a) * r;
+      ay[i] = height / 2.0 + sin(a) * r;
+    }
+
+    // --- draw strings ----------------------------------------------------
+    for (int skip = 1; skip <= maxSkip; skip++) {
+      for (int i = 0; i < numAnchors; i++) {
+        int j = (i + skip) % numAnchors;
+
+        float bandAmp = 0;
+        if (audio != null) {
+          int band = ((skip - 1) * numAnchors + i) % audio.fft.avgSize();
+          bandAmp = audio.normalisedAvg(band) * 3.0;
+        }
+
+        colorMode(HSB, 360, 255, 255, 255);
+        float hue    = map(skip, 1, maxSkip, 270, 180);
+        float alpha  = map(skip, 1, maxSkip, 220, 100);
+        float weight = map(skip, 1, maxSkip, 2.0, 0.8);
+        stroke((int)hue, 210, 255, (int)alpha);
+        strokeWeight(weight);
+        colorMode(RGB, 255);
+        noFill();
+
+        drawString(ax[i], ay[i], ax[j], ay[j], bandAmp, skip, i, sag[skip - 1]);
+      }
+    }
+
+    // --- anchor dots -----------------------------------------------------
+    noStroke();
+    for (int i = 0; i < numAnchors; i++) {
+      float glow = 6 + pulse * 22;
+      fill(255, 220, 80, 70);
+      ellipse(ax[i], ay[i], glow * 2, glow * 2);
+      fill(255, 240, 160);
+      ellipse(ax[i], ay[i], glow * 0.4, glow * 0.4);
+    }
+
+    drawSongNameOnScreen(config.SONG_NAME, width / 2, height - 5);
+
+    // --- top-left HUD ----------------------------------------------------
+    pushStyle();
+      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 6 * uiScale();
+      fill(0, 140); noStroke(); rectMode(CORNER);
+      rect(8, 8, 310 * uiScale(), mg * 2 + lh * 2);
+      fill(255, 220, 120); textSize(ts); textAlign(LEFT, TOP);
+      text("Gravity Strings", 12, 8 + mg);
+      fill(200, 200, 200);
+      text("L \u2195 gravity: " + nf(gravity, 1, 2)
+           + "   R \u2194 anchors: " + numAnchors
+           + "   A pluck", 12, 8 + mg + lh);
+    popStyle();
+  }
+
+  // Draw one string between (x1,y1)→(x2,y2).
+  // Lateral vibration from CatsCradle, plus downward gravity sag.
+  void drawString(float x1, float y1, float x2, float y2,
+                  float amplitude, int skip, int index, float sagOffset) {
+    float dx  = x2 - x1;
+    float dy  = y2 - y1;
+    float len = sqrt(dx * dx + dy * dy);
+    if (len < 0.001) return;
+
+    // perpendicular unit vector (for lateral vibration)
+    float nx = -dy / len;
+    float ny =  dx / len;
+
+    float phaseOff = phase * (1 + skip * 0.3) + index * 0.5;
+
+    beginShape();
+    for (int s = 0; s <= subdivisions; s++) {
+      float t  = (float)s / subdivisions;
+      float bx = lerp(x1, x2, t);
+      float by = lerp(y1, y2, t);
+
+      // lateral vibration (standing-wave harmonics, same as CatsCradle)
+      float vib = 0;
+      for (int h = 1; h <= skip; h++) {
+        vib += sin(t * PI * h) * sin(phaseOff * h) * amplitude / h;
+      }
+
+      // gravity sag: sin envelope = 0 at both endpoints, max at midpoint
+      float sagDisp = sin(t * PI) * sagOffset * len * SAG_SCALE;
+
+      vertex(bx + nx * vib, by + ny * vib + sagDisp);
+    }
+    endShape();
+  }
+}
