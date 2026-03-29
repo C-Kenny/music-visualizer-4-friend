@@ -80,6 +80,8 @@ class AuroraRibbonsScene {
   }
 
   void drawScene() {
+    background(4, 6, 14);  // clear in RGB before switching colorMode — prevents previous-scene bleed
+    blendMode(BLEND);
     float lowRaw = bandEnergy(0.00, 0.20);
     float midRaw = bandEnergy(0.20, 0.55);
     float highRaw = bandEnergy(0.55, 1.00);
@@ -175,7 +177,7 @@ class AuroraRibbonsScene {
       float x = noise(i * 2.7, t + drift * 0.2) * width;
       float y = height * (0.22 + noise(i * 5.1, t * 0.9) * 0.72);
       float r = 1.2 + noise(i * 7.3, t * 1.1) * (2.0 + highNorm * 5.5);
-      float hue = (hueOffset + pHue + 170 + noise(i * 9.7, t * 0.6) * 45) % 360;
+      float hue = (hueOffset + pHue + noise(i * 9.7, t * 0.6) * 55) % 360;
       float sat = constrain((90 + highNorm * 120) * pSat, 0, 255);
       float bri = constrain((130 + highNorm * 105) * pBri, 0, 255);
       float a = 10 + highNorm * 45;
