@@ -50,14 +50,14 @@ class PolarPlasma {
     }
   }
 
-  void draw() {
+  void draw(PGraphics pg) {
     int k = frameCount&0xff;
-    loadPixels();
-    for (int i=0; i<screenSize; i++) {
-      pixels[i] = sinePalette[
-        (angle[i] + fsin1[radius[i] + fsin2[radius[i]]+k]) &0xff
-      ];
+    pg.loadPixels();
+    for (int i=0; i < pg.pixels.length; i++) {
+        if (i >= radius.length) break;
+      int c = sinePalette[(angle[i] + fsin1[radius[i] + fsin2[radius[i]]+k]) & 0xFF];
+      pg.pixels[i] = 0xFF000000 | (c & 0xFFFFFF);
     }
-    updatePixels();
+    pg.updatePixels();
   }
 }

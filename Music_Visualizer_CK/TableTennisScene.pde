@@ -8,7 +8,7 @@
 //
 // Controls: +/-  gravity    [/]  Magnus strength
 
-class TableTennisScene {
+class TableTennisScene implements IScene {
 
   // ── ball ──────────────────────────────────────────────────────────────────
   float ballX, ballY;
@@ -115,34 +115,30 @@ class TableTennisScene {
 
   // ── main draw ─────────────────────────────────────────────────────────────
 
-  void drawScene() {
-    background(15, 35, 15);
-
-    int fftSize = audio.fft.avgSize();
-    int bassEnd = max(1, fftSize / 6);
-    int midEnd  = max(bassEnd + 1, fftSize / 2);
+  void drawScene(PGraphics pg) {
+    pg.background(15, 35, 15);
 
     float bass = 0, mid = 0;
-    for (int i = 0;       i < bassEnd; i++) bass += audio.fft.getAvg(i);
-    for (int i = bassEnd; i < midEnd;  i++) mid  += audio.fft.getAvg(i);
-    bass /= bassEnd;
-    mid  /= max(1, midEnd - bassEnd);
+    for (int i = 0; i < 8; i++) bass += analyzer.spectrum[i];
+    for (int i = 8; i < 24; i++) mid += analyzer.spectrum[i];
+    bass /= 8.0;
+    mid /= 16.0;
 
-    if (audio.beat.isOnset()) onBeat(bass, mid);
+    if (analyzer.isBeat) onBeat(bass, mid);
     impactFlash *= 0.82;
     pointFlash  *= 0.88;
 
-    drawTable();
+    drawTable(pg);
     updatePaddleTargets();
     movePaddles();
     updatePhysics();
-    drawTrail();
-    drawPaddles();
-    drawBall();
+    drawTrail(pg);
+    drawPaddles(pg);
+    drawBall(pg);
 
-    drawScore();
-    drawHUD();
-    drawSongNameOnScreen(config.SONG_NAME, width / 2.0, height - 5);
+    drawScore(pg);
+    drawHUD(pg);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
   }
 
   // ── beat ──────────────────────────────────────────────────────────────────
@@ -478,161 +474,161 @@ class TableTennisScene {
 
   // ── drawing ───────────────────────────────────────────────────────────────
 
-  void drawTable() {
-    pushStyle();
-      noStroke();
-      fill(0, 90, 0);
-      rect(0, tableY, width, height - tableY);
+  void drawTable(PGraphics pg) {
+    pg.pushStyle();
+      pg.noStroke();
+      pg.fill(0, 90, 0);
+      pg.rect(0, tableY, pg.width, pg.height - tableY);
 
-      stroke(255, 255, 255, 200);
-      strokeWeight(3);
-      line(0, tableY, width, tableY);
+      pg.stroke(255, 255, 255, 200);
+      pg.strokeWeight(3);
+      pg.line(0, tableY, pg.width, tableY);
 
-      stroke(255, 255, 255, 55);
-      strokeWeight(1.5);
-      line(width / 2.0, tableY, width / 2.0, height);
+      pg.stroke(255, 255, 255, 55);
+      pg.strokeWeight(1.5);
+      pg.line(pg.width / 2.0, tableY, pg.width / 2.0, pg.height);
 
       // Net
-      float nx = width / 2.0;
-      stroke(220, 220, 220, 240);
-      strokeWeight(6);
-      line(nx, tableY - NET_H, nx, tableY);
-      strokeWeight(3);
-      line(nx - 6, tableY - NET_H, nx + 6, tableY - NET_H);
+      float nx = pg.width / 2.0;
+      pg.stroke(220, 220, 220, 240);
+      pg.strokeWeight(6);
+      pg.line(nx, tableY - NET_H, nx, tableY);
+      pg.strokeWeight(3);
+      pg.line(nx - 6, tableY - NET_H, nx + 6, tableY - NET_H);
       for (int dy = (int)(tableY - NET_H + 4); dy < tableY; dy += 7) {
-        stroke(200, 200, 200, 120);
-        strokeWeight(1.5);
-        point(nx, dy);
+        pg.stroke(200, 200, 200, 120);
+        pg.strokeWeight(1.5);
+        pg.point(nx, dy);
       }
-    popStyle();
+    pg.popStyle();
   }
 
-  void drawTrail() {
+  void drawTrail(PGraphics pg) {
     if (trail.size() < 2) return;
-    pushStyle();
-      colorMode(HSB, 360, 255, 255, 255);
-      noFill();
+    pg.pushStyle();
+      pg.colorMode(HSB, 360, 255, 255, 255);
+      pg.noFill();
       for (int i = 1; i < trail.size(); i++) {
         float a = map(i, 0, trail.size(), 0, 150);
         float w = map(i, 0, trail.size(), 0.5, BALL_RADIUS * 0.7);
-        stroke(ballHue, 180, 255, a);
-        strokeWeight(w);
+        pg.stroke(ballHue, 180, 255, a);
+        pg.strokeWeight(w);
         PVector p = trail.get(i - 1), c = trail.get(i);
-        line(p.x, p.y, c.x, c.y);
+        pg.line(p.x, p.y, c.x, c.y);
       }
-      colorMode(RGB, 255);
-    popStyle();
+      pg.colorMode(RGB, 255);
+    pg.popStyle();
   }
 
-  void drawPaddles() {
+  void drawPaddles(PGraphics pg) {
     float lx = leftPaddleX  + leftLungeX;
     float rx = rightPaddleX - rightLungeX;
 
-    pushStyle();
-      rectMode(CENTER);
-      noStroke();
+    pg.pushStyle();
+      pg.rectMode(CENTER);
+      pg.noStroke();
 
       if (impactFlash > 0.05) {
-        fill(255, 255, 255, impactFlash * 120);
-        rect(lx, leftPaddleY,  PADDLE_W + 10, PADDLE_H + 10, 4);
-        rect(rx, rightPaddleY, PADDLE_W + 10, PADDLE_H + 10, 4);
+        pg.fill(255, 255, 255, impactFlash * 120);
+        pg.rect(lx, leftPaddleY,  PADDLE_W + 10, PADDLE_H + 10, 4);
+        pg.rect(rx, rightPaddleY, PADDLE_W + 10, PADDLE_H + 10, 4);
       }
 
-      fill(200, 40, 40);
-      rect(lx, leftPaddleY, PADDLE_W, PADDLE_H, 3);
-      fill(220, 70, 70, 140);
-      rect(lx + 1, leftPaddleY, PADDLE_W * 0.4, PADDLE_H * 0.85, 2);
+      pg.fill(200, 40, 40);
+      pg.rect(lx, leftPaddleY, PADDLE_W, PADDLE_H, 3);
+      pg.fill(220, 70, 70, 140);
+      pg.rect(lx + 1, leftPaddleY, PADDLE_W * 0.4, PADDLE_H * 0.85, 2);
 
-      fill(40, 40, 200);
-      rect(rx, rightPaddleY, PADDLE_W, PADDLE_H, 3);
-      fill(70, 70, 220, 140);
-      rect(rx - 1, rightPaddleY, PADDLE_W * 0.4, PADDLE_H * 0.85, 2);
+      pg.fill(40, 40, 200);
+      pg.rect(rx, rightPaddleY, PADDLE_W, PADDLE_H, 3);
+      pg.fill(70, 70, 220, 140);
+      pg.rect(rx - 1, rightPaddleY, PADDLE_W * 0.4, PADDLE_H * 0.85, 2);
 
       // Serve indicator — small dot above the serving paddle
-      fill(255, 220, 0, 180);
+      pg.fill(255, 220, 0, 180);
       float dotY = tableY - 150;
-      ellipse(leftServes  ? lx : rx, dotY, 8, 8);
-    popStyle();
+      pg.ellipse(leftServes  ? lx : rx, dotY, 8, 8);
+    pg.popStyle();
   }
 
-  void drawBall() {
-    pushStyle();
-      colorMode(HSB, 360, 255, 255, 255);
+  void drawBall(PGraphics pg) {
+    pg.pushStyle();
+      pg.colorMode(HSB, 360, 255, 255, 255);
       if (impactFlash > 0.05) {
         float gr = BALL_RADIUS * 4 * impactFlash;
-        noStroke();
-        fill(ballHue, 200, 255, impactFlash * 70);
-        ellipse(ballX, ballY, gr * 2, gr * 2);
+        pg.noStroke();
+        pg.fill(ballHue, 200, 255, impactFlash * 70);
+        pg.ellipse(ballX, ballY, gr * 2, gr * 2);
       }
-      noStroke();
-      fill(ballHue, 160, 255);
-      ellipse(ballX, ballY, BALL_RADIUS * 2, BALL_RADIUS * 2);
+      pg.noStroke();
+      pg.fill(ballHue, 160, 255);
+      pg.ellipse(ballX, ballY, BALL_RADIUS * 2, BALL_RADIUS * 2);
 
-      stroke(ballHue, 255, 255, 200);
-      strokeWeight(2.5);
-      float angle = frameCount * spin * 4;
+      pg.stroke(ballHue, 255, 255, 200);
+      pg.strokeWeight(2.5);
+      float angle = pg.parent.frameCount * spin * 4;
       float r     = BALL_RADIUS * 0.65;
-      line(ballX + cos(angle)*r, ballY + sin(angle)*r,
+      pg.line(ballX + cos(angle)*r, ballY + sin(angle)*r,
            ballX - cos(angle)*r, ballY - sin(angle)*r);
-      colorMode(RGB, 255);
-    popStyle();
+      pg.colorMode(RGB, 255);
+    pg.popStyle();
   }
 
-  void drawScore() {
-    pushStyle();
-      float cx = width / 2.0;
+  void drawScore(PGraphics pg) {
+    pg.pushStyle();
+      float cx = pg.width / 2.0;
       float sy = tableY - NET_H - 60;
       float sc = uiScale();
 
       // Subtle point flash on net post
       if (pointFlash > 0.05) {
-        noStroke();
-        colorMode(HSB, 360, 255, 255, 255);
+        pg.noStroke();
+        pg.colorMode(HSB, 360, 255, 255, 255);
         float hue = pointWinner < 0 ? 0 : 220;
-        fill(hue, 200, 255, pointFlash * 100);
-        rectMode(CENTER);
-        rect(cx, tableY - NET_H / 2, 14, NET_H);
-        colorMode(RGB, 255);
+        pg.fill(hue, 200, 255, pointFlash * 100);
+        pg.rectMode(CENTER);
+        pg.rect(cx, tableY - NET_H / 2, 14, NET_H);
+        pg.colorMode(RGB, 255);
       }
 
-      textAlign(CENTER, CENTER);
+      pg.textAlign(CENTER, CENTER);
       float sf = 44 * sc;
 
       // Points (large)
-      textSize(sf);
-      fill(255, 80, 80);
-      text(leftPoints,  cx - 110 * sc, sy);
-      fill(200, 200, 200, 130);
-      textSize(sf * 0.6);
-      text("—", cx, sy);
-      fill(80, 80, 255);
-      textSize(sf);
-      text(rightPoints, cx + 110 * sc, sy);
+      pg.textSize(sf);
+      pg.fill(255, 80, 80);
+      pg.text(leftPoints,  cx - 110 * sc, sy);
+      pg.fill(200, 200, 200, 130);
+      pg.textSize(sf * 0.6);
+      pg.text("—", cx, sy);
+      pg.fill(80, 80, 255);
+      pg.textSize(sf);
+      pg.text(rightPoints, cx + 110 * sc, sy);
 
       // Games (small, below points)
       float gy = sy + sf * 0.9;
-      textSize(15 * sc);
-      fill(255, 120, 120, 200);
-      text(leftGames,  cx - 110 * sc, gy);
-      fill(160, 160, 160, 140);
-      text("games", cx, gy);
-      fill(120, 120, 255, 200);
-      text(rightGames, cx + 110 * sc, gy);
-    popStyle();
+      pg.textSize(15 * sc);
+      pg.fill(255, 120, 120, 200);
+      pg.text(leftGames,  cx - 110 * sc, gy);
+      pg.fill(160, 160, 160, 140);
+      pg.text("games", cx, gy);
+      pg.fill(120, 120, 255, 200);
+      pg.text(rightGames, cx + 110 * sc, gy);
+    pg.popStyle();
   }
 
-  void drawHUD() {
+  void drawHUD(PGraphics pg) {
     String sp = spin > 0.05 ? "topspin" : spin < -0.05 ? "backspin" : "flat";
-    pushStyle();
+    pg.pushStyle();
       float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
-      fill(0, 150); noStroke(); rectMode(CORNER);
-      rect(8, 8, 240 * uiScale(), mg + lh * 4);
-      fill(255); textSize(ts); textAlign(LEFT, TOP);
-      text("Table Tennis",                             12, 8 + mg);
-      text("Spin: " + sp + " (" + nf(spin,1,2) + ")", 12, 8 + mg + lh);
-      text("Gravity: " + nf(gravity,1,2) + "  (+/-)",  12, 8 + mg + lh*2);
-      text("Magnus: " + nf(magnusStrength,1,3) + "  ([/])", 12, 8 + mg + lh*3);
-    popStyle();
+      pg.fill(0, 150); pg.noStroke(); pg.rectMode(CORNER);
+      pg.rect(8, 8, 240 * uiScale(), mg + lh * 4);
+      pg.fill(255); pg.textSize(ts); pg.textAlign(LEFT, TOP);
+      pg.text("Table Tennis",                             12, 8 + mg);
+      pg.text("Spin: " + sp + " (" + nf(spin,1,2) + ")", 12, 8 + mg + lh);
+      pg.text("Gravity: " + nf(gravity,1,2) + "  (+/-)",  12, 8 + mg + lh*2);
+      pg.text("Magnus: " + nf(magnusStrength,1,3) + "  ([/])", 12, 8 + mg + lh*3);
+    pg.popStyle();
   }
 
   // ── keyboard tuning ───────────────────────────────────────────────────────
@@ -675,5 +671,18 @@ class TableTennisScene {
       "// Miss offset reset each rally",
       "// 15% miss chance → ~6 hit rallies"
     };
+  }
+
+  void onEnter() {
+    background(15, 35, 15);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '+' || k == '=') adjustGravity(0.02);
+    else if (k == '-') adjustGravity(-0.02);
+    else if (k == '[') adjustMagnus(-0.005);
+    else if (k == ']') adjustMagnus(0.005);
   }
 }

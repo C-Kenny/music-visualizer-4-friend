@@ -1,4 +1,4 @@
-class FractalScene {
+class FractalScene implements IScene {
   float globalZoom = 0.0;
   float globalRotation = 0.0;
   float rotationSpeed = 0.005;
@@ -59,23 +59,23 @@ class FractalScene {
     baseAngle = constrain(baseAngle + delta, PI/12, PI/2);
   }
 
-  void drawScene() {
+  void drawScene(PGraphics pg) {
     // Hard clear to prevent white blob
-    background(5, 5, 10);
+    pg.background(5, 5, 10);
 
     // Get frequencies
-    float basRaw = audio.normalisedAvg(1);
-    float midRaw = audio.normalisedAvg(12);
-    float higRaw = audio.normalisedAvg(22);
+    float basRaw = analyzer.bass;
+    float midRaw = analyzer.mid;
+    float higRaw = analyzer.high;
 
     globalRotation += rotationSpeed + (higRaw * 0.01 * sign(rotationSpeed));
 
     // Calculate dynamic properties
-    float dynamicBaseLen = height * 0.15 + (basRaw * height * 0.05); // Bass pumps the base length
+    float dynamicBaseLen = pg.height * 0.15 + (basRaw * pg.height * 0.05); // Bass pumps the base length
     float dynamicAngle = baseAngle + (midRaw * PI / 8);              // Mid shifts the breathing angle
 
-    pushMatrix();
-    translate(width / 2.0, height / 2.0);
+    pg.pushMatrix();
+    pg.translate(pg.width / 2.0, pg.height / 2.0);
 
     // Infinite zoom illusion mechanics
     // Zoom scale mathematically loops when it crosses the shrinkFactor boundary
@@ -86,36 +86,36 @@ class FractalScene {
     // Calculate logarithmic scaling so zooming looks perfectly smooth
     // scale factor goes from 1.0 to (1.0 / shrinkFactor) gracefully
     float scaleFactor = pow(1.0 / shrinkFactor, actualZoom);
-    scale(scaleFactor);
+    pg.scale(scaleFactor);
     
     // Slowly rotate globally
-    rotate(globalRotation);
+    pg.rotate(globalRotation);
 
-    blendMode(ADD);
+    pg.blendMode(ADD);
     
     // Draw the multi-symmetrical structure
-    colorMode(HSB, 360, 255, 255);
+    pg.colorMode(HSB, 360, 255, 255);
     for (int i = 0; i < symmetries; i++) {
-        pushMatrix();
-        rotate(TWO_PI * i / symmetries);
+        pg.pushMatrix();
+        pg.rotate(TWO_PI * i / symmetries);
         
         // Initial drawing states
-        strokeWeight(4);
-        strokeCap(ROUND);
+        pg.strokeWeight(4);
+        pg.strokeCap(ROUND);
         
-        drawBranch(dynamicBaseLen, dynamicAngle, maxDepth, 0, basRaw, midRaw, higRaw);
-        popMatrix();
+        drawBranch(pg, dynamicBaseLen, dynamicAngle, maxDepth, 0, basRaw, midRaw, higRaw);
+        pg.popMatrix();
     }
-    colorMode(RGB, 255);
+    pg.colorMode(RGB, 255);
     
-    blendMode(BLEND);
-    popMatrix();
+    pg.blendMode(BLEND);
+    pg.popMatrix();
 
-    drawSongNameOnScreen(config.SONG_NAME, width / 2.0, height - 5);
-    drawHud(basRaw, midRaw, higRaw);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
+    drawHud(pg, basRaw, midRaw, higRaw);
   }
 
-  void drawBranch(float len, float angle, int depthRemaining, int currentDepth, float basRaw, float midRaw, float higRaw) {
+  void drawBranch(PGraphics pg, float len, float angle, int depthRemaining, int currentDepth, float basRaw, float midRaw, float higRaw) {
     if (depthRemaining <= 0) return;
 
     // Color shifting along the depth
@@ -126,9 +126,9 @@ class FractalScene {
     // High frequency jitter makes thin ends shine intensely
     if (depthRemaining == 1 && higRaw > 0.5) {
         bri = 255;
-        strokeWeight(8 * higRaw);
+        pg.strokeWeight(8 * higRaw);
     } else {
-        strokeWeight(map(depthRemaining, 0, maxDepth, 0.5, 5));
+        pg.strokeWeight(map(depthRemaining, 0, maxDepth, 0.5, 5));
     }
     
     // The deeper the recursion, the less alpha it gets, fading it in
@@ -139,28 +139,28 @@ class FractalScene {
     // Add pulsing alpha to the core based on bass
     float alpha = constrain(depthAlphaFactor + (basRaw * 50), 0, 255);
 
-    stroke(hue, sat, bri, alpha);
+    pg.stroke(hue, sat, bri, alpha);
     
     // Draw the branch
-    line(0, 0, 0, -len);
+    pg.line(0, 0, 0, -len);
 
     // Move to end of branch to spawn children
-    translate(0, -len);
+    pg.translate(0, -len);
 
     // Recursive calls
     float newLen = len * shrinkFactor;
     
     // Right branch
-    pushMatrix();
-    rotate(angle);
-    drawBranch(newLen, angle, depthRemaining - 1, currentDepth + 1, basRaw, midRaw, higRaw);
-    popMatrix();
+    pg.pushMatrix();
+    pg.rotate(angle);
+    drawBranch(pg, newLen, angle, depthRemaining - 1, currentDepth + 1, basRaw, midRaw, higRaw);
+    pg.popMatrix();
 
     // Left branch
-    pushMatrix();
-    rotate(-angle);
-    drawBranch(newLen, angle, depthRemaining - 1, currentDepth + 1, basRaw, midRaw, higRaw);
-    popMatrix();
+    pg.pushMatrix();
+    pg.rotate(-angle);
+    drawBranch(pg, newLen, angle, depthRemaining - 1, currentDepth + 1, basRaw, midRaw, higRaw);
+    pg.popMatrix();
   }
 
   float sign(float v) {
@@ -169,23 +169,55 @@ class FractalScene {
     return 0;
   }
 
-  void drawHud(float low, float mid, float high) {
-    pushStyle();
+  void drawHud(PGraphics pg, float low, float mid, float high) {
+    pg.pushStyle();
       float ts = 11 * uiScale();
       float lh = ts * 1.3;
-      fill(0, 125);
-      noStroke();
-      rectMode(CORNER);
-      rect(8, 8, 380 * uiScale(), 8 + lh * 6);
-      fill(255);
-      textSize(ts);
-      textAlign(LEFT, TOP);
-      text("Scene: Recursive Fractal", 12, 12);
-      text("low / mid / high (norm): " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh);
-      text("zoom lvl: " + nf(globalZoom, 1, 2) + "  rotate speed: " + nf(rotationSpeed, 1, 3), 12, 12 + lh * 2);
-      text("angle base: " + nf(degrees(baseAngle), 1, 1) + "  symmetries: " + symmetries, 12, 12 + lh * 3);
-      text("palette: " + paletteNames[paletteIndex], 12, 12 + lh * 4);
-      text("A symmetries  Y palette  X reset zoom  [ ] zoom  -/= rotate", 12, 12 + lh * 5);
-    popStyle();
+      pg.fill(0, 125);
+      pg.noStroke();
+      pg.rectMode(CORNER);
+      pg.rect(8, 8, 380 * uiScale(), 8 + lh * 6);
+      pg.fill(255);
+      pg.textSize(ts);
+      pg.textAlign(LEFT, TOP);
+      pg.text("Scene: Recursive Fractal", 12, 12);
+      pg.text("low / mid / high (norm): " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh);
+      pg.text("zoom lvl: " + nf(globalZoom, 1, 2) + "  rotate speed: " + nf(rotationSpeed, 1, 3), 12, 12 + lh * 2);
+      pg.text("angle base: " + nf(degrees(baseAngle), 1, 1) + "  symmetries: " + symmetries, 12, 12 + lh * 3);
+      pg.text("palette: " + paletteNames[paletteIndex], 12, 12 + lh * 4);
+      pg.text("A symmetries  Y palette  X reset zoom  [ ] zoom  -/= rotate", 12, 12 + lh * 5);
+    pg.popStyle();
+  }
+  void onEnter() {
+    globalZoom = 0;
+    globalRotation = 0;
+    background(5, 5, 10);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') adjustZoom(-0.1);
+    else if (k == ']') adjustZoom(0.1);
+    else if (k == '-' || k == '_') adjustRotationSpeed(-0.01);
+    else if (k == '=' || k == '+') adjustRotationSpeed(0.01);
+    else if (k == 'y' || k == 'Y') cyclePalette();
+    else if (k == 'x' || k == 'X') {
+      globalZoom = 0;
+      rotationSpeed = 0.005;
+    }
+    else if (k == 'a' || k == 'A') {
+      symmetries = (symmetries % 8) + 3;
+    }
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Recursive Fractal ===",
+      "// Infinite zoom illusion via modulo and log-scaling",
+      "actual_zoom = global_zoom % 1.0",
+      "scale_factor = pow(1.0 / shrink_factor, actual_zoom)",
+      "draw_branch(len * shrink_factor, angle + mid * offset)"
+    };
   }
 }

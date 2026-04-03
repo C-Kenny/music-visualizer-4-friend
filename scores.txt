@@ -1,0 +1,671 @@
+=== session 2026-03-22 16:49:50 ===
+point  LEFT   L:1  R:0  rally:0  server:L
+point  LEFT   L:2  R:0  rally:0  server:L
+point  RIGHT  L:2  R:1  rally:0  server:R
+point  RIGHT  L:2  R:2  rally:0  server:R
+point  LEFT   L:3  R:2  rally:0  server:L
+point  LEFT   L:4  R:2  rally:0  server:L
+point  RIGHT  L:4  R:3  rally:0  server:R
+point  RIGHT  L:4  R:4  rally:0  server:R
+point  LEFT   L:5  R:4  rally:0  server:L
+point  LEFT   L:6  R:4  rally:0  server:L
+point  RIGHT  L:6  R:5  rally:0  server:R
+point  RIGHT  L:6  R:6  rally:0  server:R
+point  LEFT   L:7  R:6  rally:0  server:L
+point  LEFT   L:8  R:6  rally:0  server:L
+point  LEFT   L:9  R:6  rally:0  server:R
+point  RIGHT  L:9  R:7  rally:0  server:R
+point  LEFT   L:10  R:7  rally:0  server:L
+point  LEFT   L:11  R:7  rally:0  server:L
+game   LEFT  wins  11-7  games L:1 R:0
+---
+point  LEFT   L:1  R:0  rally:0  server:L
+point  RIGHT  L:1  R:1  rally:0  server:L
+point  RIGHT  L:1  R:2  rally:0  server:R
+point  RIGHT  L:1  R:3  rally:0  server:R
+point  LEFT   L:2  R:3  rally:0  server:L
+point  LEFT   L:3  R:3  rally:0  server:L
+point  RIGHT  L:3  R:4  rally:0  server:R
+point  RIGHT  L:3  R:5  rally:0  server:R
+point  LEFT   L:4  R:5  rally:0  server:L
+point  LEFT   L:5  R:5  rally:0  server:L
+point  RIGHT  L:5  R:6  rally:0  server:R
+point  RIGHT  L:5  R:7  rally:0  server:R
+point  LEFT   L:6  R:7  rally:0  server:L
+point  LEFT   L:7  R:7  rally:0  server:L
+point  RIGHT  L:7  R:8  rally:0  server:R
+point  RIGHT  L:7  R:9  rally:0  server:R
+point  LEFT   L:8  R:9  rally:0  server:L
+point  RIGHT  L:8  R:10  rally:0  server:L
+point  RIGHT  L:8  R:11  rally:0  server:R
+game   RIGHT wins  8-11  games L:1 R:1
+---
+point  LEFT   L:1  R:0  rally:0  server:L
+point  LEFT   L:2  R:0  rally:0  server:L
+point  RIGHT  L:2  R:1  rally:0  server:R
+point  RIGHT  L:2  R:2  rally:0  server:R
+point  LEFT   L:3  R:2  rally:0  server:L
+point  LEFT   L:4  R:2  rally:0  server:L
+point  RIGHT  L:4  R:3  rally:0  server:R
+point  RIGHT  L:4  R:4  rally:0  server:R
+point  LEFT   L:5  R:4  rally:0  server:L
+point  LEFT   L:6  R:4  rally:0  server:L
+point  RIGHT  L:6  R:5  rally:0  server:R
+point  RIGHT  L:6  R:6  rally:0  server:R
+point  RIGHT  L:6  R:7  rally:0  server:L
+point  LEFT   L:7  R:7  rally:0  server:L
+point  RIGHT  L:7  R:8  rally:0  server:R
+point  RIGHT  L:7  R:9  rally:0  server:R
+point  LEFT   L:8  R:9  rally:0  server:L
+point  LEFT   L:9  R:9  rally:0  server:L
+point  RIGHT  L:9  R:10  rally:0  server:R
+point  LEFT   L:10  R:10  rally:0  server:R
+point  RIGHT  L:10  R:11  rally:0  server:L
+point  LEFT   L:11  R:11  rally:0  server:L
+point  RIGHT  L:11  R:12  rally:0  server:R
+point  RIGHT  L:11  R:13  rally:0  server:R
+game   RIGHT wins  11-13  games L:1 R:2
+---
+point  LEFT   L:1  R:0  rally:0  server:L
+point  LEFT   L:2  R:0  rally:0  server:L
+point  RIGHT  L:2  R:1  rally:0  server:R
+point  RIGHT  L:2  R:2  rally:0  server:R
+point  LEFT   L:3  R:2  rally:0  server:L
+point  LEFT   L:4  R:2  rally:0  server:L
+point  RIGHT  L:4  R:3  rally:0  server:R
+point  RIGHT  L:4  R:4  rally:0  server:R
+point  LEFT   L:5  R:4  rally:0  server:L
+point  LEFT   L:6  R:4  rally:0  server:L
+point  RIGHT  L:6  R:5  rally:0  server:R
+point  RIGHT  L:6  R:6  rally:0  server:R
+point  LEFT   L:7  R:6  rally:0  server:L
+point  LEFT   L:8  R:6  rally:0  server:L
+point  RIGHT  L:8  R:7  rally:0  server:R
+point  RIGHT  L:8  R:8  rally:0  server:R
+point  LEFT   L:9  R:8  rally:0  server:L
+point  LEFT   L:10  R:8  rally:0  server:L
+point  RIGHT  L:10  R:9  rally:0  server:R
+=== session 2026-03-22 16:51:33 ===
+=== session 2026-03-22 16:51:59 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:0  score 1-1
+  point  RIGHT  [server  ]  rally:0  score 1-2
+  point  RIGHT  [server  ]  rally:0  score 1-3
+  point  RIGHT  [receiver]  rally:1  score 1-4
+  point  LEFT   [server  ]  rally:0  score 2-4
+  point  RIGHT  [server  ]  rally:0  score 2-5
+  point  RIGHT  [server  ]  rally:0  score 2-6
+  point  LEFT   [server  ]  rally:0  score 3-6
+  point  LEFT   [server  ]  rally:0  score 4-6
+  point  RIGHT  [server  ]  rally:0  score 4-7
+  point  RIGHT  [server  ]  rally:0  score 4-8
+  point  LEFT   [server  ]  rally:0  score 5-8
+  point  LEFT   [server  ]  rally:0  score 6-8
+  point  RIGHT  [server  ]  rally:0  score 6-9
+  point  RIGHT  [server  ]  rally:0  score 6-10
+  point  LEFT   [server  ]  rally:0  score 7-10
+  point  LEFT   [server  ]  rally:0  score 8-10
+  point  RIGHT  [server  ]  rally:0  score 8-11
+game  RIGHT wins  11-8  (games L:0 R:1)
+  server won 89.5% of points  |  rallies 5+: 0.0%  |  longest: 1 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  LEFT   [server  ]  rally:0  score 7-6
+  point  RIGHT  [receiver]  rally:0  score 7-7
+  point  RIGHT  [server  ]  rally:0  score 7-8
+  point  RIGHT  [server  ]  rally:0  score 7-9
+  point  LEFT   [server  ]  rally:0  score 8-9
+  point  LEFT   [server  ]  rally:0  score 9-9
+  point  RIGHT  [server  ]  rally:0  score 9-10
+  point  RIGHT  [server  ]  rally:0  score 9-11
+game  RIGHT wins  11-9  (games L:0 R:2)
+  server won 95.0% of points  |  rallies 5+: 0.0%  |  longest: 0 hits
+---
+  point  RIGHT  [receiver]  rally:0  score 0-1
+  point  LEFT   [server  ]  rally:0  score 1-1
+  point  RIGHT  [server  ]  rally:0  score 1-2
+  point  RIGHT  [server  ]  rally:0  score 1-3
+  point  LEFT   [server  ]  rally:0  score 2-3
+=== session 2026-03-22 17:03:30 ===
+=== session 2026-03-22 17:06:23 ===
+=== session 2026-03-22 17:06:37 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  LEFT   [receiver]  rally:0  score 7-4
+  point  LEFT   [receiver]  rally:1  score 8-4
+  point  LEFT   [server  ]  rally:0  score 9-4
+  point  LEFT   [server  ]  rally:0  score 10-4
+  point  RIGHT  [server  ]  rally:0  score 10-5
+  point  LEFT   [receiver]  rally:0  score 11-5
+game  LEFT  wins  11-5  (games L:1 R:0)
+  server won 81.2% of points  |  rallies 5+: 0.0%  |  longest: 1 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  RIGHT  [receiver]  rally:0  score 6-7
+  point  LEFT   [server  ]  rally:0  score 7-7
+  point  RIGHT  [server  ]  rally:0  score 7-8
+  point  RIGHT  [server  ]  rally:0  score 7-9
+  point  RIGHT  [receiver]  rally:0  score 7-10
+  point  RIGHT  [receiver]  rally:0  score 7-11
+game  RIGHT wins  11-7  (games L:1 R:1)
+  server won 83.3% of points  |  rallies 5+: 0.0%  |  longest: 0 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  LEFT   [server  ]  rally:0  score 7-6
+  point  LEFT   [server  ]  rally:1  score 8-6
+  point  RIGHT  [server  ]  rally:0  score 8-7
+  point  RIGHT  [server  ]  rally:0  score 8-8
+  point  LEFT   [server  ]  rally:0  score 9-8
+  point  LEFT   [server  ]  rally:0  score 10-8
+  point  RIGHT  [server  ]  rally:0  score 10-9
+  point  RIGHT  [server  ]  rally:0  score 10-10
+  point  LEFT   [server  ]  rally:0  score 11-10
+  point  LEFT   [server  ]  rally:0  score 12-10
+game  LEFT  wins  12-10  (games L:2 R:1)
+  server won 100.0% of points  |  rallies 5+: 0.0%  |  longest: 1 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+=== session 2026-03-22 17:08:40 ===
+=== session 2026-03-22 17:09:41 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:0  score 1-1
+  point  RIGHT  [server  ]  rally:0  score 1-2
+  point  LEFT   [receiver]  rally:1  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+=== session 2026-03-22 17:12:41 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+=== session 2026-03-22 17:12:48 ===
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  LEFT   [server  ]  rally:0  score 7-6
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 8-6
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  RIGHT  [server  ]  rally:0  score 8-7
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 8-8
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  LEFT   [server  ]  rally:0  score 9-8
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  LEFT   [server  ]  rally:0  score 10-8
+  point  LEFT   [server  ]  rally:0  score 7-6
+  point  RIGHT  [server  ]  rally:0  score 10-9
+  point  RIGHT  [server  ]  rally:0  score 10-10
+  point  LEFT   [server  ]  rally:0  score 8-6
+  point  LEFT   [server  ]  rally:0  score 11-10
+  point  RIGHT  [server  ]  rally:0  score 8-7
+  point  LEFT   [server  ]  rally:0  score 12-10
+game  LEFT  wins  12-10  (games L:1 R:0)
+  server won 100.0% of points  |  rallies 5+: 0.0%  |  longest: 0 hits
+---
+  point  RIGHT  [server  ]  rally:0  score 8-8
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  LEFT   [server  ]  rally:0  score 7-6
+  point  LEFT   [server  ]  rally:0  score 8-6
+  point  RIGHT  [server  ]  rally:0  score 8-7
+  point  RIGHT  [server  ]  rally:0  score 8-8
+  point  LEFT   [server  ]  rally:0  score 9-8
+  point  LEFT   [server  ]  rally:0  score 10-8
+  point  RIGHT  [server  ]  rally:0  score 10-9
+  point  RIGHT  [server  ]  rally:0  score 10-10
+  point  LEFT   [server  ]  rally:0  score 11-10
+  point  LEFT   [server  ]  rally:0  score 12-10
+game  LEFT  wins  12-10  (games L:2 R:0)
+  server won 100.0% of points  |  rallies 5+: 0.0%  |  longest: 1 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  LEFT   [server  ]  rally:0  score 7-6
+  point  LEFT   [server  ]  rally:0  score 8-6
+  point  RIGHT  [server  ]  rally:0  score 8-7
+  point  RIGHT  [server  ]  rally:0  score 8-8
+  point  LEFT   [server  ]  rally:0  score 9-8
+  point  LEFT   [server  ]  rally:0  score 10-8
+  point  RIGHT  [server  ]  rally:0  score 10-9
+  point  RIGHT  [server  ]  rally:0  score 10-10
+  point  LEFT   [server  ]  rally:0  score 11-10
+  point  LEFT   [server  ]  rally:0  score 12-10
+game  LEFT  wins  12-10  (games L:3 R:0)
+  server won 100.0% of points  |  rallies 5+: 0.0%  |  longest: 0 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  LEFT   [receiver]  rally:1  score 7-4
+  point  RIGHT  [server  ]  rally:0  score 7-5
+  point  LEFT   [server  ]  rally:0  score 8-5
+  point  LEFT   [server  ]  rally:0  score 9-5
+  point  RIGHT  [server  ]  rally:0  score 9-6
+  point  RIGHT  [server  ]  rally:0  score 9-7
+  point  LEFT   [server  ]  rally:0  score 10-7
+  point  LEFT   [server  ]  rally:0  score 11-7
+game  LEFT  wins  11-7  (games L:4 R:0)
+  server won 94.4% of points  |  rallies 5+: 0.0%  |  longest: 1 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  LEFT   [server  ]  rally:0  score 7-6
+  point  LEFT   [server  ]  rally:0  score 8-6
+  point  RIGHT  [server  ]  rally:0  score 8-7
+  point  RIGHT  [server  ]  rally:0  score 8-8
+  point  LEFT   [server  ]  rally:0  score 9-8
+  point  LEFT   [server  ]  rally:0  score 10-8
+  point  RIGHT  [server  ]  rally:0  score 10-9
+  point  RIGHT  [server  ]  rally:0  score 10-10
+  point  LEFT   [server  ]  rally:0  score 11-10
+  point  LEFT   [server  ]  rally:0  score 12-10
+game  LEFT  wins  12-10  (games L:5 R:0)
+  server won 100.0% of points  |  rallies 5+: 0.0%  |  longest: 0 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  RIGHT  [receiver]  rally:0  score 4-5
+  point  LEFT   [server  ]  rally:0  score 5-5
+  point  RIGHT  [server  ]  rally:0  score 5-6
+  point  RIGHT  [server  ]  rally:0  score 5-7
+  point  LEFT   [server  ]  rally:0  score 6-7
+  point  LEFT   [server  ]  rally:0  score 7-7
+  point  RIGHT  [server  ]  rally:0  score 7-8
+  point  RIGHT  [server  ]  rally:0  score 7-9
+=== session 2026-03-24 21:51:31 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:1  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:0  score 6-6
+=== session 2026-03-24 21:56:24 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+=== session 2026-03-24 22:02:38 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+=== session 2026-03-24 22:03:38 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:0  score 1-1
+  point  RIGHT  [server  ]  rally:0  score 1-2
+=== session 2026-03-24 22:09:26 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+=== session 2026-03-24 22:15:08 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+=== session 2026-03-24 22:16:33 ===
+  point  RIGHT  [receiver]  rally:0  score 0-1
+  point  LEFT   [server  ]  rally:0  score 1-1
+  point  RIGHT  [server  ]  rally:0  score 1-2
+  point  RIGHT  [server  ]  rally:0  score 1-3
+  point  LEFT   [server  ]  rally:0  score 2-3
+  point  LEFT   [server  ]  rally:0  score 3-3
+  point  RIGHT  [server  ]  rally:0  score 3-4
+  point  RIGHT  [server  ]  rally:0  score 3-5
+  point  LEFT   [server  ]  rally:0  score 4-5
+  point  LEFT   [server  ]  rally:0  score 5-5
+  point  RIGHT  [server  ]  rally:0  score 5-6
+  point  RIGHT  [server  ]  rally:0  score 5-7
+  point  RIGHT  [receiver]  rally:0  score 5-8
+  point  RIGHT  [receiver]  rally:0  score 5-9
+  point  RIGHT  [server  ]  rally:0  score 5-10
+  point  LEFT   [receiver]  rally:0  score 6-10
+  point  LEFT   [server  ]  rally:0  score 7-10
+  point  LEFT   [server  ]  rally:1  score 8-10
+  point  RIGHT  [server  ]  rally:0  score 8-11
+game  RIGHT wins  11-8  (games L:0 R:1)
+  server won 78.9% of points  |  rallies 5+: 0.0%  |  longest: 1 hits
+---
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:0  score 1-1
+  point  RIGHT  [server  ]  rally:0  score 1-2
+  point  RIGHT  [server  ]  rally:0  score 1-3
+  point  LEFT   [server  ]  rally:0  score 2-3
+  point  LEFT   [server  ]  rally:0  score 3-3
+  point  RIGHT  [server  ]  rally:0  score 3-4
+  point  RIGHT  [server  ]  rally:0  score 3-5
+  point  LEFT   [server  ]  rally:0  score 4-5
+  point  LEFT   [server  ]  rally:0  score 5-5
+  point  RIGHT  [server  ]  rally:0  score 5-6
+  point  RIGHT  [server  ]  rally:0  score 5-7
+=== session 2026-03-24 22:19:43 ===
+=== session 2026-03-24 22:21:43 ===
+=== session 2026-03-24 22:22:32 ===
+=== session 2026-03-24 22:24:07 ===
+  point  RIGHT  [receiver]  rally:0  score 0-1
+=== session 2026-03-24 22:26:08 ===
+=== session 2026-03-24 22:28:02 ===
+=== session 2026-03-24 22:29:41 ===
+=== session 2026-03-24 22:31:32 ===
+=== session 2026-03-24 22:31:46 ===
+=== session 2026-03-24 22:33:38 ===
+=== session 2026-03-24 22:33:55 ===
+=== session 2026-03-24 22:35:07 ===
+=== session 2026-03-24 22:35:13 ===
+=== session 2026-03-24 22:35:39 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  LEFT   [receiver]  rally:0  score 3-0
+  point  LEFT   [receiver]  rally:1  score 4-0
+=== session 2026-03-24 22:44:36 ===
+=== session 2026-03-24 22:44:45 ===
+=== session 2026-03-24 22:44:53 ===
+=== session 2026-03-24 22:45:00 ===
+=== session 2026-03-24 22:45:11 ===
+=== session 2026-03-24 22:45:22 ===
+=== session 2026-03-24 22:45:28 ===
+=== session 2026-03-24 22:45:45 ===
+=== session 2026-03-24 22:46:26 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  LEFT   [receiver]  rally:0  score 3-0
+  point  LEFT   [receiver]  rally:0  score 4-0
+  point  RIGHT  [receiver]  rally:0  score 4-1
+  point  RIGHT  [receiver]  rally:0  score 4-2
+  point  LEFT   [receiver]  rally:0  score 5-2
+  point  LEFT   [receiver]  rally:0  score 6-2
+  point  RIGHT  [receiver]  rally:0  score 6-3
+  point  RIGHT  [receiver]  rally:0  score 6-4
+=== session 2026-03-24 22:51:37 ===
+=== session 2026-03-24 22:51:37 ===
+=== session 2026-03-24 22:51:51 ===
+=== session 2026-03-24 22:51:51 ===
+=== session 2026-03-24 22:52:23 ===
+=== session 2026-03-24 22:52:24 ===
+=== session 2026-03-24 22:52:41 ===
+=== session 2026-03-24 22:52:41 ===
+=== session 2026-03-24 22:52:50 ===
+=== session 2026-03-24 22:52:50 ===
+=== session 2026-03-24 22:53:03 ===
+=== session 2026-03-24 22:53:03 ===
+=== session 2026-03-24 22:53:11 ===
+=== session 2026-03-24 22:53:11 ===
+=== session 2026-03-24 22:53:26 ===
+=== session 2026-03-24 22:53:26 ===
+=== session 2026-03-24 22:54:31 ===
+  point  RIGHT  [receiver]  rally:0  score 0-1
+=== session 2026-03-24 22:57:45 ===
+=== session 2026-03-24 22:57:56 ===
+=== session 2026-03-24 23:04:33 ===
+=== session 2026-03-24 23:07:08 ===
+=== session 2026-03-24 23:09:17 ===
+=== session 2026-03-24 23:09:22 ===
+=== session 2026-03-24 23:09:30 ===
+=== session 2026-03-24 23:12:15 ===
+=== session 2026-03-24 23:12:21 ===
+  point  RIGHT  [receiver]  rally:0  score 0-1
+=== session 2026-03-24 23:16:04 ===
+=== session 2026-03-24 23:16:11 ===
+=== session 2026-03-24 23:16:26 ===
+=== session 2026-03-24 23:16:42 ===
+=== session 2026-03-24 23:17:08 ===
+=== session 2026-03-24 23:17:21 ===
+=== session 2026-03-24 23:17:41 ===
+=== session 2026-03-24 23:17:47 ===
+=== session 2026-03-24 23:20:53 ===
+=== session 2026-03-24 23:21:29 ===
+=== session 2026-03-24 23:21:40 ===
+=== session 2026-03-24 23:22:24 ===
+=== session 2026-03-24 23:22:31 ===
+=== session 2026-03-24 23:22:40 ===
+=== session 2026-03-24 23:28:28 ===
+=== session 2026-03-24 23:28:38 ===
+=== session 2026-03-24 23:40:09 ===
+=== session 2026-03-24 23:40:41 ===
+=== session 2026-03-24 23:40:56 ===
+=== session 2026-03-24 23:41:08 ===
+=== session 2026-03-24 23:41:16 ===
+=== session 2026-03-24 23:41:26 ===
+=== session 2026-03-24 23:41:37 ===
+=== session 2026-03-24 23:41:45 ===
+=== session 2026-03-24 23:41:51 ===
+  point  RIGHT  [receiver]  rally:0  score 0-1
+=== session 2026-03-24 23:49:26 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+=== session 2026-03-25 00:10:49 ===
+=== session 2026-03-25 00:18:06 ===
+=== session 2026-03-25 00:18:52 ===
+=== session 2026-03-25 00:19:49 ===
+=== session 2026-03-25 00:20:19 ===
+=== session 2026-03-25 00:20:25 ===
+=== session 2026-03-25 00:20:36 ===
+=== session 2026-03-25 00:21:13 ===
+=== session 2026-03-25 00:21:20 ===
+=== session 2026-03-25 00:21:35 ===
+=== session 2026-03-25 00:22:08 ===
+  point  RIGHT  [receiver]  rally:0  score 0-1
+  point  RIGHT  [receiver]  rally:0  score 0-2
+=== session 2026-03-25 00:30:31 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+=== session 2026-03-25 00:34:54 ===
+=== session 2026-03-25 00:35:10 ===
+=== session 2026-03-26 19:22:19 ===
+=== session 2026-03-26 19:23:10 ===
+=== session 2026-03-26 19:44:00 ===
+=== session 2026-03-26 19:46:20 ===
+  point  RIGHT  [receiver]  rally:0  score 0-1
+=== session 2026-03-29 16:52:54 ===
+=== session 2026-03-29 16:54:44 ===
+=== session 2026-03-29 16:54:50 ===
+=== session 2026-03-29 16:55:25 ===
+=== session 2026-03-29 16:56:00 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+=== session 2026-03-29 16:58:01 ===
+=== session 2026-03-29 17:04:36 ===
+=== session 2026-03-29 17:04:59 ===
+=== session 2026-03-29 17:05:06 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:0  score 1-1
+  point  RIGHT  [server  ]  rally:0  score 1-2
+  point  LEFT   [receiver]  rally:1  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:0  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  LEFT   [receiver]  rally:0  score 7-4
+  point  RIGHT  [server  ]  rally:0  score 7-5
+=== session 2026-03-29 17:09:58 ===
+=== session 2026-03-29 17:10:09 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+=== session 2026-03-29 17:16:38 ===
+=== session 2026-03-29 17:16:49 ===
+=== session 2026-03-29 17:18:46 ===
+  point  RIGHT  [receiver]  rally:0  score 0-1
+  point  RIGHT  [receiver]  rally:0  score 0-2
+  point  LEFT   [receiver]  rally:0  score 1-2
+=== session 2026-03-29 17:22:32 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  LEFT   [receiver]  rally:1  score 3-0
+  point  RIGHT  [server  ]  rally:0  score 3-1
+  point  LEFT   [server  ]  rally:0  score 4-1
+  point  LEFT   [server  ]  rally:0  score 5-1
+  point  LEFT   [receiver]  rally:0  score 6-1
+=== session 2026-03-29 18:46:45 ===
+=== session 2026-03-29 19:18:53 ===
+=== session 2026-03-29 19:19:14 ===
+=== session 2026-03-29 19:23:50 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+=== session 2026-03-29 19:28:42 ===
+=== session 2026-03-29 19:52:07 ===
+=== session 2026-03-29 19:58:46 ===
+=== session 2026-03-29 20:06:35 ===
+=== session 2026-03-29 20:09:33 ===
+=== session 2026-03-29 20:17:48 ===
+=== session 2026-03-29 20:39:08 ===
+=== session 2026-03-29 21:17:01 ===
+=== session 2026-03-29 21:19:55 ===
+=== session 2026-03-29 21:24:04 ===
+=== session 2026-03-29 21:25:47 ===
+=== session 2026-03-29 21:29:05 ===
+=== session 2026-03-29 21:39:08 ===
+=== session 2026-03-30 19:48:24 ===
+=== session 2026-03-30 19:51:10 ===
+=== session 2026-03-30 19:53:46 ===
+=== session 2026-03-30 19:56:47 ===
+=== session 2026-03-30 20:04:27 ===
+=== session 2026-03-30 20:11:10 ===
+=== session 2026-03-30 20:23:41 ===
+=== session 2026-03-30 20:27:49 ===
+=== session 2026-03-30 20:32:50 ===
+=== session 2026-03-30 20:34:40 ===
+=== session 2026-03-30 20:38:45 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+=== session 2026-03-30 20:48:31 ===
+=== session 2026-04-03 19:56:59 ===
+  point  RIGHT  [receiver]  rally:15 ***  score 0-1
+  point  LEFT   [server  ]  rally:14 ***  score 1-1
+  point  LEFT   [receiver]  rally:7 ***  score 2-1
+  point  RIGHT  [server  ]  rally:14 ***  score 2-2
+  point  LEFT   [server  ]  rally:2  score 3-2
+=== session 2026-04-03 20:37:55 ===
+=== session 2026-04-03 20:38:42 ===
+=== session 2026-04-03 20:41:25 ===
+=== session 2026-04-03 20:46:17 ===
+=== session 2026-04-03 20:48:00 ===
+=== session 2026-04-03 20:51:12 ===
+=== session 2026-04-03 23:58:25 ===
+=== session 2026-04-03 23:59:43 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  RIGHT  [receiver]  rally:1  score 0-2
+  point  LEFT   [receiver]  rally:2  score 1-2
+=== session 2026-04-04 00:05:20 ===
+=== session 2026-04-04 00:08:33 ===
+=== session 2026-04-04 00:11:17 ===
+=== session 2026-04-04 00:11:36 ===
+=== session 2026-04-04 00:12:23 ===
+=== session 2026-04-04 00:13:32 ===
+=== session 2026-04-04 00:15:34 ===
+=== session 2026-04-04 00:16:29 ===
+=== session 2026-04-04 00:16:48 ===
+=== session 2026-04-04 00:17:48 ===
+=== session 2026-04-04 00:19:57 ===
+=== session 2026-04-04 00:20:46 ===
+=== session 2026-04-04 00:28:43 ===
+=== session 2026-04-04 00:30:52 ===
+=== session 2026-04-04 00:33:42 ===
+=== session 2026-04-04 00:37:16 ===
+=== session 2026-04-04 00:39:00 ===
+=== session 2026-04-04 00:39:27 ===
+=== session 2026-04-04 00:44:21 ===
+=== session 2026-04-04 00:46:14 ===
+=== session 2026-04-04 00:47:27 ===
+=== session 2026-04-04 00:48:17 ===
+=== session 2026-04-04 00:51:17 ===
+=== session 2026-04-04 00:53:53 ===
+=== session 2026-04-04 00:57:35 ===

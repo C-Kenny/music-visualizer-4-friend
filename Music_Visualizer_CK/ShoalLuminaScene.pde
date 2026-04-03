@@ -2,7 +2,7 @@
 // Night sea: stacked FFT wave trains (bioluminescent ADD), starfield twinkles with highs,
 // beat surge, foam sparks on mids. LT/RT = glow vs sparkle; sticks = drift, tide, hue, density.
 
-class ShoalLuminaScene {
+class ShoalLuminaScene implements IScene {
 
   static final int NUM_STARS = 160;
   static final int NUM_SPARKS = 48;
@@ -23,7 +23,6 @@ class ShoalLuminaScene {
   int   waveLayers = 26;
   int   palette    = 0;
 
-  float beatSurge = 0;
   float surge     = 0;
 
   ShoalLuminaScene() {
@@ -45,15 +44,19 @@ class ShoalLuminaScene {
     }
   }
 
+  void onEnter() {
+    background(0);
+  }
+
   void ensureAudio() {
-    int N = audio.fft.avgSize();
+    int N = analyzer.spectrum.length;
     if (!initialised || smoothAmp == null || smoothAmp.length != N) {
       smoothAmp = new float[N];
       for (int i = 0; i < N; i++) smoothAmp[i] = 0;
       initialised = true;
     }
     for (int i = 0; i < N; i++) {
-      smoothAmp[i] = lerp(smoothAmp[i], audio.normalisedAvg(i), 0.22);
+      smoothAmp[i] = lerp(smoothAmp[i], analyzer.spectrum[i], 0.22);
     }
   }
 
@@ -73,113 +76,104 @@ class ShoalLuminaScene {
     return h;
   }
 
-  void drawScene() {
+  void drawScene(PGraphics pg) {
     ensureAudio();
-    int N = audio.fft.avgSize();
-    int bassEnd = max(1, N / 6);
-    int midEnd  = max(bassEnd + 1, N / 2);
+    float bass = analyzer.bass;
+    float mid = analyzer.mid;
+    float high = analyzer.high;
 
-    float bass = 0, mid = 0, high = 0;
-    for (int i = 0;       i < bassEnd; i++) bass += smoothAmp[i];
-    for (int i = bassEnd; i < midEnd;  i++) mid  += smoothAmp[i];
-    for (int i = midEnd;  i < N;       i++) high += smoothAmp[i];
-    bass /= bassEnd;
-    mid  /= max(1, midEnd - bassEnd);
-    high /= max(1, N - midEnd);
-
-    if (audio.beat.isOnset()) {
-      beatSurge = 1.0;
+    if (analyzer.isBeat) {
+      surge = 1.0;
     }
-    beatSurge *= 0.88;
-    surge = max(surge * 0.86, beatSurge);
+    surge *= 0.86;
 
     phase += phaseSpeed * (0.85 + mid * 0.5);
 
-    colorMode(HSB, 360, 255, 255, 255);
+    pg.colorMode(HSB, 360, 255, 255, 255);
     float skyB = 8 + bass * 18 + surge * 22;
-    background(240, 55 + (int)(glow * 40), skyB);
+    pg.background(240, 55 + (int)(glow * 40), skyB);
 
-    float horizon = height * (0.30 + tideShift + bass * 0.04);
+    float horizon = pg.height * (0.30 + tideShift + bass * 0.04);
 
     // Stars (highs twinkle)
-    noStroke();
+    pg.noStroke();
     for (int i = 0; i < NUM_STARS; i++) {
-      float sx = starX[i] * width;
-      float sy = starY[i] * height * 0.46;
-      float tw = 0.35 + high * 0.95 + sin(frameCount * 0.04 + starPhase[i]) * 0.25;
+      float sx = starX[i] * pg.width;
+      float sy = starY[i] * pg.height * 0.46;
+      float tw = 0.35 + high * 0.95 + sin(pg.parent.frameCount * 0.04 + starPhase[i]) * 0.25;
       float br = 90 + high * 155 * tw;
-      fill(40, 30, br, 40 + high * 200);
-      ellipse(sx, sy, 2.2 + high * 3, 2.2 + high * 3);
+      pg.fill(40, 30, br, 40 + high * 200);
+      pg.ellipse(sx, sy, 2.2 + high * 3, 2.2 + high * 3);
     }
 
-    blendMode(ADD);
+    pg.blendMode(ADD);
 
     // Wave stacks — each layer samples a band; deeper layers = lower bands
     int layers = constrain(waveLayers, 14, 44);
     float layerBoost = layerScale * (0.92 + glow * 0.35 + surge * 0.4);
     for (int layer = 0; layer < layers; layer++) {
       float t = (layers > 1) ? (float)layer / (layers - 1) : 0;
-      int bi = constrain((int)(t * (N - 1)), 0, N - 1);
+      int bi = constrain((int)(t * (analyzer.spectrum.length - 1)), 0, analyzer.spectrum.length - 1);
       float amp = smoothAmp[bi] * (14 + layer * 1.1) * layerBoost;
       float wlen = 0.0028 + t * 0.006 + bass * 0.0015;
       float h = paletteHue(t, smoothAmp[bi]);
       float al = (8 + amp * 2.2 + mid * 18) * (0.45 + sparkle * 0.55);
-      stroke(h, 185 + (int)(sparkle * 40), 255, constrain(al, 4, 120));
-      strokeWeight(0.6 + amp * 0.35 + surge * 0.5);
-      noFill();
-      beginShape(LINE_STRIP);
-      for (int x = 0; x <= width; x += 4) {
+      pg.stroke(h, 185 + (int)(sparkle * 40), 255, constrain(al, 4, 120));
+      pg.strokeWeight(0.6 + amp * 0.35 + surge * 0.5);
+      pg.noFill();
+      pg.beginShape(LINE_STRIP);
+      for (int x = 0; x <= pg.width; x += 4) {
         float u = x * wlen + phase * (1.0 + t * 0.7);
         float y = horizon + layer * (5.2 * uiScale())
                 + sin(u) * amp
                 + sin(u * 2.17 + layer * 0.3) * amp * 0.45
-                + sin(x * 0.001 + frameCount * 0.02) * amp * 0.15;
-        vertex(x, y);
+                + sin(x * 0.001 + pg.parent.frameCount * 0.02) * amp * 0.15;
+        pg.vertex(x, y);
       }
-      endShape();
+      pg.endShape();
     }
 
     // Horizon ribbon
-    stroke(paletteHue(0.5, bass), 120, 255, 40 + bass * 120 + surge * 80);
-    strokeWeight(1 + bass * 3);
-    line(0, horizon, width, horizon);
+    pg.stroke(paletteHue(0.5, bass), 120, 255, 40 + bass * 120 + surge * 80);
+    pg.strokeWeight(1 + bass * 3);
+    pg.line(0, horizon, pg.width, horizon);
 
     // Foam sparks — drift with mids
     for (int i = 0; i < NUM_SPARKS; i++) {
-      float sx = sparkX[i] * width;
-      float baseY = horizon + sparkY[i] * (height - horizon) * 0.92;
+      float sx = sparkX[i] * pg.width;
+      float baseY = horizon + sparkY[i] * (pg.height - horizon) * 0.92;
       float bob = sin(phase * 3 + i * 0.7) * mid * 12;
       float sy = baseY + bob;
       sparkX[i] += sparkV[i] * 0.0004 * (1 + mid);
       if (sparkX[i] >= 1.0) sparkX[i] -= 1.0;
-      int bi = (i * 7) % N;
+      int bi = (i * 7) % analyzer.spectrum.length;
       float a = smoothAmp[bi] * mid * (40 + sparkle * 80);
-      fill(paletteHue((float)i / NUM_SPARKS, smoothAmp[bi]), 140, 255, constrain(a, 0, 200));
-      ellipse(sx, sy, 2 + smoothAmp[bi] * 5, 2 + smoothAmp[bi] * 5);
+      pg.fill(paletteHue((float)i / NUM_SPARKS, smoothAmp[bi]), 140, 255, constrain(a, 0, 200));
+      pg.ellipse(sx, sy, 2 + smoothAmp[bi] * 5, 2 + smoothAmp[bi] * 5);
     }
 
-    blendMode(BLEND);
-    colorMode(RGB, 255);
+    pg.blendMode(BLEND);
+    pg.colorMode(RGB, 255);
 
-    drawSongNameOnScreen(config.SONG_NAME, width * 0.5, height - 5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width * 0.5, pg.height - 5);
 
-    pushStyle();
+    pg.pushStyle();
     float ts = 11 * uiScale(), lh = ts * 1.28, mg = 5 * uiScale();
-    fill(0, 150);
-    noStroke();
-    rectMode(CORNER);
-    rect(8, 8, 340 * uiScale(), mg + lh * 6);
-    fill(160, 235, 255);
-    textSize(ts);
-    textAlign(LEFT, TOP);
-    text("Shoal Lumina  —  bioluminescent wave shoals", 12, 8 + mg);
-    fill(190, 210, 225);
-    text("Layers " + layers + "   [`] adjust   - / = speed", 12, 8 + mg + lh);
-    text("LT glow " + nf(glow, 1, 2) + "   RT sparkle " + nf(sparkle, 1, 2), 12, 8 + mg + lh * 2);
-    text("L drift   R tide / hue / density   Y palette", 12, 8 + mg + lh * 3);
-    text("A surge   beat " + nf(beatSurge, 1, 2), 12, 8 + mg + lh * 4);
-    text("Palette " + palette + "   `  HUD", 12, 8 + mg + lh * 5);
-    popStyle();
+    pg.fill(0, 150);
+    pg.noStroke();
+    pg.rectMode(CORNER);
+    pg.rect(8, 8, 340 * uiScale(), mg + lh * 6);
+    pg.fill(160, 235, 255);
+    pg.textSize(ts);
+    pg.textAlign(LEFT, TOP);
+    pg.text("Shoal Lumina  —  bioluminescent wave shoals", 12, 8 + mg);
+    pg.fill(190, 210, 225);
+    pg.text("Layers " + layers + "   [`] adjust   - / = speed", 12, 8 + mg + lh);
+    pg.text("LT glow " + nf(glow, 1, 2) + "   RT sparkle " + nf(sparkle, 1, 2), 12, 8 + mg + lh * 2);
+    pg.text("L drift   R tide / hue / density   Y palette", 12, 8 + mg + lh * 3);
+    pg.text("A surge   surge amt " + nf(surge, 1, 2), 12, 8 + mg + lh * 4);
+    pg.text("Palette " + palette + "   `  HUD", 12, 8 + mg + lh * 5);
+    pg.popStyle();
   }
 
   void applyController(Controller c) {
@@ -227,5 +221,15 @@ class ShoalLuminaScene {
       "Y / pad Y   palette (3)",
       "`  HUD   [ ] layers   - = speed",
     };
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == '[') adjustLayers(-2);
+    else if (k == ']') adjustLayers(2);
+    else if (k == '-' || k == '_') adjustSpeed(-0.002);
+    else if (k == '=' || k == '+') adjustSpeed(0.002);
+    else if (k == ' ') triggerSurge();
   }
 }

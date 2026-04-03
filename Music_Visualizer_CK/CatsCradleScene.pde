@@ -3,7 +3,7 @@
 // Strings vibrate perpendicular to their axis, driven by FFT bands.
 // Beat onsets pulse the anchor ring outward and spin it.
 
-class CatsCradleScene {
+class CatsCradleScene implements IScene {
   int    numAnchors   = 8;     // points evenly spaced on the ring
   int    subdivisions = 28;    // segments per string (more = smoother vibration)
   float  phase        = 0;     // master phase for string oscillation
@@ -51,33 +51,33 @@ class CatsCradleScene {
     };
   }
 
-  void drawScene() {
+  void drawScene(PGraphics pg) {
+    pg.background(0);
+
     // --- audio sampling -------------------------------------------------
     float amplitude = 0;
-    if (audio != null) {
-      if (audio.beat.isOnset()) {
-        pulse    = 1.0;
-        rotation += 0.08;      // spin jolt on beat
-      }
-      for (int i = 0; i < audio.fft.avgSize(); i++) {
-        amplitude += audio.fft.getAvg(i);
-      }
-      amplitude /= audio.fft.avgSize();
+    if (analyzer.isBeat) {
+      pulse    = 1.0;
+      rotation += 0.08;      // spin jolt on beat
     }
+    for (int i = 0; i < analyzer.spectrum.length; i++) {
+      amplitude += analyzer.spectrum[i];
+    }
+    amplitude /= analyzer.spectrum.length;
     pulse    *= 0.88;
     phase    += 0.04;
     rotation += rotationSpeed;
 
     // --- layout ---------------------------------------------------------
-    float baseRadius = min(width, height) * 0.38;
+    float baseRadius = min(pg.width, pg.height) * 0.38;
     float r = baseRadius * (1.0 + pulse * 0.08);
 
     float[] ax = new float[numAnchors];
     float[] ay = new float[numAnchors];
     for (int i = 0; i < numAnchors; i++) {
       float a = TWO_PI * i / numAnchors + rotation;
-      ax[i] = width  / 2.0 + cos(a) * r;
-      ay[i] = height / 2.0 + sin(a) * r;
+      ax[i] = pg.width  / 2.0 + cos(a) * r;
+      ay[i] = pg.height / 2.0 + sin(a) * r;
     }
 
     // --- draw strings ---------------------------------------------------
@@ -89,43 +89,50 @@ class CatsCradleScene {
         int j = (i + skip) % numAnchors;
 
         // map this string to an FFT band
-        float bandAmp = 0;
-        if (audio != null) {
-          int band = ((skip - 1) * numAnchors + i) % audio.fft.avgSize();
-          bandAmp = audio.fft.getAvg(band) * 3.0;
-        }
+        int band = ((skip - 1) * numAnchors + i) % analyzer.spectrum.length;
+        float bandAmp = analyzer.spectrum[band] * 3.0;
 
         // colour: hue sweeps from purple → cyan as skip increases
-        colorMode(HSB, 360, 255, 255, 255);
-        float hue   = map(skip, 1, numAnchors / 2, 270, 180);
-        float alpha = map(skip, 1, numAnchors / 2, 220, 100);
-        float weight = map(skip, 1, numAnchors / 2, 2.0, 0.8);
-        stroke((int)hue, 210, 255, (int)alpha);
-        strokeWeight(weight);
-        colorMode(RGB, 255);
-        noFill();
+        pg.colorMode(HSB, 360, 255, 255, 255);
+        float hue   = map(skip, 1, numAnchors / 2.0, 270, 180);
+        float alpha = map(skip, 1, numAnchors / 2.0, 220, 100);
+        float weight = map(skip, 1, numAnchors / 2.0, 2.0, 0.8);
+        pg.stroke((int)hue, 210, 255, (int)alpha);
+        pg.strokeWeight(weight);
+        pg.colorMode(RGB, 255);
+        pg.noFill();
 
-        drawString(ax[i], ay[i], ax[j], ay[j], bandAmp, skip, i);
+        drawString(pg, ax[i], ay[i], ax[j], ay[j], bandAmp, skip, i);
       }
     }
 
     // --- anchor dots ----------------------------------------------------
-    noStroke();
+    pg.noStroke();
     for (int i = 0; i < numAnchors; i++) {
       float glow = 6 + pulse * 22;
-      fill(255, 220, 80, 70);
-      ellipse(ax[i], ay[i], glow * 2, glow * 2);
-      fill(255, 240, 160);
-      ellipse(ax[i], ay[i], glow * 0.4, glow * 0.4);
+      pg.fill(255, 220, 80, 70);
+      pg.ellipse(ax[i], ay[i], glow * 2, glow * 2);
+      pg.fill(255, 240, 160);
+      pg.ellipse(ax[i], ay[i], glow * 0.4, glow * 0.4);
     }
 
-    // --- song name ------------------------------------------------------
-    drawSongNameOnScreen(config.SONG_NAME, width / 2, height - 5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
+
+    // ── top-left HUD ──────────────────────────────────────────────────────
+    pg.pushStyle();
+      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 6 * uiScale();
+      pg.fill(0, 140); pg.noStroke(); pg.rectMode(CORNER);
+      pg.rect(8, 8, 310 * uiScale(), mg * 2 + lh * 2);
+      pg.fill(255, 220, 120); pg.textSize(ts); pg.textAlign(LEFT, TOP);
+      pg.text("Cat's Cradle  (anchors: " + numAnchors + "  speed: " + nf(rotationSpeed, 1, 4) + ")", 12, 8 + mg);
+      pg.fill(200, 200, 200);
+      pg.text("L \u2195 rotation speed   R \u2194 anchor count   A beat pulse", 12, 8 + mg + lh);
+    pg.popStyle();
   }
 
   // Draw one vibrating string between (x1,y1) and (x2,y2).
   // Vibration is a sum of harmonics — richer for strings that cross more points.
-  void drawString(float x1, float y1, float x2, float y2,
+  void drawString(PGraphics pg, float x1, float y1, float x2, float y2,
                   float amplitude, int skip, int index) {
     float dx  = x2 - x1;
     float dy  = y2 - y1;
@@ -138,7 +145,7 @@ class CatsCradleScene {
 
     float phaseOff = phase * (1 + skip * 0.3) + index * 0.5;
 
-    beginShape();
+    pg.beginShape();
     for (int s = 0; s <= subdivisions; s++) {
       float t  = (float)s / subdivisions;
       float bx = lerp(x1, x2, t);
@@ -149,8 +156,16 @@ class CatsCradleScene {
       for (int h = 1; h <= skip; h++) {
         vib += sin(t * PI * h) * sin(phaseOff * h) * amplitude / h;
       }
-      vertex(bx + nx * vib, by + ny * vib);
+      pg.vertex(bx + nx * vib, by + ny * vib);
     }
-    endShape();
+    pg.endShape();
   }
+
+  void onEnter() {
+    background(0);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {}
 }

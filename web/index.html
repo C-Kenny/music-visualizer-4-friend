@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Visualizer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: monospace; }
+    canvas { display: block; }
+
+    #controls {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 100;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #aaa;
+      backdrop-filter: blur(4px);
+    }
+
+    #controls button {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #ccc;
+      padding: 3px 9px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 12px;
+      transition: background 0.1s;
+    }
+    #controls button:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+    #scene-name { color: #7bf; min-width: 110px; text-align: center; letter-spacing: 0.03em; }
+    #song-name  { color: #fc8; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    #file-input-hidden { display: none; }
+
+    #help {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      z-index: 100;
+      font-size: 10px;
+      color: rgba(255,255,255,0.25);
+      text-align: right;
+      line-height: 1.6;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="controls">
+    <button id="btn-prev" title="Previous scene">◀</button>
+    <span id="scene-name">Oscilloscope</span>
+    <button id="btn-next" title="Next scene">▶</button>
+    <span id="song-name">No song loaded</span>
+    <button id="btn-load">Load Song</button>
+    <button id="btn-play" disabled>▶ Play</button>
+    <input type="file" id="file-input-hidden" accept="audio/*">
+  </div>
+
+  <div id="help">
+    ← → scene &nbsp;|&nbsp; 1-4 jump &nbsp;|&nbsp; space pause &nbsp;|&nbsp; see HUD for scene keys
+  </div>
+
+  <!-- p5.js + p5.sound from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js"></script>
+  <script src="sketch.js"></script>
+
+  <script>
+    // Wire HTML controls → sketch API (functions exposed on window by sketch.js)
+    document.getElementById('btn-load').addEventListener('click', () => {
+      getAudioContext().resume();
+      document.getElementById('file-input-hidden').click();
+    });
+
+    document.getElementById('file-input-hidden').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if (f) window.loadAudioFile(f);
+      e.target.value = '';   // allow re-selecting the same file
+    });
+
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      getAudioContext().resume();
+      window.prevScene();
+    });
+    document.getElementById('btn-next').addEventListener('click', () => {
+      getAudioContext().resume();
+      window.nextScene();
+    });
+    document.getElementById('btn-play').addEventListener('click', () => {
+      getAudioContext().resume();
+      window.togglePlay();
+    });
+  </script>
+</body>
+</html>

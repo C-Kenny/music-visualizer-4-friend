@@ -1,7 +1,7 @@
 // Prism Orbit scene — audio-reactive lattice intended to feel pleasing to both
 // humans and machines. Switch to it with the '7' key.
 
-class PrismCodexScene {
+class PrismCodexScene implements IScene {
   float spin = 0.0;
   float beatGlow = 0.0;
   float latticeDrift = 0.0;
@@ -47,8 +47,8 @@ class PrismCodexScene {
     };
   }
 
-  void drawScene() {
-    if (audio.beat.isOnset()) {
+  void drawScene(PGraphics pg) {
+    if (analyzer.isBeat) {
       beatGlow = 1.0;
     }
     beatGlow *= 0.92;
@@ -60,77 +60,77 @@ class PrismCodexScene {
     float highEnergy = getAverageBandEnergy(0.52, 1.00);
     float masterEnergy = (lowEnergy + midEnergy + highEnergy) / 3.0;
 
-    drawBackdrop(lowEnergy, midEnergy, highEnergy);
+    drawBackdrop(pg, lowEnergy, midEnergy, highEnergy);
 
-    pushMatrix();
-      translate(width / 2.0, height / 2.0);
-      drawOrbitLattice(lowEnergy, midEnergy, highEnergy);
-      drawCentralPrism(lowEnergy, midEnergy, highEnergy, masterEnergy);
-    popMatrix();
+    pg.pushMatrix();
+      pg.translate(pg.width / 2.0, pg.height / 2.0);
+      drawOrbitLattice(pg, lowEnergy, midEnergy, highEnergy);
+      drawCentralPrism(pg, lowEnergy, midEnergy, highEnergy, masterEnergy);
+    pg.popMatrix();
 
-    drawHud(lowEnergy, midEnergy, highEnergy, masterEnergy);
-    drawSongNameOnScreen(config.SONG_NAME, width / 2, height - 5);
+    drawHud(pg, lowEnergy, midEnergy, highEnergy, masterEnergy);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
   }
 
   float getAverageBandEnergy(float startNorm, float endNorm) {
-    int fftSize = max(1, audio.fft.avgSize());
-    int start = constrain(int(fftSize * startNorm), 0, fftSize - 1);
-    int end = constrain(int(fftSize * endNorm), start + 1, fftSize);
+    int specLen = analyzer.spectrum.length;
+    int start = constrain(int(specLen * startNorm), 0, specLen - 1);
+    int end = constrain(int(specLen * endNorm), start + 1, specLen);
     float total = 0;
     for (int i = start; i < end; i++) {
-      total += audio.fft.getAvg(i);
+      total += analyzer.spectrum[i];
     }
-    return constrain(total / max(1, end - start), 0, 14);
+    return constrain(total / max(1, end - start) * 14.0, 0, 14);
   }
 
-  void drawBackdrop(float lowEnergy, float midEnergy, float highEnergy) {
+  void drawBackdrop(PGraphics pg, float lowEnergy, float midEnergy, float highEnergy) {
     float diagPulse = 25 + highEnergy * 8 + beatGlow * 55;
-    float gridStep = max(42, min(width, height) * 0.055);
+    float gridStep = max(42, min(pg.width, pg.height) * 0.055);
 
-    background(3, 7, 18);
-    noStroke();
+    pg.background(3, 7, 18);
+    pg.noStroke();
     for (int i = 0; i < 6; i++) {
-      float radius = min(width, height) * (0.18 + i * 0.12);
+      float radius = min(pg.width, pg.height) * (0.18 + i * 0.12);
       float alpha = 8 + i * 5 + beatGlow * 8;
-      fill(20 + i * 8, 30 + i * 10, 60 + i * 15, alpha);
-      ellipse(width / 2.0, height / 2.0, radius * 2.3, radius * 1.55);
+      pg.fill(20 + i * 8, 30 + i * 10, 60 + i * 15, alpha);
+      pg.ellipse(pg.width / 2.0, pg.height / 2.0, radius * 2.3, radius * 1.55);
     }
 
-    strokeWeight(1);
-    for (float x = -width; x < width * 2; x += gridStep) {
+    pg.strokeWeight(1);
+    for (float x = -pg.width; x < pg.width * 2; x += gridStep) {
       float shifted = x + (latticeDrift % gridStep);
-      stroke(60, 110, 160, 26 + lowEnergy * 5);
-      line(shifted, 0, shifted + height, height);
-      stroke(120, 80, 170, 16 + highEnergy * 5);
-      line(shifted, height, shifted + height, 0);
+      pg.stroke(60, 110, 160, 26 + lowEnergy * 5);
+      pg.line(shifted, 0, shifted + pg.height, pg.height);
+      pg.stroke(120, 80, 170, 16 + highEnergy * 5);
+      pg.line(shifted, pg.height, shifted + pg.height, 0);
     }
 
-    noStroke();
-    fill(150, 220, 255, 16 + midEnergy * 5);
-    rectMode(CENTER);
-    rect(width / 2.0, height / 2.0, width * 0.94, diagPulse);
-    rect(width / 2.0, height / 2.0, diagPulse, height * 0.78);
-    rectMode(CORNER);
+    pg.noStroke();
+    pg.fill(150, 220, 255, 16 + midEnergy * 5);
+    pg.rectMode(CENTER);
+    pg.rect(pg.width / 2.0, pg.height / 2.0, pg.width * 0.94, diagPulse);
+    pg.rect(pg.width / 2.0, pg.height / 2.0, diagPulse, pg.height * 0.78);
+    pg.rectMode(CORNER);
   }
 
-  void drawOrbitLattice(float lowEnergy, float midEnergy, float highEnergy) {
+  void drawOrbitLattice(PGraphics pg, float lowEnergy, float midEnergy, float highEnergy) {
     float[] energies = { lowEnergy, midEnergy, highEnergy };
     int[] nodeCounts = { 6, 10, 14 };
-    float baseRadius = min(width, height) * 0.13;
+    float baseRadius = min(pg.width, pg.height) * 0.13;
 
     for (int ring = 0; ring < 3; ring++) {
       float ringEnergy = energies[ring];
       float radius = baseRadius * (ring + 1) * (1.0 + ringEnergy * 0.05 + beatGlow * 0.04);
       float ringRotation = spin * (ring % 2 == 0 ? 1.0 : -1.35) + ring * PI / 7.0;
 
-      noFill();
-      stroke(80 + ring * 50, 120 + ring * 35, 220 + ring * 10, 85);
-      strokeWeight(1.5 + ringEnergy * 0.22);
-      ellipse(0, 0, radius * 2, radius * 2);
+      pg.noFill();
+      pg.stroke(80 + ring * 50, 120 + ring * 35, 220 + ring * 10, 85);
+      pg.strokeWeight(1.5 + ringEnergy * 0.22);
+      pg.ellipse(0, 0, radius * 2, radius * 2);
 
       for (int i = 0; i < nodeCounts[ring]; i++) {
         float angle = ringRotation + TWO_PI * i / nodeCounts[ring];
-        float wobble = sin(frameCount * 0.02 + i + ring * 0.7) * (8 + ringEnergy * 1.8);
+        float wobble = sin(pg.parent.frameCount * 0.02 + i + ring * 0.7) * (8 + ringEnergy * 1.8);
         float x = cos(angle) * (radius + wobble);
         float y = sin(angle) * (radius + wobble);
         nodeX[ring][i] = x;
@@ -143,95 +143,103 @@ class PrismCodexScene {
       for (int i = 0; i < nodeX[ring].length; i++) {
         int nextA = i % nodeX[ring + 1].length;
         int nextB = (i + 1) % nodeX[ring + 1].length;
-        drawBeam(nodeX[ring][i], nodeY[ring][i], nodeX[ring + 1][nextA], nodeY[ring + 1][nextA],
+        drawBeam(pg, nodeX[ring][i], nodeY[ring][i], nodeX[ring + 1][nextA], nodeY[ring + 1][nextA],
           energies[ring], energies[ring + 1], ring);
-        drawBeam(nodeX[ring][i], nodeY[ring][i], nodeX[ring + 1][nextB], nodeY[ring + 1][nextB],
+        drawBeam(pg, nodeX[ring][i], nodeY[ring][i], nodeX[ring + 1][nextB], nodeY[ring + 1][nextB],
           energies[ring], energies[ring + 1], ring);
       }
     }
 
     // nodes last so they sit above beams
-    noStroke();
+    pg.noStroke();
     for (int ring = 0; ring < 3; ring++) {
       for (int i = 0; i < nodeX[ring].length; i++) {
         float halo = 11 + energies[ring] * 1.6 + beatGlow * 12;
-        fill(80 + ring * 55, 180 + ring * 20, 255, 28);
-        ellipse(nodeX[ring][i], nodeY[ring][i], halo * 2.2, halo * 2.2);
-        fill(185 + ring * 22, 215, 255);
-        ellipse(nodeX[ring][i], nodeY[ring][i], halo * 0.52, halo * 0.52);
+        pg.fill(80 + ring * 55, 180 + ring * 20, 255, 28);
+        pg.ellipse(nodeX[ring][i], nodeY[ring][i], halo * 2.2, halo * 2.2);
+        pg.fill(185 + ring * 22, 215, 255);
+        pg.ellipse(nodeX[ring][i], nodeY[ring][i], halo * 0.52, halo * 0.52);
       }
     }
   }
 
-  void drawBeam(float x1, float y1, float x2, float y2, float e1, float e2, int ring) {
+  void drawBeam(PGraphics pg, float x1, float y1, float x2, float y2, float e1, float e2, int ring) {
     float similarity = 1.0 - min(1.0, abs(e1 - e2) / 8.0);
     float alpha = 35 + similarity * 90 + beatGlow * 28;
     float weight = 0.8 + (e1 + e2) * 0.12;
-    stroke(90 + ring * 45, 200 - ring * 30, 255, alpha);
-    strokeWeight(weight);
-    line(x1, y1, x2, y2);
+    pg.stroke(90 + ring * 45, 200 - ring * 30, 255, alpha);
+    pg.strokeWeight(weight);
+    pg.line(x1, y1, x2, y2);
   }
 
-  void drawCentralPrism(float lowEnergy, float midEnergy, float highEnergy, float masterEnergy) {
-    float prismRadius = min(width, height) * (0.07 + lowEnergy * 0.003 + beatGlow * 0.012);
+  void drawCentralPrism(PGraphics pg, float lowEnergy, float midEnergy, float highEnergy, float masterEnergy) {
+    float prismRadius = min(pg.width, pg.height) * (0.07 + lowEnergy * 0.003 + beatGlow * 0.012);
     float innerRadius = prismRadius * 0.52;
     float prismRotation = -spin * 2.6;
 
     for (int layer = 0; layer < 3; layer++) {
       float layerRadius = prismRadius + layer * 18 + highEnergy * (2 + layer);
       float alpha = 50 + layer * 28 + beatGlow * 55;
-      noFill();
-      stroke(120 + layer * 35, 230 - layer * 30, 255, alpha);
-      strokeWeight(1.4 + layer * 0.45);
-      beginShape();
+      pg.noFill();
+      pg.stroke(120 + layer * 35, 230 - layer * 30, 255, alpha);
+      pg.strokeWeight(1.4 + layer * 0.45);
+      pg.beginShape();
       for (int i = 0; i < 6; i++) {
         float a = prismRotation + TWO_PI * i / 6.0;
-        vertex(cos(a) * layerRadius, sin(a) * layerRadius);
+        pg.vertex(cos(a) * layerRadius, sin(a) * layerRadius);
       }
-      endShape(CLOSE);
+      pg.endShape(CLOSE);
     }
 
-    noStroke();
-    fill(255, 255, 255, 38 + beatGlow * 70);
-    ellipse(0, 0, prismRadius * 2.0, prismRadius * 2.0);
+    pg.noStroke();
+    pg.fill(255, 255, 255, 38 + beatGlow * 70);
+    pg.ellipse(0, 0, prismRadius * 2.0, prismRadius * 2.0);
 
-    fill(35, 220, 255, 130);
-    beginShape();
+    pg.fill(35, 220, 255, 130);
+    pg.beginShape();
     for (int i = 0; i < 3; i++) {
       float a = prismRotation + PI / 6.0 + TWO_PI * i / 3.0;
-      vertex(cos(a) * prismRadius, sin(a) * prismRadius);
+      pg.vertex(cos(a) * prismRadius, sin(a) * prismRadius);
     }
-    endShape(CLOSE);
+    pg.endShape(CLOSE);
 
-    fill(255, 120, 240, 150);
-    beginShape();
+    pg.fill(255, 120, 240, 150);
+    pg.beginShape();
     for (int i = 0; i < 3; i++) {
       float a = prismRotation - PI / 6.0 + TWO_PI * i / 3.0;
-      vertex(cos(a) * innerRadius, sin(a) * innerRadius);
+      pg.vertex(cos(a) * innerRadius, sin(a) * innerRadius);
     }
-    endShape(CLOSE);
+    pg.endShape(CLOSE);
 
-    fill(255, 255, 255, 160 + beatGlow * 60);
-    ellipse(0, 0, 10 + masterEnergy * 2.5, 10 + masterEnergy * 2.5);
+    pg.fill(255, 255, 255, 160 + beatGlow * 60);
+    pg.ellipse(0, 0, 10 + masterEnergy * 2.5, 10 + masterEnergy * 2.5);
   }
 
-  void drawHud(float lowEnergy, float midEnergy, float highEnergy, float masterEnergy) {
-    pushStyle();
+  void drawHud(PGraphics pg, float lowEnergy, float midEnergy, float highEnergy, float masterEnergy) {
+    pg.pushStyle();
       float ts = 11 * uiScale();
       float lh = ts * 1.3;
       float margin = 4 * uiScale();
-      fill(0, 125);
-      noStroke();
-      rectMode(CORNER);
-      rect(8, 8, 275 * uiScale(), margin + lh * 5);
-      fill(255);
-      textSize(ts);
-      textAlign(LEFT, TOP);
-      text("Scene: Prism Orbit", 12, 8 + margin);
-      text("low / mid / high: " + nf(lowEnergy, 1, 2) + " / " + nf(midEnergy, 1, 2) + " / " + nf(highEnergy, 1, 2), 12, 8 + margin + lh);
-      text("master energy: " + nf(masterEnergy, 1, 2), 12, 8 + margin + lh * 2);
-      text("beat glow: " + nf(beatGlow, 1, 2), 12, 8 + margin + lh * 3);
-      text("intent: symmetry + signal + soft neon", 12, 8 + margin + lh * 4);
-    popStyle();
+      pg.fill(0, 125);
+      pg.noStroke();
+      pg.rectMode(CORNER);
+      pg.rect(8, 8, 275 * uiScale(), margin + lh * 5);
+      pg.fill(255);
+      pg.textSize(ts);
+      pg.textAlign(LEFT, TOP);
+      pg.text("Scene: Prism Orbit", 12, 8 + margin);
+      pg.text("low / mid / high: " + nf(lowEnergy, 1, 2) + " / " + nf(midEnergy, 1, 2) + " / " + nf(highEnergy, 1, 2), 12, 8 + margin + lh);
+      pg.text("master energy: " + nf(masterEnergy, 1, 2), 12, 8 + margin + lh * 2);
+      pg.text("beat glow: " + nf(beatGlow, 1, 2), 12, 8 + margin + lh * 3);
+      pg.text("intent: symmetry + signal + soft neon", 12, 8 + margin + lh * 4);
+    pg.popStyle();
   }
+
+  void onEnter() {
+    background(0);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {}
 }

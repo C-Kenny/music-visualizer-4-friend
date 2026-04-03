@@ -20,7 +20,7 @@
 //   A           → manual beat burst
 //   Y           → cycle colour palette
 
-class RadialFFTScene {
+class RadialFFTScene implements IScene {
 
   float rotation   = 0.0;
   float rotSpeed   = 0.001;   // signed: positive=CW, negative=CCW
@@ -36,31 +36,25 @@ class RadialFFTScene {
 
   RadialFFTScene() {}
 
-  void drawScene() {
-    // ── Init smoothed array on first call (fftSize not available in constructor) ──
+  void drawScene(PGraphics pg) {
+    // ── Init smoothed array on first call ──
     if (!initialised) {
-      smoothAmp = new float[audio.fft.avgSize()];
+      smoothAmp = new float[analyzer.spectrum.length];
       initialised = true;
     }
 
     // ── Audio ──────────────────────────────────────────────────────────────
-    int   N       = audio.fft.avgSize();
-    float rawBass = 0, rawMid = 0, rawHigh = 0;
-    int   bassEnd = max(1, N / 6);
-    int   midEnd  = max(bassEnd + 1, N / 2);
+    int   N       = analyzer.spectrum.length;
+    float rawBass = analyzer.bass;
+    float rawMid  = analyzer.mid;
+    float rawHigh = analyzer.high;
 
     for (int i = 0; i < N; i++) {
-      float raw = audio.fft.getAvg(i);
+      float raw = analyzer.spectrum[i];
       smoothAmp[i] = lerp(smoothAmp[i], raw * scaleMult, 0.25);
     }
-    for (int i = 0;       i < bassEnd; i++) rawBass += smoothAmp[i];
-    for (int i = bassEnd; i < midEnd;  i++) rawMid  += smoothAmp[i];
-    for (int i = midEnd;  i < N;       i++) rawHigh += smoothAmp[i];
-    rawBass /= bassEnd;
-    rawMid  /= max(1, midEnd - bassEnd);
-    rawHigh /= max(1, N - midEnd);
 
-    boolean isBeat = audio.beat.isOnset();
+    boolean isBeat = analyzer.isBeat;
     if (isBeat) {
       beatPulse = 1.0;
       hueShift  = (hueShift + random(40, 90)) % 360;
@@ -70,26 +64,26 @@ class RadialFFTScene {
     rotation += rotSpeed + (rotSpeed >= 0 ? 1 : -1) * rawMid * 0.00008;
 
     // ── Background ─────────────────────────────────────────────────────────
-    background(4, 6, 16);
+    pg.background(4, 6, 16);
 
     // Dark radial gradient from center
-    colorMode(HSB, 360, 255, 255, 255);
-    noStroke();
-    float cx = width / 2.0, cy = height / 2.0;
-    float maxR = min(width, height) * 0.62;
+    pg.colorMode(HSB, 360, 255, 255, 255);
+    pg.noStroke();
+    float cx = pg.width / 2.0, cy = pg.height / 2.0;
+    float maxR = min(pg.width, pg.height) * 0.62;
     for (int r = 5; r >= 1; r--) {
       float rad = maxR * r * 0.22;
-      fill(240, 180, 30, 8 + r * 3 + rawBass * 2);
-      ellipse(cx, cy, rad * 2, rad * 2);
+      pg.fill(240, 180, 30, 8 + r * 3 + rawBass * 2);
+      pg.ellipse(cx, cy, rad * 2, rad * 2);
     }
 
     // ── Draw bars ──────────────────────────────────────────────────────────
-    float innerR = min(width, height) * (0.12 * spread);
-    float outerR = min(width, height) * 0.46;
-    float burstOff = beatPulse * min(width, height) * 0.04;
+    float innerR = min(pg.width, pg.height) * (0.12 * spread);
+    float outerR = min(pg.width, pg.height) * 0.46;
+    float burstOff = beatPulse * min(pg.width, pg.height) * 0.04;
 
-    pushMatrix();
-    translate(cx, cy);
+    pg.pushMatrix();
+    pg.translate(cx, cy);
 
     for (int i = 0; i < N; i++) {
       float ang    = TWO_PI * i / N + rotation;
@@ -108,61 +102,61 @@ class RadialFFTScene {
       float bri = 180 + amp * 3.5;
       float alpha = 180 + amp * 4;
 
-      fill(hue, constrain(sat, 0, 255), constrain(bri, 0, 255), constrain(alpha, 0, 255));
+      pg.fill(hue, constrain(sat, 0, 255), constrain(bri, 0, 255), constrain(alpha, 0, 255));
 
       // Outer spike (tapered triangle pointing outward)
-      beginShape(TRIANGLES);
-        vertex(cos(ang - halfW) * inner, sin(ang - halfW) * inner);
-        vertex(cos(ang + halfW) * inner, sin(ang + halfW) * inner);
-        vertex(cos(ang)         * outer, sin(ang)         * outer);
-      endShape();
+      pg.beginShape(TRIANGLES);
+        pg.vertex(cos(ang - halfW) * inner, sin(ang - halfW) * inner);
+        pg.vertex(cos(ang + halfW) * inner, sin(ang + halfW) * inner);
+        pg.vertex(cos(ang)         * outer, sin(ang)         * outer);
+      pg.endShape();
 
       // Mirror spike pointing inward (inner ring)
       float mirrorLen = barLen * 0.45;
       float mirrorInner = inner - mirrorLen;
       if (mirrorInner > 0) {
         float mAlpha = alpha * 0.5;
-        fill(hue, sat, constrain(bri * 0.7, 0, 255), constrain(mAlpha, 0, 255));
-        beginShape(TRIANGLES);
-          vertex(cos(ang - halfW) * inner,       sin(ang - halfW) * inner);
-          vertex(cos(ang + halfW) * inner,       sin(ang + halfW) * inner);
-          vertex(cos(ang)         * mirrorInner, sin(ang)         * mirrorInner);
-        endShape();
+        pg.fill(hue, sat, constrain(bri * 0.7, 0, 255), constrain(mAlpha, 0, 255));
+        pg.beginShape(TRIANGLES);
+          pg.vertex(cos(ang - halfW) * inner,       sin(ang - halfW) * inner);
+          pg.vertex(cos(ang + halfW) * inner,       sin(ang + halfW) * inner);
+          pg.vertex(cos(ang)         * mirrorInner, sin(ang)         * mirrorInner);
+        pg.endShape();
       }
     }
 
     // ── Central glow disc ──────────────────────────────────────────────────
     float glowR = innerR * 0.7 + rawBass * 1.2 + beatPulse * innerR * 0.12;
     // Outer glow halo (soft, barely visible)
-    fill((hueShift + 20) % 360, 140, 255, 10 + beatPulse * 28);
-    ellipse(0, 0, glowR * 2.4, glowR * 2.4);
+    pg.fill((hueShift + 20) % 360, 140, 255, 10 + beatPulse * 28);
+    pg.ellipse(0, 0, glowR * 2.4, glowR * 2.4);
     // Core disc (toned down, less opaque on beat)
-    fill((hueShift) % 360, 180, 255, 55 + beatPulse * 35);
-    ellipse(0, 0, glowR * 1.4, glowR * 1.4);
+    pg.fill((hueShift) % 360, 180, 255, 55 + beatPulse * 35);
+    pg.ellipse(0, 0, glowR * 1.4, glowR * 1.4);
     // Bright centre (small pinpoint)
-    fill(0, 0, 255, 130 + beatPulse * 50);
-    ellipse(0, 0, glowR * 0.45, glowR * 0.45);
+    pg.fill(0, 0, 255, 130 + beatPulse * 50);
+    pg.ellipse(0, 0, glowR * 0.45, glowR * 0.45);
 
-    popMatrix();
+    pg.popMatrix();
 
-    colorMode(RGB, 255);
+    pg.colorMode(RGB, 255);
 
     // ── HUD ────────────────────────────────────────────────────────────────
     String[] palNames = {"Spectrum", "Heat", "Ice", "Mono"};
-    pushStyle();
+    pg.pushStyle();
       float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
-      fill(0, 160); noStroke(); rectMode(CORNER);
-      rect(8, 8, 310 * uiScale(), mg + lh * 5);
-      fill(255, 180, 80); textSize(ts); textAlign(LEFT, TOP);
-      text("Radial FFT  (" + N + " bands)",                          12, 8 + mg);
-      fill(255, 220, 180);
-      text("Palette: " + palNames[palette] + "  (Y cycle)",          12, 8 + mg + lh);
-      text("Scale: "   + nf(scaleMult, 1, 2) + "  (L ↕)",           12, 8 + mg + lh * 2);
-      text("Spin: "    + nf(rotSpeed, 1, 4)  + "  (R ↕ | r=reverse)", 12, 8 + mg + lh * 3);
-      text("Spread: "  + nf(spread, 1, 2)    + "  (R ↔)   A=burst", 12, 8 + mg + lh * 4);
-    popStyle();
+      pg.fill(0, 160); pg.noStroke(); pg.rectMode(CORNER);
+      pg.rect(8, 8, 310 * uiScale(), mg + lh * 5);
+      pg.fill(255, 180, 80); pg.textSize(ts); pg.textAlign(LEFT, TOP);
+      pg.text("Radial FFT  (" + N + " bands)",                          12, 8 + mg);
+      pg.fill(255, 220, 180);
+      pg.text("Palette: " + palNames[palette] + "  (Y cycle)",          12, 8 + mg + lh);
+      pg.text("Scale: "   + nf(scaleMult, 1, 2) + "  (L ↕)",           12, 8 + mg + lh * 2);
+      pg.text("Spin: "    + nf(rotSpeed, 1, 4)  + "  (R ↕ | r=reverse)", 12, 8 + mg + lh * 3);
+      pg.text("Spread: "  + nf(spread, 1, 2)    + "  (R ↔)   A=burst", 12, 8 + mg + lh * 4);
+    pg.popStyle();
 
-    drawSongNameOnScreen(config.SONG_NAME, width / 2.0, height - 5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
   }
 
   float getBarHue(float t, float amp) {
@@ -226,5 +220,17 @@ class RadialFFTScene {
       "High         glow halo",
       "Beat         outward burst + hue snap",
     };
+  }
+
+  void onEnter() {
+    background(4, 6, 16);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == 'r' || k == 'R') reverseDirection();
+    else if (k == '[') adjustSpeed(-0.001);
+    else if (k == ']') adjustSpeed(0.001);
   }
 }

@@ -6,3 +6,12 @@ output/
 media/debug_outputs/
 Music_Visualizer_CK/data/images/*.png
 Music_Visualizer_CK/data/images/*.jpg
+
+# Dev overrides
+Music_Visualizer_CK/.devscene
+Music_Visualizer_CK/.devsong
+Music_Visualizer_CK/.devscene.bak
+
+# Smoke test (trigger + result are transient)
+Music_Visualizer_CK/.smoketest
+Music_Visualizer_CK/.smoketest_result

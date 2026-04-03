@@ -21,9 +21,11 @@
 
 // ── Worm ─────────────────────────────────────────────────────────────────────
 
+// ── Worm ─────────────────────────────────────────────────────────────────────
+
 class Worm {
-  final int   N   = 42;      // segment count
-  final float SEP = 14.0;   // resting spacing between segments (px)
+  final int   N   = 42;      
+  final float SEP = 14.0;   
 
   float[] sx = new float[N];
   float[] sy = new float[N];
@@ -44,18 +46,14 @@ class Worm {
     speedMult = random(0.75, 1.35);
   }
 
-  // ── update ──
-
-  void update(float bass, float mid, boolean isBeat,
+  void update(PGraphics pg, float bass, float mid, boolean isBeat,
               float lureX, float lureY, boolean luring,
               float repelX, float repelY, boolean repelling,
               float speedScale) {
 
     float topSpeed = (2.2 + mid * 0.2) * speedMult * speedScale;
-
-    // Perlin wander
-    float t      = frameCount * 0.003 + noiseOff;
-    float wander = noise(sx[0] * 0.004 + noiseOff,
+    float t      = pg.parent.frameCount * 0.003 + noiseOff;
+    float wander = pg.parent.noise(sx[0] * 0.004 + noiseOff,
                          sy[0] * 0.004 + noiseOff * 1.7, t) * TWO_PI * 2.5;
 
     if (luring) {
@@ -73,22 +71,18 @@ class Worm {
       vy += sin(wander) * 0.22 * (1 + mid * 0.04);
     }
 
-    // Speed clamp
     float spd = dist(0, 0, vx, vy);
     if (spd > topSpeed) { vx = vx / spd * topSpeed; vy = vy / spd * topSpeed; }
 
-    // Wall push
     float mg = 90;
     if (sx[0] < mg)          vx += 0.55;
-    if (sx[0] > width  - mg) vx -= 0.55;
+    if (sx[0] > pg.width  - mg) vx -= 0.55;
     if (sy[0] < mg)          vy += 0.55;
-    if (sy[0] > height - mg) vy -= 0.55;
+    if (sy[0] > pg.height - mg) vy -= 0.55;
 
-    // Move head
-    sx[0] = constrain(sx[0] + vx, 0, width);
-    sy[0] = constrain(sy[0] + vy, 0, height);
+    sx[0] = constrain(sx[0] + vx, 0, pg.width);
+    sy[0] = constrain(sy[0] + vy, 0, pg.height);
 
-    // Drag each segment toward the one ahead of it
     for (int i = 1; i < N; i++) {
       float dx = sx[i-1] - sx[i];
       float dy = sy[i-1] - sy[i];
@@ -100,53 +94,38 @@ class Worm {
       }
     }
 
-    // Beat: colour jolt + velocity kick
     if (isBeat) {
       float ang = random(TWO_PI);
       vx += cos(ang) * bass * 0.55;
       vy += sin(ang) * bass * 0.55;
-      hue = (baseHue + frameCount * 0.8 + random(40)) % 360;
+      hue = (baseHue + pg.parent.frameCount * 0.8 + random(40)) % 360;
     }
   }
 
-  // ── draw ──
-
-  void draw(float bass, float high, boolean isBeat, int colorMode) {
+  void draw(PGraphics pg, float bass, float high, boolean isBeat, int colorMode) {
     float pulse = 1.0 + bass * 0.13;
-
-    colorMode(HSB, 360, 255, 255, 255);
-    noStroke();
-
-    // Draw tail → head so head is always on top
+    pg.colorMode(HSB, 360, 255, 255, 255);
+    pg.noStroke();
     for (int i = N - 1; i >= 0; i--) {
-      float t    = (float)i / (N - 1);          // 0=head, 1=tail
+      float t    = (float)i / (N - 1);          
       float r    = lerp(17, 4, t) * pulse;
-
       float segHue;
       switch (colorMode) {
-        case 1:  segHue = (hue + i * 10 + frameCount * 0.6f) % 360; break; // rainbow
-        case 2:  segHue = map(i, 0, N - 1, hue, (hue + 120) % 360); break; // gradient
-        default: segHue = hue; break;                                         // mono
+        case 1:  segHue = (hue + i * 10 + pg.parent.frameCount * 0.6f) % 360; break; 
+        case 2:  segHue = map(i, 0, N - 1, hue, (hue + 120) % 360); break; 
+        default: segHue = hue; break;                                         
       }
-
-      // Glow aura — kept very faint, just a soft halo
       float glowR = r * 1.7 + high * 0.4;
       float glowA = lerp(20, 5, t) + high * 0.6;
-      fill(segHue, 195, 255, glowA);
-      ellipse(sx[i], sy[i], glowR, glowR);
-
-      // Body
-      fill(segHue, 200, 235);
-      ellipse(sx[i], sy[i], r * 2, r * 2);
-
-      // Specular sheen
+      pg.fill(segHue, 195, 255, glowA);
+      pg.ellipse(sx[i], sy[i], glowR, glowR);
+      pg.fill(segHue, 200, 235);
+      pg.ellipse(sx[i], sy[i], r * 2, r * 2);
       if (r > 6) {
-        fill(segHue, 70, 255, 170);
-        ellipse(sx[i] - r * 0.27, sy[i] - r * 0.27, r * 0.65, r * 0.65);
+        pg.fill(segHue, 70, 255, 170);
+        pg.ellipse(sx[i] - r * 0.27, sy[i] - r * 0.27, r * 0.65, r * 0.65);
       }
     }
-
-    // ── Eyes ──────────────────────────────────────────────────────────────
     float headR    = 17 * pulse;
     float faceAng  = atan2(vy, vx);
     float perpX    = cos(faceAng + HALF_PI);
@@ -156,19 +135,13 @@ class Worm {
     float pupilR   = eyeR  * 0.52;
     float lookX    = cos(faceAng) * pupilR * 0.28;
     float lookY    = sin(faceAng) * pupilR * 0.28;
-
-    // White sclera
-    fill(0, 0, 255);
-    ellipse(sx[0] + perpX * eyeOff, sy[0] + perpY * eyeOff, eyeR * 2, eyeR * 2);
-    ellipse(sx[0] - perpX * eyeOff, sy[0] - perpY * eyeOff, eyeR * 2, eyeR * 2);
-    // Pupils
-    fill(0, 0, 0);
-    ellipse(sx[0] + perpX * eyeOff + lookX, sy[0] + perpY * eyeOff + lookY, pupilR, pupilR);
-    ellipse(sx[0] - perpX * eyeOff + lookX, sy[0] - perpY * eyeOff + lookY, pupilR, pupilR);
-
-    // (beat flash removed — body thickness pulse is enough)
-
-    colorMode(RGB, 255);
+    pg.fill(0, 0, 255);
+    pg.ellipse(sx[0] + perpX * eyeOff, sy[0] + perpY * eyeOff, eyeR * 2, eyeR * 2);
+    pg.ellipse(sx[0] - perpX * eyeOff, sy[0] - perpY * eyeOff, eyeR * 2, eyeR * 2);
+    pg.fill(0, 0, 0);
+    pg.ellipse(sx[0] + perpX * eyeOff + lookX, sy[0] + perpY * eyeOff + lookY, pupilR, pupilR);
+    pg.ellipse(sx[0] - perpX * eyeOff + lookX, sy[0] - perpY * eyeOff + lookY, pupilR, pupilR);
+    pg.colorMode(RGB, 255);
   }
 
   void scatter() {
@@ -178,63 +151,56 @@ class Worm {
   }
 }
 
-// ── Dirt particle ─────────────────────────────────────────────────────────────
-
 class DirtParticle {
   float x, y, vx, vy, life, maxLife, hue;
   DirtParticle(float x, float y, float hue) {
     this.x = x; this.y = y; this.hue = hue;
-    float ang = random(-PI, 0); // upward arc
+    float ang = random(-PI, 0); 
     float spd = random(3, 12);
     vx = cos(ang) * spd;
     vy = sin(ang) * spd;
     maxLife = life = random(20, 50);
   }
   boolean update() {
-    vy += 0.4; // gravity
+    vy += 0.4; 
     x += vx; y += vy;
     life--;
     return life > 0;
   }
-  void draw() {
+  void draw(PGraphics pg) {
     float t = life / maxLife;
-    colorMode(HSB, 360, 255, 255, 255);
-    noStroke();
-    fill(hue, 180, 255, t * 180);
-    ellipse(x, y, t * 6, t * 6);
-    colorMode(RGB, 255);
+    pg.colorMode(HSB, 360, 255, 255, 255);
+    pg.noStroke();
+    pg.fill(hue, 180, 255, t * 180);
+    pg.ellipse(x, y, t * 6, t * 6);
+    pg.colorMode(RGB, 255);
   }
 }
 
-// ── WormScene ─────────────────────────────────────────────────────────────────
-
-class WormScene {
+class WormScene implements IScene {
   ArrayList<Worm>         worms     = new ArrayList<Worm>();
   ArrayList<DirtParticle> particles = new ArrayList<DirtParticle>();
 
   final int   MAX_WORMS    = 12;
   final int   START_WORMS  = 6;
-  final float BEAT_BURST_R = 90;  // radius of radial burst ring on beat
+  int   colorM   = 1;   
+  float speedS  = 1.0;
+  float beatRing    = 0;   
+  float beatGlow    = 0;   
 
-  int   colorMode   = 1;   // 0=mono, 1=rainbow, 2=gradient
-  float speedScale  = 1.0;
-  float beatRing    = 0;   // decaying beat ring radius
-  float beatGlow    = 0;   // global flash intensity
-
-  // Controller state
   boolean luring    = false;
   boolean repelling = false;
   float   lureX, lureY, repelX, repelY;
 
   WormScene() {
-    for (int i = 0; i < START_WORMS; i++) addWorm();
+    for (int i = 0; i < START_WORMS; i++) addWorm(1280, 720);
   }
 
-  void addWorm() {
+  void addWorm(float w, float h) {
     if (worms.size() >= MAX_WORMS) return;
     float hue = (worms.size() * 53 + random(20)) % 360;
-    float x   = random(width  * 0.2, width  * 0.8);
-    float y   = random(height * 0.2, height * 0.8);
+    float x   = random(w  * 0.2, w  * 0.8);
+    float y   = random(h * 0.2, h * 0.8);
     worms.add(new Worm(x, y, hue));
   }
 
@@ -244,7 +210,7 @@ class WormScene {
 
   void scatter() {
     for (Worm w : worms) w.scatter();
-    spawnParticles(width / 2.0, height / 2.0, 30, 280);
+    spawnParticles(1280 / 2.0, 720 / 2.0, 30, 280);
   }
 
   void spawnParticles(float x, float y, int count, float hue) {
@@ -257,12 +223,8 @@ class WormScene {
     }
   }
 
-  // ── main draw ─────────────────────────────────────────────────────────────
-
-  void drawScene() {
-    // ── Audio ────────────────────────────────────────────────────────────
-    boolean isBeat = audio.beat.isOnset();
-
+  void drawScene(PGraphics pg) {
+    boolean isBeat = analyzer.isBeat;
     int fftSize = audio.fft.avgSize();
     int bassEnd = max(1, (int)(fftSize * 0.18));
     int midEnd  = max(bassEnd + 1, (int)(fftSize * 0.52));
@@ -275,126 +237,89 @@ class WormScene {
     mid  /= max(1, midEnd - bassEnd);
     high /= max(1, fftSize - midEnd);
 
-    // ── Background ───────────────────────────────────────────────────────
-    background(8, 18, 8);
+    pg.background(8, 18, 8);
 
-    // No full-screen vignette — background stays dark and calm
-
-    // ── Beat effects ──────────────────────────────────────────────────────
     if (isBeat) {
       beatGlow = 1.0;
       beatRing = 0;
-      // Spawn dirt particles from worm positions
-      for (Worm w : worms) {
-        spawnParticles(w.sx[0], w.sy[0], 3, w.hue);
-      }
+      for (Worm w : worms) spawnParticles(w.sx[0], w.sy[0], 3, w.hue);
     }
-    // (beat ring removed — too intense)
-
-    // ── Particles ────────────────────────────────────────────────────────
     for (int i = particles.size() - 1; i >= 0; i--) {
       DirtParticle p = particles.get(i);
       if (!p.update()) { particles.remove(i); continue; }
-      p.draw();
+      p.draw(pg);
     }
-
-    // ── Worms ────────────────────────────────────────────────────────────
     for (Worm w : worms) {
-      w.update(bass, mid, isBeat, lureX, lureY, luring, repelX, repelY, repelling, speedScale);
-      w.draw(bass, high, isBeat, colorMode);
+      w.update(pg, bass, mid, isBeat, lureX, lureY, luring, repelX, repelY, repelling, speedS);
+      w.draw(pg, bass, high, isBeat, colorM);
     }
 
-    // Lure indicator — small crosshair at stick position
     if (luring) {
-      colorMode(HSB, 360, 255, 255, 255);
-      stroke(90, 220, 255, 180);
-      strokeWeight(2);
-      noFill();
-      ellipse(lureX, lureY, 28, 28);
-      line(lureX - 18, lureY, lureX + 18, lureY);
-      line(lureX, lureY - 18, lureX, lureY + 18);
-      colorMode(RGB, 255);
-      noStroke();
+      pg.colorMode(HSB, 360, 255, 255, 255);
+      pg.stroke(90, 220, 255, 180); pg.strokeWeight(2); pg.noFill();
+      pg.ellipse(lureX, lureY, 28, 28);
+      pg.line(lureX - 18, lureY, lureX + 18, lureY);
+      pg.line(lureX, lureY - 18, lureX, lureY + 18);
+      pg.colorMode(RGB, 255); pg.noStroke();
     }
     if (repelling) {
-      colorMode(HSB, 360, 255, 255, 255);
-      stroke(0, 220, 255, 180);
-      strokeWeight(2);
-      noFill();
-      ellipse(repelX, repelY, 28, 28);
-      line(repelX - 14, repelY - 14, repelX + 14, repelY + 14);
-      line(repelX - 14, repelY + 14, repelX + 14, repelY - 14);
-      colorMode(RGB, 255);
-      noStroke();
+      pg.colorMode(HSB, 360, 255, 255, 255);
+      pg.stroke(0, 220, 255, 180); pg.strokeWeight(2); pg.noFill();
+      pg.ellipse(repelX, repelY, 28, 28);
+      pg.line(repelX - 14, repelY - 14, repelX + 14, repelY + 14);
+      pg.line(repelX - 14, repelY + 14, repelX + 14, repelY - 14);
+      pg.colorMode(RGB, 255); pg.noStroke();
     }
 
-    // ── HUD ──────────────────────────────────────────────────────────────
     String[] modeNames = {"Mono", "Rainbow", "Gradient"};
-    pushStyle();
+    pg.pushStyle();
       float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
-      fill(0, 160); noStroke(); rectMode(CORNER);
-      rect(8, 8, 290 * uiScale(), mg + lh * 5);
-      fill(80, 255, 120); textSize(ts); textAlign(LEFT, TOP);
-      text("Worm Colony",                                        12, 8 + mg);
-      fill(200, 255, 200);
-      text("Worms: " + worms.size() + "/" + MAX_WORMS + "  (A add / B remove)",  12, 8 + mg + lh);
-      text("Color: " + modeNames[colorMode] + "  (Y to cycle)",                  12, 8 + mg + lh * 2);
-      text("Speed: " + nf(speedScale, 1, 2) + "  (LT slow / RT turbo)",          12, 8 + mg + lh * 3);
-      text("bass:" + nf(bass,1,1) + "  mid:" + nf(mid,1,1) + "  high:" + nf(high,1,1), 12, 8 + mg + lh * 4);
-    popStyle();
+      pg.fill(0, 150); pg.noStroke(); pg.rectMode(CORNER);
+      pg.rect(8, 8, 290 * uiScale(), mg + lh * 5);
+      pg.fill(80, 255, 120); pg.textSize(ts); pg.textAlign(LEFT, TOP);
+      pg.text("Worm Colony",                                        12, 8 + mg);
+      pg.fill(200, 255, 200);
+      pg.text("Worms: " + worms.size() + "/" + MAX_WORMS + "  (A add / B remove)",  12, 8 + mg + lh);
+      pg.text("Color: " + modeNames[colorM] + "  (Y to cycle)",                  12, 8 + mg + lh * 2);
+      pg.text("Speed: " + nf(speedS, 1, 2) + "  (LT slow / RT turbo)",          12, 8 + mg + lh * 3);
+      pg.text("bass:" + nf(bass,1,1) + "  mid:" + nf(mid,1,1) + "  high:" + nf(high,1,1), 12, 8 + mg + lh * 4);
+    pg.popStyle();
 
-    drawSongNameOnScreen(config.SONG_NAME, width / 2.0, height - 5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
   }
 
-  // ── controller ────────────────────────────────────────────────────────────
-
   void applyController(Controller c) {
-    // L Stick: lure worms toward stick
-    float lx = map(c.lx, 0, width,  -1, 1);
-    float ly = map(c.ly, 0, height, -1, 1);
+    float lx = map(c.lx, 0, 1280,  -1, 1);
+    float ly = map(c.ly, 0, 720, -1, 1);
     luring = sqrt(lx * lx + ly * ly) > 0.18;
     if (luring) { lureX = c.lx; lureY = c.ly; }
-
-    // R Stick: repel worms from stick
-    float rx = map(c.rx, 0, width,  -1, 1);
-    float ry = map(c.ry, 0, height, -1, 1);
+    float rx = map(c.rx, 0, 1280,  -1, 1);
+    float ry = map(c.ry, 0, 720, -1, 1);
     repelling = sqrt(rx * rx + ry * ry) > 0.18;
     if (repelling) { repelX = c.rx; repelY = c.ry; }
-
-    // Triggers: speed scale via combined Z axis (LT pushes one way, RT the other)
     try {
-      float z = c.stick.getSlider("z").getValue(); // -1=LT full, +1=RT full
-      speedScale = map(z, -1, 1, 0.3, 2.2);
-    } catch (Exception e) { /* no trigger axis on this controller */ }
-
-    // Buttons
-    if (c.a_just_pressed) addWorm();
+      float z = c.stick.getSlider("z").getValue(); 
+      speedS = map(z, -1, 1, 0.3, 2.2);
+    } catch (Exception e) {}
+    if (c.a_just_pressed) addWorm(1280, 720);
     if (c.b_just_pressed) removeWorm();
     if (c.x_just_pressed) scatter();
-    if (c.y_just_pressed) colorMode = (colorMode + 1) % 3;
+    if (c.y_just_pressed) colorM = (colorM + 1) % 3;
   }
 
   String[] getCodeLines() {
     return new String[] {
-      "=== Worm Colony Controls ===",
-      "",
-      "L Stick      lure worms toward stick",
-      "R Stick      repel worms from stick",
-      "Z axis       turbo (LT) / slow (RT)",
-      "",
-      "A            spawn worm",
-      "B            remove worm",
-      "X            scatter burst",
-      "Y            cycle colour mode",
-      "",
-      "LB / RB      prev / next scene",
-      "` (backtick) toggle this overlay",
-      "",
-      "=== Audio ===",
-      "Bass   body thickness + beat kick",
-      "Mid    movement speed",
-      "High   glow aura intensity",
-      "Beat   dirt particles + ring burst",
+      "=== Worm Colony ===",
+      "// Neon worms via Perlin-noise wandering",
+      "Bass drives thickness; Mid drives speed; High drives aura"
     };
+  }
+
+  void onEnter() { background(8, 18, 8); }
+  void onExit() {}
+  void handleKey(char k) {
+    if (k == 'a') addWorm(1280, 720);
+    if (k == 'b') removeWorm();
+    if (k == 'x') scatter();
   }
 }

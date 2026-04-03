@@ -1,35 +1,63 @@
-class OriginalScene {
+class OriginalScene implements IScene {
   DashedLines dash;
   float dash_dist;
   int s1Size;
   float s1OffsetX;
 
+  // Background effects now encapsulated within the scene
+  Tunnel tunnel;
+  Plasma plasma;
+  PolarPlasma polarPlasma;
+
   OriginalScene(PApplet parent) {
+    this.tunnel = new Tunnel();
+    this.plasma = new Plasma();
+    this.polarPlasma = new PolarPlasma();
     dash = new DashedLines(parent);
     dash.pattern(130, 110);
-    dash_dist = 0;
-    s1Size    = min(width, height);
-    s1OffsetX = (width - s1Size) / 2.0;
+    dash_dist    = 0;
+    s1Size       = min(width, height);
+    s1OffsetX    = (width - s1Size) / 2.0;
+
+    // Initialize diamond variables formerly in Config.pde
+    config.DIAMOND_DISTANCE_FROM_CENTER = s1Size * 0.07;
+    config.DIAMOND_RIGHT_EDGE_X          = s1Size * 0.92;
+    config.DIAMOND_LEFT_EDGE_X           = s1Size * 0.74;
+    config.DIAMOND_RIGHT_EDGE_Y          = s1Size * 0.71;
+    config.DIAMOND_LEFT_EDGE_Y           = s1Size * 0.92;
+    config.MAX_DIAMOND_DISTANCE          = s1Size * 0.3;
+    config.MIN_DIAMOND_DISTANCE          = s1Size * 0.1;
   }
 
   void applyController(Controller c) {
-    config.BEZIER_Y_OFFSET = (c.ly - (height/2)) - 12;
-    config.WAVE_MULTIPLIER = (c.ry % (height/5)) + 25;
-    config.DIAMOND_WIDTH_OFFSET = ((c.rx - (height/10)) / 5.0) - 80;
-    config.DIAMOND_HEIGHT_OFFSET = ((c.ry - (height/10)) / 5.0) - 80;
+    // Map full stick range → configured parameter bounds so any screen resolution
+    // gives the same feel. Old formula (ly - height/2) overflowed ±540 on 1080p,
+    // making the fins fly off screen with any movement.
+    config.BEZIER_Y_OFFSET    = map(c.ly, 0, height, config.MIN_BEZIER_Y_OFFSET, config.MAX_BEZIER_Y_OFFSET);
+    config.WAVE_MULTIPLIER    = map(c.ry, 0, height, 10, 300);
+    config.DIAMOND_WIDTH_OFFSET  = map(c.rx, 0, width,  -120, 120);
+    config.DIAMOND_HEIGHT_OFFSET = map(c.ry, 0, height, -120, 120);
 
     try {
       float l_trigger_depletion = map(c.stick.getSlider("lt").getValue(), -1, 1, -2, 6);
       config.TUNNEL_ZOOM_INCREMENT += int(l_trigger_depletion);
     } catch (Exception e) {}
+
+    if (c.a_just_pressed) config.RAINBOW_FINS = !config.RAINBOW_FINS;
+    if (c.b_just_pressed) changeBlendMode();
+    if (c.x_just_pressed || c.lstickclick_just_pressed) config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
+    if (c.y_just_pressed) config.finRotationClockWise = !config.finRotationClockWise;
+    if (c.rstickclick_just_pressed) config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
 
-  void drawDiamond(float dash_distanceFromCenter) {
+  void drawDiamond(PGraphics pg, float dash_distanceFromCenter) {
     float innerXY = s1Size / 2.0 + config.DIAMOND_DISTANCE_FROM_CENTER;
     CURRENT_HANDY_RENDERER = HANDY_RENDERERS[config.CURRENT_HANDY_RENDERER_POSITION];
-    strokeWeight(5);
-    strokeCap(SQUARE);
-    dash.quad(
+    pg.strokeWeight(5);
+    pg.strokeCap(SQUARE);
+    // DashedLines 'dash' usually draws to the current graphics context 'g'
+    // but we'll try to ensure it follows the pg buffer.
+    pg.quad(
       innerXY, innerXY,
       config.DIAMOND_RIGHT_EDGE_X + config.DIAMOND_WIDTH_OFFSET, config.DIAMOND_RIGHT_EDGE_Y + config.DIAMOND_HEIGHT_OFFSET,
       s1Size, s1Size,
@@ -37,61 +65,62 @@ class OriginalScene {
     );
   }
 
-  void drawInnerDiamonds() {
-    pushMatrix(); fill(0,0,0); scale(0.5, 0.5); drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER); popMatrix();
-    pushMatrix(); fill(0,0,0); scale(-0.5, 0.5); translate(-s1Size, 0); drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER); popMatrix();
-    pushMatrix(); fill(0,0,0); scale(-0.5,-0.5); translate(-s1Size, -s1Size); drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER); popMatrix();
-    pushMatrix(); fill(0,0,0); scale(0.5,-0.5); translate(0, -s1Size); drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER); popMatrix();
+  void drawInnerDiamonds(PGraphics pg) {
+    pg.pushMatrix(); pg.fill(0,0,0); pg.scale(0.5, 0.5); drawDiamond(pg, config.DIAMOND_DISTANCE_FROM_CENTER); pg.popMatrix();
+    pg.pushMatrix(); pg.fill(0,0,0); pg.scale(-0.5, 0.5); pg.translate(-s1Size, 0); drawDiamond(pg, config.DIAMOND_DISTANCE_FROM_CENTER); pg.popMatrix();
+    pg.pushMatrix(); pg.fill(0,0,0); pg.scale(-0.5,-0.5); pg.translate(-s1Size, -s1Size); drawDiamond(pg, config.DIAMOND_DISTANCE_FROM_CENTER); pg.popMatrix();
+    pg.pushMatrix(); pg.fill(0,0,0); pg.scale(0.5,-0.5); pg.translate(0, -s1Size); drawDiamond(pg, config.DIAMOND_DISTANCE_FROM_CENTER); pg.popMatrix();
   }
 
-  void drawDiamonds() {
-    pushMatrix(); fill(255, 76, 52); scale(-1,1); translate(-s1Size, 0); drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER); popMatrix();
-    pushMatrix(); fill(255, 76, 52); scale(1, 1); drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER); popMatrix();
-    pushMatrix(); fill(255, 76, 52); scale(-1,-1); translate(-s1Size, -s1Size); drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER); popMatrix();
-    pushMatrix(); fill(255, 76, 52); scale(1,-1); translate(0, -s1Size); drawDiamond(config.DIAMOND_DISTANCE_FROM_CENTER); popMatrix();
+  void drawDiamonds(PGraphics pg) {
+    pg.pushMatrix(); pg.fill(255, 76, 52); pg.scale(-1,1); pg.translate(-s1Size, 0); drawDiamond(pg, config.DIAMOND_DISTANCE_FROM_CENTER); pg.popMatrix();
+    pg.pushMatrix(); pg.fill(255, 76, 52); pg.scale(1, 1); drawDiamond(pg, config.DIAMOND_DISTANCE_FROM_CENTER); pg.popMatrix();
+    pg.pushMatrix(); pg.fill(255, 76, 52); pg.scale(-1,-1); pg.translate(-s1Size, -s1Size); drawDiamond(pg, config.DIAMOND_DISTANCE_FROM_CENTER); pg.popMatrix();
+    pg.pushMatrix(); pg.fill(255, 76, 52); pg.scale(1,-1); pg.translate(0, -s1Size); drawDiamond(pg, config.DIAMOND_DISTANCE_FROM_CENTER); pg.popMatrix();
   }
 
-  void drawInnerCircle() {
-    ellipseMode(RADIUS);
-    stroke(204, 39, 242);
-    strokeWeight(8);
-    noFill();
+  void drawInnerCircle(PGraphics pg) {
+    pg.ellipseMode(RADIUS);
+    pg.stroke(204, 39, 242);
+    pg.strokeWeight(8);
+    pg.noFill();
+    // HandyRenderer usually requires setGraphics(pg) or just draws to current context
     h.ellipse(s1Size/2.0, s1Size/2.0, 110, 110);
   }
 
-  void drawBezierFins(float redness, float fins, boolean finRotationClockWise) {
-    strokeWeight(5);
+  void drawBezierFins(PGraphics pg, float redness, float fins, boolean finRotationClockWise) {
+    pg.strokeWeight(5);
     float xOffset = -20;
     float yOffset = config.BEZIER_Y_OFFSET;
 
-    if (config.RAINBOW_FINS) colorMode(HSB, 360, 255, 255);
+    if (config.RAINBOW_FINS) pg.colorMode(HSB, 360, 255, 255);
     for (int i = 0; i < fins; i++) {
       if (config.RAINBOW_FINS) {
-        float hue = (((float)i / fins) * 360 + frameCount * 0.4 + config.GLOBAL_REDNESS * 60) % 360;
-        stroke(hue, 220, 255);
-        fill(config.APPEAR_HAND_DRAWN ? color(hue, 200, 200, 100) : color(0, 0));
+        float hue = (((float)i / fins) * 360 + pg.parent.frameCount * 0.4 + config.GLOBAL_REDNESS * 60) % 360;
+        pg.stroke(hue, 220, 255);
+        pg.fill(config.APPEAR_HAND_DRAWN ? color(hue, 200, 200, 100) : color(0, 0));
       } else {
-        stroke(7);
-        if (config.APPEAR_HAND_DRAWN) fill(247, 9, 143, 100);
-        else noFill();
+        pg.stroke(7);
+        if (config.APPEAR_HAND_DRAWN) pg.fill(247, 9, 143, 100);
+        else pg.noFill();
       }
 
-      pushMatrix();
+      pg.pushMatrix();
         float rotationAmount = (2 * (i / fins) * PI);
         if (finRotationClockWise == true) {
           rotationAmount = 0 - rotationAmount;
         }
-        translate(s1Size/2.0, s1Size/2.0);
-        scale(1.75 * uiScale());
-        float random_noise_spin = random(0.01, 0.99);
-        rotate( (radians(frameCount + random_noise_spin) / 2.0) );
-        rotate(rotationAmount);
-        bezier(-36 + xOffset,-126 + yOffset, -36 + xOffset,-126 + yOffset, 32 + xOffset,-118 + yOffset, 68 + xOffset,-52 + yOffset);
-        bezier(-36 + xOffset,-126 + yOffset, -36 + xOffset,-126 + yOffset, -10 + xOffset,-88 + yOffset, -22 + xOffset,-52 + yOffset);
-        bezier(-22 + xOffset,-52 + yOffset, -22 + xOffset,-52 + yOffset, 20 + xOffset,-74 + yOffset, 68 + xOffset,-52 + yOffset);
-      popMatrix();
+        pg.translate(s1Size/2.0, s1Size/2.0);
+        pg.scale(1.75 * uiScale());
+        float random_noise_spin = noise(i * 0.3, pg.parent.frameCount * 0.01);
+        pg.rotate( (radians(pg.parent.frameCount + random_noise_spin) / 2.0) );
+        pg.rotate(rotationAmount);
+        pg.bezier(-36 + xOffset,-126 + yOffset, -36 + xOffset,-126 + yOffset, 32 + xOffset,-118 + yOffset, 68 + xOffset,-52 + yOffset);
+        pg.bezier(-36 + xOffset,-126 + yOffset, -36 + xOffset,-126 + yOffset, -10 + xOffset,-88 + yOffset, -22 + xOffset,-52 + yOffset);
+        pg.bezier(-22 + xOffset,-52 + yOffset, -22 + xOffset,-52 + yOffset, 20 + xOffset,-74 + yOffset, 68 + xOffset,-52 + yOffset);
+      pg.popMatrix();
     }
-    if (config.RAINBOW_FINS) colorMode(RGB, 255);
+    if (config.RAINBOW_FINS) pg.colorMode(RGB, 255);
   }
 
   void applyBlendModeOnDrop(int intensityOutOfTen) {
@@ -110,17 +139,31 @@ class OriginalScene {
     }
   }
 
-  void drawScene() {
-    stroke(0);
-    noStroke();
+  void drawScene(PGraphics pg) {
+    // Correct viewport sizing to handle resizing
+    s1Size = min(pg.width, pg.height);
+    s1OffsetX = (pg.width - s1Size) / 2.0;
+
+    pg.stroke(0);
+    pg.noStroke();
 
     if(config.BACKGROUND_ENABLED) {
-      background(200);
+      pg.background(200);
+    }
+    
+    // HandyRenderer usually needs to be explicitly told which buffer to draw to
+    h.setGraphics(pg);
+    h1.setGraphics(pg);
+    h2.setGraphics(pg);
+
+    // Tunnel writes directly to pg.pixels[], bypassing transforms, so it must
+    // be drawn before the translate and receives the square bounds explicitly.
+    if (config.DRAW_TUNNEL) {
+      tunnel.draw(pg, config.TUNNEL_ZOOM_INCREMENT, (int)s1OffsetX, s1Size);
     }
 
-    clip((int)s1OffsetX, 0, s1Size, s1Size);
-    pushMatrix();
-    translate(s1OffsetX, 0);
+    pg.pushMatrix();
+    pg.translate(s1OffsetX, 0);
 
     if (!config.EPILEPSY_MODE_ON) {
       h.setSeed(117);
@@ -128,8 +171,8 @@ class OriginalScene {
       h2.setSeed(420);
     }
 
-    stroke(216, 16, 246, 128);
-    strokeWeight(8);
+    pg.stroke(216, 16, 246, 128);
+    pg.strokeWeight(8);
 
     int msSinceProgStart = millis();
     if (msSinceProgStart > config.LAST_FIN_CHECK + 10000) {
@@ -145,14 +188,14 @@ class OriginalScene {
 
     splitFrequencyIntoLogBands();
 
-    strokeWeight(2);
-    stroke(255);
+    pg.strokeWeight(2);
+    pg.stroke(255);
 
-    if (audio.beat.isOnset() ){
+    if (analyzer.isBeat) {
       config.TUNNEL_ZOOM_INCREMENT = (config.TUNNEL_ZOOM_INCREMENT + 3) % 10000;
     }
     
-    stroke(255);
+    pg.stroke(255);
 
     if (config.DIAMOND_DISTANCE_FROM_CENTER >= config.MAX_DIAMOND_DISTANCE) {
       config.INCREMENT_DIAMOND_DISTANCE = false;
@@ -161,29 +204,48 @@ class OriginalScene {
     }
 
     if (config.APPEAR_HAND_DRAWN) {
-      fill(255, 76, 52);
+      pg.fill(255, 76, 52);
     } else {
-      fill(255);
-      if (config.BACKGROUND_ENABLED) background(200);
+      pg.fill(255);
+      if (config.BACKGROUND_ENABLED) pg.background(200);
     }
     
-    if (config.DRAW_TUNNEL) {
-      tunnel.draw(config.TUNNEL_ZOOM_INCREMENT);
-    }
-
     if (config.DRAW_PLASMA) {
-      plasma.draw(config.PLASMA_SEED);
+      plasma.draw(pg, config.PLASMA_SEED);
     }
 
     if (config.DRAW_POLAR_PLASMA) {
-      polarPlasma.draw();
+      polarPlasma.draw(pg);
     }
-    
+
+    if (config.DRAW_WAVEFORM) {
+      float r_line = (pg.parent.frameCount % 255) / 10.0;
+      float g_line = (pg.parent.frameCount % 255) - 75;
+      float b_line = (pg.parent.frameCount % 255);
+      int wBufSz = audio.player.bufferSize();
+      pg.pushStyle();
+        pg.strokeWeight(4);
+        pg.strokeCap(ROUND);
+        pg.stroke(r_line, g_line, b_line);
+        for (int i = 0; i < wBufSz - 1; i++) {
+          float x1 = map(i,   0, wBufSz, 0, s1Size);
+          float x2 = map(i+1, 0, wBufSz, 0, s1Size);
+          pg.line(x1, s1Size/2.0 + audio.player.right.get(i)   * config.WAVE_MULTIPLIER,
+                  x2, s1Size/2.0 + audio.player.right.get(i+1) * config.WAVE_MULTIPLIER);
+        }
+      pg.popStyle();
+    }
+
     if (config.DRAW_DIAMONDS) {
-      drawDiamonds();
-      if (config.DRAW_INNER_DIAMONDS) {
-        drawInnerDiamonds();
-      }
+      pg.pushMatrix();
+        drawDiamonds(pg);
+        if (config.DRAW_INNER_DIAMONDS) {
+          pg.pushMatrix(); drawInnerDiamonds(pg); pg.popMatrix();
+          pg.pushMatrix(); pg.translate(0, s1Size/2.0); drawInnerDiamonds(pg); pg.popMatrix();
+          pg.pushMatrix(); pg.translate(s1Size/2.0, 0); drawInnerDiamonds(pg); pg.popMatrix();
+          pg.pushMatrix(); pg.translate(s1Size/2.0, s1Size/2.0); drawInnerDiamonds(pg); pg.popMatrix();
+        }
+      pg.popMatrix();
     }
 
     if (config.FIN_REDNESS >= 255) {
@@ -203,7 +265,7 @@ class OriginalScene {
     }
     
     if (config.DRAW_FINS) {
-        drawBezierFins(config.FIN_REDNESS, config.FINS, config.finRotationClockWise);
+        drawBezierFins(pg, config.FIN_REDNESS, config.FINS, config.finRotationClockWise);
     }
     
     dash.offset(dash_dist);
@@ -212,20 +274,30 @@ class OriginalScene {
       dash_dist = 0;
     }
     
-    drawSongNameOnScreen(config.SONG_NAME, s1Size/2.0, s1Size-5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, s1Size/2.0, s1Size-5);
 
     if (config.SCREEN_RECORDING) {
-      saveFrame("/tmp/output/frames####.png");
+      pg.save("/tmp/output/frames####.png");
     }
 
     float posx = map(audio.player.position(), 0, audio.player.length(), 0, s1Size);
-    pushStyle();
-      stroke(252,4,243);
-      line(posx, s1Size, posx, s1Size * .975);
-    popStyle();
+    pg.pushStyle();
+      pg.stroke(252,4,243);
+      pg.line(posx, s1Size, posx, s1Size * .975);
+    pg.popStyle();
 
-    popMatrix();
-    noClip();
+    pg.popMatrix(); // end square canvas translate
+
+    // ── top-left HUD (outside the square translate so it sits at canvas coords) ──
+    pg.pushStyle();
+      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 6 * uiScale();
+      pg.fill(0, 140); pg.noStroke(); pg.rectMode(CORNER);
+      pg.rect(8, 8, 330 * uiScale(), mg * 2 + lh * 2);
+      pg.fill(255, 220, 120); pg.textSize(ts); pg.textAlign(LEFT, TOP);
+      pg.text("Mandala  (fins: " + nf(config.FINS, 1, 1) + "  blend: " + modeNames[config.CURRENT_BLEND_MODE_INDEX] + ")", 12, 8 + mg);
+      pg.fill(200, 200, 200);
+      pg.text("w waveform  x stacking  f fins  b blend  A rainbow  Y flip", 12, 8 + mg + lh);
+    pg.popStyle();
   }
 
   void changeDashedLineSpeed(float amountToChange) {
@@ -239,35 +311,24 @@ class OriginalScene {
   }
 
   void splitFrequencyIntoLogBands() {
-    audio.fft.avgSize();
+    // Phase 2: Use centralized analyzer instead of redundant FFT loops
+    if (analyzer.bass > 0.9) {
+      applyBlendModeOnDrop(3);
+      changeDashedLineSpeed(0.2);
+    }
 
-    for(int i = 0; i < audio.fft.avgSize(); i++ ){
-      float amplitude = audio.fft.getAvg(i);
-      float bandDB = 20 * log(2 * amplitude / audio.fft.timeSize());
+    if (analyzer.mid > 0.8) {
+      modifyDiamondCenterPoint(config.INCREMENT_DIAMOND_DISTANCE);
+    }
 
-      if ((i >= 0 && i <= 5) && bandDB > -10) {
-        applyBlendModeOnDrop(3);
-        changeDashedLineSpeed(0.2);
-      }
-
-      if ((i >=6 && i<= 15) && bandDB >-27) {
-        modifyDiamondCenterPoint(config.INCREMENT_DIAMOND_DISTANCE);
-      }
-
-      if (config.canChangeFinDirection == true) {
-        if ((i >=16 && i <= 35) && bandDB > -150) {
-          changeFinRotation();
-        }
-      }
-      
-      if ((i >=35 && i<=36) && bandDB > -130) {
-        changePlasmaFlow(1);
-        changeDashedLineSpeed(0.1);
-      }
+    if (config.canChangeFinDirection && analyzer.high > 0.1) {
+      changeFinRotation();
+    }
     
-      if ((i >=40 && i<=41) && bandDB > -130) {
-        config.PLASMA_INCREMENTING = !config.PLASMA_INCREMENTING;
-      }
+    if (analyzer.master > 0.05) {
+      changePlasmaFlow(1);
+      changeDashedLineSpeed(0.1);
+      if (random(1) < 0.05) config.PLASMA_INCREMENTING = !config.PLASMA_INCREMENTING;
     }
   }
 
@@ -281,5 +342,48 @@ class OriginalScene {
           }
         }
       }
+  }
+
+  void onEnter() {
+    background(200);
+  }
+
+  void onExit() {}
+
+  void handleKey(char k) {
+    if (k == 'd') {
+      modifyDiamondCenterPoint(false);
+    } else if (k == 'D') {
+      modifyDiamondCenterPoint(true);
+    } else if (k == 'r') {
+      config.DIAMOND_RIGHT_EDGE_X += 20;
+      config.DIAMOND_LEFT_EDGE_X -= 20;
+    } else if (k == 'R') {
+      config.DIAMOND_RIGHT_EDGE_X -= 20;
+      config.DIAMOND_LEFT_EDGE_X += 20;
+    } else if (k == 'f') {
+      config.DRAW_FINS = !config.DRAW_FINS;
+    } else if (k == 'F') {
+      config.RAINBOW_FINS = !config.RAINBOW_FINS;
+    } else if (k == 'w' || k == 'W') {
+      config.DRAW_WAVEFORM = !config.DRAW_WAVEFORM;
+    } else if (k == 'x' || k == 'X') {
+      config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;  // stacking / trails mode
+    } else if (k == 'z' || k == 'Z') {
+      config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
+    } else if (k == 'y' || k == 'Y') {
+      config.finRotationClockWise = !config.finRotationClockWise;
+    } else if (k == 'b' || k == 'B') {
+      changeBlendMode();
+    }
+  }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Original Scene (Mandala) ===",
+      "// Logic: logarithmic FFT bands -> diamond depth & fin rotation",
+      "dist = sin(t) * amplitude",
+      "rotation = frameCount * speed + bass_energy"
+    };
   }
 }

@@ -33,13 +33,13 @@ class Plasma {
     }
   }
 
-  void draw(int plasmaSeed) {
-    loadPixels();
+  void draw(PGraphics pg, int plasmaSeed) {
+    pg.loadPixels();
     for (int pixelCount = 0; pixelCount < cls.length; pixelCount++) {
-      pixels[pixelCount] = pal[
-        (cls[pixelCount] + plasmaSeed) & (config.PLASMA_SIZE-1)
-      ] &= 0x00FFFFFF;
+      if (pixelCount >= pg.pixels.length) break;
+      int c = pal[(cls[pixelCount] + plasmaSeed) & (config.PLASMA_SIZE-1)];
+      pg.pixels[pixelCount] = 0xFF000000 | (c & 0xFFFFFF);
     }
-    updatePixels();
+    pg.updatePixels();
   }
 }
