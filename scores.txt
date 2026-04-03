@@ -613,3 +613,59 @@ game  RIGHT wins  11-8  (games L:0 R:1)
 === session 2026-03-29 21:25:47 ===
 === session 2026-03-29 21:29:05 ===
 === session 2026-03-29 21:39:08 ===
+=== session 2026-03-30 19:48:24 ===
+=== session 2026-03-30 19:51:10 ===
+=== session 2026-03-30 19:53:46 ===
+=== session 2026-03-30 19:56:47 ===
+=== session 2026-03-30 20:04:27 ===
+=== session 2026-03-30 20:11:10 ===
+=== session 2026-03-30 20:23:41 ===
+=== session 2026-03-30 20:27:49 ===
+=== session 2026-03-30 20:32:50 ===
+=== session 2026-03-30 20:34:40 ===
+=== session 2026-03-30 20:38:45 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+=== session 2026-03-30 20:48:31 ===
+=== session 2026-04-03 19:56:59 ===
+  point  RIGHT  [receiver]  rally:15 ***  score 0-1
+  point  LEFT   [server  ]  rally:14 ***  score 1-1
+  point  LEFT   [receiver]  rally:7 ***  score 2-1
+  point  RIGHT  [server  ]  rally:14 ***  score 2-2
+  point  LEFT   [server  ]  rally:2  score 3-2
+=== session 2026-04-03 20:37:55 ===
+=== session 2026-04-03 20:38:42 ===
+=== session 2026-04-03 20:41:25 ===
+=== session 2026-04-03 20:46:17 ===
+=== session 2026-04-03 20:48:00 ===
+=== session 2026-04-03 20:51:12 ===
+=== session 2026-04-03 23:58:25 ===
+=== session 2026-04-03 23:59:43 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  RIGHT  [receiver]  rally:1  score 0-2
+  point  LEFT   [receiver]  rally:2  score 1-2
+=== session 2026-04-04 00:05:20 ===
+=== session 2026-04-04 00:08:33 ===
+=== session 2026-04-04 00:11:17 ===
+=== session 2026-04-04 00:11:36 ===
+=== session 2026-04-04 00:12:23 ===
+=== session 2026-04-04 00:13:32 ===
+=== session 2026-04-04 00:15:34 ===
+=== session 2026-04-04 00:16:29 ===
+=== session 2026-04-04 00:16:48 ===
+=== session 2026-04-04 00:17:48 ===
+=== session 2026-04-04 00:19:57 ===
+=== session 2026-04-04 00:20:46 ===
+=== session 2026-04-04 00:28:43 ===
+=== session 2026-04-04 00:30:52 ===
+=== session 2026-04-04 00:33:42 ===
+=== session 2026-04-04 00:37:16 ===
+=== session 2026-04-04 00:39:00 ===
+=== session 2026-04-04 00:39:27 ===
+=== session 2026-04-04 00:44:21 ===
+=== session 2026-04-04 00:46:14 ===
+=== session 2026-04-04 00:47:27 ===
+=== session 2026-04-04 00:48:17 ===
+=== session 2026-04-04 00:51:17 ===
+=== session 2026-04-04 00:53:53 ===
+=== session 2026-04-04 00:57:35 ===

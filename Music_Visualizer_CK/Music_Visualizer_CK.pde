@@ -10,11 +10,13 @@ Config config;
 Audio audio;
 Controller controller;
 IScene[] scenes;
-final int SCENE_COUNT = 19;
+final int SCENE_COUNT = 23;
 int previousState = -1;
 
 AudioAnalyser analyzer;
 PFont monoFont;
+PGraphics sceneBuffer;
+PShader bloomShader;
 
 
 // UI scale: 1.0 at 1080p, grows proportionally for higher resolutions.
@@ -105,7 +107,7 @@ void setSongToVisualize() {
   log_to_stdo("Current song: " + config.SONG_TO_VISUALIZE);
   log_to_stdo("sketchPath() = " + sketchPath());
   log_to_stdo("user.dir     = " + System.getProperty("user.dir"));
-  boolean useRandomSong = isDevMode();
+  boolean useRandomSong = isDevMode() || SMOKE_TEST_MODE;
   if (useRandomSong) {
     // Dev shortcut: if .devsong exists, always use that song while developing.
     // e.g.  echo "/home/user/Music/song.mp3" > Music_Visualizer_CK/.devsong
@@ -237,17 +239,25 @@ void settings() {
 }
 
 void setup() {
+  sceneBuffer = createGraphics(width, height, P3D);
+  sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
   background(200);
   config = new Config();
   analyzer = new AudioAnalyser();
   log_to_stdo("canvas spawned");
   initializeGlobals();
+  // Detect smoke test early so setSongToVisualize() skips the file picker
+  if (isSmokeTestMode()) {
+    SMOKE_TEST_MODE = true;
+    println("[SMOKE TEST] Detected — will exercise all " + SCENE_COUNT + " scenes");
+  }
   setSongToVisualize();
   surface.setResizable(true);
-  frameRate(160);
+  frameRate(60);
   surface.setTitle(config.TITLE_BAR);
   setupController();
   loadSongToVisualize();
+  bloomShader = loadShader("bloom.glsl");
 
   // Initialize scene registry (0-18)
   scenes = new IScene[SCENE_COUNT];
@@ -270,10 +280,20 @@ void setup() {
   scenes[16] = new AntigravityScene();
   scenes[17] = new FractalScene();
   scenes[18] = new ShaderScene();
+  scenes[19] = new WormScene();
+  scenes[20] = new FFTWormScene();
+  scenes[21] = new DeepSpaceScene();
+  scenes[22] = new CyberGridScene();
 
-  // Initial lifecycle trigger
+  // Initialise smoke test runner after all scenes exist
+  if (SMOKE_TEST_MODE) {
+    smokeTestRunner = new SmokeTestRunner();
+    println("[SMOKE TEST] Runner initialised — starting on next draw()");
+  }
+
+  // Initial lifecycle trigger (skipped in smoke test — runner manages this)
   previousState = config.STATE;
-  scenes[config.STATE].onEnter();
+  if (!SMOKE_TEST_MODE) scenes[config.STATE].onEnter();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
@@ -342,7 +362,9 @@ void keyPressed() {
   if (key == 'N') shuffleSong();
   if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
-  if (key == 'q' || key == 'Q' || key == 'x' || key == 'X') {
+  if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
+  if (key == 'q' || key == 'Q' || key == ESC) {
+    key = 0; // suppress Processing's default ESC→exit behaviour
     audio.stop();
     exit();
   }
@@ -422,9 +444,12 @@ void log_to_stdo(String message_to_log) {
 
 
 
-public void getUserInput(boolean usingController) {
-  if (!usingController) return;
+public void getUserInput() {
+  // Always read (handles hot-plug retry inside Controller.read()).
+  // Update the flag each frame so scenes react as soon as the device appears.
   controller.read();
+  config.USING_CONTROLLER = controller.isConnected();
+  if (!config.USING_CONTROLLER) return;
 
   // 1. Delegate to active scene
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
@@ -432,40 +457,48 @@ public void getUserInput(boolean usingController) {
   }
 
   // 2. Global Controller Shortcuts
-  if (controller.dpad_hat_switch_up) {
+  if (controller.dpad_up_just_pressed) {
     config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
     if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
   }
-  if (controller.dpad_hat_switch_left) {
+  if (controller.dpad_left_just_pressed) {
     config.DRAW_PLASMA = !config.DRAW_PLASMA;
     if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
   }
-  if (controller.dpad_hat_switch_right) {
+  if (controller.dpad_right_just_pressed) {
     config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
     if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
   }
-  if (controller.dpad_hat_switch_down) {
+  if (controller.dpad_down_just_pressed) {
     config.DRAW_TUNNEL = false;
     config.DRAW_POLAR_PLASMA = false;
     config.DRAW_PLASMA = false;
   }
 
-  if (controller.lb_just_pressed) switchScene(prevActiveScene());
-  if (controller.rb_just_pressed) switchScene(nextActiveScene());
+  if (controller.lb_just_pressed) {
+    println("CONTROLLER: LB pressed -> switching prev");
+    switchScene(prevActiveScene());
+  }
+  if (controller.rb_just_pressed) {
+    println("CONTROLLER: RB pressed -> switching next");
+    switchScene(nextActiveScene());
+  }
   
-  if (controller.back_just_pressed) stopSong();
-  if (controller.start_just_pressed) startSong();
+  if (controller.back_just_pressed) {
+    println("CONTROLLER: BACK pressed -> stopping");
+    stopSong();
+  }
+  if (controller.start_just_pressed) {
+    println("CONTROLLER: START pressed -> starting");
+    startSong();
+  }
 }
-void setBackGroundFillMode(){
-    fill(#fbfafa); 
-}
-
-int previous_state = -1;
-
 // ── Active scene list ─────────────────────────────────────────────────────────
 // Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
 // in the codebase but excluded from rotation for now.
-final int[] SCENE_ORDER = {1, 3, 2, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18};
+// Fan-favourite scenes, in display order. Only these are reachable via
+// LB/RB cycling or keyboard number keys. Add a scene number here to re-enable it.
+final int[] SCENE_ORDER = {1, 4, 6, 7, 13, 14, 17, 19};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -494,14 +527,34 @@ int    crossfadeFrame     = 0;
 final int CROSSFADE_DURATION = 45; // frames  (~0.75 s at 60 fps)
 
 void switchScene(int newState) {
+  if (SMOKE_TEST_MODE) return; // runner manages scene state directly
+  // Only allow scenes listed in SCENE_ORDER — keeps disabled scenes unreachable
+  // from both LB/RB cycling and keyboard number keys.
+  boolean inRotation = false;
+  for (int i = 0; i < SCENE_ORDER.length; i++) {
+    if (SCENE_ORDER[i] == newState) { inRotation = true; break; }
+  }
+  if (!inRotation) return;
   if (config.STATE == newState) return;
   crossfadeSnapshot = get();        // freeze the last frame of the current scene
   crossfadeFrame    = 0;
   config.STATE      = newState;
-  previous_state    = newState;     // suppress the background(0) clear so no black flash
 }
 
 void draw() {
+  // ── Smoke test fast-path ─────────────────────────────────────────────────
+  if (SMOKE_TEST_MODE) {
+    // Keep audio ticking so FFT data is valid (scenes read it in drawScene)
+    audio.forward();
+    audio.beat.detect(audio.player.mix);
+    analyzer.update(audio);
+    smokeTestRunner.tick(sceneBuffer);
+    blendMode(BLEND);
+    image(sceneBuffer, 0, 0);
+    return;
+  }
+  // ────────────────────────────────────────────────────────────────────────
+  if (frameCount % 60 == 0) println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
   // 1. Scene Lifecycle Management
   if (config.STATE != previousState) {
     if (previousState >= 0 && previousState < SCENE_COUNT) {
@@ -511,6 +564,20 @@ void draw() {
     if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
       scenes[config.STATE].onEnter();
     }
+    // ── Clean render state on every scene switch ─────────────────────────
+    // 1. Clear the persistent sceneBuffer so old scene pixels don't bleed
+    //    through on the first few frames of the incoming scene.
+    sceneBuffer.beginDraw();
+    sceneBuffer.blendMode(BLEND);
+    sceneBuffer.background(0);
+    sceneBuffer.endDraw();
+    // 2. Reset stacking mode — BACKGROUND_ENABLED = false is OriginalScene-
+    //    specific and must not carry over to other scenes.
+    config.BACKGROUND_ENABLED = true;
+    // 3. Reset blend mode — changeBlendMode() is OriginalScene-specific and
+    //    must not affect how other scenes composite onto the main canvas.
+    config.CURRENT_BLEND_MODE_INDEX = 0;
+    blendMode(BLEND);
   }
 
   // 2. Continuous Logic Updates
@@ -522,15 +589,35 @@ void draw() {
   analyzer.update(audio);
 
   // Input update
-  getUserInput(config.USING_CONTROLLER);
+  getUserInput();
 
-  // 3. Render Active Scene
+  // 3. Render Active Scene to Buffer
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
-    pushMatrix();
-    scenes[config.STATE].drawScene();
-    popMatrix();
-    
-    // Global overlays
+    // Handle window resizing for buffer
+    if (sceneBuffer.width != width || sceneBuffer.height != height) {
+      sceneBuffer = createGraphics(width, height, P3D);
+      sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
+    }
+
+    sceneBuffer.beginDraw();
+    if (monoFont != null) sceneBuffer.textFont(monoFont);
+    // Default transformation for the buffer
+    sceneBuffer.pushMatrix();
+    scenes[config.STATE].drawScene(sceneBuffer);
+    sceneBuffer.popMatrix();
+    sceneBuffer.endDraw();
+
+    // 4. Post-Processing & Final Output
+    blendMode(BLEND); // always reset before compositing sceneBuffer — changeBlendMode() cycles main-canvas blend mode
+    if (config.BLOOM_ENABLED) {
+      shader(bloomShader);
+    }
+    image(sceneBuffer, 0, 0);
+    if (config.BLOOM_ENABLED) {
+      resetShader();
+    }
+
+    // 5. Global overlays (UI drawn at native res, over the buffer)
     if (config.SHOW_CODE) {
       drawCodeOverlay(scenes[config.STATE].getCodeLines());
     }
@@ -590,98 +677,6 @@ void drawSceneControlsHUD(String[] lines) {
 // Draws a terminal-style code overlay showing the formulas a scene uses.
 // Each scene passes in plain-English lines explaining its maths.
 // Controls HUD for scene 1 — shown on the right side when ` is pressed.
-void drawControlsHUD() {
-  // pushStyle() does not save blend mode — reset explicitly so scene's active
-  // blend mode (EXCLUSION, ADD, etc.) doesn't invert/corrupt the HUD colours.
-  blendMode(BLEND);
-  String[] sections = {
-    "=== CONTROLLER (scene 1) ===",
-    "LB / RB          prev / next scene",
-    "L Stick ↕        fin Y offset",
-    "R Stick ↕        wave amplitude",
-    "R Stick ↔        diamond width",
-    "L Trigger        tunnel zoom",
-    "A                rainbow fins",
-    "B                cycle blend mode",
-    "X / L-Click      stacking / trails mode",
-    "Y                flip fin direction",
-    "R-Click          inner diamonds",
-    "D-pad ↑          toggle tunnel",
-    "D-pad ←          toggle plasma",
-    "D-pad →          toggle polar plasma",
-    "D-pad ↓          clear backgrounds",
-    "Start / Back     play / stop song",
-    "",
-    "=== CONTROLLER (other scenes) ===",
-    "2: R ↔           heart grid columns",
-    "4: L ↕           rotation speed",
-    "4: R ↔           anchor count",
-    "4: A             beat pulse",
-    "6: R ↕           gravity",
-    "6: L ↕           magnus spin",
-    "6: A             randomise spin",
-    "7: L ↕           spin speed",
-    "7: R ↕           lattice drift",
-    "7: A             glow flash",
-    "9: L ↕           pulse sensitivity",
-    "9: Y             cycle bg mode",
-    "9: A             manual pulse",
-    "10: L ↔          wind drift",
-    "10: R ↕          ribbon length",
-    "10: R ↔          turbulence",
-    "10: A / Y        flash / hue shift",
-    "10: K / Space    palette / flash",
-    "14: L pan  R zoom/spin  LT/RT bio/tech  A ripple  B growth  X lab",
-    "",
-    "=== KEYBOARD ===",
-    "0–9              switch scene",
-    "`                toggle this HUD",
-    "t                tunnel",
-    "b                blend mode",
-    "d / >            diamonds",
-    "/                fins",
-    "w                waveform",
-    "n / N            next / shuffle song",
-  };
-
-  pushStyle();
-  textFont(monoFont);
-  float lineH = 18 * uiScale();
-  float pad   = 14 * uiScale();
-  float boxW  = 380 * uiScale();
-  float boxH  = pad * 2 + sections.length * lineH;
-  float boxX  = width - boxW - 12 * uiScale();
-  float boxY  = (height - boxH) / 2.0;
-
-  fill(0, 0, 0, 210);
-  noStroke();
-  rectMode(CORNER);
-  rect(boxX, boxY, boxW, boxH, 6);
-
-  stroke(0, 220, 80, 180);
-  strokeWeight(1.5);
-  noFill();
-  rect(boxX, boxY, boxW, boxH, 6);
-
-  textAlign(LEFT, TOP);
-  textSize(13 * uiScale());
-  float tx = boxX + pad;
-  float ty = boxY + pad;
-  for (int i = 0; i < sections.length; i++) {
-    String line = sections[i];
-    if (line.startsWith("===")) {
-      fill(0, 255, 120);
-    } else if (line.equals("")) {
-      // blank spacer — skip
-    } else {
-      fill(180, 255, 180);
-    }
-    text(line, tx, ty + i * lineH);
-  }
-  popStyle();
-  blendMode(config.CURRENT_BLEND_MODE_INDEX);  // restore scene blend mode
-}
-
 // Toggle with the backtick key (`).
 void drawCodeOverlay(String[] lines) {
   // Same style as drawSceneControlsHUD but anchored to the left edge.
@@ -732,15 +727,15 @@ float pulseValBetweenRange(float currentVal, float minVal, float maxVal) {
   return currentVal;
 }
 
-void drawSongNameOnScreen(String song_name, float nameLocationX, float nameLocationY) {
-  textSize(24 * uiScale());
-  textAlign(CENTER);
-  fill(0);
+void drawSongNameOnScreen(PGraphics pg, String song_name, float nameLocationX, float nameLocationY) {
+  pg.textSize(24 * uiScale());
+  pg.textAlign(CENTER);
+  pg.fill(0);
   
-  text(song_name, nameLocationX + 2, nameLocationY + 2);
+  pg.text(song_name, nameLocationX + 2, nameLocationY + 2);
   
-  fill(255);
-  text(song_name, nameLocationX, nameLocationY);
+  pg.fill(255);
+  pg.text(song_name, nameLocationX, nameLocationY);
 }
 
 void mouseClicked() {

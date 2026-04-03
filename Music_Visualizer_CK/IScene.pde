@@ -7,8 +7,9 @@
 interface IScene {
   /**
    * Main render method called every frame when this scene is active.
+   * Renders its visuals to the provided PGraphics buffer.
    */
-  void drawScene();
+  void drawScene(PGraphics pg);
 
   /**
    * Called once when the application switches TO this scene.

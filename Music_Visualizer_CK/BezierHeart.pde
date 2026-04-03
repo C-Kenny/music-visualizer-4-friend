@@ -39,28 +39,28 @@ class BezierHeart {
     bezier_heart_fill_color_g = new_heart_color_g;
   }
 
-  void drawBezierHeart(float xHeartOffset, float yHeartOffset, float s) {
-      pushMatrix();
-        scale(s);
-        translate(xHeartOffset, yHeartOffset);
+  void drawBezierHeart(PGraphics pg, float xHeartOffset, float yHeartOffset, float s) {
+      pg.pushMatrix();
+        pg.scale(s);
+        pg.translate(xHeartOffset, yHeartOffset);
 
-        fill(bezier_heart_fill_color_r, bezier_heart_fill_color_g, bezier_heart_fill_color_b);
-        stroke(255, 1, 1);
-        strokeWeight(1.0);
+        pg.fill(bezier_heart_fill_color_r, bezier_heart_fill_color_g, bezier_heart_fill_color_b);
+        pg.stroke(255, 1, 1);
+        pg.strokeWeight(1.0);
 
-        bezier(
+        pg.bezier(
           bezier_heart_l_x1,                        bezier_heart_l_y1,
           bezier_heart_l_x2 - (config.HEART_PULSE),        bezier_heart_l_y2,
           bezier_heart_l_x3 - (config.HEART_PULSE / 2.0),  bezier_heart_l_y3,
           bezier_heart_l_x4,                        bezier_heart_l_y4
         );
-        bezier(
+        pg.bezier(
           bezier_heart_r_x1,                        bezier_heart_r_y1,
           bezier_heart_r_x2 + (config.HEART_PULSE),        bezier_heart_r_y2,
           bezier_heart_r_x3 + (config.HEART_PULSE / 2.0),  bezier_heart_r_y3,
           bezier_heart_r_x4,                        bezier_heart_r_y4
         );
-      popMatrix();
+      pg.popMatrix();
   }
 
 }

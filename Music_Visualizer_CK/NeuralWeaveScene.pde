@@ -86,14 +86,14 @@ class NeuralWeaveScene implements IScene {
     randomSeed(millis());
   }
 
-  void drawDiffusion(float cx, float cy, float bass) {
+  void drawDiffusion(PGraphics pg, float cx, float cy, float bass) {
     float env = max(metabolism, ripple * 0.6);
     if (env < 0.03) return;
 
-    colorMode(HSB, 360, 255, 255, 255);
-    noStroke();
+    pg.colorMode(HSB, 360, 255, 255, 255);
+    pg.noStroke();
     float pulse = bass * 0.45 + ripple * 0.35;
-    float maxR = min(width, height) * 0.52;
+    float maxR = min(pg.width, pg.height) * 0.52;
 
     for (int k = 0; k < blobAng.length; k++) {
       float ang = blobAng[k] + organicPhase * 0.35;
@@ -102,13 +102,13 @@ class NeuralWeaveScene implements IScene {
       float by = cy + sin(ang) * spread * 0.38;
       float h = (globalHue + k * 26 + (labMode ? 15 : 0)) % 360;
       float al = (6 + metabolism * 62 + pulse * 35) * (labMode ? 0.75 : 1.0);
-      fill(h, 150 + (labMode ? 40 : 0), 255, constrain(al, 0, 115));
-      float wob = 1.0 + sin(frameCount * 0.018 + k * 1.1) * 0.07;
-      ellipse(bx, by, spread * wob * 1.05, spread * 0.95 * wob);
+      pg.fill(h, 150 + (labMode ? 40 : 0), 255, constrain(al, 0, 115));
+      float wob = 1.0 + sin(pg.parent.frameCount * 0.018 + k * 1.1) * 0.07;
+      pg.ellipse(bx, by, spread * wob * 1.05, spread * 0.95 * wob);
     }
   }
 
-  void drawBridge(float x0, float y0, float x1, float y1,
+  void drawBridge(PGraphics pg, float x0, float y0, float x1, float y1,
                   float amp, int band, int N, float bass) {
     float mx = (x0 + x1) * 0.5;
     float my = (y0 + y1) * 0.5;
@@ -118,30 +118,30 @@ class NeuralWeaveScene implements IScene {
     if (len < 0.001) return;
     float nx = -dy / len;
     float ny = dx / len;
-    float bow = (14 + techInject * 22) * (1.0 + sin(frameCount * 0.035 + band) * 0.35);
+    float bow = (14 + techInject * 22) * (1.0 + sin(pg.parent.frameCount * 0.035 + band) * 0.35);
     float cx1 = mx + nx * bow;
     float cy1 = my + ny * bow;
 
     float t = (float)band / max(1, N - 1);
     float hue = hueFor(t, amp);
     float alpha = (12 + amp * 160 * edgeGain + bass * 25) * (0.55 + techInject * 0.45);
-    stroke(hue, 170, 255, constrain(alpha, 0, 200));
-    strokeWeight(0.5 + amp * 2.8 * edgeGain + techInject * 1.2);
+    pg.stroke(hue, 170, 255, constrain(alpha, 0, 200));
+    pg.strokeWeight(0.5 + amp * 2.8 * edgeGain + techInject * 1.2);
 
     int steps = max(10, (int)(len / 10));
-    noFill();
-    beginShape(LINE_STRIP);
+    pg.noFill();
+    pg.beginShape(); // using generic beginShape (consistent with LINE_STRIP style)
     for (int s = 0; s <= steps; s++) {
       float u = s / (float)steps;
       float omt = 1 - u;
       float bx = omt * omt * x0 + 2 * omt * u * cx1 + u * u * x1;
       float by = omt * omt * y0 + 2 * omt * u * cy1 + u * u * y1;
-      vertex(bx, by);
+      pg.vertex(bx, by);
     }
-    endShape();
+    pg.endShape();
   }
 
-  void drawBridges(float cellW, float cellH, int N, float bass) {
+  void drawBridges(PGraphics pg, float cellW, float cellH, int N, float bass) {
     if (growthMode == 0 || bridgeCount == 0) return;
     for (int k = 0; k < bridgeCount; k++) {
       int i0 = bridges[k][0], j0 = bridges[k][1];
@@ -151,25 +151,25 @@ class NeuralWeaveScene implements IScene {
       float x1 = i1 * cellW + nodeJX(i1, j1);
       float y1 = j1 * cellH + nodeJY(i1, j1);
       int b = ((i0 + j0 + i1 + j1) * 3 + k) % N;
-      drawBridge(x0, y0, x1, y1, smoothAmp[b], b, N, bass);
+      drawBridge(pg, x0, y0, x1, y1, smoothAmp[b], b, N, bass);
     }
   }
 
-  void drawLabOverlay(float tech) {
-    pushStyle();
-    stroke(130, 210, 255, (28 + tech * 55) * (labMode ? 1.0 : tech));
-    strokeWeight(1);
-    for (int y = 0; y < height; y += 4) {
-      line(0, y, width, y);
+  void drawLabOverlay(PGraphics pg, float tech) {
+    pg.pushStyle();
+    pg.stroke(130, 210, 255, (28 + tech * 55) * (labMode ? 1.0 : tech));
+    pg.strokeWeight(1);
+    for (int y = 0; y < pg.height; y += 4) {
+      pg.line(0, y, pg.width, y);
     }
-    stroke(0, 220, 255, (35 + tech * 70) * (labMode ? 1.0 : tech));
-    float cx = width * 0.5, cy = height * 0.5;
-    line(cx - 22, cy, cx + 22, cy);
-    line(cx, cy - 22, cx, cy + 22);
-    popStyle();
+    pg.stroke(0, 220, 255, (35 + tech * 70) * (labMode ? 1.0 : tech));
+    float cx = pg.width * 0.5, cy = pg.height * 0.5;
+    pg.line(cx - 22, cy, cx + 22, cy);
+    pg.line(cx, cy - 22, cx, cy + 22);
+    pg.popStyle();
   }
 
-  void drawScene() {
+  void drawScene(PGraphics pg) {
     if (!initialised) {
       smoothAmp = new float[analyzer.spectrum.length];
       initialised = true;
@@ -198,22 +198,22 @@ class NeuralWeaveScene implements IScene {
       regenBridges();
     }
 
-    background(3, 5, 12);
+    pg.background(3, 5, 12);
 
-    float cx = width  * 0.5 + panX;
-    float cy = height * 0.5 + panY;
-    float span = min(width, height) * 0.42 * zoom;
+    float cx = pg.width  * 0.5 + panX;
+    float cy = pg.height * 0.5 + panY;
+    float span = min(pg.width, pg.height) * 0.42 * zoom;
     float cellW = (span * 2) / cols;
     float cellH = (span * 2) / rows;
 
-    blendMode(ADD);
-    colorMode(HSB, 360, 255, 255, 255);
-    drawDiffusion(cx, cy, bass);
+    pg.blendMode(ADD);
+    pg.colorMode(HSB, 360, 255, 255, 255);
+    drawDiffusion(pg, cx, cy, bass);
 
-    pushMatrix();
-    translate(cx, cy);
-    rotate(rot);
-    translate(-cols * cellW * 0.5, -rows * cellH * 0.5);
+    pg.pushMatrix();
+    pg.translate(cx, cy);
+    pg.rotate(rot);
+    pg.translate(-cols * cellW * 0.5, -rows * cellH * 0.5);
 
     for (int j = 0; j <= rows; j++) {
       for (int i = 0; i < cols; i++) {
@@ -222,7 +222,7 @@ class NeuralWeaveScene implements IScene {
         float y0 = j * cellH + nodeJY(i, j);
         float x1 = (i + 1) * cellW + nodeJX(i + 1, j);
         float y1 = j * cellH + nodeJY(i + 1, j);
-        edgeSeg(x0, y0, x1, y1, smoothAmp[b], b, N, bass);
+        edgeSeg(pg, x0, y0, x1, y1, smoothAmp[b], b, N, bass);
       }
     }
     for (int j = 0; j < rows; j++) {
@@ -232,7 +232,7 @@ class NeuralWeaveScene implements IScene {
         float y0 = j * cellH + nodeJY(i, j);
         float x1 = i * cellW + nodeJX(i, j + 1);
         float y1 = (j + 1) * cellH + nodeJY(i, j + 1);
-        edgeSeg(x0, y0, x1, y1, smoothAmp[b], b, N, bass);
+        edgeSeg(pg, x0, y0, x1, y1, smoothAmp[b], b, N, bass);
       }
     }
     for (int j = 0; j < rows; j++) {
@@ -243,22 +243,22 @@ class NeuralWeaveScene implements IScene {
           float y0 = j * cellH + nodeJY(i, j);
           float x1 = (i + 1) * cellW + nodeJX(i + 1, j + 1);
           float y1 = (j + 1) * cellH + nodeJY(i + 1, j + 1);
-          edgeSeg(x0, y0, x1, y1, smoothAmp[b] * 0.85, b, N, bass);
+          edgeSeg(pg, x0, y0, x1, y1, smoothAmp[b] * 0.85, b, N, bass);
         }
       }
     }
 
-    drawBridges(cellW, cellH, N, bass);
+    drawBridges(pg, cellW, cellH, N, bass);
 
     float mx = cols * cellW * 0.5;
     float my = rows * cellH * 0.5;
-    noStroke();
+    pg.noStroke();
     for (int j = 0; j <= rows; j++) {
       for (int i = 0; i <= cols; i++) {
         float x = i * cellW + nodeJX(i, j);
         float y = j * cellH + nodeJY(i, j);
         float d = dist(x, y, mx, my);
-        float rip = ripple * (0.4 + 0.6 * sin(d * 0.08 + frameCount * 0.12));
+        float rip = ripple * (0.4 + 0.6 * sin(d * 0.08 + pg.parent.frameCount * 0.12));
         int b = (i * 13 + j * 17) % N;
         float a = smoothAmp[b];
         float hue = hueFor((float)b / max(1, N - 1), a);
@@ -267,62 +267,62 @@ class NeuralWeaveScene implements IScene {
 
         if (vesicles) {
           float ves = (growthMode >= 2 ? 1.35 : 1.0) * (1.0 + metabolism * 0.4);
-          fill(hue, 120, 255, constrain(12 + bass * 40 + metabolism * 35, 0, 90));
-          ellipse(x, y, (14 + a * 22) * ves, (14 + a * 22) * ves);
+          pg.fill(hue, 120, 255, constrain(12 + bass * 40 + metabolism * 35, 0, 90));
+          pg.ellipse(x, y, (14 + a * 22) * ves, (14 + a * 22) * ves);
         }
 
-        fill(hue, 200, constrain(br, 0, 255), constrain(al, 0, 255));
+        pg.fill(hue, 200, constrain(br, 0, 255), constrain(al, 0, 255));
         float sz = 2.2 + a * 9 + bass * 5 + rip * 6 + techInject * 2;
-        ellipse(x, y, sz, sz);
+        pg.ellipse(x, y, sz, sz);
       }
     }
 
-    popMatrix();
+    pg.popMatrix();
 
-    blendMode(BLEND);
-    colorMode(RGB, 255);
+    pg.blendMode(BLEND);
+    pg.colorMode(RGB, 255);
 
     float tech = max(labMode ? 1.0 : 0, techInject);
     if (tech > 0.08) {
-      drawLabOverlay(tech);
+      drawLabOverlay(pg, tech);
     }
 
-    drawSongNameOnScreen(config.SONG_NAME, width * 0.5, height - 5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width * 0.5, pg.height - 5);
 
     String[] palNames = {"Nebula", "Solar", "Glacier", "Mono"};
     String[] growthNames = {"Mesh", "Synapse web", "Tissue bloom"};
-    pushStyle();
+    pg.pushStyle();
     float ts = 11 * uiScale(), lh = ts * 1.28, mg = 5 * uiScale();
-    fill(0, 165); noStroke(); rectMode(CORNER);
-    rect(8, 8, 360 * uiScale(), mg + lh * 7);
-    fill(180, 230, 255); textSize(ts); textAlign(LEFT, TOP);
-    text("Neural Weave  (" + cols + "\u00d7" + rows + ")", 12, 8 + mg);
-    fill(200, 215, 235);
-    text("Growth: " + growthNames[growthMode] + "  (B / G)",                    12, 8 + mg + lh);
-    text("Palette: " + palNames[palette] + "  (K | pad Y)   Vesicles: "
+    pg.fill(0, 165); pg.noStroke(); pg.rectMode(CORNER);
+    pg.rect(8, 8, 360 * uiScale(), mg + lh * 7);
+    pg.fill(180, 230, 255); pg.textSize(ts); pg.textAlign(LEFT, TOP);
+    pg.text("Neural Weave  (" + cols + "\u00d7" + rows + ")", 12, 8 + mg);
+    pg.fill(200, 215, 235);
+    pg.text("Growth: " + growthNames[growthMode] + "  (B / G)",                    12, 8 + mg + lh);
+    pg.text("Palette: " + palNames[palette] + "  (K | pad Y)   Vesicles: "
          + (vesicles ? "on" : "off") + "  (V)",                                  12, 8 + mg + lh * 2);
-    text("LT metabolism " + nf(metabolism, 1, 2) + "   RT tech " + nf(techInject, 1, 2), 12, 8 + mg + lh * 3);
-    text("Lab: " + (labMode ? "on" : "off") + "  (E | pad X)   Edge: "
+    pg.text("LT metabolism " + nf(metabolism, 1, 2) + "   RT tech " + nf(techInject, 1, 2), 12, 8 + mg + lh * 3);
+    pg.text("Lab: " + (labMode ? "on" : "off") + "  (E | pad X)   Edge: "
          + nf(edgeGain, 1, 2) + "  (- / =)",                                      12, 8 + mg + lh * 4);
-    text("L3 reset view   R3 reshuffle bridges",                                  12, 8 + mg + lh * 5);
-    text("Ripple " + nf(ripple, 1, 2) + "   [ ] grid",                            12, 8 + mg + lh * 6);
-    popStyle();
+    pg.text("L3 reset view   R3 reshuffle bridges",                                  12, 8 + mg + lh * 5);
+    pg.text("Ripple " + nf(ripple, 1, 2) + "   [ ] grid",                            12, 8 + mg + lh * 6);
+    pg.popStyle();
   }
 
-  void edgeSeg(float x1, float y1, float x2, float y2,
+  void edgeSeg(PGraphics pg, float x1, float y1, float x2, float y2,
                float amp, int band, int N, float bass) {
     float t = (float)band / max(1, N - 1);
     float hue = hueFor(t, amp);
     float alpha = (22 + amp * 220 * edgeGain) * (0.75 + bass * 0.35);
     float sw = 0.6 + amp * 4.0 * edgeGain + bass * 0.8;
-    stroke(hue, 175, 255, constrain(alpha, 0, 255));
-    strokeWeight(sw);
+    pg.stroke(hue, 175, 255, constrain(alpha, 0, 255));
+    pg.strokeWeight(sw);
 
     int segs = max(4, (int)(dist(x1, y1, x2, y2) / 14));
-    float ph = frameCount * 0.04 + band * 0.3;
+    float ph = pg.parent.frameCount * 0.04 + band * 0.3;
     float org = metabolism * (1.2 + growthMode * 0.15);
-    noFill();
-    beginShape(LINE_STRIP);
+    pg.noFill();
+    pg.beginShape();
     for (int s = 0; s <= segs; s++) {
       float u = s / (float)segs;
       float x = lerp(x1, x2, u);
@@ -336,9 +336,9 @@ class NeuralWeaveScene implements IScene {
       }
       float wobble = sin(u * TWO_PI + ph) * amp * 2.2 * edgeGain
                    + sin(u * TWO_PI * 3 + ph * 1.3) * amp * org * 1.1;
-      vertex(x + nx * wobble, y + ny * wobble);
+      pg.vertex(x + nx * wobble, y + ny * wobble);
     }
-    endShape();
+    pg.endShape();
   }
 
   float hueFor(float t, float amp) {

@@ -48,13 +48,14 @@ class Halo2LogoScene implements IScene {
       return;
     }
 
+    // Initial scale-up values
     rW = width  / RENDER_SCALE;
     rH = height / RENDER_SCALE;
 
     // Scale logo to fit ~82% of the shorter screen dimension, keep aspect ratio
-    float scale = min(width * 0.82, height * 0.82) / max(logo.width, logo.height);
-    logoW = logo.width  * scale;
-    logoH = logo.height * scale;
+    float sc = min(width * 0.82, height * 0.82) / max(logo.width, logo.height);
+    logoW = logo.width  * sc;
+    logoH = logo.height * sc;
     logoX = (width  - logoW) / 2.0;
     logoY = (height - logoH) / 2.0;
 
@@ -130,14 +131,27 @@ class Halo2LogoScene implements IScene {
 
   // ── main draw ─────────────────────────────────────────────────────────────
 
-  void drawScene() {
+  void drawScene(PGraphics pg) {
     if (!loaded) {
-      background(0);
-      fill(255, 0, 0);
-      textAlign(CENTER, CENTER);
-      textSize(20 * uiScale());
-      text("Missing: data/images/halo2_logo.gif", width/2, height/2);
+      pg.background(0);
+      pg.fill(255, 0, 0);
+      pg.textAlign(CENTER, CENTER);
+      pg.textSize(20 * uiScale());
+      pg.text("Missing: data/images/halo2_logo.gif", pg.width/2.0, pg.height/2.0);
       return;
+    }
+
+    // --- dynamic resize check ---------------------------------------------
+    if (pg.width != rW * RENDER_SCALE || pg.height != rH * RENDER_SCALE) {
+      rW = pg.width  / RENDER_SCALE;
+      rH = pg.height / RENDER_SCALE;
+      float sc = min(pg.width * 0.82, pg.height * 0.82) / max(logo.width, logo.height);
+      logoW = logo.width  * sc;
+      logoH = logo.height * sc;
+      logoX = (pg.width  - logoW) / 2.0;
+      logoY = (pg.height - logoH) / 2.0;
+      buildMask();
+      canvas = createGraphics(rW, rH);
     }
 
     // --- audio analysis ---------------------------------------------------
@@ -166,37 +180,37 @@ class Halo2LogoScene implements IScene {
     frame.mask(maskImg);
 
     // --- composite onto black screen -------------------------------------
-    background(0);
+    pg.background(0);
 
-    pushMatrix();
-      translate(width / 2.0, height / 2.0);
-      scale(currentScale);
-      translate(-width / 2.0, -height / 2.0);
-      image(frame, 0, 0, width, height);  // scale rW×rH up to full screen
-    popMatrix();
+    pg.pushMatrix();
+      pg.translate(pg.width / 2.0, pg.height / 2.0);
+      pg.scale(currentScale);
+      pg.translate(-pg.width / 2.0, -pg.height / 2.0);
+      pg.image(frame, 0, 0, pg.width, pg.height);  // scale rW×rH up to full screen
+    pg.popMatrix();
 
     // Subtle outer glow ring on beat
     if (currentScale > 1.02) {
-      pushStyle();
-        colorMode(HSB, 360, 255, 255, 255);
-        noFill();
+      pg.pushStyle();
+        pg.colorMode(HSB, 360, 255, 255, 255);
+        pg.noFill();
         float glowAlpha = map(currentScale, 1.0, 1.0 + pulseSens, 0, 180);
-        stroke(hueShift, 200, 255, glowAlpha);
-        strokeWeight(6);
-        ellipse(width / 2.0, height / 2.0,
+        pg.stroke(hueShift, 200, 255, glowAlpha);
+        pg.strokeWeight(6);
+        pg.ellipse(pg.width / 2.0, pg.height / 2.0,
                 logoW * currentScale * 1.05,
                 logoH * currentScale * 1.05);
-        strokeWeight(2);
-        stroke(hueShift, 150, 255, glowAlpha * 0.5);
-        ellipse(width / 2.0, height / 2.0,
+        pg.strokeWeight(2);
+        pg.stroke(hueShift, 150, 255, glowAlpha * 0.5);
+        pg.ellipse(pg.width / 2.0, pg.height / 2.0,
                 logoW * currentScale * 1.12,
                 logoH * currentScale * 1.12);
-        colorMode(RGB, 255);
-      popStyle();
+        pg.colorMode(RGB, 255);
+      pg.popStyle();
     }
 
-    drawHUD(bass, mid, high);
-    drawSongNameOnScreen(config.SONG_NAME, width / 2, height - 5);
+    drawHUD(pg, bass, mid, high);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
   }
 
   // ── background modes ──────────────────────────────────────────────────────
@@ -263,24 +277,24 @@ class Halo2LogoScene implements IScene {
 
   // ── HUD ───────────────────────────────────────────────────────────────────
 
-  void drawHUD(float bass, float mid, float high) {
+  void drawHUD(PGraphics pg, float bass, float mid, float high) {
     String[] bgNames = {"Plasma Sweep", "Radial Burst", "Solid Pulse"};
-    pushStyle();
+    pg.pushStyle();
       float ts = 11 * uiScale();
       float lh = ts * 1.3;
       float margin = 4 * uiScale();
-      fill(0, 140);
-      noStroke();
-      rectMode(CORNER);
-      rect(8, 8, 250 * uiScale(), margin + lh * 4);
-      fill(255);
-      textSize(ts);
-      textAlign(LEFT, TOP);
-      text("Scene: Halo 2 Logo",                              12, 8 + margin);
-      text("bg: "    + bgNames[bgMode] + "  (B to cycle)",   12, 8 + margin + lh);
-      text("pulse: " + nf(pulseSens, 1, 2) + "  Up/Down",    12, 8 + margin + lh*2);
-      text("bass/mid/high: " + nf(bass,1,1) + " / " + nf(mid,1,1) + " / " + nf(high,1,1), 12, 8 + margin + lh*3);
-    popStyle();
+      pg.fill(0, 140);
+      pg.noStroke();
+      pg.rectMode(CORNER);
+      pg.rect(8, 8, 250 * uiScale(), margin + lh * 4);
+      pg.fill(255);
+      pg.textSize(ts);
+      pg.textAlign(LEFT, TOP);
+      pg.text("Scene: Halo 2 Logo",                              12, 8 + margin);
+      pg.text("bg: "    + bgNames[bgMode] + "  (B to cycle)",   12, 8 + margin + lh);
+      pg.text("pulse: " + nf(pulseSens, 1, 2) + "  Up/Down",    12, 8 + margin + lh*2);
+      pg.text("bass/mid/high: " + nf(bass,1,1) + " / " + nf(mid,1,1) + " / " + nf(high,1,1), 12, 8 + margin + lh*3);
+    pg.popStyle();
   }
 
   // ── controls ──────────────────────────────────────────────────────────────

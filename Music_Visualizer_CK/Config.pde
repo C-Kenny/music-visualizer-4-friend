@@ -94,6 +94,7 @@ class Config {
 
   boolean SCREEN_RECORDING;
   boolean SHOW_CODE;
+  boolean BLOOM_ENABLED;
 
   ArrayList<String> songList;
   int currentSongIndex;
@@ -187,6 +188,7 @@ class Config {
     SCREEN_RECORDING = false;
     SHOW_CODE = false;
     LOGGING_ENABLED = false;
+    BLOOM_ENABLED = false;
 
     songList = new ArrayList<String>();
     currentSongIndex = 0;

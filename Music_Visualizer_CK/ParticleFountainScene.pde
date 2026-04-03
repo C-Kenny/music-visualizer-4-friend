@@ -41,21 +41,21 @@ class ParticleFountainScene implements IScene {
     for (int i = 0; i < MAX_PARTICLES; i++) pool.add(new Particle());
   }
 
-  void drawScene() {
+  void drawScene(PGraphics pg) {
     float bass_level = analyzer.bass;
     float mid_level  = analyzer.mid;
     float high_level = analyzer.high;
     boolean is_beat = analyzer.isBeat;
 
     if (!config.USING_CONTROLLER) {
-      emit_angle = atan2(mouseY - origin_y, mouseX - origin_x);
+      emit_angle = atan2(pg.parent.mouseY - origin_y, pg.parent.mouseX - origin_x);
     }
 
     float trail_opacity = long_trail ? 18 : 40;
-    noStroke();
-    rectMode(CORNER);
-    fill(0, 0, 0, trail_opacity);
-    rect(0, 0, width, height);
+    pg.noStroke();
+    pg.rectMode(CORNER);
+    pg.fill(0, 0, 0, trail_opacity);
+    pg.rect(0, 0, pg.width, pg.height);
 
     if (particles.size() < MAX_PARTICLES) {
       emitBass(bass_level);
@@ -64,7 +64,7 @@ class ParticleFountainScene implements IScene {
       if (is_beat) emitBurst(origin_x, origin_y, 20);
     }
 
-    colorMode(HSB, 360, 255, 255, 255);
+    pg.colorMode(HSB, 360, 255, 255, 255);
     for (int i = particles.size() - 1; i >= 0; i--) {
       Particle p = particles.get(i);
       p.vy  += gravity;
@@ -74,47 +74,47 @@ class ParticleFountainScene implements IScene {
       p.y   += p.vy;
       p.life -= p.life_decay;
 
-      if (p.life <= 0 || p.x < -50 || p.x > width + 50 || p.y > height + 50) {
+      if (p.life <= 0 || p.x < -50 || p.x > pg.width + 50 || p.y > pg.height + 50) {
         particles.remove(i);
         pool.add(p);
         continue;
       }
 
       float alpha = p.life * 255;
-      noStroke();
-      fill(p.hue, p.sat, 255, alpha * 0.15);
-      ellipse(p.x, p.y, p.size * 2.2, p.size * 2.2);
-      fill(p.hue, p.sat, 255, alpha);
-      ellipse(p.x, p.y, p.size, p.size);
+      pg.noStroke();
+      pg.fill(p.hue, p.sat, 255, alpha * 0.15);
+      pg.ellipse(p.x, p.y, p.size * 2.2, p.size * 2.2);
+      pg.fill(p.hue, p.sat, 255, alpha);
+      pg.ellipse(p.x, p.y, p.size, p.size);
     }
-    colorMode(RGB, 255);
+    pg.colorMode(RGB, 255);
 
-    pushStyle();
-      stroke(255, 255, 255, 60);
-      strokeWeight(1);
-      line(origin_x - 10, origin_y, origin_x + 10, origin_y);
-      line(origin_x, origin_y - 10, origin_x, origin_y + 10);
-    popStyle();
+    pg.pushStyle();
+      pg.stroke(255, 255, 255, 60);
+      pg.strokeWeight(1);
+      pg.line(origin_x - 10, origin_y, origin_x + 10, origin_y);
+      pg.line(origin_x, origin_y - 10, origin_x, origin_y + 10);
+    pg.popStyle();
 
-    pushStyle();
+    pg.pushStyle();
       float ts = 11 * uiScale();
       float lh = ts * 1.3;
       float margin = 4 * uiScale();
-      fill(0, 120);
-      noStroke();
-      rectMode(CORNER);
-      rect(8, 8, 270 * uiScale(), margin + lh * 5);
-      fill(255);
-      textSize(ts);
-      textAlign(LEFT, TOP);
-      text("Scene: Particle Fountain",             12, 8 + margin);
-      text("particles: " + particles.size() + " / " + MAX_PARTICLES, 12, 8 + margin + lh);
-      text("gravity: "   + nf(gravity, 1, 3) + "  Up/Down",           12, 8 + margin + lh*2);
-      text("spread: "    + nf(degrees(emit_spread), 1, 1) + "deg  [ ]", 12, 8 + margin + lh*3);
-      text("bass/mid/high: " + nf(bass_level,1,1) + " / " + nf(mid_level,1,1) + " / " + nf(high_level,1,1), 12, 8 + margin + lh*4);
-    popStyle();
+      pg.fill(0, 120);
+      pg.noStroke();
+      pg.rectMode(CORNER);
+      pg.rect(8, 8, 270 * uiScale(), margin + lh * 5);
+      pg.fill(255);
+      pg.textSize(ts);
+      pg.textAlign(LEFT, TOP);
+      pg.text("Scene: Particle Fountain",             12, 8 + margin);
+      pg.text("particles: " + particles.size() + " / " + MAX_PARTICLES, 12, 8 + margin + lh);
+      pg.text("gravity: "   + nf(gravity, 1, 3) + "  Up/Down",           12, 8 + margin + lh*2);
+      pg.text("spread: "    + nf(degrees(emit_spread), 1, 1) + "deg  [ ]", 12, 8 + margin + lh*3);
+      pg.text("bass/mid/high: " + nf(bass_level,1,1) + " / " + nf(mid_level,1,1) + " / " + nf(high_level,1,1), 12, 8 + margin + lh*4);
+    pg.popStyle();
 
-    drawSongNameOnScreen(config.SONG_NAME, width / 2, height - 5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
   }
 
   void onEnter() {

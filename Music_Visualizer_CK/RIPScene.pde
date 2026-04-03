@@ -12,18 +12,18 @@ class RIPScene implements IScene {
 
   void onExit() {}
 
-  void drawScene() {
-    background(0);
-    fill(255, 100);
-    textAlign(CENTER, CENTER);
-    textSize(24 * uiScale());
-    text("RIP Sam", width/2, height/2 - 20);
+  void drawScene(PGraphics pg) {
+    pg.background(0);
+    pg.fill(255, 100);
+    pg.textAlign(CENTER, CENTER);
+    pg.textSize(24 * uiScale());
+    pg.text("RIP Sam", width/2, height/2 - 20);
     
-    textSize(14 * uiScale());
-    fill(255, 60);
-    text("Music Visualizer Tribute", width/2, height/2 + 20);
+    pg.textSize(14 * uiScale());
+    pg.fill(255, 60);
+    pg.text("Music Visualizer Tribute", width/2, height/2 + 20);
     
-    drawSongNameOnScreen(config.SONG_NAME, width / 2, height - 5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, width / 2, height - 5);
   }
 
   void applyController(Controller c) {}

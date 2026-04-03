@@ -67,14 +67,14 @@ class SpirographScene implements IScene {
   int   palette     = 0;     // 0=cycle, 1=warm, 2=cool, 3=mono
 
   SpirographScene() {
-    loadPreset(0);
+    loadPreset(0, 1280, 720);
   }
 
-  void loadPreset(int idx) {
+  void loadPreset(int idx, float w, float h) {
     presetIdx = idx % presets.length;
     bigR   = presets[presetIdx][0];
     smallR = presets[presetIdx][1];
-    curveR = min(width, height) * 0.38;
+    curveR = min(w, h) * 0.38;
     penD   = curveR * (float)smallR / bigR * random(0.75, 1.15);
     t      = 0;
     trailHead = 0;
@@ -91,11 +91,15 @@ class SpirographScene implements IScene {
   }
 
   int gcd(int a, int b) {
-    while (b != 0) { int tmp = b; b = a % b; a = tmp; }
+    while (b != 0) {
+      int tmp = b;
+      b = a % b;
+      a = tmp;
+    }
     return a;
   }
 
-  void drawScene() {
+  void drawScene(PGraphics pg) {
     // ── Audio ──────────────────────────────────────────────────────────────
     float rawBass = analyzer.bass;
     float rawMid  = analyzer.mid;
@@ -141,25 +145,25 @@ class SpirographScene implements IScene {
     if (fading) {
       fadeAlpha -= 0.025;
       if (fadeAlpha <= 0) {
-        loadPreset(presetIdx + 1);
+        loadPreset(presetIdx + 1, pg.width, pg.height);
       }
     }
 
     // ── Background ─────────────────────────────────────────────────────────
     // Phosphor persistence: semi-transparent fill each frame gives a trail.
     // Decay faster while fading so old curves clear before the new one starts.
-    noStroke();
-    fill(0, 0, 0, fading ? 80 : 45);
-    rectMode(CORNER);
-    rect(0, 0, width, height);
+    pg.noStroke();
+    pg.fill(0, 0, 0, fading ? 80 : 45);
+    pg.rectMode(CORNER);
+    pg.rect(0, 0, pg.width, pg.height);
 
     // ── Draw trail ─────────────────────────────────────────────────────────
-    colorMode(HSB, 360, 255, 255, 255);
-    float cx = width / 2.0, cy = height / 2.0;
+    pg.colorMode(HSB, 360, 255, 255, 255);
+    float cx = pg.width / 2.0, cy = pg.height / 2.0;
 
     // Draw as a polyline, colouring by position in trail (head = bright)
-    strokeWeight(1.5 + smoothHigh * 0.08);
-    noFill();
+    pg.strokeWeight(1.5 + smoothHigh * 0.08);
+    pg.noFill();
 
     // Walk trail from oldest to newest
     int startIdx = (trailHead - trailLen + MAX_TRAIL) % MAX_TRAIL;
@@ -177,8 +181,8 @@ class SpirographScene implements IScene {
       float bri   = 160 + age * 90 + smoothHigh * 6;
       float alpha = constrain((age * 200 + 30) * fadeAlpha, 0, 255);
 
-      stroke(hue, constrain(sat, 0, 255), constrain(bri, 0, 255), alpha);
-      line(prevX, prevY, px, py);
+      pg.stroke(hue, constrain(sat, 0, 255), constrain(bri, 0, 255), alpha);
+      pg.line(prevX, prevY, px, py);
       prevX = px; prevY = py;
     }
 
@@ -187,33 +191,33 @@ class SpirographScene implements IScene {
       int tipIdx = (trailHead - 1 + MAX_TRAIL) % MAX_TRAIL;
       float tx = cx + trailX[tipIdx] * curveScale;
       float ty = cy + trailY[tipIdx] * curveScale;
-      noStroke();
-      fill(hueShift, 100, 255, 200);
-      ellipse(tx, ty, 8 + smoothHigh, 8 + smoothHigh);
-      fill(0, 0, 255, 220);
-      ellipse(tx, ty, 4, 4);
+      pg.noStroke();
+      pg.fill(hueShift, 100, 255, 200);
+      pg.ellipse(tx, ty, 8 + smoothHigh, 8 + smoothHigh);
+      pg.fill(0, 0, 255, 220);
+      pg.ellipse(tx, ty, 4, 4);
     }
 
-    colorMode(RGB, 255);
+    pg.colorMode(RGB, 255);
 
     // ── HUD ────────────────────────────────────────────────────────────────
     String[] palNames = {"Cycle", "Warm", "Cool", "Mono"};
-    pushStyle();
+    pg.pushStyle();
       float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
-      fill(0, 160); noStroke(); rectMode(CORNER);
-      rect(8, 8, 320 * uiScale(), mg + lh * 6);
-      fill(200, 180, 255); textSize(ts); textAlign(LEFT, TOP);
-      text("Spirograph  R=" + bigR + " r=" + smallR,                    12, 8 + mg);
-      fill(220, 210, 255);
-      text("Palette: " + palNames[palette] + "  (Y cycle)",             12, 8 + mg + lh);
-      text("Speed: "  + nf(speedMult, 1, 2) + "  (L ↕)",               12, 8 + mg + lh * 2);
-      text("Pen: "    + nf(penD + dNudge, 1, 1) + "  (R ↔)",           12, 8 + mg + lh * 3);
-      text("Scale: "  + nf(curveScale, 1, 2) + "  (R ↕)",              12, 8 + mg + lh * 4);
-      text("A=new curve   progress: " + nf(t / closingT() * 100, 1, 0) + "%",
-                                                                         12, 8 + mg + lh * 5);
-    popStyle();
+      pg.fill(0, 160); pg.noStroke(); pg.rectMode(CORNER);
+      pg.rect(8, 8, 320 * uiScale(), mg + lh * 6);
+      pg.fill(200, 180, 255); pg.textSize(ts); pg.textAlign(LEFT, TOP);
+      pg.text("Spirograph  R=" + bigR + " r=" + smallR,                    12, 8 + mg);
+      pg.fill(220, 210, 255);
+      pg.text("Palette: " + palNames[palette] + "  (Y cycle)",             12, 8 + mg + lh);
+      pg.text("Speed: "  + nf(speedMult, 1, 2) + "  (L ↕)",               12, 8 + mg + lh * 2);
+      pg.text("Pen: "    + nf(penD + dNudge, 1, 1) + "  (R ↔)",           12, 8 + mg + lh * 3);
+      pg.text("Scale: "  + nf(curveScale, 1, 2) + "  (R ↕)",              12, 8 + mg + lh * 4);
+      pg.text("A=new curve   progress: " + nf(t / closingT() * 100, 1, 0) + "%",
+                                                                          12, 8 + mg + lh * 5);
+    pg.popStyle();
 
-    drawSongNameOnScreen(config.SONG_NAME, width / 2.0, height - 5);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
   }
 
   float getTrailHue(float age, int i) {
@@ -267,7 +271,7 @@ class SpirographScene implements IScene {
 
   void onEnter() {
     background(0);
-    loadPreset(presetIdx);
+    loadPreset(presetIdx, width, height);
   }
 
   void onExit() {}

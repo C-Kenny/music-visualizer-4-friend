@@ -49,13 +49,13 @@ class ShaderScene implements IScene {
     }
   }
 
-  void drawScene() {
-    background(0); // Clear the frame buffer
+  void drawScene(PGraphics pg) {
+    pg.background(0); // Clear the frame buffer
     
     if (!shaderLoaded || milkdropShader == null) {
-      fill(255, 0, 0);
-      textSize(32);
-      text("Shader Failed to Load! Check console.", width/2, height/2);
+      pg.fill(255, 0, 0);
+      pg.textSize(32);
+      pg.text("Shader Failed to Load! Check console.", pg.width/2.0, pg.height/2.0);
       return;
     }
 
@@ -66,8 +66,8 @@ class ShaderScene implements IScene {
 
     // 1. SET THE UNIFORMS (Talk to the GPU!)
     // Pass the standard screen and time values
-    milkdropShader.set("u_resolution", float(width), float(height));
-    milkdropShader.set("u_time", millis() / 1000.0);
+    milkdropShader.set("u_resolution", float(pg.width), float(pg.height));
+    milkdropShader.set("u_time", pg.parent.millis() / 1000.0);
     
     // Pass our music reaction layers
     milkdropShader.set("audio_bass", basRaw);
@@ -79,23 +79,23 @@ class ShaderScene implements IScene {
     milkdropShader.set("controller_twist", twist);
 
     // 2. TELL PROCESSING TO USE THE GPU SHADER
-    shader(milkdropShader);
+    pg.shader(milkdropShader);
     
     // 3. DRAW A CANVAS FOR THE GPU TO RENDER ON
     // We literally just draw a giant flat rectangle that covers the whole screen.
     // The GPU shader will overwrite this rectangle with pure math!
-    noStroke();
-    fill(255);
-    rect(0, 0, width, height);
+    pg.noStroke();
+    pg.fill(255);
+    pg.rect(0, 0, pg.width, pg.height);
     
     // 4. RESET THE SHADER
     // Critical: If we don't reset the shader here, the text HUD and every other scene
     // in the application will try to be drawn using the Milkdrop GLSL logic which will break it!
-    resetShader();
+    pg.resetShader();
 
     // Now we can draw normal CPU graphics (like the text HUD) over top of the GPU art safely.
-    drawSongNameOnScreen(config.SONG_NAME, width / 2.0, height - 5);
-    drawHud(basRaw, midRaw, higRaw);
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
+    drawHud(pg, basRaw, midRaw, higRaw);
   }
 
   // Our educational code overlay lines!
@@ -129,24 +129,24 @@ class ShaderScene implements IScene {
     };
   }
 
-  void drawHud(float low, float mid, float high) {
-    pushStyle();
+  void drawHud(PGraphics pg, float low, float mid, float high) {
+    pg.pushStyle();
       float ts = 11 * uiScale();
       float lh = ts * 1.3;
-      fill(0, 125);
-      noStroke();
-      rectMode(CORNER);
-      rect(8, 8, 380 * uiScale(), 8 + lh * 6);
-      fill(255);
-      textSize(ts);
-      textAlign(LEFT, TOP);
-      text("Scene: GPU Shader Lesson", 12, 12);
-      text("low / mid / high (norm): " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh);
-      text("controller twist: " + nf(twist, 1, 2) + "  pan X/Y: " + nf(panX, 1, 2) + " / " + nf(panY, 1, 2), 12, 12 + lh * 2);
-      text("A center  Y hot-reload shader", 12, 12 + lh * 3);
-      text("Press ` (backtick) to view the GLSL Shader lesson code overlay!", 12, 12 + lh * 4);
-      text("FPS varies by GPU. CPU usage should be ~0%.", 12, 12 + lh * 5);
-    popStyle();
+      pg.fill(0, 125);
+      pg.noStroke();
+      pg.rectMode(CORNER);
+      pg.rect(8, 8, 380 * uiScale(), 8 + lh * 6);
+      pg.fill(255);
+      pg.textSize(ts);
+      pg.textAlign(LEFT, TOP);
+      pg.text("Scene: GPU Shader Lesson", 12, 12);
+      pg.text("low / mid / high (norm): " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh);
+      pg.text("controller twist: " + nf(twist, 1, 2) + "  pan X/Y: " + nf(panX, 1, 2) + " / " + nf(panY, 1, 2), 12, 12 + lh * 2);
+      pg.text("A center  Y hot-reload shader", 12, 12 + lh * 3);
+      pg.text("Press ` (backtick) to view the GLSL Shader lesson code overlay!", 12, 12 + lh * 4);
+      pg.text("FPS varies by GPU. CPU usage should be ~0%.", 12, 12 + lh * 5);
+    pg.popStyle();
   }
 
   void onEnter() {
@@ -154,7 +154,8 @@ class ShaderScene implements IScene {
   }
 
   void onExit() {
-    resetShader();
+    // We should be careful resetting global shaders here specifically.
+    // In our new architecture, it's safer to always clear in drawScene.
   }
 
   void handleKey(char k) {

@@ -37,15 +37,27 @@ class Tunnel {
     }
   }
 
-  void draw(int tunnelZoomIncrement) {
-    loadPixels();
-    for (int i=0; i<width*height; i++) {
-      int val = lookUpTable[i];
-      int col = texture[
-        ((val&0x0000ffff) + ((frameCount + tunnelZoomIncrement)<<1)) & ((128*128)-1)
-      ];
-      pixels[i] =  color(col, (val>>16));
+  // xOffset / squareSize limit rendering to the scene's square viewport so the
+  // tunnel doesn't bleed into the letterbox margins. Pixel coordinates outside
+  // [xOffset, xOffset+squareSize) are left untouched.
+  void draw(PGraphics pg, int tunnelZoomIncrement, int xOffset, int squareSize) {
+    pg.loadPixels();
+    int pgW = pg.width;
+    int pgH = pg.height;
+    int xEnd = min(xOffset + squareSize, pgW);
+    for (int row = 0; row < pgH; row++) {
+      for (int col = xOffset; col < xEnd; col++) {
+        int pgIdx  = row * pgW + col;
+        int luIdx  = row * width + col; // lookUpTable was built against global width
+        if (luIdx >= lookUpTable.length) continue;
+        int val = lookUpTable[luIdx];
+        int texel = texture[
+          ((val & 0x0000ffff) + ((frameCount + tunnelZoomIncrement) << 1)) & ((128*128)-1)
+        ];
+        int alpha = (val >> 16) & 0xFF;
+        pg.pixels[pgIdx] = (alpha << 24) | (texel & 0xFFFFFF);
+      }
     }
-    updatePixels();
+    pg.updatePixels();
   }
 }
