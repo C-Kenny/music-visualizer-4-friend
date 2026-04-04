@@ -13,7 +13,8 @@ class Audio {
   Audio(PApplet applet, String songToVisualize, int bandsPerOctave) {
     minim = new Minim(applet);
     player = minim.loadFile(songToVisualize);
-    player.loop();
+    if (player == null) throw new RuntimeException("Minim could not load: " + songToVisualize);
+    player.play();
     beat = new BeatDetect();
     fft = new FFT(player.bufferSize(), player.sampleRate());
     fft.logAverages(22, bandsPerOctave);

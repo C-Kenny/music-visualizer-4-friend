@@ -18,16 +18,19 @@ class TableTennisScene implements IScene {
   final float MIN_SPEED_X = 6.0;
 
   // ── paddles ───────────────────────────────────────────────────────────────
-  float leftPaddleX, rightPaddleX;  // fixed X, 20% inset from each edge
-  float leftPaddleY, rightPaddleY;
-  float leftTargetY, rightTargetY;
-  float leftLungeX,  rightLungeX;
-  final float PADDLE_W     = 16;
-  final float PADDLE_H     = 110;
-  final float PADDLE_SPEED = 0.28;
+  float leftPaddleX,  rightPaddleX;   // current X (can slide to reach short balls)
+  float leftHomeX,    rightHomeX;     // default rest X positions
+  float leftPaddleY,  rightPaddleY;
+  float leftTargetY,  rightTargetY;
+  float leftTargetX,  rightTargetX;   // target X for horizontal movement
+  float leftLungeX,   rightLungeX;
+  final float PADDLE_W      = 16;
+  final float PADDLE_H      = 110;
+  final float PADDLE_SPEED   = 0.38;   // bumped up — paddle waits for bounce so needs faster catch-up
+  final float PADDLE_X_SPEED = 0.28;
 
   // ── AI miss system ────────────────────────────────────────────────────────
-  final float MISS_CHANCE = 0.15;
+  final float MISS_CHANCE = 0.07;
   float leftMissOffset  = 0;
   float rightMissOffset = 0;
   int   lastDirSign     = 0;
@@ -48,6 +51,8 @@ class TableTennisScene implements IScene {
   // bounce-based point rule
   int lastBounceSide     = 0;
   int consecutiveBounces = 0;
+  int lastHitSide        = 0;    // which side (-1/1) last struck the ball with a paddle
+  boolean rallyStarted   = false; // true once the serve has landed on the opponent's side
 
   // serve state machine
   boolean inServeDrop  = true;   // ball falling toward paddle before being hit
@@ -82,8 +87,12 @@ class TableTennisScene implements IScene {
   TableTennisScene() {
     openScoreLog();
     tableY       = height * 0.68;
-    leftPaddleX  = width * 0.20;
-    rightPaddleX = width * 0.80;
+    leftHomeX    = width * 0.20;
+    rightHomeX   = width * 0.80;
+    leftPaddleX  = leftHomeX;
+    rightPaddleX = rightHomeX;
+    leftTargetX  = leftHomeX;
+    rightTargetX = rightHomeX;
     float restY  = tableY - 120;
     leftPaddleY  = rightPaddleY = restY;
     leftTargetY  = rightTargetY = restY;
@@ -93,6 +102,12 @@ class TableTennisScene implements IScene {
   // ── serve ─────────────────────────────────────────────────────────────────
 
   void serve() {
+    // Reset paddles to home X before using their positions — they may have
+    // retreated during the previous rally, which would place the serve ball
+    // at the wrong X and trigger a spurious "ball escaped" point.
+    leftPaddleX  = leftHomeX;  rightPaddleX  = rightHomeX;
+    leftTargetX  = leftHomeX;  rightTargetX  = rightHomeX;
+
     // Ball drops from ~100px above the server's paddle (like a real toss).
     // It falls under gravity; when it reaches paddle height it auto-fires.
     float paddleX = leftServes ? leftPaddleX : rightPaddleX;
@@ -111,6 +126,8 @@ class TableTennisScene implements IScene {
     lastDirSign     = leftServes ? -1 : 1;
     lastBounceSide  = 0;
     consecutiveBounces = 0;
+    lastHitSide     = 0;
+    rallyStarted    = false;
   }
 
   // ── main draw ─────────────────────────────────────────────────────────────
@@ -187,14 +204,36 @@ class TableTennisScene implements IScene {
       lastDirSign = dirSign;
     }
 
+    float netX    = width / 2.0;
+    float xMargin = PADDLE_W * 2;
+
     if (ballVX < 0) {
-      float t = abs(ballX - leftPaddleX) / max(abs(ballVX), 0.5);
-      leftTargetY  = constrain(predictBallY(t) + leftMissOffset,  yMin, yMax);
+      // Ball heading left — right paddle rests, left paddle tracks
+      rightTargetX = rightHomeX;
       rightTargetY = constrain(restY, yMin, yMax);
+      if (lastBounceSide == -1) {
+        // Ball bounced on left — charge forward to intercept
+        leftTargetX = constrain(ballX + PADDLE_W, xMargin, netX - xMargin);
+      } else {
+        // Ball incoming, not yet bounced — hold home X but pre-track Y so paddle
+        // is already in position when the ball lands
+        leftTargetX = leftHomeX;
+      }
+      float t = abs(ballX - leftPaddleX) / max(abs(ballVX), 0.5);
+      leftTargetY = constrain(predictBallY(t) + leftMissOffset, yMin, yMax);
     } else {
+      // Ball heading right — left paddle rests, right paddle tracks
+      leftTargetX = leftHomeX;
+      leftTargetY = constrain(restY, yMin, yMax);
+      if (lastBounceSide == 1) {
+        // Ball bounced on right — charge forward to intercept
+        rightTargetX = constrain(ballX - PADDLE_W, netX + xMargin, width - xMargin);
+      } else {
+        // Ball incoming, not yet bounced — hold home X but pre-track Y
+        rightTargetX = rightHomeX;
+      }
       float t = abs(rightPaddleX - ballX) / max(abs(ballVX), 0.5);
       rightTargetY = constrain(predictBallY(t) + rightMissOffset, yMin, yMax);
-      leftTargetY  = constrain(restY, yMin, yMax);
     }
   }
 
@@ -223,6 +262,8 @@ class TableTennisScene implements IScene {
   void movePaddles() {
     leftPaddleY  += (leftTargetY  - leftPaddleY)  * PADDLE_SPEED;
     rightPaddleY += (rightTargetY - rightPaddleY) * PADDLE_SPEED;
+    leftPaddleX  += (leftTargetX  - leftPaddleX)  * PADDLE_X_SPEED;
+    rightPaddleX += (rightTargetX - rightPaddleX) * PADDLE_X_SPEED;
     leftLungeX  *= 0.80;
     rightLungeX *= 0.80;
   }
@@ -251,8 +292,23 @@ class TableTennisScene implements IScene {
     ballVY += spin * abs(ballVX) * magnusStrength;
     ballVY += gravity;
     ballVX *= DRAG;
+    float prevBallX = ballX;
     ballX  += ballVX;
     ballY  += ballVY;
+
+    // Net collision — block ball if it crosses the centre line below net height.
+    // Skip during serve drop (ball is above the table, can't hit the net yet).
+    if (!inServeDrop) {
+      float netX   = width / 2.0;
+      float netTop = tableY - NET_H;
+      if (ballY + BALL_RADIUS > netTop && ballY + BALL_RADIUS < tableY) {
+        boolean crossedNet = (prevBallX < netX) != (ballX < netX);
+        if (crossedNet) {
+          ballX  = prevBallX < netX ? netX - BALL_RADIUS - 1 : netX + BALL_RADIUS + 1;
+          ballVX *= -0.4;
+        }
+      }
+    }
 
     // Table bounce
     if (ballY + BALL_RADIUS > tableY && ballVY > 0) {
@@ -261,6 +317,13 @@ class TableTennisScene implements IScene {
       ballVX *= 0.96;
       spin   *= 0.76;
       onTableBounce();
+      // onTableBounce may have awarded a point and called serve() — bail out
+      // to avoid the escape-check running on the freshly reset ball position.
+      if (inServeDrop) {
+        trail.add(new PVector(ballX, ballY));
+        if (trail.size() > MAX_TRAIL) trail.remove(0);
+        return;
+      }
     }
 
     // Ceiling
@@ -277,13 +340,15 @@ class TableTennisScene implements IScene {
     // Paddle collisions (receiver can't return during serve drop or serve bounce)
     if (!inServeDrop) {
       checkPaddleCollision(true,  leftPaddleX  + leftLungeX,  leftPaddleY);
+      if (inServeDrop) { trail.add(new PVector(ballX, ballY)); if (trail.size() > MAX_TRAIL) trail.remove(0); return; }
       checkPaddleCollision(false, rightPaddleX - rightLungeX, rightPaddleY);
+      if (inServeDrop) { trail.add(new PVector(ballX, ballY)); if (trail.size() > MAX_TRAIL) trail.remove(0); return; }
     }
 
     // Ball escaped past a paddle — award point
-    if (ballX < leftPaddleX - 60) {
+    if (ballX < leftHomeX - 80) {
       awardPoint(false);  // right wins
-    } else if (ballX > rightPaddleX + 60) {
+    } else if (ballX > rightHomeX + 80) {
       awardPoint(true);   // left wins
     }
 
@@ -312,10 +377,11 @@ class TableTennisScene implements IScene {
     }
 
     // ── After serve bounce: first landing on opponent's side starts rally ─────
-    if (serveBounced && lastBounceSide == 0) {
+    if (!rallyStarted) {
       int opponentSide = leftServes ? 1 : -1;
       if (side == opponentSide) {
         // Good serve — receiver must now return it
+        rallyStarted       = true;
         lastBounceSide     = side;
         consecutiveBounces = 1;
       } else {
@@ -326,9 +392,21 @@ class TableTennisScene implements IScene {
     }
 
     // ── Normal rally bounce counting ──────────────────────────────────────────
-    if (side == lastBounceSide) {
+    if (lastBounceSide == 0) {
+      // First bounce after a paddle hit — ball must land on the OPPONENT's side
+      if (side == lastHitSide) {
+        // Bounced back on the hitter's own side (didn't clear the net) — fault
+        // lastHitSide > 0 means right hit and bounced right → left wins (true)
+        // lastHitSide < 0 means left hit and bounced left  → right wins (false)
+        awardPoint(lastHitSide > 0);
+      } else {
+        lastBounceSide     = side;
+        consecutiveBounces = 1;
+      }
+    } else if (side == lastBounceSide) {
       consecutiveBounces++;
       if (consecutiveBounces >= 2) {
+        // Bounced twice on same side without being returned
         // side == -1 (left) → left failed → right wins
         // side ==  1 (right) → right failed → left wins
         awardPoint(side > 0);
@@ -347,17 +425,29 @@ class TableTennisScene implements IScene {
     boolean inY = abs(ballY - paddleY) <= PADDLE_H / 2 + BALL_RADIUS + 4;
     if (!inX || !inY) return;
 
+    // No volleying during a rally — ball must bounce on this player's side first
+    if (rallyStarted) {
+      int playerSide = isLeft ? -1 : 1;
+      if (lastBounceSide != playerSide) {
+        awardPoint(!isLeft);
+        return;
+      }
+    }
+
     float hitPos = constrain((ballY - paddleY) / (PADDLE_H / 2), -1, 1);
-    float power  = 9 + rallyCount * 0.12;
-    ballVX  = isLeft
-      ?  (abs(ballVX) * 1.05 + power * 0.25)
-      : -(abs(ballVX) * 1.05 + power * 0.25);
-    // Always launch upward — hitPos tilts the angle but the ball never goes flat
-    ballVY  = hitPos * 3 - 7;
-    spin    = -hitPos * 0.12;
+    // Random power each shot — no escalation, keeps speed varied throughout the rally
+    float power    = random(6, 13);
+    float speedMod = random(0.88, 1.14);
+    float newSpeed = constrain(abs(ballVX) * speedMod + power * 0.3, 6, 22);
+    ballVX = isLeft ? newSpeed : -newSpeed;
+    // Random arc: sometimes a high lob, sometimes a flat drive
+    ballVY = constrain(hitPos * 2 + random(-14, -1), -16, -2);
+    // Random spin regardless of hit position
+    spin   = random(-0.20, 0.20);
     rallyCount++;
     impactFlash        = 1.0;
     ballHue            = (ballHue + random(50, 100)) % 360;
+    lastHitSide        = isLeft ? -1 : 1;
     lastBounceSide     = 0;
     consecutiveBounces = 0;
   }
@@ -375,8 +465,9 @@ class TableTennisScene implements IScene {
     logPoint(leftScored, serverScored, rallyCount);
     rallyCount = 0;
 
-    // Swap server every 2 points
-    if (totalPoints % 2 == 0) leftServes = !leftServes;
+    // Swap server every 2 points; at deuce (10-10) swap every point
+    boolean inDeuce = leftPoints >= 10 && rightPoints >= 10;
+    if (inDeuce || totalPoints % 2 == 0) leftServes = !leftServes;
 
     // Game won: first to 11, must lead by 2
     boolean leftWins  = leftPoints  >= 11 && leftPoints  - rightPoints >= 2;
@@ -661,7 +752,7 @@ class TableTennisScene implements IScene {
       "=== Table Tennis ===",
       "",
       "// First to 11, lead by 2",
-      "// Serve swaps every 2 points",
+      "// Serve: every 2 pts, every 1 at deuce",
       "// 2 bounces on one side = point",
       "",
       "// Step prediction (N bounces):",

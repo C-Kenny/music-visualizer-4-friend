@@ -289,12 +289,12 @@ class WormScene implements IScene {
   }
 
   void applyController(Controller c) {
-    float lx = map(c.lx, 0, 1280,  -1, 1);
-    float ly = map(c.ly, 0, 720, -1, 1);
+    float lx = map(c.lx, 0, width,  -1, 1);
+    float ly = map(c.ly, 0, height, -1, 1);
     luring = sqrt(lx * lx + ly * ly) > 0.18;
     if (luring) { lureX = c.lx; lureY = c.ly; }
-    float rx = map(c.rx, 0, 1280,  -1, 1);
-    float ry = map(c.ry, 0, 720, -1, 1);
+    float rx = map(c.rx, 0, width,  -1, 1);
+    float ry = map(c.ry, 0, height, -1, 1);
     repelling = sqrt(rx * rx + ry * ry) > 0.18;
     if (repelling) { repelX = c.rx; repelY = c.ry; }
     try {

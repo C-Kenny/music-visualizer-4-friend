@@ -219,11 +219,11 @@ class FFTWormScene implements IScene {
   }
 
   void applyController(Controller c) {
-    float lx = map(c.lx, 0, 1280,  -1, 1);
-    float ly = map(c.ly, 0, 720, -1, 1);
+    float lx = map(c.lx, 0, width,  -1, 1);
+    float ly = map(c.ly, 0, height, -1, 1);
     steering = sqrt(lx*lx + ly*ly) > 0.18;
     if (steering) { steerX = c.lx; steerY = c.ly; }
-    float ry = map(c.ry, 0, 720, -1, 1);
+    float ry = map(c.ry, 0, height, -1, 1);
     ampMult = map(ry, -1, 1, 3.0, 0.3);
     try {
       float z = c.stick.getSlider("z").getValue();

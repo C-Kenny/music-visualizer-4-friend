@@ -10,7 +10,7 @@ Config config;
 Audio audio;
 Controller controller;
 IScene[] scenes;
-final int SCENE_COUNT = 23;
+final int SCENE_COUNT = 25;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -107,10 +107,9 @@ void setSongToVisualize() {
   log_to_stdo("Current song: " + config.SONG_TO_VISUALIZE);
   log_to_stdo("sketchPath() = " + sketchPath());
   log_to_stdo("user.dir     = " + System.getProperty("user.dir"));
-  boolean useRandomSong = isDevMode() || SMOKE_TEST_MODE;
-  if (useRandomSong) {
-    // Dev shortcut: if .devsong exists, always use that song while developing.
-    // e.g.  echo "/home/user/Music/song.mp3" > Music_Visualizer_CK/.devsong
+
+  // Dev / smoke-test shortcuts — skip the dialog
+  if (isDevMode() || SMOKE_TEST_MODE) {
     try {
       java.io.File devSongFile = new java.io.File(sketchPath(".devsong"));
       if (devSongFile.exists()) {
@@ -126,9 +125,7 @@ void setSongToVisualize() {
     } catch (Exception e) { /* ignore */ }
 
     java.io.File musicDir = new java.io.File(System.getProperty("user.home"), "Music");
-    if (config.songList.size() == 0) {
-      collectSongs(musicDir, config.songList);
-    }
+    if (config.songList.size() == 0) collectSongs(musicDir, config.songList);
     if (config.songList.size() > 0) {
       config.currentSongIndex = (int) random(config.songList.size());
       config.SONG_TO_VISUALIZE = config.songList.get(config.currentSongIndex);
@@ -137,8 +134,38 @@ void setSongToVisualize() {
       config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
       return;
     }
-    log_to_stdo("No songs found in " + musicDir.getAbsolutePath() + ", falling back to file picker");
+    log_to_stdo("No songs found in ~/Music, falling back to file picker");
+    // fall through to dialog
   }
+
+  // Show a startup dialog: Random Song vs Browse
+  int choice = javax.swing.JOptionPane.showOptionDialog(
+    null,
+    "How would you like to load a song?",
+    "Music Visualizer",
+    javax.swing.JOptionPane.DEFAULT_OPTION,
+    javax.swing.JOptionPane.QUESTION_MESSAGE,
+    null,
+    new String[]{ "Random Song", "Browse..." },
+    "Random Song"
+  );
+
+  if (choice == 0) {
+    // Random song from ~/Music
+    java.io.File musicDir = new java.io.File(System.getProperty("user.home"), "Music");
+    if (config.songList.size() == 0) collectSongs(musicDir, config.songList);
+    if (config.songList.size() > 0) {
+      config.currentSongIndex = (int) random(config.songList.size());
+      config.SONG_TO_VISUALIZE = config.songList.get(config.currentSongIndex);
+      log_to_stdo("Random song selected: " + config.SONG_TO_VISUALIZE);
+      config.STATE = 1;
+      config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
+      return;
+    }
+    log_to_stdo("No songs found in ~/Music, falling back to file picker");
+  }
+
+  // Browse (choice == 1, or random had no songs)
   selectInput("Select song to visualize", "fileSelected");
   while (config.SONG_TO_VISUALIZE == "") {
     delay(1);
@@ -181,7 +208,7 @@ void collectSongs(java.io.File dir, ArrayList<String> songs) {
       collectSongs(f, songs);
     } else {
       String name = f.getName().toLowerCase();
-      if (name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".flac") || name.endsWith(".aiff")) {
+      if (name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".aiff")) {
         songs.add(f.getAbsolutePath());
       }
     }
@@ -284,6 +311,8 @@ void setup() {
   scenes[20] = new FFTWormScene();
   scenes[21] = new DeepSpaceScene();
   scenes[22] = new CyberGridScene();
+  scenes[23] = new RecursiveMandalaScene();
+  scenes[24] = new KaleidoscopeScene();
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
@@ -369,11 +398,11 @@ void keyPressed() {
     exit();
   }
 
-  // Scene Switching (0-9)
+  // Scene Switching: 1-9 → SCENE_ORDER[0..8], 0 → SCENE_ORDER[9]
   if ((key >= '1' && key <= '9') || key == '0') {
-    int newState = (key == '0') ? 10 : ((int) key - 48);
-    if (newState >= 0 && newState < SCENE_COUNT) {
-      switchScene(newState);
+    int pos = (key == '0') ? 9 : ((int) key - 49);
+    if (pos >= 0 && pos < SCENE_ORDER.length) {
+      switchScene(SCENE_ORDER[pos]);
     }
   }
 
@@ -498,7 +527,7 @@ public void getUserInput() {
 // in the codebase but excluded from rotation for now.
 // Fan-favourite scenes, in display order. Only these are reachable via
 // LB/RB cycling or keyboard number keys. Add a scene number here to re-enable it.
-final int[] SCENE_ORDER = {1, 4, 6, 7, 13, 14, 17, 19};
+final int[] SCENE_ORDER = {1, 4, 6, 7, 13, 14, 17, 18, 19, 23, 24};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -582,6 +611,12 @@ void draw() {
 
   // 2. Continuous Logic Updates
   if (frameCount % 480 == 0) log_to_stdo("Draw state=" + config.STATE);
+
+  // Auto-advance to a shuffled song when the current one finishes
+  if (config.SONG_PLAYING && !audio.player.isPlaying()
+      && config.songList.size() > 0) {
+    shuffleSong();
+  }
 
   // Audio update
   audio.forward();

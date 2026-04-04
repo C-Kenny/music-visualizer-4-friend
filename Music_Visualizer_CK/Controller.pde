@@ -102,6 +102,20 @@ class Controller {
     }
   }
 
+  // Try primary name first (virtual name used by getMatchedDevice),
+  // fall back to altName (hardware name used by getDevice fallback).
+  private float getSliderValue(String name, String altName, float defaultVal) {
+    try {
+      ControlInput inp = stick.getSlider(name);
+      if (inp != null) return inp.getValue();
+    } catch (Exception e) {}
+    try {
+      ControlInput inp = stick.getSlider(altName);
+      if (inp != null) return inp.getValue();
+    } catch (Exception e) {}
+    return defaultVal;
+  }
+
   private boolean getButtonState(String name) {
     try {
       ControlInput inp = stick.getButton(name);
@@ -124,13 +138,14 @@ class Controller {
       return; // nothing to read yet
     }
 
-    // Corrected Slider Mappings (x, y, rx, ry)
-    float raw_x  = getSliderValue("x",  0);
-    float raw_y  = getSliderValue("y",  0);
-    float raw_rx = getSliderValue("rx", 0);
-    float raw_ry = getSliderValue("ry", 0);
-    float raw_z  = getSliderValue("z",  -1);
-    float raw_rz = getSliderValue("rz", -1);
+    // Try virtual names first (getMatchedDevice path: "lx"/"ly"),
+    // fall back to hardware names (getDevice fallback path: "x"/"y").
+    float raw_x  = getSliderValue("lx", "x",  0);
+    float raw_y  = getSliderValue("ly", "y",  0);
+    float raw_rx = getSliderValue("rx", "rx", 0);
+    float raw_ry = getSliderValue("ry", "ry", 0);
+    float raw_z  = getSliderValue("z",  "z",  -1);
+    float raw_rz = getSliderValue("rz", "rz", -1);
     lx = map(raw_x,  -1, 1, 0, width);
     ly = map(raw_y,  -1, 1, 0, height);
     rx = map(raw_rx, -1, 1, 0, width);
