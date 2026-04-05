@@ -74,11 +74,16 @@ class TableTennisScene implements IScene {
   // ── physics ───────────────────────────────────────────────────────────────
   float gravity        = 0.28;
   float magnusStrength = 0.045;
+  float speedMult      = 1.3;    // global speed multiplier — adjustable in-game
   final float DRAG     = 0.999;
 
   // ── visuals ───────────────────────────────────────────────────────────────
   float ballHue     = 40;
   float impactFlash = 0;
+  float beatGlow    = 0;   // 1.0 on beat, decays — drives paddle aura
+  float bassSmooth  = 0;   // smoothed bass level — drives paddle height breathing
+  boolean powerReady = false; // true while beatGlow is hot enough for a power shot
+  float powerFlash  = 0;   // extra burst when power shot lands
   ArrayList<PVector> trail = new ArrayList<PVector>();
   final int MAX_TRAIL = 45;
 
@@ -144,6 +149,10 @@ class TableTennisScene implements IScene {
     if (analyzer.isBeat) onBeat(bass, mid);
     impactFlash *= 0.82;
     pointFlash  *= 0.88;
+    beatGlow    *= 0.93;
+    powerFlash  *= 0.85;
+    bassSmooth   = lerp(bassSmooth, bass, 0.15);
+    powerReady   = beatGlow > 0.4;
 
     drawTable(pg);
     updatePaddleTargets();
@@ -166,13 +175,14 @@ class TableTennisScene implements IScene {
     else            rightLungeX = lunge;
     spin += map(mid, 0, 15, -0.03, 0.03);
     spin  = constrain(spin, -0.25, 0.25);
+    beatGlow = 1.0;
   }
 
   // ── paddle AI ─────────────────────────────────────────────────────────────
 
   void updatePaddleTargets() {
     float yMin  = PADDLE_H / 2;
-    float yMax  = tableY - BALL_RADIUS;
+    float yMax  = tableY - PADDLE_H / 2 - 4;   // keep paddle above table surface
     float restY = tableY - 120;
 
     // During serve drop, and while the ball is heading to the server's own side
@@ -211,27 +221,17 @@ class TableTennisScene implements IScene {
       // Ball heading left — right paddle rests, left paddle tracks
       rightTargetX = rightHomeX;
       rightTargetY = constrain(restY, yMin, yMax);
-      if (lastBounceSide == -1) {
-        // Ball bounced on left — charge forward to intercept
-        leftTargetX = constrain(ballX + PADDLE_W, xMargin, netX - xMargin);
-      } else {
-        // Ball incoming, not yet bounced — hold home X but pre-track Y so paddle
-        // is already in position when the ball lands
-        leftTargetX = leftHomeX;
-      }
+      // Always retreat to behind home — ball is coming toward you, moving
+      // forward causes the ball to chip over the paddle edge
+      leftTargetX = leftHomeX - 20;
       float t = abs(ballX - leftPaddleX) / max(abs(ballVX), 0.5);
       leftTargetY = constrain(predictBallY(t) + leftMissOffset, yMin, yMax);
     } else {
       // Ball heading right — left paddle rests, right paddle tracks
       leftTargetX = leftHomeX;
       leftTargetY = constrain(restY, yMin, yMax);
-      if (lastBounceSide == 1) {
-        // Ball bounced on right — charge forward to intercept
-        rightTargetX = constrain(ballX - PADDLE_W, netX + xMargin, width - xMargin);
-      } else {
-        // Ball incoming, not yet bounced — hold home X but pre-track Y
-        rightTargetX = rightHomeX;
-      }
+      // Always retreat to behind home — ball is coming toward you
+      rightTargetX = rightHomeX + 20;
       float t = abs(rightPaddleX - ballX) / max(abs(ballVX), 0.5);
       rightTargetY = constrain(predictBallY(t) + rightMissOffset, yMin, yMax);
     }
@@ -278,7 +278,7 @@ class TableTennisScene implements IScene {
       float serveHitY = leftServes ? leftPaddleY : rightPaddleY;
       if (ballY >= serveHitY && ballVY > 0) {
         // Auto-hit: launch the serve downward into server's table half
-        float speed = 9 + rallyCount * 0.1;
+        float speed = (9 + rallyCount * 0.1) * speedMult;
         ballVX = leftServes ? speed : -speed;
         ballVY = 8;   // hits down so ball bounces on server's half first
         inServeDrop = false;
@@ -333,8 +333,9 @@ class TableTennisScene implements IScene {
     }
 
     // Speed floor — ball must keep moving after serve bounce
-    if (serveBounced && abs(ballVX) < MIN_SPEED_X) {
-      ballVX = (ballVX >= 0 ? 1 : -1) * MIN_SPEED_X;
+    float speedFloor = MIN_SPEED_X * speedMult;
+    if (serveBounced && abs(ballVX) < speedFloor) {
+      ballVX = (ballVX >= 0 ? 1 : -1) * speedFloor;
     }
 
     // Paddle collisions (receiver can't return during serve drop or serve bounce)
@@ -435,18 +436,21 @@ class TableTennisScene implements IScene {
     }
 
     float hitPos = constrain((ballY - paddleY) / (PADDLE_H / 2), -1, 1);
-    // Random power each shot — no escalation, keeps speed varied throughout the rally
-    float power    = random(6, 13);
-    float speedMod = random(0.88, 1.14);
-    float newSpeed = constrain(abs(ballVX) * speedMod + power * 0.3, 6, 22);
+
+    boolean isPowerShot = powerReady;
+    float power    = isPowerShot ? random(14, 20) : random(6, 13);
+    float speedMod = isPowerShot ? random(1.1, 1.35) : random(0.88, 1.14);
+    float cap      = (isPowerShot ? 30 : 22) * speedMult;
+    float newSpeed = constrain((abs(ballVX) * speedMod + power * 0.3) * speedMult, 6 * speedMult, cap);
     ballVX = isLeft ? newSpeed : -newSpeed;
-    // Random arc: sometimes a high lob, sometimes a flat drive
     ballVY = constrain(hitPos * 2 + random(-14, -1), -16, -2);
-    // Random spin regardless of hit position
-    spin   = random(-0.20, 0.20);
+    spin   = isPowerShot ? random(-0.35, 0.35) : random(-0.20, 0.20);
+
     rallyCount++;
-    impactFlash        = 1.0;
-    ballHue            = (ballHue + random(50, 100)) % 360;
+    impactFlash        = isPowerShot ? 1.5 : 1.0;
+    powerFlash         = isPowerShot ? 1.0 : 0;
+    beatGlow           = isPowerShot ? 0 : beatGlow;   // consume the charge
+    ballHue            = (ballHue + (isPowerShot ? random(120, 180) : random(50, 100))) % 360;
     lastHitSide        = isLeft ? -1 : 1;
     lastBounceSide     = 0;
     consecutiveBounces = 0;
@@ -615,25 +619,56 @@ class TableTennisScene implements IScene {
     float lx = leftPaddleX  + leftLungeX;
     float rx = rightPaddleX - rightLungeX;
 
+    // Bass breathing — visual height only, not hitbox
+    float breathe = bassSmooth * 18;
+    float lh = PADDLE_H + breathe;
+    float rh = PADDLE_H + breathe;
+
     pg.pushStyle();
       pg.rectMode(CENTER);
       pg.noStroke();
+      pg.colorMode(HSB, 360, 255, 255, 255);
 
-      if (impactFlash > 0.05) {
-        pg.fill(255, 255, 255, impactFlash * 120);
-        pg.rect(lx, leftPaddleY,  PADDLE_W + 10, PADDLE_H + 10, 4);
-        pg.rect(rx, rightPaddleY, PADDLE_W + 10, PADDLE_H + 10, 4);
+      // Beat-glow aura on the active (receiving) paddle
+      if (beatGlow > 0.05) {
+        boolean leftActive = ballVX < 0;
+        float ax = leftActive ? lx : rx;
+        float ay = leftActive ? leftPaddleY : rightPaddleY;
+        float ah = leftActive ? lh : rh;
+        float hue = powerReady ? 45 : 200;   // gold when power-ready, blue otherwise
+        for (int ring = 3; ring >= 1; ring--) {
+          float spread = ring * 12 * beatGlow;
+          pg.fill(hue, 220, 255, beatGlow * 60 / ring);
+          pg.rect(ax, ay, PADDLE_W + spread * 2, ah + spread * 2, 6);
+        }
       }
 
+      // Power-shot burst — wide radial flash at both paddles
+      if (powerFlash > 0.05) {
+        float spread = powerFlash * 60;
+        pg.fill(45, 255, 255, powerFlash * 90);
+        pg.ellipse(lx, leftPaddleY,  spread * 2, spread * 2);
+        pg.ellipse(rx, rightPaddleY, spread * 2, spread * 2);
+      }
+
+      // Impact flash (white) on both paddles
+      if (impactFlash > 0.05) {
+        pg.fill(0, 0, 255, impactFlash * 120);
+        pg.rect(lx, leftPaddleY,  PADDLE_W + 10, lh + 10, 4);
+        pg.rect(rx, rightPaddleY, PADDLE_W + 10, rh + 10, 4);
+      }
+
+      pg.colorMode(RGB, 255);
+
       pg.fill(200, 40, 40);
-      pg.rect(lx, leftPaddleY, PADDLE_W, PADDLE_H, 3);
+      pg.rect(lx, leftPaddleY, PADDLE_W, lh, 3);
       pg.fill(220, 70, 70, 140);
-      pg.rect(lx + 1, leftPaddleY, PADDLE_W * 0.4, PADDLE_H * 0.85, 2);
+      pg.rect(lx + 1, leftPaddleY, PADDLE_W * 0.4, lh * 0.85, 2);
 
       pg.fill(40, 40, 200);
-      pg.rect(rx, rightPaddleY, PADDLE_W, PADDLE_H, 3);
+      pg.rect(rx, rightPaddleY, PADDLE_W, rh, 3);
       pg.fill(70, 70, 220, 140);
-      pg.rect(rx - 1, rightPaddleY, PADDLE_W * 0.4, PADDLE_H * 0.85, 2);
+      pg.rect(rx - 1, rightPaddleY, PADDLE_W * 0.4, rh * 0.85, 2);
 
       // Serve indicator — small dot above the serving paddle
       pg.fill(255, 220, 0, 180);
@@ -713,12 +748,13 @@ class TableTennisScene implements IScene {
     pg.pushStyle();
       float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
       pg.fill(0, 150); pg.noStroke(); pg.rectMode(CORNER);
-      pg.rect(8, 8, 240 * uiScale(), mg + lh * 4);
+      pg.rect(8, 8, 240 * uiScale(), mg + lh * 5);
       pg.fill(255); pg.textSize(ts); pg.textAlign(LEFT, TOP);
-      pg.text("Table Tennis",                             12, 8 + mg);
-      pg.text("Spin: " + sp + " (" + nf(spin,1,2) + ")", 12, 8 + mg + lh);
-      pg.text("Gravity: " + nf(gravity,1,2) + "  (+/-)",  12, 8 + mg + lh*2);
-      pg.text("Magnus: " + nf(magnusStrength,1,3) + "  ([/])", 12, 8 + mg + lh*3);
+      pg.text("Table Tennis",                                   12, 8 + mg);
+      pg.text("Spin: " + sp + " (" + nf(spin,1,2) + ")",       12, 8 + mg + lh);
+      pg.text("Gravity: " + nf(gravity,1,2) + "  (+/-)",        12, 8 + mg + lh*2);
+      pg.text("Magnus: " + nf(magnusStrength,1,3) + "  ([/])",  12, 8 + mg + lh*3);
+      pg.text("Speed: " + nf(speedMult,1,1) + "x  (,/.)",       12, 8 + mg + lh*4);
     pg.popStyle();
   }
 
@@ -732,6 +768,10 @@ class TableTennisScene implements IScene {
     magnusStrength = constrain(magnusStrength + delta, 0.0, 0.15);
   }
 
+  void adjustSpeed(float delta) {
+    speedMult = constrain(speedMult + delta, 0.5, 3.0);
+  }
+
   void applyController(Controller c) {
     // R Stick ↕ → gravity (incremental: push up = less, push down = more)
     float ry = map(c.ry, 0, height, -1, 1);
@@ -743,6 +783,10 @@ class TableTennisScene implements IScene {
 
     // A button → inject a serve-speed burst (ball speed floor up briefly)
     if (c.a_just_pressed) spin = constrain(spin + random(-0.15, 0.15), -0.25, 0.25);
+
+    // X / Y buttons → speed down / up
+    if (c.x_just_pressed) adjustSpeed(-0.1);
+    if (c.y_just_pressed) adjustSpeed( 0.1);
   }
 
   // ── code overlay ──────────────────────────────────────────────────────────
@@ -775,5 +819,7 @@ class TableTennisScene implements IScene {
     else if (k == '-') adjustGravity(-0.02);
     else if (k == '[') adjustMagnus(-0.005);
     else if (k == ']') adjustMagnus(0.005);
+    else if (k == ',') adjustSpeed(-0.1);
+    else if (k == '.') adjustSpeed(0.1);
   }
 }

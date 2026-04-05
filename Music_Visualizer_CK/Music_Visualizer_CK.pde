@@ -10,7 +10,7 @@ Config config;
 Audio audio;
 Controller controller;
 IScene[] scenes;
-final int SCENE_COUNT = 25;
+final int SCENE_COUNT = 26;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -215,21 +215,26 @@ void collectSongs(java.io.File dir, ArrayList<String> songs) {
   }
 }
 
-String fileSelected(File selection) {
+void fileSelected(File selection) {
   if (selection == null) {
     log_to_stdo("No file selected. Window might have been closed/cancelled");
-    return "";
-  } else {
-    log_to_stdo("File selected: " + selection.getAbsolutePath());
-    config.SONG_TO_VISUALIZE = selection.getAbsolutePath();
-    // Scan the parent directory so n/N can navigate nearby songs
-    if (config.songList.size() == 0) {
-      collectSongs(selection.getParentFile(), config.songList);
-    }
-    config.currentSongIndex = config.songList.indexOf(selection.getAbsolutePath());
-    if (config.currentSongIndex < 0) config.currentSongIndex = 0;
+    return;
   }
-  return selection.getAbsolutePath();
+  String path = selection.getAbsolutePath();
+  log_to_stdo("File selected: " + path);
+  config.SONG_TO_VISUALIZE = path;
+  config.SONG_NAME = getSongNameFromFilePath(path, config.OS_TYPE);
+  // Always rescan parent folder so n/N works with the new location
+  config.songList.clear();
+  collectSongs(selection.getParentFile(), config.songList);
+  config.currentSongIndex = config.songList.indexOf(path);
+  if (config.currentSongIndex < 0) config.currentSongIndex = 0;
+
+  // At runtime (audio already exists) load immediately.
+  // At startup the setSongToVisualize() while-loop picks up SONG_TO_VISUALIZE instead.
+  if (audio != null) {
+    loadSongByPath(path);
+  }
 }
 
 String discoverOperatingSystem() {
@@ -313,6 +318,7 @@ void setup() {
   scenes[22] = new CyberGridScene();
   scenes[23] = new RecursiveMandalaScene();
   scenes[24] = new KaleidoscopeScene();
+  scenes[25] = new TableTennis3DScene();
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
@@ -389,6 +395,7 @@ void keyPressed() {
   if (key == 's' || key == 'S') toggleSongPlaying();
   if (key == 'n') nextSong();
   if (key == 'N') shuffleSong();
+  if (key == 'o' || key == 'O') selectInput("Select song to visualize", "fileSelected");
   if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
   if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
@@ -527,7 +534,7 @@ public void getUserInput() {
 // in the codebase but excluded from rotation for now.
 // Fan-favourite scenes, in display order. Only these are reachable via
 // LB/RB cycling or keyboard number keys. Add a scene number here to re-enable it.
-final int[] SCENE_ORDER = {1, 4, 6, 7, 13, 14, 17, 18, 19, 23, 24};
+final int[] SCENE_ORDER = {1, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -748,7 +755,8 @@ void drawCodeOverlay(String[] lines) {
 
 void addFPSToTitleBar() {
   if (frameCount % 100 == 0) {
-    surface.setTitle("fps: " + int(frameRate) + " | " + config.TITLE_BAR);
+    surface.setTitle("fps: " + int(frameRate) + " | scene: " + config.STATE
+      + " | " + config.SONG_TO_VISUALIZE);
   }
 }
 
@@ -771,6 +779,13 @@ void drawSongNameOnScreen(PGraphics pg, String song_name, float nameLocationX, f
   
   pg.fill(255);
   pg.text(song_name, nameLocationX, nameLocationY);
+
+  // Small path line below song name for easy debugging
+  pg.textSize(11 * uiScale());
+  pg.fill(0);
+  pg.text(config.SONG_TO_VISUALIZE, nameLocationX + 1, nameLocationY + 18 * uiScale() + 1);
+  pg.fill(180, 180, 180, 180);
+  pg.text(config.SONG_TO_VISUALIZE, nameLocationX, nameLocationY + 18 * uiScale());
 }
 
 void mouseClicked() {
