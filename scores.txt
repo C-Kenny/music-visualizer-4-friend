@@ -669,3 +669,557 @@ game  RIGHT wins  11-8  (games L:0 R:1)
 === session 2026-04-04 00:51:17 ===
 === session 2026-04-04 00:53:53 ===
 === session 2026-04-04 00:57:35 ===
+=== session 2026-04-05 20:05:08 ===
+  point  LEFT   [server  ]  rally:2  score 1-0
+  point  RIGHT  [receiver]  rally:2  score 1-1
+  point  RIGHT  [server  ]  rally:1  score 1-2
+  point  LEFT   [receiver]  rally:2  score 2-2
+  point  LEFT   [server  ]  rally:2  score 3-2
+=== session 2026-04-05 20:09:57 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  RIGHT  [receiver]  rally:1  score 1-1
+  point  RIGHT  [server  ]  rally:1  score 1-2
+  point  RIGHT  [server  ]  rally:1  score 1-3
+  point  LEFT   [server  ]  rally:1  score 2-3
+  point  LEFT   [server  ]  rally:1  score 3-3
+  point  RIGHT  [server  ]  rally:1  score 3-4
+  point  LEFT   [receiver]  rally:2  score 4-4
+  point  LEFT   [server  ]  rally:0  score 5-4
+  point  LEFT   [server  ]  rally:0  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:0  score 6-6
+  point  LEFT   [server  ]  rally:0  score 7-6
+  point  LEFT   [server  ]  rally:0  score 8-6
+  point  RIGHT  [server  ]  rally:0  score 8-7
+  point  RIGHT  [server  ]  rally:0  score 8-8
+  point  LEFT   [server  ]  rally:0  score 9-8
+  point  LEFT   [server  ]  rally:0  score 10-8
+  point  RIGHT  [server  ]  rally:0  score 10-9
+  point  RIGHT  [server  ]  rally:0  score 10-10
+  point  LEFT   [server  ]  rally:0  score 11-10
+  point  RIGHT  [server  ]  rally:0  score 11-11
+  point  LEFT   [server  ]  rally:0  score 12-11
+  point  RIGHT  [server  ]  rally:0  score 12-12
+  point  LEFT   [server  ]  rally:0  score 13-12
+  point  RIGHT  [server  ]  rally:0  score 13-13
+  point  LEFT   [server  ]  rally:0  score 14-13
+  point  RIGHT  [server  ]  rally:0  score 14-14
+  point  LEFT   [server  ]  rally:1  score 15-14
+  point  RIGHT  [server  ]  rally:1  score 15-15
+  point  LEFT   [server  ]  rally:0  score 16-15
+  point  RIGHT  [server  ]  rally:0  score 16-16
+  point  LEFT   [server  ]  rally:0  score 17-16
+  point  RIGHT  [server  ]  rally:0  score 17-17
+  point  LEFT   [server  ]  rally:0  score 18-17
+  point  RIGHT  [server  ]  rally:0  score 18-18
+  point  LEFT   [server  ]  rally:1  score 19-18
+  point  RIGHT  [server  ]  rally:0  score 19-19
+  point  RIGHT  [receiver]  rally:3  score 19-20
+  point  RIGHT  [server  ]  rally:0  score 19-21
+game  RIGHT wins  21-19  (games L:0 R:1)
+  server won 92.5% of points  |  rallies 5+: 0.0%  |  longest: 3 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  RIGHT  [receiver]  rally:1  score 2-3
+  point  LEFT   [server  ]  rally:1  score 3-3
+  point  RIGHT  [server  ]  rally:1  score 3-4
+  point  LEFT   [receiver]  rally:2  score 4-4
+  point  LEFT   [server  ]  rally:2  score 5-4
+  point  LEFT   [server  ]  rally:1  score 6-4
+  point  RIGHT  [server  ]  rally:0  score 6-5
+  point  RIGHT  [server  ]  rally:1  score 6-6
+  point  LEFT   [server  ]  rally:1  score 7-6
+  point  RIGHT  [receiver]  rally:2  score 7-7
+  point  RIGHT  [server  ]  rally:0  score 7-8
+  point  RIGHT  [server  ]  rally:0  score 7-9
+  point  LEFT   [server  ]  rally:1  score 8-9
+  point  LEFT   [server  ]  rally:1  score 9-9
+  point  RIGHT  [server  ]  rally:0  score 9-10
+  point  RIGHT  [server  ]  rally:1  score 9-11
+game  RIGHT wins  11-9  (games L:0 R:2)
+  server won 85.0% of points  |  rallies 5+: 0.0%  |  longest: 2 hits
+---
+=== session 2026-04-05 20:14:14 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:2  score 1-0
+  point  LEFT   [server  ]  rally:1  score 1-1
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  LEFT   [receiver]  rally:1  score 3-0
+  point  LEFT   [receiver]  rally:3  score 2-1
+=== session 2026-04-05 20:22:25 ===
+=== session 2026-04-05 20:22:25 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+=== session 2026-04-05 20:22:46 ===
+=== session 2026-04-05 20:22:46 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:4  score 2-1
+  point  RIGHT  [server  ]  rally:1  score 2-2
+=== session 2026-04-05 20:27:10 ===
+=== session 2026-04-05 20:27:10 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:2  score 2-0
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:1  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:1  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:1  score 4-3
+  point  LEFT   [receiver]  rally:1  score 5-3
+  point  LEFT   [server  ]  rally:1  score 6-3
+  point  LEFT   [server  ]  rally:1  score 7-3
+  point  RIGHT  [server  ]  rally:1  score 7-4
+  point  RIGHT  [server  ]  rally:1  score 7-5
+  point  LEFT   [server  ]  rally:1  score 8-5
+  point  LEFT   [server  ]  rally:1  score 9-5
+  point  RIGHT  [server  ]  rally:0  score 9-6
+  point  RIGHT  [server  ]  rally:3  score 9-7
+  point  RIGHT  [receiver]  rally:1  score 9-8
+  point  LEFT   [server  ]  rally:0  score 10-8
+  point  RIGHT  [server  ]  rally:1  score 10-9
+  point  LEFT   [receiver]  rally:3  score 11-9
+game  LEFT  wins  11-9  (games L:1 R:0)
+  server won 85.0% of points  |  rallies 5+: 0.0%  |  longest: 3 hits
+---
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  RIGHT  [receiver]  rally:1  score 1-1
+  point  RIGHT  [server  ]  rally:0  score 1-2
+  point  LEFT   [receiver]  rally:2  score 2-2
+  point  RIGHT  [receiver]  rally:1  score 2-3
+  point  LEFT   [server  ]  rally:0  score 3-3
+  point  RIGHT  [server  ]  rally:1  score 3-4
+  point  RIGHT  [server  ]  rally:1  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:1  score 3-2
+  point  RIGHT  [receiver]  rally:1  score 3-3
+  point  RIGHT  [server  ]  rally:2  score 3-4
+  point  LEFT   [receiver]  rally:3  score 4-4
+  point  LEFT   [server  ]  rally:1  score 5-4
+=== session 2026-04-05 20:33:08 ===
+=== session 2026-04-05 20:33:09 ===
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:1  score 4-2
+  point  LEFT   [receiver]  rally:3  score 5-2
+  point  LEFT   [receiver]  rally:1  score 6-2
+  point  LEFT   [server  ]  rally:0  score 7-2
+  point  LEFT   [server  ]  rally:0  score 8-2
+  point  RIGHT  [server  ]  rally:0  score 8-3
+  point  RIGHT  [server  ]  rally:1  score 8-4
+  point  LEFT   [server  ]  rally:0  score 9-4
+  point  LEFT   [server  ]  rally:1  score 10-4
+  point  RIGHT  [server  ]  rally:1  score 10-5
+  point  RIGHT  [server  ]  rally:1  score 10-6
+  point  LEFT   [server  ]  rally:1  score 11-6
+game  LEFT  wins  11-6  (games L:1 R:0)
+  server won 88.2% of points  |  rallies 5+: 0.0%  |  longest: 3 hits
+---
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  RIGHT  [receiver]  rally:3  score 1-1
+  point  RIGHT  [server  ]  rally:1  score 1-2
+  point  RIGHT  [server  ]  rally:1  score 1-3
+  point  RIGHT  [receiver]  rally:1  score 1-4
+  point  LEFT   [server  ]  rally:2  score 2-4
+  point  LEFT   [receiver]  rally:1  score 3-4
+  point  LEFT   [receiver]  rally:2  score 4-4
+  point  LEFT   [server  ]  rally:1  score 5-4
+  point  LEFT   [server  ]  rally:1  score 6-4
+  point  RIGHT  [server  ]  rally:1  score 6-5
+  point  RIGHT  [server  ]  rally:1  score 6-6
+  point  LEFT   [server  ]  rally:2  score 7-6
+  point  RIGHT  [receiver]  rally:2  score 7-7
+  point  RIGHT  [server  ]  rally:1  score 7-8
+  point  LEFT   [receiver]  rally:1  score 8-8
+  point  LEFT   [server  ]  rally:1  score 9-8
+  point  RIGHT  [receiver]  rally:1  score 9-9
+  point  LEFT   [receiver]  rally:1  score 10-9
+  point  RIGHT  [server  ]  rally:0  score 10-10
+  point  LEFT   [server  ]  rally:2  score 11-10
+  point  RIGHT  [server  ]  rally:1  score 11-11
+  point  RIGHT  [receiver]  rally:1  score 11-12
+  point  LEFT   [receiver]  rally:2  score 12-12
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:1  score 2-1
+  point  RIGHT  [server  ]  rally:1  score 2-2
+  point  LEFT   [server  ]  rally:1  score 3-2
+  point  LEFT   [server  ]  rally:2  score 4-2
+  point  RIGHT  [server  ]  rally:2  score 4-3
+  point  LEFT   [receiver]  rally:3  score 5-3
+  point  LEFT   [server  ]  rally:2  score 6-3
+  point  RIGHT  [receiver]  rally:1  score 6-4
+  point  RIGHT  [server  ]  rally:1  score 6-5
+  point  LEFT   [receiver]  rally:1  score 7-5
+  point  LEFT   [server  ]  rally:1  score 8-5
+  point  RIGHT  [receiver]  rally:2  score 8-6
+  point  LEFT   [receiver]  rally:2  score 9-6
+  point  LEFT   [receiver]  rally:1  score 10-6
+  point  LEFT   [server  ]  rally:3  score 11-6
+game  LEFT  wins  11-6  (games L:1 R:0)
+  server won 64.7% of points  |  rallies 5+: 0.0%  |  longest: 3 hits
+---
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:0  score 2-1
+  point  RIGHT  [server  ]  rally:4  score 2-2
+  point  LEFT   [server  ]  rally:1  score 3-2
+  point  LEFT   [server  ]  rally:2  score 4-2
+  point  RIGHT  [server  ]  rally:1  score 4-3
+  point  RIGHT  [server  ]  rally:3  score 4-4
+=== session 2026-04-05 20:43:56 ===
+=== session 2026-04-05 20:43:57 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:1  score 2-1
+  point  RIGHT  [server  ]  rally:1  score 2-2
+  point  LEFT   [server  ]  rally:0  score 3-2
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:3  score 2-1
+  point  RIGHT  [server  ]  rally:1  score 2-2
+  point  RIGHT  [receiver]  rally:1  score 2-3
+  point  RIGHT  [receiver]  rally:1  score 2-4
+  point  RIGHT  [server  ]  rally:1  score 2-5
+  point  RIGHT  [server  ]  rally:1  score 2-6
+  point  LEFT   [server  ]  rally:1  score 3-6
+  point  RIGHT  [receiver]  rally:2  score 3-7
+  point  RIGHT  [server  ]  rally:0  score 3-8
+  point  LEFT   [receiver]  rally:1  score 4-8
+  point  LEFT   [server  ]  rally:4  score 5-8
+  point  LEFT   [server  ]  rally:0  score 6-8
+  point  RIGHT  [server  ]  rally:1  score 6-9
+  point  LEFT   [receiver]  rally:2  score 7-9
+  point  LEFT   [server  ]  rally:0  score 8-9
+  point  LEFT   [server  ]  rally:1  score 9-9
+  point  RIGHT  [server  ]  rally:1  score 9-10
+  point  RIGHT  [server  ]  rally:1  score 9-11
+game  RIGHT wins  11-9  (games L:0 R:1)
+  server won 75.0% of points  |  rallies 5+: 0.0%  |  longest: 4 hits
+---
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+=== session 2026-04-05 20:46:27 ===
+=== session 2026-04-05 20:46:27 ===
+=== session 2026-04-05 20:49:46 ===
+=== session 2026-04-05 20:49:46 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:1  score 1-1
+  point  LEFT   [receiver]  rally:1  score 2-1
+  point  RIGHT  [server  ]  rally:0  score 2-2
+  point  LEFT   [server  ]  rally:1  score 3-2
+  point  LEFT   [server  ]  rally:1  score 4-2
+  point  LEFT   [receiver]  rally:1  score 5-2
+  point  RIGHT  [server  ]  rally:1  score 5-3
+  point  LEFT   [server  ]  rally:2  score 6-3
+  point  RIGHT  [receiver]  rally:2  score 6-4
+  point  RIGHT  [server  ]  rally:1  score 6-5
+  point  RIGHT  [server  ]  rally:1  score 6-6
+  point  RIGHT  [receiver]  rally:1  score 6-7
+  point  RIGHT  [receiver]  rally:1  score 6-8
+  point  LEFT   [receiver]  rally:1  score 7-8
+  point  RIGHT  [server  ]  rally:2  score 7-9
+  point  LEFT   [server  ]  rally:1  score 8-9
+  point  LEFT   [server  ]  rally:2  score 9-9
+  point  LEFT   [receiver]  rally:1  score 10-9
+  point  LEFT   [receiver]  rally:1  score 11-9
+game  LEFT  wins  11-9  (games L:1 R:0)
+  server won 55.0% of points  |  rallies 5+: 0.0%  |  longest: 2 hits
+---
+  point  RIGHT  [receiver]  rally:2  score 0-1
+  point  LEFT   [server  ]  rally:0  score 1-1
+  point  RIGHT  [server  ]  rally:1  score 1-2
+  point  RIGHT  [server  ]  rally:1  score 1-3
+  point  LEFT   [server  ]  rally:1  score 2-3
+  point  RIGHT  [receiver]  rally:1  score 2-4
+  point  RIGHT  [server  ]  rally:0  score 2-5
+  point  RIGHT  [server  ]  rally:2  score 2-6
+  point  LEFT   [server  ]  rally:1  score 3-6
+  point  RIGHT  [receiver]  rally:1  score 3-7
+  point  LEFT   [receiver]  rally:1  score 4-7
+  point  LEFT   [receiver]  rally:1  score 5-7
+  point  LEFT   [server  ]  rally:1  score 6-7
+  point  LEFT   [server  ]  rally:0  score 7-7
+  point  LEFT   [receiver]  rally:1  score 8-7
+  point  LEFT   [receiver]  rally:1  score 9-7
+  point  RIGHT  [receiver]  rally:1  score 9-8
+  point  LEFT   [server  ]  rally:0  score 10-8
+  point  LEFT   [receiver]  rally:1  score 11-8
+game  LEFT  wins  11-8  (games L:2 R:0)
+  server won 52.6% of points  |  rallies 5+: 0.0%  |  longest: 2 hits
+---
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:1  score 1-1
+  point  LEFT   [receiver]  rally:1  score 2-1
+  point  RIGHT  [server  ]  rally:2  score 2-2
+  point  LEFT   [server  ]  rally:2  score 3-2
+  point  LEFT   [server  ]  rally:0  score 4-2
+  point  RIGHT  [server  ]  rally:0  score 4-3
+  point  RIGHT  [server  ]  rally:1  score 4-4
+  point  LEFT   [server  ]  rally:1  score 5-4
+  point  RIGHT  [receiver]  rally:1  score 5-5
+  point  RIGHT  [server  ]  rally:3  score 5-6
+  point  RIGHT  [server  ]  rally:2  score 5-7
+  point  RIGHT  [receiver]  rally:1  score 5-8
+  point  LEFT   [server  ]  rally:0  score 6-8
+  point  RIGHT  [server  ]  rally:2  score 6-9
+  point  RIGHT  [server  ]  rally:2  score 6-10
+  point  LEFT   [server  ]  rally:3  score 7-10
+  point  LEFT   [server  ]  rally:1  score 8-10
+  point  RIGHT  [server  ]  rally:1  score 8-11
+game  RIGHT wins  11-8  (games L:2 R:1)
+  server won 78.9% of points  |  rallies 5+: 0.0%  |  longest: 3 hits
+---
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  RIGHT  [receiver]  rally:1  score 0-2
+  point  LEFT   [receiver]  rally:1  score 1-2
+  point  RIGHT  [server  ]  rally:0  score 1-3
+  point  LEFT   [server  ]  rally:1  score 2-3
+  point  RIGHT  [receiver]  rally:2  score 2-4
+  point  LEFT   [receiver]  rally:2  score 3-4
+  point  LEFT   [receiver]  rally:1  score 4-4
+  point  RIGHT  [receiver]  rally:3  score 4-5
+  point  LEFT   [server  ]  rally:0  score 5-5
+  point  LEFT   [receiver]  rally:1  score 6-5
+=== session 2026-04-05 20:54:40 ===
+=== session 2026-04-05 20:54:40 ===
+=== session 2026-04-05 20:55:08 ===
+=== session 2026-04-05 20:55:08 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+=== session 2026-04-05 20:55:17 ===
+=== session 2026-04-05 20:55:17 ===
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:1  score 2-1
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  RIGHT  [server  ]  rally:2  score 2-2
+  point  LEFT   [server  ]  rally:1  score 3-2
+  point  RIGHT  [receiver]  rally:1  score 3-3
+  point  LEFT   [receiver]  rally:3  score 4-3
+  point  RIGHT  [server  ]  rally:2  score 4-4
+  point  RIGHT  [receiver]  rally:1  score 4-5
+  point  LEFT   [server  ]  rally:1  score 5-5
+  point  RIGHT  [server  ]  rally:1  score 5-6
+  point  RIGHT  [server  ]  rally:1  score 5-7
+  point  RIGHT  [receiver]  rally:1  score 5-8
+  point  LEFT   [server  ]  rally:1  score 6-8
+  point  LEFT   [receiver]  rally:1  score 7-8
+  point  RIGHT  [server  ]  rally:2  score 7-9
+  point  RIGHT  [receiver]  rally:1  score 7-10
+  point  RIGHT  [receiver]  rally:3  score 7-11
+game  RIGHT wins  11-7  (games L:0 R:1)
+  server won 61.1% of points  |  rallies 5+: 0.0%  |  longest: 3 hits
+---
+  point  LEFT   [server  ]  rally:2  score 1-0
+  point  LEFT   [server  ]  rally:3  score 2-0
+  point  RIGHT  [server  ]  rally:2  score 2-1
+  point  LEFT   [receiver]  rally:3  score 3-1
+  point  LEFT   [server  ]  rally:6 ***  score 4-1
+  point  LEFT   [server  ]  rally:1  score 5-1
+  point  RIGHT  [server  ]  rally:2  score 5-2
+  point  RIGHT  [server  ]  rally:3  score 5-3
+  point  LEFT   [server  ]  rally:1  score 6-3
+  point  RIGHT  [receiver]  rally:2  score 6-4
+  point  RIGHT  [server  ]  rally:1  score 6-5
+  point  LEFT   [receiver]  rally:3  score 7-5
+  point  RIGHT  [receiver]  rally:3  score 7-6
+  point  LEFT   [server  ]  rally:1  score 8-6
+  point  LEFT   [receiver]  rally:1  score 9-6
+  point  RIGHT  [server  ]  rally:1  score 9-7
+  point  LEFT   [server  ]  rally:1  score 10-7
+  point  RIGHT  [receiver]  rally:1  score 10-8
+  point  LEFT   [receiver]  rally:13 ***  score 11-8
+game  LEFT  wins  11-8  (games L:1 R:1)
+  server won 63.2% of points  |  rallies 5+: 10.5%  |  longest: 13 hits
+---
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  RIGHT  [receiver]  rally:1  score 1-1
+  point  LEFT   [receiver]  rally:9 ***  score 2-1
+  point  LEFT   [receiver]  rally:1  score 3-1
+  point  LEFT   [server  ]  rally:1  score 4-1
+  point  RIGHT  [receiver]  rally:1  score 4-2
+  point  LEFT   [receiver]  rally:1  score 5-2
+  point  LEFT   [receiver]  rally:1  score 6-2
+  point  RIGHT  [receiver]  rally:1  score 6-3
+  point  LEFT   [server  ]  rally:1  score 7-3
+=== session 2026-04-05 20:59:00 ===
+=== session 2026-04-05 20:59:01 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:1  score 2-1
+  point  LEFT   [receiver]  rally:1  score 3-1
+  point  LEFT   [server  ]  rally:1  score 4-1
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:2  score 1-1
+  point  LEFT   [receiver]  rally:1  score 2-1
+  point  RIGHT  [server  ]  rally:1  score 2-2
+  point  LEFT   [server  ]  rally:1  score 3-2
+  point  RIGHT  [receiver]  rally:1  score 3-3
+  point  RIGHT  [server  ]  rally:1  score 3-4
+=== session 2026-04-05 21:02:43 ===
+=== session 2026-04-05 21:02:43 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  RIGHT  [receiver]  rally:1  score 0-2
+  point  LEFT   [receiver]  rally:1  score 1-2
+  point  LEFT   [receiver]  rally:1  score 2-2
+  point  RIGHT  [receiver]  rally:1  score 2-3
+  point  LEFT   [server  ]  rally:1  score 3-3
+  point  LEFT   [receiver]  rally:2  score 4-3
+  point  LEFT   [receiver]  rally:1  score 5-3
+  point  RIGHT  [receiver]  rally:1  score 5-4
+  point  LEFT   [server  ]  rally:2  score 6-4
+  point  LEFT   [receiver]  rally:1  score 7-4
+  point  LEFT   [receiver]  rally:1  score 8-4
+  point  RIGHT  [receiver]  rally:1  score 8-5
+  point  LEFT   [server  ]  rally:2  score 9-5
+  point  LEFT   [receiver]  rally:1  score 10-5
+  point  RIGHT  [server  ]  rally:1  score 10-6
+  point  RIGHT  [receiver]  rally:1  score 10-7
+  point  LEFT   [server  ]  rally:1  score 11-7
+game  LEFT  wins  11-7  (games L:1 R:0)
+  server won 27.8% of points  |  rallies 5+: 0.0%  |  longest: 2 hits
+---
+  point  LEFT   [server  ]  rally:2  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  LEFT   [receiver]  rally:1  score 3-0
+  point  RIGHT  [server  ]  rally:2  score 3-1
+  point  LEFT   [server  ]  rally:1  score 4-1
+  point  RIGHT  [receiver]  rally:2  score 4-2
+  point  RIGHT  [server  ]  rally:1  score 4-3
+  point  RIGHT  [server  ]  rally:1  score 4-4
+  point  LEFT   [server  ]  rally:1  score 5-4
+  point  LEFT   [server  ]  rally:1  score 6-4
+  point  LEFT   [receiver]  rally:3  score 7-4
+  point  RIGHT  [server  ]  rally:1  score 7-5
+  point  LEFT   [server  ]  rally:1  score 8-5
+  point  RIGHT  [receiver]  rally:1  score 8-6
+  point  RIGHT  [server  ]  rally:2  score 8-7
+  point  RIGHT  [server  ]  rally:1  score 8-8
+  point  RIGHT  [receiver]  rally:2  score 8-9
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  LEFT   [receiver]  rally:1  score 3-0
+  point  RIGHT  [server  ]  rally:1  score 3-1
+  point  RIGHT  [receiver]  rally:1  score 3-2
+  point  LEFT   [server  ]  rally:1  score 4-2
+  point  RIGHT  [server  ]  rally:2  score 4-3
+  point  LEFT   [receiver]  rally:2  score 5-3
+  point  RIGHT  [receiver]  rally:1  score 5-4
+  point  LEFT   [server  ]  rally:1  score 6-4
+  point  LEFT   [receiver]  rally:1  score 7-4
+  point  RIGHT  [server  ]  rally:1  score 7-5
+  point  LEFT   [server  ]  rally:2  score 8-5
+  point  RIGHT  [receiver]  rally:2  score 8-6
+  point  LEFT   [receiver]  rally:1  score 9-6
+  point  LEFT   [receiver]  rally:2  score 10-6
+  point  LEFT   [server  ]  rally:1  score 11-6
+game  LEFT  wins  11-6  (games L:1 R:0)
+  server won 52.9% of points  |  rallies 5+: 0.0%  |  longest: 2 hits
+---
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:1  score 1-1
+  point  RIGHT  [server  ]  rally:2  score 1-2
+  point  RIGHT  [server  ]  rally:1  score 1-3
+  point  LEFT   [server  ]  rally:1  score 2-3
+  point  RIGHT  [receiver]  rally:1  score 2-4
+  point  LEFT   [receiver]  rally:3  score 3-4
+  point  LEFT   [receiver]  rally:1  score 4-4
+  point  LEFT   [server  ]  rally:1  score 5-4
+  point  RIGHT  [receiver]  rally:1  score 5-5
+  point  LEFT   [receiver]  rally:1  score 6-5
+  point  LEFT   [receiver]  rally:1  score 7-5
+  point  RIGHT  [receiver]  rally:2  score 7-6
+  point  RIGHT  [receiver]  rally:1  score 7-7
+  point  RIGHT  [server  ]  rally:0  score 7-8
+  point  LEFT   [receiver]  rally:2  score 8-8
+  point  LEFT   [server  ]  rally:1  score 9-8
+  point  RIGHT  [receiver]  rally:2  score 9-9
+  point  LEFT   [receiver]  rally:2  score 10-9
+  point  RIGHT  [server  ]  rally:1  score 10-10
+  point  RIGHT  [receiver]  rally:17 ***  score 10-11
+  point  RIGHT  [server  ]  rally:16 ***  score 10-12
+game  RIGHT wins  12-10  (games L:1 R:1)
+  server won 40.9% of points  |  rallies 5+: 9.1%  |  longest: 17 hits
+---
+  point  RIGHT  [receiver]  rally:11 ***  score 0-1
+  point  LEFT   [server  ]  rally:1  score 1-1
+  point  LEFT   [receiver]  rally:1  score 2-1
+  point  LEFT   [receiver]  rally:1  score 3-1
+  point  RIGHT  [receiver]  rally:1  score 3-2
+  point  RIGHT  [receiver]  rally:1  score 3-3
+  point  LEFT   [receiver]  rally:5 ***  score 4-3
+  point  LEFT   [receiver]  rally:1  score 5-3
+  point  RIGHT  [receiver]  rally:1  score 5-4
+  point  RIGHT  [receiver]  rally:1  score 5-5
+  point  RIGHT  [server  ]  rally:0  score 5-6
+  point  RIGHT  [server  ]  rally:1  score 5-7
+  point  LEFT   [server  ]  rally:2  score 6-7
+  point  LEFT   [server  ]  rally:1  score 7-7
+  point  RIGHT  [server  ]  rally:1  score 7-8
+  point  LEFT   [receiver]  rally:1  score 8-8
+  point  RIGHT  [receiver]  rally:13 ***  score 8-9
+  point  RIGHT  [receiver]  rally:1  score 8-10
+  point  LEFT   [receiver]  rally:1  score 9-10
+  point  LEFT   [receiver]  rally:1  score 10-10
+  point  LEFT   [server  ]  rally:2  score 11-10
+  point  LEFT   [receiver]  rally:1  score 12-10
+game  LEFT  wins  12-10  (games L:2 R:1)
+  server won 31.8% of points  |  rallies 5+: 13.6%  |  longest: 13 hits
+---
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:2  score 2-0
+  point  LEFT   [receiver]  rally:2  score 3-0
+  point  RIGHT  [server  ]  rally:4  score 3-1
+  point  LEFT   [server  ]  rally:2  score 4-1
+  point  RIGHT  [receiver]  rally:1  score 4-2
+  point  RIGHT  [server  ]  rally:1  score 4-3
+  point  LEFT   [receiver]  rally:1  score 5-3
+  point  LEFT   [server  ]  rally:1  score 6-3
+  point  LEFT   [server  ]  rally:1  score 7-3
+  point  RIGHT  [server  ]  rally:2  score 7-4
+  point  LEFT   [receiver]  rally:2  score 8-4
+  point  LEFT   [server  ]  rally:1  score 9-4
+  point  LEFT   [server  ]  rally:2  score 10-4
+  point  LEFT   [receiver]  rally:1  score 11-4
+game  LEFT  wins  11-4  (games L:3 R:1)
+  server won 66.7% of points  |  rallies 5+: 0.0%  |  longest: 4 hits
+---
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  RIGHT  [receiver]  rally:1  score 0-2
+  point  RIGHT  [server  ]  rally:1  score 0-3
+  point  RIGHT  [server  ]  rally:1  score 0-4
+  point  RIGHT  [receiver]  rally:1  score 0-5
+  point  RIGHT  [receiver]  rally:1  score 0-6
+  point  LEFT   [receiver]  rally:1  score 1-6
+  point  RIGHT  [server  ]  rally:2  score 1-7
+  point  LEFT   [server  ]  rally:2  score 2-7
+  point  LEFT   [server  ]  rally:1  score 3-7
+  point  LEFT   [receiver]  rally:1  score 4-7
+  point  RIGHT  [server  ]  rally:1  score 4-8
+  point  RIGHT  [receiver]  rally:1  score 4-9
+  point  RIGHT  [receiver]  rally:2  score 4-10
+  point  RIGHT  [server  ]  rally:2  score 4-11
+game  RIGHT wins  11-4  (games L:3 R:2)
+  server won 46.7% of points  |  rallies 5+: 0.0%  |  longest: 2 hits
+---
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  RIGHT  [receiver]  rally:2  score 1-1
+  point  RIGHT  [server  ]  rally:1  score 1-2
+  point  RIGHT  [server  ]  rally:1  score 1-3
+  point  LEFT   [server  ]  rally:1  score 2-3
+  point  RIGHT  [receiver]  rally:1  score 2-4
+  point  LEFT   [receiver]  rally:3  score 3-4
+  point  LEFT   [receiver]  rally:2  score 4-4
+  point  RIGHT  [receiver]  rally:2  score 4-5
+  point  RIGHT  [receiver]  rally:1  score 4-6
+  point  RIGHT  [server  ]  rally:2  score 4-7
+  point  RIGHT  [server  ]  rally:1  score 4-8
+  point  LEFT   [server  ]  rally:1  score 5-8
