@@ -66,3 +66,4 @@ One of my friends passed away, we used to play a lot of Halo together. This musi
 
 - [Music Visualizer source code on GitHub](https://github.com/C-Kenny/music-visualizer-4-friend)
 - [GitHub Issue tracker for repo](https://github.com/C-Kenny/music-visualizer-4-friend/issues)
+- [Processing coding standards](documentation/coding_standards_processing.md)
