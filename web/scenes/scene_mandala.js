@@ -563,4 +563,3 @@ class PolarPlasmaEffect {
 
 // Export as global
 const sceneMandala = new SceneMandala(null); // p5 instance injected later in sketch.js
-jected later in sketch.js
