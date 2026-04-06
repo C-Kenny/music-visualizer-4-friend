@@ -46,6 +46,7 @@ const Config = {
 
   // ── Backgrounds ──────────────────────────────────────────────────────────────
   BACKGROUND_ENABLED: true,
+  MANDALA_DARK_MODE: false,
   DRAW_TUNNEL: false,
   DRAW_PLASMA: false,
   DRAW_POLAR_PLASMA: false,

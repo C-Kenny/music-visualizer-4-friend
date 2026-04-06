@@ -53,9 +53,9 @@ class SceneMandala {
     // Using background() here fully clears the buffer each frame — which is what we want.
     // The pg1.clear() in sketch.js handles the alpha reset; this paints the visible colour.
     if (Config.BACKGROUND_ENABLED && !Config.DRAW_TUNNEL && !Config.DRAW_PLASMA && !Config.DRAW_POLAR_PLASMA) {
-      // Dark background — fins and diamonds are mostly light/bright colours so dark gives
-      // much better contrast than the original Processing grey (200). Press 'g' to toggle.
-      p.background(18);
+      // Keep the original Processing look as the default (light grey),
+      // with an optional dark mode toggle in sketch.js.
+      p.background(Config.MANDALA_DARK_MODE ? 18 : 200);
     } else if (!Config.DRAW_TUNNEL && !Config.DRAW_PLASMA && !Config.DRAW_POLAR_PLASMA) {
       // Background disabled — let blend modes stack on black
       p.background(0);
@@ -563,4 +563,3 @@ class PolarPlasmaEffect {
 
 // Export as global
 const sceneMandala = new SceneMandala(null); // p5 instance injected later in sketch.js
-jected later in sketch.js
