@@ -80,6 +80,28 @@ void drawXboxControllerLarge(float cx, float cy, float scale, ControllerLayout[]
   rect(cx - cw/2 - 2*scale, cy - ch/2 + ch*0.3, 3*scale, ch*0.4);
   rect(cx + cw/2 - 1*scale, cy - ch/2 + ch*0.3, 3*scale, ch*0.4);
 
+  // ─ BACK BUTTONS (shown as small indicators on top edge) ─────────────
+  // Left Trigger (LT)
+  fill(120, 120, 130, 200);
+  stroke(160, 160, 170, 180);
+  strokeWeight(1 * scale);
+  rect(cx - cw*0.25, cy - ch/2 - 5*scale, 20*scale, 5*scale, 2*scale);
+  fill(200, 200, 200, 160);
+  textFont(monoFont);
+  textAlign(CENTER, CENTER);
+  textSize(6 * uiScale());
+  text("LT", cx - cw*0.25, cy - ch/2 - 2.5*scale);
+
+  // Right Trigger (RT)
+  fill(120, 120, 130, 200);
+  stroke(160, 160, 170, 180);
+  strokeWeight(1 * scale);
+  rect(cx + cw*0.25 - 20*scale, cy - ch/2 - 5*scale, 20*scale, 5*scale, 2*scale);
+  fill(200, 200, 200, 160);
+  textAlign(CENTER, CENTER);
+  textSize(6 * uiScale());
+  text("RT", cx + cw*0.25 - 10*scale, cy - ch/2 - 2.5*scale);
+
   // ─ LEFT SIDE ─────────────────────────────────────
   float leftX = cx - cw * 0.28;
 
@@ -118,6 +140,14 @@ void drawXboxControllerLarge(float cx, float cy, float scale, ControllerLayout[]
   strokeWeight(1*scale);
   rect(cx - 25*scale, cy + ch*0.35, 15*scale, 8*scale, 2*scale);  // Back
   rect(cx + 10*scale, cy + ch*0.35, 15*scale, 8*scale, 2*scale);  // Start
+  
+  // Label back buttons
+  fill(140, 140, 150, 180);
+  textFont(monoFont);
+  textAlign(CENTER, CENTER);
+  textSize(6 * uiScale());
+  text("Back", cx - 17.5*scale, cy + ch*0.39);
+  text("Start", cx + 17.5*scale, cy + ch*0.39);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,6 +347,39 @@ void drawControllerPointers(float cx, float cy, float scale, ControllerLayout[] 
 
   float cw = 180 * scale;
   float ch = 110 * scale;
+  float size = 18 * scale;  // Face button size
+  
+  // Map button names to their actual screen positions on the controller
+  HashMap<String, PVector> buttonPositions = new HashMap<String, PVector>();
+  
+  // Face buttons (ABXY) positions
+  float rightX = cx + cw * 0.28;
+  float faceY = cy - ch * 0.25;
+  buttonPositions.put("Y", new PVector(rightX, faceY - size*1.1));
+  buttonPositions.put("X", new PVector(rightX - size*1.1, faceY));
+  buttonPositions.put("A", new PVector(rightX, faceY + size*1.1));
+  buttonPositions.put("B", new PVector(rightX + size*1.1, faceY));
+  
+  // D-Pad position
+  float leftX = cx - cw * 0.28;
+  float dpadY = cy - ch * 0.25;
+  buttonPositions.put("D-pad", new PVector(leftX, dpadY));
+  
+  // Stick positions
+  float lstickY = cy + ch * 0.15;
+  float rstickY = cy + ch * 0.15;
+  buttonPositions.put("LStick", new PVector(leftX, lstickY));
+  buttonPositions.put("RStick", new PVector(rightX, rstickY));
+  
+  // Bumper positions
+  buttonPositions.put("LB", new PVector(cx - cw*0.3, cy - ch*0.48));
+  buttonPositions.put("RB", new PVector(cx + cw*0.3, cy - ch*0.48));
+  
+  // Back button positions (triggers and shoulder buttons)
+  buttonPositions.put("LT", new PVector(cx - cw*0.25, cy - ch/2 - 2.5*uiScale()));
+  buttonPositions.put("RT", new PVector(cx + cw*0.25 - 10*uiScale(), cy - ch/2 - 2.5*uiScale()));
+  buttonPositions.put("Back", new PVector(cx - 17.5*scale, cy + ch*0.39));
+  buttonPositions.put("Start", new PVector(cx + 17.5*scale, cy + ch*0.39));
   
   // Positions for labels (around the controller)
   ArrayList<PointerLabel> topLabels = new ArrayList<PointerLabel>();
@@ -331,32 +394,36 @@ void drawControllerPointers(float cx, float cy, float scale, ControllerLayout[] 
   for (ControllerLayout layout : layouts) {
     String btn = layout.button;
     String desc = layout.description;
+    
+    // Get actual button position on controller
+    PVector btnPos = buttonPositions.get(btn);
+    if (btnPos == null && btn.contains("LStick")) {
+      btnPos = buttonPositions.get("LStick");
+    } else if (btnPos == null && btn.contains("RStick")) {
+      btnPos = buttonPositions.get("RStick");
+    } else if (btnPos == null && btn.contains("D-pad")) {
+      btnPos = buttonPositions.get("D-pad");
+    } else if (btnPos == null) {
+      btnPos = new PVector(cx, cy);  // Default to controller center
+    }
 
-    // Determine which side this button belongs to based on button name
-    if (btn.equals("Y")) {
-      topLabels.add(new PointerLabel(btn, desc, cx, cy - ch/2 - marginY, 0));
+    // Determine which side this label should be positioned on
+    if (btn.equals("Y") || btn.equals("LB") || btn.equals("RB") || btn.equals("LT") || btn.equals("RT")) {
+      topLabels.add(new PointerLabel(btn, desc, cx, cy - ch/2 - marginY, btnPos.x, btnPos.y));
+    } else if (btn.equals("A") || btn.equals("Back") || btn.equals("Start")) {
+      bottomLabels.add(new PointerLabel(btn, desc, cx, cy + ch/2 + marginY, btnPos.x, btnPos.y));
     } else if (btn.equals("B")) {
-      rightLabels.add(new PointerLabel(btn, desc, cx + cw/2 + marginX, cy, 0));
-    } else if (btn.equals("A")) {
-      bottomLabels.add(new PointerLabel(btn, desc, cx, cy + ch/2 + marginY, 0));
-    } else if (btn.equals("X")) {
-      leftLabels.add(new PointerLabel(btn, desc, cx - cw/2 - marginX, cy, 0));
-    } else if (btn.equals("LB")) {
-      topLabels.add(new PointerLabel(btn, desc, cx - cw*0.3, cy - ch/2 - marginY, 0));
-    } else if (btn.equals("RB")) {
-      topLabels.add(new PointerLabel(btn, desc, cx + cw*0.3, cy - ch/2 - marginY, 0));
-    } else if (btn.contains("LStick")) {
-      leftLabels.add(new PointerLabel(btn, desc, cx - cw/2 - marginX, cy + ch*0.15, 0));
+      rightLabels.add(new PointerLabel(btn, desc, cx + cw/2 + marginX, cy, btnPos.x, btnPos.y));
+    } else if (btn.equals("X") || btn.contains("LStick") || btn.contains("D-pad")) {
+      leftLabels.add(new PointerLabel(btn, desc, cx - cw/2 - marginX, cy, btnPos.x, btnPos.y));
     } else if (btn.contains("RStick")) {
-      rightLabels.add(new PointerLabel(btn, desc, cx + cw/2 + marginX, cy + ch*0.15, 0));
-    } else if (btn.contains("D-pad")) {
-      leftLabels.add(new PointerLabel(btn, desc, cx - cw/2 - marginX, cy - ch*0.15, 0));
+      rightLabels.add(new PointerLabel(btn, desc, cx + cw/2 + marginX, cy, btnPos.x, btnPos.y));
     } else {
       // Default: spread across available spaces
       if (topLabels.size() < bottomLabels.size()) {
-        topLabels.add(new PointerLabel(btn, desc, cx + 100*uiScale(), cy - ch/2 - marginY, 0));
+        topLabels.add(new PointerLabel(btn, desc, cx + 100*uiScale(), cy - ch/2 - marginY, btnPos.x, btnPos.y));
       } else {
-        bottomLabels.add(new PointerLabel(btn, desc, cx + 100*uiScale(), cy + ch/2 + marginY, 0));
+        bottomLabels.add(new PointerLabel(btn, desc, cx + 100*uiScale(), cy + ch/2 + marginY, btnPos.x, btnPos.y));
       }
     }
   }
@@ -368,10 +435,10 @@ void drawControllerPointers(float cx, float cy, float scale, ControllerLayout[] 
   distributeLabels(rightLabels, cx + cw/2 + marginX, cy, 1, marginY);
 
   // Draw all pointers and labels
-  for (PointerLabel pl : topLabels) drawPointerLabel(pl, cx, cy);
-  for (PointerLabel pl : bottomLabels) drawPointerLabel(pl, cx, cy);
-  for (PointerLabel pl : leftLabels) drawPointerLabel(pl, cx, cy);
-  for (PointerLabel pl : rightLabels) drawPointerLabel(pl, cx, cy);
+  for (PointerLabel pl : topLabels) drawPointerLabel(pl);
+  for (PointerLabel pl : bottomLabels) drawPointerLabel(pl);
+  for (PointerLabel pl : leftLabels) drawPointerLabel(pl);
+  for (PointerLabel pl : rightLabels) drawPointerLabel(pl);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -394,16 +461,33 @@ void distributeLabels(ArrayList<PointerLabel> labels, float centerX, float cente
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Draw a single pointer line + label
+// Draw a single pointer line + label with curved path
 // ─────────────────────────────────────────────────────────────────────────────
 
-void drawPointerLabel(PointerLabel pl, float cx, float cy) {
+void drawPointerLabel(PointerLabel pl) {
   pushStyle();
   
-  // Pointer line
+  // Curved pointer line using Bezier (routes around button clusters)
   stroke(150, 200, 255, 120);
   strokeWeight(1.5);
-  line(pl.fromX, pl.fromY, pl.x, pl.y);
+  
+  // Calculate control point for smooth curve
+  float midX = (pl.fromX + pl.x) / 2.0;
+  float midY = (pl.fromY + pl.y) / 2.0;
+  
+  // Offset control points to create smooth arc away from center
+  float offsetDist = dist(pl.fromX, pl.fromY, pl.x, pl.y) * 0.15;
+  float angle = atan2(pl.y - pl.fromY, pl.x - pl.fromX) + HALF_PI;
+  float cp1x = midX + cos(angle) * offsetDist;
+  float cp1y = midY + sin(angle) * offsetDist;
+  
+  // Draw smooth curve from button to label
+  bezier(pl.fromX, pl.fromY, cp1x, cp1y, cp1x, cp1y, pl.x, pl.y);
+  
+  // Small circle at button endpoint
+  noStroke();
+  fill(150, 200, 255, 180);
+  circle(pl.fromX, pl.fromY, 4);
 
   // Label box background
   textFont(monoFont);
@@ -432,15 +516,15 @@ void drawPointerLabel(PointerLabel pl, float cx, float cy) {
 class PointerLabel {
   String button;
   String description;
-  float x, y;
-  float fromX, fromY;
+  float x, y;           // Label position
+  float fromX, fromY;   // Button position (start of pointer line)
 
-  PointerLabel(String button, String description, float x, float y, int dummy) {
+  PointerLabel(String button, String description, float labelX, float labelY, float btnX, float btnY) {
     this.button = button;
     this.description = description;
-    this.x = x;
-    this.y = y;
-    this.fromX = x;
-    this.fromY = y;
+    this.x = labelX;
+    this.y = labelY;
+    this.fromX = btnX;
+    this.fromY = btnY;
   }
 }

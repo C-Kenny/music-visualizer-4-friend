@@ -667,7 +667,7 @@ void draw() {
     }
     if (config.SHOW_CONTROLLER_GUIDE) {
       ControllerLayout[] layout = scenes[config.STATE].getControllerLayout();
-      if (layout != null && layout.length > 0) {
+      if (layout != null) {
         drawControllerGuide(layout);
       }
     }
