@@ -468,6 +468,7 @@ void drawPointerLabel(PointerLabel pl) {
   pushStyle();
   
   // Curved pointer line using Bezier (routes around button clusters)
+  noFill();
   stroke(150, 200, 255, 120);
   strokeWeight(1.5);
   
