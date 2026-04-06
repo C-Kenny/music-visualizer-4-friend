@@ -24,7 +24,7 @@ class CatsCradleScene implements IScene {
     numAnchors = constrain(newAnchors, 4, 14);
 
     // A button → inject a manual beat pulse
-    if (c.a_just_pressed) pulse = 1.0;
+    if (c.aJustPressed) pulse = 1.0;
   }
 
   // --- code overlay -----------------------------------------------

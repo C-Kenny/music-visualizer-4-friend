@@ -1,6 +1,6 @@
 class OriginalScene implements IScene {
   DashedLines dash;
-  float dash_dist;
+  float dashDistance;
   int s1Size;
   float s1OffsetX;
 
@@ -15,7 +15,7 @@ class OriginalScene implements IScene {
     this.polarPlasma = new PolarPlasma();
     dash = new DashedLines(parent);
     dash.pattern(130, 110);
-    dash_dist    = 0;
+    dashDistance    = 0;
     s1Size       = min(width, height);
     s1OffsetX    = (width - s1Size) / 2.0;
 
@@ -39,18 +39,18 @@ class OriginalScene implements IScene {
     config.DIAMOND_HEIGHT_OFFSET = map(c.ry, 0, height, -120, 120);
 
     try {
-      float l_trigger_depletion = map(c.stick.getSlider("lt").getValue(), -1, 1, -2, 6);
-      config.TUNNEL_ZOOM_INCREMENT += int(l_trigger_depletion);
+      float leftTriggerDepletion = map(c.stick.getSlider("lt").getValue(), -1, 1, -2, 6);
+      config.TUNNEL_ZOOM_INCREMENT += int(leftTriggerDepletion);
     } catch (Exception e) {}
 
-    if (c.a_just_pressed) config.RAINBOW_FINS = !config.RAINBOW_FINS;
-    if (c.b_just_pressed) changeBlendMode();
-    if (c.x_just_pressed || c.lstickclick_just_pressed) config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
-    if (c.y_just_pressed) config.finRotationClockWise = !config.finRotationClockWise;
-    if (c.rstickclick_just_pressed) config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
+    if (c.aJustPressed) config.RAINBOW_FINS = !config.RAINBOW_FINS;
+    if (c.bJustPressed) changeBlendMode();
+    if (c.xJustPressed || c.leftStickClickJustPressed) config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
+    if (c.yJustPressed) config.finRotationClockWise = !config.finRotationClockWise;
+    if (c.rightStickClickJustPressed) config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
   }
 
-  void drawDiamond(PGraphics pg, float dash_distanceFromCenter) {
+  void drawDiamond(PGraphics pg, float dashDistanceFromCenter) {
     float innerXY = s1Size / 2.0 + config.DIAMOND_DISTANCE_FROM_CENTER;
     CURRENT_HANDY_RENDERER = HANDY_RENDERERS[config.CURRENT_HANDY_RENDERER_POSITION];
     pg.strokeWeight(5);
@@ -268,10 +268,10 @@ class OriginalScene implements IScene {
         drawBezierFins(pg, config.FIN_REDNESS, config.FINS, config.finRotationClockWise);
     }
     
-    dash.offset(dash_dist);
-    dash_dist = dash_dist + (.2 * config.DASH_LINE_SPEED);
-    if (dash_dist >= 10000 || dash_dist <= -10000) {
-      dash_dist = 0;
+    dash.offset(dashDistance);
+    dashDistance = dashDistance + (.2 * config.DASH_LINE_SPEED);
+    if (dashDistance >= 10000 || dashDistance <= -10000) {
+      dashDistance = 0;
     }
     
     drawSongNameOnScreen(pg, config.SONG_NAME, s1Size/2.0, s1Size-5);

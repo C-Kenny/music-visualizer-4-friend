@@ -37,14 +37,14 @@ class ShaderScene implements IScene {
     if (abs(rightStickX) > 0.1) twist += rightStickX * 0.05;
     
     // A button to center the pan and untwist
-    if (c.a_just_pressed) {
+    if (c.aJustPressed) {
       panX = 0.0;
       panY = 0.0;
       twist = 0.0;
     }
     
     // Y button to hot-reload the shader while debugging! (Awesome feature)
-    if (c.y_just_pressed) {
+    if (c.yJustPressed) {
       loadMyShader();
     }
   }

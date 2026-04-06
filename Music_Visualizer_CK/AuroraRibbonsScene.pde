@@ -31,8 +31,8 @@ class AuroraRibbonsScene implements IScene {
     // R stick ↔ controls turbulence/detail
     turbulence = constrain(map(rx, -1, 1, 0.35, 2.2), 0.2, 2.4);
 
-    if (c.a_just_pressed) triggerFlash();
-    if (c.y_just_pressed) hueOffset = (hueOffset + 24) % 360;
+    if (c.aJustPressed) triggerFlash();
+    if (c.yJustPressed) hueOffset = (hueOffset + 24) % 360;
   }
 
   void triggerFlash() {

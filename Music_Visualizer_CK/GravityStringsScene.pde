@@ -30,7 +30,7 @@ class GravityStringsScene implements IScene {
     float rx = map(c.rx, 0, width, -1, 1);
     numAnchors = constrain(round(map(rx, -1, 1, 4, 14)), 4, 14);
 
-    if (c.a_just_pressed) pluck(2.5);
+    if (c.aJustPressed) pluck(2.5);
   }
 
   void pluck(float strength) {

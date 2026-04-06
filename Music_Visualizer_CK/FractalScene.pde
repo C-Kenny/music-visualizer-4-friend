@@ -33,11 +33,11 @@ class FractalScene implements IScene {
     }
 
     // Buttons
-    if (c.a_just_pressed) {
+    if (c.aJustPressed) {
       symmetries = (symmetries % 8) + 3; // cycles 3..10
     }
-    if (c.y_just_pressed) cyclePalette();
-    if (c.x_just_pressed) {
+    if (c.yJustPressed) cyclePalette();
+    if (c.xJustPressed) {
       globalZoom = 0;
       rotationSpeed = 0.005;
     }

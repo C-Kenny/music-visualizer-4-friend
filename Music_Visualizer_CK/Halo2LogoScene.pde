@@ -158,10 +158,10 @@ class Halo2LogoScene implements IScene {
     float bass  = analyzer.bass;
     float mid   = analyzer.mid;
     float high  = analyzer.high;
-    boolean is_beat = analyzer.isBeat;
+    boolean isBeat = analyzer.isBeat;
 
     // --- beat pulse -------------------------------------------------------
-    if (is_beat) {
+    if (isBeat) {
       targetScale = 1.0 + pulseSens * constrain(bass / 5.0, 0.3, 1.0);
     }
     currentScale += (targetScale - currentScale) * 0.18;
@@ -172,7 +172,7 @@ class Halo2LogoScene implements IScene {
 
     // --- render effect into off-screen canvas ----------------------------
     canvas.beginDraw();
-    drawBackground(canvas, bass, mid, high, is_beat);
+    drawBackground(canvas, bass, mid, high, isBeat);
     canvas.endDraw();
 
     // Apply logo mask to canvas
@@ -215,12 +215,12 @@ class Halo2LogoScene implements IScene {
 
   // ── background modes ──────────────────────────────────────────────────────
 
-  void drawBackground(PGraphics g, float bass, float mid, float high, boolean is_beat) {
+  void drawBackground(PGraphics g, float bass, float mid, float high, boolean isBeat) {
     g.colorMode(HSB, 360, 255, 255, 255);
     switch (bgMode) {
       case 0: drawPlasmaSweep(g, bass, mid, high); break;
       case 1: drawRadialBurst(g, bass, mid, high); break;
-      case 2: drawSolidPulse(g,  bass, mid, high, is_beat); break;
+      case 2: drawSolidPulse(g,  bass, mid, high, isBeat); break;
     }
     g.colorMode(RGB, 255);
   }
@@ -268,7 +268,7 @@ class Halo2LogoScene implements IScene {
   }
 
   // Solid colour that shifts on beat
-  void drawSolidPulse(PGraphics g, float bass, float mid, float high, boolean is_beat) {
+  void drawSolidPulse(PGraphics g, float bass, float mid, float high, boolean isBeat) {
     float h = hueShift;
     float s = 200 + mid * 5;
     float b = 180 + bass * 15;
@@ -313,10 +313,10 @@ class Halo2LogoScene implements IScene {
     pulseSens = map(ly, -1, 1, 1.0, 0.05);
 
     // Y button → cycle background mode (B is global blend mode, so use Y here)
-    if (c.y_just_pressed) cycleBgMode();
+    if (c.yJustPressed) cycleBgMode();
 
     // A button → trigger a manual scale pulse
-    if (c.a_just_pressed) targetScale = 1.0 + pulseSens * 0.9;
+    if (c.aJustPressed) targetScale = 1.0 + pulseSens * 0.9;
   }
 
   void onEnter() {

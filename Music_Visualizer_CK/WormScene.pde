@@ -301,10 +301,10 @@ class WormScene implements IScene {
       float z = c.stick.getSlider("z").getValue(); 
       speedS = map(z, -1, 1, 0.3, 2.2);
     } catch (Exception e) {}
-    if (c.a_just_pressed) addWorm(1280, 720);
-    if (c.b_just_pressed) removeWorm();
-    if (c.x_just_pressed) scatter();
-    if (c.y_just_pressed) colorM = (colorM + 1) % 3;
+    if (c.aJustPressed) addWorm(1280, 720);
+    if (c.bJustPressed) removeWorm();
+    if (c.xJustPressed) scatter();
+    if (c.yJustPressed) colorM = (colorM + 1) % 3;
   }
 
   String[] getCodeLines() {

@@ -281,10 +281,10 @@ class KaleidoscopeScene implements IScene {
       lt = max(0, -z); rt = max(0, z);
     } catch (Exception e) { lt = 0; rt = 0; }
 
-    if (c.a_just_pressed) segments   = constrain(segments + 2, 4, 24);
-    if (c.b_just_pressed) segments   = constrain(segments - 2, 4, 24);
-    if (c.y_just_pressed) paletteIdx = (paletteIdx + 1) % paletteNames.length;
-    if (c.x_just_pressed) {
+    if (c.aJustPressed) segments   = constrain(segments + 2, 4, 24);
+    if (c.bJustPressed) segments   = constrain(segments - 2, 4, 24);
+    if (c.yJustPressed) paletteIdx = (paletteIdx + 1) % paletteNames.length;
+    if (c.xJustPressed) {
       zoom = 0.65; manualRot = 0; rotSpeed = 0.003; segments = 12;
     }
   }

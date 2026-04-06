@@ -322,10 +322,10 @@ class VoidBloomScene implements IScene {
     panY = constrain(panY + (c.ly - height / 2.0) * 0.04, -height * 0.4, height * 0.4);
     float zd = map(c.ry, 0, height, -1, 1);
     zoom = constrain(zoom + zd * 0.025, 0.3, 3.5);
-    if (c.a_just_pressed) spawnBurst(width / 2.0 + panX, height / 2.0 + panY, 30);
-    if (c.b_just_pressed) palette   = (palette + 1) % 4;
-    if (c.y_just_pressed) numPetals = (numPetals >= 16) ? 4 : numPetals + 2;
-    if (c.x_just_pressed) showStars = !showStars;
+    if (c.aJustPressed) spawnBurst(width / 2.0 + panX, height / 2.0 + panY, 30);
+    if (c.bJustPressed) palette   = (palette + 1) % 4;
+    if (c.yJustPressed) numPetals = (numPetals >= 16) ? 4 : numPetals + 2;
+    if (c.xJustPressed) showStars = !showStars;
   }
 
   // ── Keyboard ──────────────────────────────────────────────────────────────────

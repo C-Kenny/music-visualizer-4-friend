@@ -791,11 +791,11 @@ class TableTennisScene implements IScene {
     if (abs(ly) > 0.2) adjustMagnus(-ly * 0.001);
 
     // A button → inject a serve-speed burst (ball speed floor up briefly)
-    if (c.a_just_pressed) spin = constrain(spin + random(-0.15, 0.15), -0.25, 0.25);
+    if (c.aJustPressed) spin = constrain(spin + random(-0.15, 0.15), -0.25, 0.25);
 
     // X / Y buttons → speed down / up
-    if (c.x_just_pressed) adjustSpeed(-0.1);
-    if (c.y_just_pressed) adjustSpeed( 0.1);
+    if (c.xJustPressed) adjustSpeed(-0.1);
+    if (c.yJustPressed) adjustSpeed( 0.1);
   }
 
   // ── code overlay ──────────────────────────────────────────────────────────

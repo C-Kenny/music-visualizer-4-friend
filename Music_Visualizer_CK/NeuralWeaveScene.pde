@@ -382,18 +382,18 @@ class NeuralWeaveScene implements IScene {
     }
     zoom = constrain(lerp(zoom, map(rx, -1, 1, 0.55, 1.75), 0.1), 0.45, 2.0);
 
-    if (c.a_just_pressed) ripple = 1.0;
-    if (c.y_just_pressed) palette = (palette + 1) % 4;
-    if (c.b_just_pressed) cycleGrowthMode();
-    if (c.x_just_pressed) labMode = !labMode;
+    if (c.aJustPressed) ripple = 1.0;
+    if (c.yJustPressed) palette = (palette + 1) % 4;
+    if (c.bJustPressed) cycleGrowthMode();
+    if (c.xJustPressed) labMode = !labMode;
 
-    if (c.lstickclick_just_pressed) {
+    if (c.leftStickClickJustPressed) {
       panX = 0;
       panY = 0;
       zoom = 1.0;
       rotSpeed = 0.00035;
     }
-    if (c.rstickclick_just_pressed) {
+    if (c.rightStickClickJustPressed) {
       regenBridges();
       ripple = max(ripple, 0.45);
     }

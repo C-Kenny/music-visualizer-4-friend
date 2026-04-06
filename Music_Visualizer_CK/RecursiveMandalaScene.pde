@@ -292,10 +292,10 @@ class RecursiveMandalaScene implements IScene {
       lt = max(0, -z); rt = max(0, z);
     } catch (Exception e) { lt = 0; rt = 0; }
 
-    if (c.a_just_pressed) symmetry   = (symmetry % 12) + 3;
-    if (c.b_just_pressed) maxDepth   = constrain((maxDepth % HARD_MAX_DEPTH) + 2, 2, HARD_MAX_DEPTH);
-    if (c.y_just_pressed) paletteIdx = (paletteIdx + 1) % paletteNames.length;
-    if (c.x_just_pressed) { zoom = 1.0; manualRotDelta = 0; rotSpeed = 0.005; }
+    if (c.aJustPressed) symmetry   = (symmetry % 12) + 3;
+    if (c.bJustPressed) maxDepth   = constrain((maxDepth % HARD_MAX_DEPTH) + 2, 2, HARD_MAX_DEPTH);
+    if (c.yJustPressed) paletteIdx = (paletteIdx + 1) % paletteNames.length;
+    if (c.xJustPressed) { zoom = 1.0; manualRotDelta = 0; rotSpeed = 0.005; }
   }
 
   // ── Keyboard ────────────────────────────────────────────────────────────────
