@@ -448,9 +448,15 @@ void drawControllerPointers(float cx, float cy, float scale, ControllerLayout[] 
 void distributeLabels(ArrayList<PointerLabel> labels, float centerX, float centerY, int direction, float spacing) {
   if (labels.isEmpty()) return;
   
-  float startOffset = -(labels.size() - 1) * spacing / 2.0;
-  for (int i = 0; i < labels.size(); i++) {
-    if (centerY == labels.get(i).y) {
+  int n = labels.size();
+  float startOffset = -(n - 1) * spacing / 2.0;
+  
+  // Use first label to determine distribution axis (avoid float comparison precision issues)
+  float xDiff = abs(centerX - labels.get(0).x);
+  boolean isHorizontal = xDiff > 5;  // X varies more than Y
+  
+  for (int i = 0; i < n; i++) {
+    if (isHorizontal) {
       // Horizontal distribution (left/right)
       labels.get(i).x = centerX + startOffset + i * spacing;
     } else {
