@@ -1,0 +1,71 @@
+module.exports = {
+  root: true,
+  env: {
+    browser: true,
+    es2022: true,
+  },
+  extends: ['eslint:recommended'],
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'script',
+  },
+  rules: {
+    'no-var': 'error',
+    'prefer-const': 'error',
+  },
+  overrides: [
+    {
+      files: ['web/config.js', 'web/sketch.js', 'web/scenes/scene_mandala.js'],
+      rules: {
+        'no-undef': 'off',
+        'no-unused-vars': 'off',
+        camelcase: [
+          'error',
+          {
+            properties: 'always',
+            ignoreDestructuring: false,
+          },
+        ],
+        'id-length': [
+          'warn',
+          {
+            min: 5,
+            exceptions: [
+              'i',
+              'j',
+              'k',
+              'x',
+              'y',
+              'r',
+              'g',
+              'b',
+              'dx',
+              'dy',
+              'ax',
+              'ay',
+              'bx',
+              'by',
+              'cx',
+              'cy',
+              'fx',
+              'fy',
+              'ox',
+              'oy',
+              'tx',
+              'ty',
+              'pg',
+              'p',
+              's',
+              'w',
+              'h',
+              'a',
+              't',
+              'v',
+              'c',
+            ],
+          },
+        ],
+      },
+    },
+  ],
+};
