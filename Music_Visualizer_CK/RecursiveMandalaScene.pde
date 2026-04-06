@@ -330,4 +330,8 @@ class RecursiveMandalaScene implements IScene {
       "beat  → depth+1 for 1 frame + flash"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

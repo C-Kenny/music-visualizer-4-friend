@@ -149,6 +149,10 @@ class Worm {
     vx += cos(ang) * 14;
     vy += sin(ang) * 14;
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }
 
 class DirtParticle {
@@ -174,6 +178,10 @@ class DirtParticle {
     pg.fill(hue, 180, 255, t * 180);
     pg.ellipse(x, y, t * 6, t * 6);
     pg.colorMode(RGB, 255);
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
   }
 }
 
@@ -321,5 +329,9 @@ class WormScene implements IScene {
     if (k == 'a') addWorm(1280, 720);
     if (k == 'b') removeWorm();
     if (k == 'x') scatter();
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
   }
 }

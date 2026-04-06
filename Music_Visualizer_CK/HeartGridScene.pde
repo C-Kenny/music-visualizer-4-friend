@@ -155,6 +155,14 @@ class HeartGridScene implements IScene {
     }
   }
 
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {
+      new ControllerLayout("LStick ↔", "Grid columns (3–15)"),
+      new ControllerLayout("RStick", "Zoom & pan focus point"),
+      new ControllerLayout("[ ]", "Decrease/increase columns")
+    };
+  }
+
   String[] getCodeLines() {
     return new String[] {
       "=== Heart Grid Scene ===",

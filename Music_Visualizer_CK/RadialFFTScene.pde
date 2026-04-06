@@ -233,4 +233,8 @@ class RadialFFTScene implements IScene {
     else if (k == '[') adjustSpeed(-0.001);
     else if (k == ']') adjustSpeed(0.001);
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

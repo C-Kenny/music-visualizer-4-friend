@@ -220,4 +220,8 @@ class FractalScene implements IScene {
       "draw_branch(len * shrink_factor, angle + mid * offset)"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

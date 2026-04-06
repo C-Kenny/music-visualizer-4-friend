@@ -332,4 +332,8 @@ class Halo2LogoScene implements IScene {
       if (keyCode == DOWN) adjustPulseSens(-0.05);
     }
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

@@ -399,6 +399,7 @@ void keyPressed() {
   if (key == 'o' || key == 'O') selectInput("Select song to visualize", "fileSelected");
   if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
+  if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
   if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
   if (key == 'q' || key == 'Q' || key == ESC) {
     key = 0; // suppress Processing's default ESC→exit behaviour
@@ -663,6 +664,12 @@ void draw() {
     // 5. Global overlays (UI drawn at native res, over the buffer)
     if (config.SHOW_CODE) {
       drawCodeOverlay(scenes[config.STATE].getCodeLines());
+    }
+    if (config.SHOW_CONTROLLER_GUIDE) {
+      ControllerLayout[] layout = scenes[config.STATE].getControllerLayout();
+      if (layout != null && layout.length > 0) {
+        drawControllerGuide(layout);
+      }
     }
   }
 

@@ -319,4 +319,8 @@ class KaleidoscopeScene implements IScene {
       "bass→zoom  mid→rotspd  high→chroma+caustics"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

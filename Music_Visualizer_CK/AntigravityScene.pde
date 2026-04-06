@@ -293,4 +293,8 @@ class AntigravityScene implements IScene {
       "p.loc.x += jitter(highHat)"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

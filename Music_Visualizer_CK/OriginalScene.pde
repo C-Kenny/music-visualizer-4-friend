@@ -386,4 +386,12 @@ class OriginalScene implements IScene {
       "rotation = frameCount * speed + bass_energy"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {
+      new ControllerLayout("LStick ↕", "Oscillation amplitude"),
+      new ControllerLayout("RStick ↔", "Scroll speed (vertical offset)"),
+      new ControllerLayout("LB/RB", "Rotate through scenes")
+    };
+  }
 }

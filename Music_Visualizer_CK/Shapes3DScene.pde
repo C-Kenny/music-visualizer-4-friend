@@ -241,4 +241,8 @@ class Shapes3DScene implements IScene {
       "rotation = frameCount * speed + onset_kick"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

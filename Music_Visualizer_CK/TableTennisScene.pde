@@ -831,4 +831,8 @@ class TableTennisScene implements IScene {
     else if (k == ',') adjustSpeed(-0.1);
     else if (k == '.') adjustSpeed(0.1);
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

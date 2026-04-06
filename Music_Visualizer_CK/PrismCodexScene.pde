@@ -242,4 +242,8 @@ class PrismCodexScene implements IScene {
   void onExit() {}
 
   void handleKey(char k) {}
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

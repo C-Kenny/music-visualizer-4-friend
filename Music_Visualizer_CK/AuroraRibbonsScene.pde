@@ -212,4 +212,8 @@ class AuroraRibbonsScene implements IScene {
     else if (k == 'k' || k == 'K') cyclePalette();
     else if (k == ' ') triggerFlash();
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

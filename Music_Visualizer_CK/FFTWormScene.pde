@@ -251,4 +251,8 @@ class FFTWormScene implements IScene {
       "seg_radius = lerp(14, 3, t) + amp * 0.5 + ripple * 5"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

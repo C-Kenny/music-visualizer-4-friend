@@ -18,6 +18,7 @@ class Config {
   boolean DRAW_DIAMONDS;
   boolean DRAW_FINS;
   boolean DRAW_WAVEFORM;
+  boolean SHOW_CONTROLLER_GUIDE;  // Toggle with 'h' key
 
   boolean FIN_REDNESS_ANGRY;
   boolean ANIMATED;

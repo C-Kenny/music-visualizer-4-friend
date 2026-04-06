@@ -355,4 +355,15 @@ class VoidBloomScene implements IScene {
       "Space   burst"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {
+      new ControllerLayout("[   /   ]", "Adjust petal count"),
+      new ControllerLayout("C", "Cycle palette"),
+      new ControllerLayout("Z / z", "Zoom in/out"),
+      new ControllerLayout("S", "Toggle stars"),
+      new ControllerLayout("SPACE", "Burst effect"),
+      new ControllerLayout("R", "Reset all")
+    };
+  }
 }

@@ -37,4 +37,8 @@ class RIPScene implements IScene {
       "// Keeping the memory alive through code and color."
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

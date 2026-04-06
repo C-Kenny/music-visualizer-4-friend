@@ -1223,3 +1223,79 @@ game  RIGHT wins  11-4  (games L:3 R:2)
   point  RIGHT  [server  ]  rally:2  score 4-7
   point  RIGHT  [server  ]  rally:1  score 4-8
   point  LEFT   [server  ]  rally:1  score 5-8
+=== session 2026-04-06 23:28:08 ===
+=== session 2026-04-06 23:28:08 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  RIGHT  [receiver]  rally:1  score 1-1
+  point  RIGHT  [server  ]  rally:1  score 1-2
+  point  RIGHT  [server  ]  rally:1  score 1-3
+  point  LEFT   [server  ]  rally:2  score 2-3
+  point  LEFT   [server  ]  rally:1  score 3-3
+  point  RIGHT  [server  ]  rally:2  score 3-4
+  point  RIGHT  [server  ]  rally:0  score 3-5
+  point  LEFT   [server  ]  rally:2  score 4-5
+  point  RIGHT  [receiver]  rally:1  score 4-6
+=== session 2026-04-06 23:30:24 ===
+=== session 2026-04-06 23:30:24 ===
+=== session 2026-04-06 23:33:35 ===
+=== session 2026-04-06 23:33:36 ===
+=== session 2026-04-06 23:37:05 ===
+=== session 2026-04-06 23:37:05 ===
+=== session 2026-04-06 23:37:33 ===
+=== session 2026-04-06 23:37:34 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  RIGHT  [receiver]  rally:1  score 0-2
+  point  LEFT   [receiver]  rally:1  score 1-2
+  point  RIGHT  [server  ]  rally:1  score 1-3
+  point  RIGHT  [receiver]  rally:1  score 1-4
+  point  RIGHT  [receiver]  rally:1  score 1-5
+  point  LEFT   [receiver]  rally:1  score 2-5
+  point  RIGHT  [server  ]  rally:2  score 2-6
+  point  RIGHT  [receiver]  rally:1  score 2-7
+=== session 2026-04-06 23:39:41 ===
+=== session 2026-04-06 23:39:41 ===
+=== session 2026-04-06 23:40:10 ===
+=== session 2026-04-06 23:40:10 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  RIGHT  [server  ]  rally:1  score 2-1
+  point  LEFT   [receiver]  rally:1  score 3-1
+  point  RIGHT  [receiver]  rally:1  score 3-2
+  point  LEFT   [server  ]  rally:3  score 4-2
+  point  RIGHT  [server  ]  rally:1  score 4-3
+  point  RIGHT  [server  ]  rally:1  score 4-4
+  point  LEFT   [server  ]  rally:1  score 5-4
+  point  LEFT   [server  ]  rally:2  score 6-4
+  point  LEFT   [receiver]  rally:1  score 7-4
+  point  RIGHT  [server  ]  rally:1  score 7-5
+  point  RIGHT  [receiver]  rally:2  score 7-6
+  point  LEFT   [server  ]  rally:2  score 8-6
+=== session 2026-04-06 23:47:02 ===
+=== session 2026-04-06 23:47:02 ===
+=== session 2026-04-06 23:47:18 ===
+=== session 2026-04-06 23:47:18 ===
+=== session 2026-04-06 23:47:51 ===
+=== session 2026-04-06 23:47:51 ===
+=== session 2026-04-06 23:48:27 ===
+=== session 2026-04-06 23:48:27 ===
+=== session 2026-04-06 23:49:26 ===
+=== session 2026-04-06 23:49:26 ===
+=== session 2026-04-06 23:49:42 ===
+=== session 2026-04-06 23:49:42 ===
+=== session 2026-04-06 23:54:36 ===
+=== session 2026-04-06 23:54:36 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+  point  LEFT   [receiver]  rally:2  score 3-0
+  point  LEFT   [receiver]  rally:1  score 4-0
+  point  LEFT   [server  ]  rally:0  score 5-0
+  point  LEFT   [server  ]  rally:0  score 6-0
+  point  LEFT   [receiver]  rally:1  score 7-0
+  point  LEFT   [server  ]  rally:0  score 1-0
+  point  LEFT   [server  ]  rally:0  score 2-0
+=== session 2026-04-06 23:56:55 ===
+=== session 2026-04-06 23:56:55 ===
+=== session 2026-04-06 23:57:04 ===
+=== session 2026-04-06 23:57:04 ===
+=== session 2026-04-06 23:58:54 ===
+=== session 2026-04-06 23:58:54 ===

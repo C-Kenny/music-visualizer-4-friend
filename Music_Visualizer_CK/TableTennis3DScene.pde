@@ -760,4 +760,8 @@ class TableTennis3DScene extends TableTennisScene {
     pg.text("Player: " + playerLabels[playerSide] + "  (V / B)",  12, 8 + mg + lh*7);
     pg.popStyle();
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

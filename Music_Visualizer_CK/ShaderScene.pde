@@ -163,4 +163,8 @@ class ShaderScene implements IScene {
       loadMyShader();
     }
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

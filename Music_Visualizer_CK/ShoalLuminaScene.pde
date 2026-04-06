@@ -232,4 +232,8 @@ class ShoalLuminaScene implements IScene {
     else if (k == '=' || k == '+') adjustSpeed(0.002);
     else if (k == ' ') triggerSurge();
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

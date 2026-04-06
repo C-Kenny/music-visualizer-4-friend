@@ -168,4 +168,12 @@ class CatsCradleScene implements IScene {
   void onExit() {}
 
   void handleKey(char k) {}
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {
+      new ControllerLayout("LStick ↕", "Rotation speed"),
+      new ControllerLayout("RStick ↔", "Number of anchors (4–14)"),
+      new ControllerLayout("A Button", "Inject beat pulse")
+    };
+  }
 }

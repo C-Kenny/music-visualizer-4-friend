@@ -468,4 +468,8 @@ class NeuralWeaveScene implements IScene {
     else if (k == 'k' || k == 'K') cyclePalette();
     else if (k == ' ') triggerRipple();
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

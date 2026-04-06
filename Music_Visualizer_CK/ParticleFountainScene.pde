@@ -19,6 +19,10 @@ class Particle {
   float hue;          // HSB hue (0–360)
   float sat;          // HSB saturation
   int   band;         // 0 = bass, 1 = mid, 2 = high
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }
 
 class ParticleFountainScene implements IScene {
@@ -209,5 +213,9 @@ class ParticleFountainScene implements IScene {
       float z = c.stick.getSlider("z").getValue();
       emitRateMultiplier = map(z, -1, 1, 0.1, 1.0);
     } catch (Exception e) {}
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
   }
 }
