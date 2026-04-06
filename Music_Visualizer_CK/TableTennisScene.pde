@@ -218,22 +218,31 @@ class TableTennisScene implements IScene {
     float xMargin = PADDLE_W * 2;
 
     if (ballVX < 0) {
-      // Ball heading left — right paddle rests, left paddle tracks
+      // Ball heading left — right paddle rests
       rightTargetX = rightHomeX;
       rightTargetY = constrain(restY, yMin, yMax);
-      // Always retreat to behind home — ball is coming toward you, moving
-      // forward causes the ball to chip over the paddle edge
-      leftTargetX = leftHomeX - 20;
-      float t = abs(ballX - leftPaddleX) / max(abs(ballVX), 0.5);
-      leftTargetY = constrain(predictBallY(t) + leftMissOffset, yMin, yMax);
+      leftTargetX  = leftHomeX - 20;
+      // Left paddle only tracks AFTER ball has bounced on the left side.
+      // lastBounceSide == -1 means it already landed there — legal to return.
+      // If lastBounceSide is 0 or 1 the ball hasn't touched left's court yet — wait.
+      if (lastBounceSide == -1) {
+        float t = abs(ballX - leftPaddleX) / max(abs(ballVX), 0.5);
+        leftTargetY = constrain(predictBallY(t) + leftMissOffset, yMin, yMax);
+      } else {
+        leftTargetY = constrain(restY, yMin, yMax);
+      }
     } else {
-      // Ball heading right — left paddle rests, right paddle tracks
-      leftTargetX = leftHomeX;
-      leftTargetY = constrain(restY, yMin, yMax);
-      // Always retreat to behind home — ball is coming toward you
+      // Ball heading right — left paddle rests
+      leftTargetX  = leftHomeX;
+      leftTargetY  = constrain(restY, yMin, yMax);
       rightTargetX = rightHomeX + 20;
-      float t = abs(rightPaddleX - ballX) / max(abs(ballVX), 0.5);
-      rightTargetY = constrain(predictBallY(t) + rightMissOffset, yMin, yMax);
+      // Right paddle only tracks AFTER ball has bounced on the right side.
+      if (lastBounceSide == 1) {
+        float t = abs(rightPaddleX - ballX) / max(abs(ballVX), 0.5);
+        rightTargetY = constrain(predictBallY(t) + rightMissOffset, yMin, yMax);
+      } else {
+        rightTargetY = constrain(restY, yMin, yMax);
+      }
     }
   }
 
