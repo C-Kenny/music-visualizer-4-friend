@@ -10,7 +10,7 @@ Config config;
 Audio audio;
 Controller controller;
 IScene[] scenes;
-final int SCENE_COUNT = 26;
+final int SCENE_COUNT = 27;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -319,6 +319,7 @@ void setup() {
   scenes[23] = new RecursiveMandalaScene();
   scenes[24] = new KaleidoscopeScene();
   scenes[25] = new TableTennis3DScene();
+  scenes[26] = new VoidBloomScene();
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
@@ -534,7 +535,7 @@ public void getUserInput() {
 // in the codebase but excluded from rotation for now.
 // Fan-favourite scenes, in display order. Only these are reachable via
 // LB/RB cycling or keyboard number keys. Add a scene number here to re-enable it.
-final int[] SCENE_ORDER = {1, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24};
+final int[] SCENE_ORDER = {1, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24, 26};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
