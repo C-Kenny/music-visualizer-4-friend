@@ -1,108 +1,477 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Music Visualizer</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; font-family: monospace; }
-    canvas { display: block; }
+    /* ── Reset & base ────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    #controls {
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0a0a;
+      font-family: 'Courier New', monospace;
+      color: #e0e0e0;
+    }
+
+    canvas {
+      display: block;
       position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 100;
+      top: 0; left: 0;
+    }
+
+    /* ── Source picker overlay ───────────────────────────────────────── */
+    #picker-ui {
+      position: fixed;
+      inset: 0;
       display: flex;
-      gap: 6px;
+      flex-direction: column;
       align-items: center;
-      background: rgba(0, 0, 0, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      color: #aaa;
-      backdrop-filter: blur(4px);
-    }
-
-    #controls button {
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      color: #ccc;
-      padding: 3px 9px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-family: monospace;
-      font-size: 12px;
-      transition: background 0.1s;
-    }
-    #controls button:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
-
-    #scene-name { color: #7bf; min-width: 110px; text-align: center; letter-spacing: 0.03em; }
-    #song-name  { color: #fc8; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    #file-input-hidden { display: none; }
-
-    #help {
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
+      justify-content: center;
+      background: #0a0a0a;
       z-index: 100;
-      font-size: 10px;
-      color: rgba(255,255,255,0.25);
-      text-align: right;
-      line-height: 1.6;
-      pointer-events: none;
+      gap: 28px;
     }
+
+    #picker-ui h1 {
+      font-size: 2rem;
+      color: #ff9933;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 20px rgba(255,150,50,0.4);
+    }
+
+    /* ── Source buttons row ──────────────────────────────────────────── */
+    .source-buttons {
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .source-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 130px;
+      min-height: 110px;
+      padding: 18px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 2px solid #333;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      color: #ccc;
+      font-size: 0.95rem;
+      transition: border-color 0.18s, background 0.18s, color 0.18s, transform 0.12s;
+      user-select: none;
+    }
+
+    .source-btn:hover {
+      border-color: #ff9933;
+      background: rgba(255,153,51,0.08);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    .source-btn:active {
+      transform: translateY(0px);
+    }
+
+    .source-btn .btn-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .source-btn .btn-label {
+      font-weight: bold;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Divider ─────────────────────────────────────────────────────── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: min(440px, 90vw);
+      color: #444;
+      font-size: 0.8rem;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #333;
+    }
+
+    /* ── Drop zone (file source) ─────────────────────────────────────── */
+    #drop-zone {
+      width: min(440px, 90vw);
+      min-height: 130px;
+      border: 2px dashed #333;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      padding: 24px 32px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    #drop-zone:hover,
+    #drop-zone.drag-over {
+      border-color: #ff9933;
+      background: rgba(255,153,51,0.06);
+    }
+
+    #drop-zone .label {
+      color: #bbb;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
+    #drop-zone .sub {
+      color: #555;
+      font-size: 0.78rem;
+      text-align: center;
+    }
+
+    #file-input { display: none; }
+
+    /* ── System audio note ───────────────────────────────────────────── */
+    .system-note {
+      color: #555;
+      font-size: 0.72rem;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+
+    /* ── General hint ────────────────────────────────────────────────── */
+    .hint {
+      color: #444;
+      font-size: 0.75rem;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    /* ── Firefox-specific button state ───────────────────────────────── */
+    .source-btn.firefox-unsupported {
+      opacity: 0.42;
+      cursor: not-allowed;
+      border-color: #2a2a2a;
+      filter: grayscale(0.5);
+    }
+    .source-btn.firefox-unsupported:hover {
+      border-color: #2a2a2a;
+      background: rgba(255,255,255,0.04);
+      color: #ccc;
+      transform: none;
+    }
+    .source-btn .firefox-badge {
+      display: none;
+      font-size: 0.6rem;
+      color: #ff9933;
+      background: rgba(255,153,51,0.12);
+      border: 1px solid rgba(255,153,51,0.25);
+      border-radius: 4px;
+      padding: 2px 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* ── Device picker ───────────────────────────────────────────────── */
+    #device-picker {
+      display: none;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      width: min(440px, 90vw);
+      background: rgba(255,255,255,0.03);
+      border: 1.5px solid #252525;
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+    #device-picker.visible {
+      display: flex;
+    }
+    #device-picker label {
+      color: #aaa;
+      font-size: 0.82rem;
+    }
+    #device-picker select {
+      width: 100%;
+      padding: 8px 10px;
+      background: #161b22;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      cursor: pointer;
+      appearance: auto;
+    }
+    #device-picker select:focus {
+      outline: 1px solid #ff9933;
+      border-color: #ff9933;
+    }
+    #device-picker .device-actions {
+      display: flex;
+      gap: 10px;
+      align-self: flex-end;
+    }
+    #device-picker .connect-btn {
+      padding: 7px 22px;
+      background: rgba(255,153,51,0.1);
+      border: 1.5px solid #ff9933;
+      border-radius: 7px;
+      color: #ff9933;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: background 0.15s;
+    }
+    #device-picker .connect-btn:hover {
+      background: rgba(255,153,51,0.22);
+    }
+    #device-picker .cancel-btn {
+      padding: 7px 14px;
+      background: transparent;
+      border: 1.5px solid #333;
+      border-radius: 7px;
+      color: #666;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #device-picker .cancel-btn:hover {
+      border-color: #555;
+      color: #aaa;
+    }
+
+    /* ── Firefox help overlay ────────────────────────────────────────── */
+    #firefox-help-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.78);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+    }
+    #firefox-help-overlay.visible {
+      display: flex;
+    }
+    .firefox-help-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      padding: 28px 32px;
+      max-width: 500px;
+      width: 90vw;
+      font-family: 'Courier New', monospace;
+      color: #c9d1d9;
+      line-height: 1.6;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .firefox-help-card h2 {
+      color: #ff9933;
+      margin-bottom: 10px;
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+    }
+    .firefox-help-card > p {
+      color: #8b949e;
+      font-size: 0.88rem;
+      margin-bottom: 14px;
+    }
+    .firefox-help-card .platform-section {
+      margin: 10px 0;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      border-left: 2px solid #30363d;
+    }
+    .firefox-help-card .platform-title {
+      color: #e0e0e0;
+      font-weight: bold;
+      font-size: 0.88rem;
+      margin-bottom: 4px;
+    }
+    .firefox-help-card ol {
+      margin-left: 18px;
+      color: #8b949e;
+      font-size: 0.82rem;
+    }
+    .firefox-help-card ol li {
+      margin: 3px 0;
+    }
+    .firefox-help-card a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    .firefox-help-card a:hover {
+      text-decoration: underline;
+    }
+    .firefox-help-card .got-it-btn {
+      display: block;
+      width: 100%;
+      margin-top: 18px;
+      padding: 11px 20px;
+      background: rgba(255,153,51,0.12);
+      border: 1.5px solid #ff9933;
+      border-radius: 8px;
+      color: #ff9933;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.15s;
+      text-align: center;
+    }
+    .firefox-help-card .got-it-btn:hover {
+      background: rgba(255,153,51,0.24);
+    }
+
+    /* ── Error toast ─────────────────────────────────────────────────── */
+    #error-msg {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(180, 40, 40, 0.92);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      z-index: 200;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    /* Pulsing glow animation on title */
+    @keyframes glow {
+      0%, 100% { text-shadow: 0 0 10px rgba(255,150,50,0.3); }
+      50%       { text-shadow: 0 0 30px rgba(255,150,50,0.7), 0 0 60px rgba(255,100,20,0.3); }
+    }
+    #picker-ui h1 { animation: glow 2.5s ease-in-out infinite; }
   </style>
 </head>
 <body>
 
-  <div id="controls">
-    <button id="btn-prev" title="Previous scene">◀</button>
-    <span id="scene-name">Oscilloscope</span>
-    <button id="btn-next" title="Next scene">▶</button>
-    <span id="song-name">No song loaded</span>
-    <button id="btn-load">Load Song</button>
-    <button id="btn-play" disabled>▶ Play</button>
-    <input type="file" id="file-input-hidden" accept="audio/*">
+  <!-- ── Source picker UI (shown before audio source is selected) ──────── -->
+  <div id="picker-ui">
+    <h1>🎵 Music Visualizer</h1>
+
+    <!-- Three source buttons -->
+    <div class="source-buttons">
+      <button class="source-btn" id="btn-file" title="Load an audio file">
+        <span class="btn-icon">📁</span>
+        <span class="btn-label">File</span>
+      </button>
+      <button class="source-btn" id="btn-mic" title="Visualize your microphone">
+        <span class="btn-icon">🎤</span>
+        <span class="btn-label">Mic</span>
+        <span class="firefox-badge" id="firefox-mic-badge">⬅️ use for system audio</span>
+      </button>
+      <button class="source-btn" id="btn-system" title="Visualize system audio (Spotify, foobar, etc.)">
+        <span class="btn-icon">🖥️</span>
+        <span class="btn-label">System</span>
+      </button>
+    </div>
+
+    <p class="system-note" id="system-note">
+      System audio works natively on Chrome / Windows.<br>
+      macOS users need <a href="https://existential.audio/blackhole/" target="_blank" style="color:#777;text-decoration:underline;">BlackHole</a> virtual audio device.
+    </p>
+
+    <!-- Device picker (shown when multiple audio inputs found) -->
+    <div id="device-picker">
+      <label id="device-picker-label">🎤 Audio input device:</label>
+      <select id="device-select"></select>
+      <div class="device-actions">
+        <button class="cancel-btn" id="device-cancel-btn">Cancel</button>
+        <button class="connect-btn" id="device-connect-btn">Connect</button>
+      </div>
+    </div>
+
+    <div class="divider">or drop a file</div>
+
+    <!-- Drag-and-drop zone (also acts as fallback file picker) -->
+    <div id="drop-zone">
+      <span class="label">Drag &amp; drop an audio file here</span>
+      <span class="sub">MP3 · WAV · FLAC · OGG · AAC · M4A &nbsp;·&nbsp; Multiple files OK — use <kbd>n</kbd> / <kbd>N</kbd> to navigate</span>
+    </div>
+
+    <input type="file" id="file-input" accept=".mp3,.wav,.flac,.ogg,.aac,.m4a" multiple />
+
+    <p class="hint">
+      Press <kbd>?</kbd> after loading to see all keyboard shortcuts.<br>
+      Works best in Chrome or Firefox at 120 Hz.
+    </p>
   </div>
 
-  <div id="help">
-    ← → scene &nbsp;|&nbsp; 1-4 jump &nbsp;|&nbsp; space pause &nbsp;|&nbsp; see HUD for scene keys
+  <!-- ── Firefox system-audio help overlay ────────────────────────────── -->
+  <!--
+    Shown when Firefox users click the System button. Firefox can't capture
+    system audio via getDisplayMedia(), so we explain the loopback workaround.
+  -->
+  <div id="firefox-help-overlay">
+    <div class="firefox-help-card">
+      <h2>🦊 Firefox: How to capture system audio</h2>
+      <p>Firefox doesn't support direct system audio capture — but you can route it through the mic input using a free virtual audio loopback device.</p>
+
+      <div class="platform-section">
+        <div class="platform-title">🐧 Linux (easiest — no extra install needed)</div>
+        <ol>
+          <li>Click <strong>🎤 Mic</strong> above</li>
+          <li>Select <strong>"Monitor of [your soundcard]"</strong> from the device list</li>
+        </ol>
+      </div>
+
+      <div class="platform-section">
+        <div class="platform-title">🪟 Windows — VB-Audio Virtual Cable (free)</div>
+        <ol>
+          <li>Install <a href="https://vb-audio.com/Cable/" target="_blank">VB-Audio Virtual Cable</a></li>
+          <li>Set your audio output device to <strong>"CABLE Input"</strong></li>
+          <li>Click <strong>🎤 Mic</strong> → select <strong>"CABLE Output"</strong></li>
+        </ol>
+      </div>
+
+      <div class="platform-section">
+        <div class="platform-title">🍎 macOS — BlackHole (free)</div>
+        <ol>
+          <li>Install <a href="https://existential.audio/blackhole/" target="_blank">BlackHole</a></li>
+          <li>Set output to <strong>BlackHole</strong> in Sound settings</li>
+          <li>Click <strong>🎤 Mic</strong> → select <strong>"BlackHole"</strong></li>
+        </ol>
+      </div>
+
+      <button class="got-it-btn" id="firefox-help-got-it-btn">Got it — use Mic instead</button>
+    </div>
   </div>
 
-  <!-- p5.js + p5.sound from CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js"></script>
+  <!-- ── Error message toast ────────────────────────────────────────────── -->
+  <div id="error-msg"></div>
+
+  <!-- ── p5.js library ──────────────────────────────────────────────────── -->
+  <script src="lib/p5.min.js"></script>
+
+  <!-- ── App modules (order matters) ───────────────────────────────────── -->
+  <script src="config.js"></script>
+  <script src="audio.js"></script>
+  <script src="controller.js"></script>
+  <script src="scenes/scene_mandala.js"></script>
+  <script src="scenes/scene_lobsters.js"></script>
   <script src="sketch.js"></script>
 
-  <script>
-    // Wire HTML controls → sketch API (functions exposed on window by sketch.js)
-    document.getElementById('btn-load').addEventListener('click', () => {
-      getAudioContext().resume();
-      document.getElementById('file-input-hidden').click();
-    });
-
-    document.getElementById('file-input-hidden').addEventListener('change', (e) => {
-      const f = e.target.files[0];
-      if (f) window.loadAudioFile(f);
-      e.target.value = '';   // allow re-selecting the same file
-    });
-
-    document.getElementById('btn-prev').addEventListener('click', () => {
-      getAudioContext().resume();
-      window.prevScene();
-    });
-    document.getElementById('btn-next').addEventListener('click', () => {
-      getAudioContext().resume();
-      window.nextScene();
-    });
-    document.getElementById('btn-play').addEventListener('click', () => {
-      getAudioContext().resume();
-      window.togglePlay();
-    });
-  </script>
 </body>
 </html>
