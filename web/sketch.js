@@ -274,6 +274,7 @@ function _drawHelpOverlay() {
     't          →  toggle tunnel background',
     'p          →  toggle plasma background',
     'P          →  toggle polar plasma',
+    'g          →  toggle Mandala dark mode',
     'b          →  cycle blend mode',
     'f / F      →  flip fin rotation direction',
     'd / D      →  diamond distance closer / farther',
@@ -333,11 +334,32 @@ function _drawHelpOverlay() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function switchScene(id) {
+  if (!SCENE_ORDER.includes(id)) return;
   if (Config.STATE === id) return;
+
+  if (id === 1) {
+    _resetMandalaToDefaultView();
+  }
+
   Config.STATE = id;
   const name = SCENE_NAMES[id] || `Scene ${id}`;
   toastMessage = name;
   toastAlpha   = 255;
+}
+
+function _resetMandalaToDefaultView() {
+  // Restore a stable baseline when entering Mandala so scene hops do not
+  // accumulate hard-to-read blend/background states.
+  Config.CURRENT_BLEND_MODE_INDEX = 0;
+  Config.DRAW_FINS = true;
+  Config.DRAW_DIAMONDS = true;
+  Config.DRAW_WAVEFORM = true;
+  Config.DRAW_TUNNEL = false;
+  Config.DRAW_PLASMA = false;
+  Config.DRAW_POLAR_PLASMA = false;
+  Config.RAINBOW_FINS = false;
+  Config.BEZIER_Y_OFFSET = -50;
+  Config.WAVE_MULTIPLIER = 50.0;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -378,6 +400,9 @@ function keyPressed() {
   if (key === 'P') {
     Config.DRAW_POLAR_PLASMA = !Config.DRAW_POLAR_PLASMA;
     if (Config.DRAW_POLAR_PLASMA) _enableOneBg('polar_plasma');
+  }
+  if (key === 'g' || key === 'G') {
+    Config.MANDALA_DARK_MODE = !Config.MANDALA_DARK_MODE;
   }
 
   // ── Blend mode ──────────────────────────────────────────────────────────
@@ -508,11 +533,13 @@ function _handleControllerInput() {
   // LB/RB: always switch scenes regardless of current scene
   if (c.lb_just_pressed) {
     const prevIdx = SCENE_ORDER.indexOf(Config.STATE);
-    switchScene(SCENE_ORDER[(prevIdx - 1 + SCENE_ORDER.length) % SCENE_ORDER.length]);
+    const safeIdx = (prevIdx >= 0) ? prevIdx : 0;
+    switchScene(SCENE_ORDER[(safeIdx - 1 + SCENE_ORDER.length) % SCENE_ORDER.length]);
   }
   if (c.rb_just_pressed) {
     const nextIdx = SCENE_ORDER.indexOf(Config.STATE);
-    switchScene(SCENE_ORDER[(nextIdx + 1) % SCENE_ORDER.length]);
+    const safeIdx = (nextIdx >= 0) ? nextIdx : 0;
+    switchScene(SCENE_ORDER[(safeIdx + 1) % SCENE_ORDER.length]);
   }
 
   if (Config.STATE === 11) {
