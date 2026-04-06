@@ -102,7 +102,7 @@ class VoidBloomScene implements IScene {
 
     // Beat response
     if (analyzer.isBeat) {
-      beatFlash    = 1.0;
+      beatFlash    = 0.55;
       hueShift     = (hueShift + 35) % 360;
       rippleRadius = 0;
       rippleAlpha  = 1.0;
@@ -155,9 +155,9 @@ class VoidBloomScene implements IScene {
       float rh = getHue(0.5);
       pg.noFill();
       pg.strokeWeight(2.0);
-      pg.stroke(rh, 65, 100, rippleAlpha * 80);
+      pg.stroke(rh, 65, 100, rippleAlpha * 45);
       pg.ellipse(cx, cy, rippleRadius * 2, rippleRadius * 2);
-      pg.stroke(rh, 50, 100, rippleAlpha * 35);
+      pg.stroke(rh, 50, 100, rippleAlpha * 18);
       pg.ellipse(cx, cy, rippleRadius * 1.7, rippleRadius * 1.7);
     }
 
@@ -166,7 +166,7 @@ class VoidBloomScene implements IScene {
     // Beat flash overlay
     if (beatFlash > 0.01) {
       pg.noStroke();
-      pg.fill(getHue(0.5), 35, 100, beatFlash * 22);
+      pg.fill(getHue(0.5), 35, 100, beatFlash * 10);
       pg.rect(0, 0, pg.width, pg.height);
     }
   }
@@ -207,8 +207,8 @@ class VoidBloomScene implements IScene {
       float t     = (float) r / 4;
       float ringR = base * (0.28 + t * 0.78) * (1 + bassSmooth * 0.08);
       float h     = getHue(t);
-      float alpha = 18 - r * 3;
-      pg.stroke(h, 60, 80, alpha);
+      float alpha = 13 - r * 2;
+      pg.stroke(h, 50, 65, alpha);
       pg.strokeWeight(1.0);
       pg.ellipse(cx, cy, ringR * 2, ringR * 2);
     }
@@ -257,12 +257,12 @@ class VoidBloomScene implements IScene {
 
   // ── Central glow ─────────────────────────────────────────────────────────────
   void drawCore(PGraphics pg, float cx, float cy, float base) {
-    float cR = base * 0.08 * (1 + bassSmooth * 1.8);
+    float cR = base * 0.08 * (1 + bassSmooth * 1.1);
     float h  = getHue(0.5 + 0.1 * sin(frameCount * 0.02));
     pg.noStroke();
     for (int g = 6; g >= 1; g--) {
       float r     = cR * (1 + g * 0.85);
-      float alpha = (7 - g) * 7.0;
+      float alpha = (7 - g) * 5.0;
       pg.fill(h, 25 + g * 9, 100, alpha);
       pg.ellipse(cx, cy, r * 2, r * 2);
     }
