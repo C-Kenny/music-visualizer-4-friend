@@ -199,20 +199,20 @@ class SmokeTestRunner {
     controller.ry = height * 0.5;
     controller.lt = 0;
     controller.rt = 0;
-    controller.a_button = false;  controller.a_just_pressed = false;
-    controller.b_button = false;  controller.b_just_pressed = false;
-    controller.x_button = false;  controller.x_just_pressed = false;
-    controller.y_button = false;  controller.y_just_pressed = false;
-    controller.lb_button = false; controller.lb_just_pressed = false;
-    controller.rb_button = false; controller.rb_just_pressed = false;
-    controller.back_button  = false; controller.back_just_pressed  = false;
-    controller.start_button = false; controller.start_just_pressed = false;
-    controller.lstickclick_button  = false; controller.lstickclick_just_pressed  = false;
-    controller.rstickclick_button  = false; controller.rstickclick_just_pressed  = false;
-    controller.dpad_hat_switch_up    = false; controller.dpad_up_just_pressed    = false;
-    controller.dpad_hat_switch_down  = false; controller.dpad_down_just_pressed  = false;
-    controller.dpad_hat_switch_left  = false; controller.dpad_left_just_pressed  = false;
-    controller.dpad_hat_switch_right = false; controller.dpad_right_just_pressed = false;
+    controller.aButton = false;  controller.aJustPressed = false;
+    controller.bButton = false;  controller.bJustPressed = false;
+    controller.xButton = false;  controller.xJustPressed = false;
+    controller.yButton = false;  controller.yJustPressed = false;
+    controller.lbButton = false; controller.lbJustPressed = false;
+    controller.rbButton = false; controller.rbJustPressed = false;
+    controller.backButton  = false; controller.backJustPressed  = false;
+    controller.startButton = false; controller.startJustPressed = false;
+    controller.leftStickClickButton  = false; controller.leftStickClickJustPressed  = false;
+    controller.rightStickClickButton  = false; controller.rightStickClickJustPressed  = false;
+    controller.dpadUpHeld    = false; controller.dpadUpJustPressed    = false;
+    controller.dpadDownHeld  = false; controller.dpadDownJustPressed  = false;
+    controller.dpadLeftHeld  = false; controller.dpadLeftJustPressed  = false;
+    controller.dpadRightHeld = false; controller.dpadRightJustPressed = false;
   }
 
   // ── 32 controller test cases ──────────────────────────────────────────────
@@ -238,29 +238,29 @@ class SmokeTestRunner {
       case 12: controller.rt = 0.5;  break;
       case 13: controller.rt = 1.0;  break;
       // Face buttons — held
-      case 14: controller.a_button = true; break;
-      case 15: controller.b_button = true; break;
-      case 16: controller.x_button = true; break;
-      case 17: controller.y_button = true; break;
+      case 14: controller.aButton = true; break;
+      case 15: controller.bButton = true; break;
+      case 16: controller.xButton = true; break;
+      case 17: controller.yButton = true; break;
       // Shoulder buttons — held
-      case 18: controller.lb_button = true; break;
-      case 19: controller.rb_button = true; break;
+      case 18: controller.lbButton = true; break;
+      case 19: controller.rbButton = true; break;
       // Face buttons — just pressed (rising edge)
-      case 20: controller.a_button = true; controller.a_just_pressed = true; break;
-      case 21: controller.b_button = true; controller.b_just_pressed = true; break;
-      case 22: controller.x_button = true; controller.x_just_pressed = true; break;
-      case 23: controller.y_button = true; controller.y_just_pressed = true; break;
+      case 20: controller.aButton = true; controller.aJustPressed = true; break;
+      case 21: controller.bButton = true; controller.bJustPressed = true; break;
+      case 22: controller.xButton = true; controller.xJustPressed = true; break;
+      case 23: controller.yButton = true; controller.yJustPressed = true; break;
       // Shoulder buttons — just pressed
-      case 24: controller.lb_button = true; controller.lb_just_pressed = true; break;
-      case 25: controller.rb_button = true; controller.rb_just_pressed = true; break;
+      case 24: controller.lbButton = true; controller.lbJustPressed = true; break;
+      case 25: controller.rbButton = true; controller.rbJustPressed = true; break;
       // D-pad (just pressed)
-      case 26: controller.dpad_hat_switch_up    = true; controller.dpad_up_just_pressed    = true; break;
-      case 27: controller.dpad_hat_switch_down  = true; controller.dpad_down_just_pressed  = true; break;
-      case 28: controller.dpad_hat_switch_left  = true; controller.dpad_left_just_pressed  = true; break;
-      case 29: controller.dpad_hat_switch_right = true; controller.dpad_right_just_pressed = true; break;
+      case 26: controller.dpadUpHeld    = true; controller.dpadUpJustPressed    = true; break;
+      case 27: controller.dpadDownHeld  = true; controller.dpadDownJustPressed  = true; break;
+      case 28: controller.dpadLeftHeld  = true; controller.dpadLeftJustPressed  = true; break;
+      case 29: controller.dpadRightHeld = true; controller.dpadRightJustPressed = true; break;
       // Stick clicks
-      case 30: controller.lstickclick_button = true; controller.lstickclick_just_pressed = true; break;
-      case 31: controller.rstickclick_button = true; controller.rstickclick_just_pressed = true; break;
+      case 30: controller.leftStickClickButton = true; controller.leftStickClickJustPressed = true; break;
+      case 31: controller.rightStickClickButton = true; controller.rightStickClickJustPressed = true; break;
     }
   }
 

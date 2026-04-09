@@ -5,18 +5,19 @@
 
 const Config = {
   // ── Title bar / UI ───────────────────────────────────────────────────────────
-  TITLE_BAR: "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (p)lasma, (s)top, (w)ave, (>)diamonds, (/)fins, (n)ext, (N)shuffle",
+  TITLE_BAR:
+    '(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (p)lasma, (s)top, (w)ave, (>)diamonds, (/)fins, (n)ext, (N)shuffle',
 
   // ── Scene state ──────────────────────────────────────────────────────────────
-  STATE: 0,        // 0 = file picker, 1 = Scene 1 (Fins), 11 = Lobster
+  STATE: 0, // 0 = file picker, 1 = Scene 1 (Fins), 11 = Lobster
 
   // ── Song info ────────────────────────────────────────────────────────────────
   SONG_PLAYING: false,
-  SONG_NAME: "",
+  SONG_NAME: '',
 
   // ── Fins (bezier petals / mandala) ───────────────────────────────────────────
   DRAW_FINS: true,
-  FINS: 8.0,                  // number of fins (can be fractional for animation)
+  FINS: 8.0, // number of fins (can be fractional for animation)
   FIN_REDNESS: 1,
   FIN_REDNESS_ANGRY: true,
   ANIMATED: true,
@@ -29,7 +30,7 @@ const Config = {
   // ── Diamonds ─────────────────────────────────────────────────────────────────
   DRAW_DIAMONDS: true,
   DRAW_INNER_DIAMONDS: false,
-  DIAMOND_DISTANCE_FROM_CENTER: 0,   // init'd after s1Size known
+  DIAMOND_DISTANCE_FROM_CENTER: 0, // init'd after s1Size known
   DIAMOND_WIDTH_OFFSET: 0.0,
   DIAMOND_HEIGHT_OFFSET: 0.0,
   DIAMOND_RIGHT_EDGE_X: 0,
@@ -84,10 +85,10 @@ const Config = {
   initForSize(s1Size) {
     this.DIAMOND_DISTANCE_FROM_CENTER = s1Size * 0.07;
     this.DIAMOND_RIGHT_EDGE_X = s1Size * 0.92;
-    this.DIAMOND_LEFT_EDGE_X  = s1Size * 0.74;
+    this.DIAMOND_LEFT_EDGE_X = s1Size * 0.74;
     this.DIAMOND_RIGHT_EDGE_Y = s1Size * 0.71;
-    this.DIAMOND_LEFT_EDGE_Y  = s1Size * 0.92;
+    this.DIAMOND_LEFT_EDGE_Y = s1Size * 0.92;
     this.MAX_DIAMOND_DISTANCE = s1Size * 0.3;
     this.MIN_DIAMOND_DISTANCE = s1Size * 0.1;
-  }
+  },
 };

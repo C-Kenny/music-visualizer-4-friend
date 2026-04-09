@@ -1,0 +1,14 @@
+{
+  "name": "music-visualizer-4-friend",
+  "private": true,
+  "version": "1.8.1-hotfix",
+  "description": "Development tooling for readability and style consistency",
+  "scripts": {
+    "lint:web": "eslint web/config.js web/sketch.js web/scenes/scene_mandala.js",
+    "format:web": "prettier --write web/config.js web/sketch.js web/scenes/scene_mandala.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "prettier": "^3.3.3"
+  }
+}

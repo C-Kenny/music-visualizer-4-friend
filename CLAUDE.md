@@ -75,8 +75,13 @@ Always `lerp()` FFT values toward a target to avoid per-frame flicker.
 
 - **Sticks:** `lx, ly, rx, ry` — mapped to `0..width` / `0..height`
 - **Triggers:** `lt`, `rt` — approx. `0..1` depression (optional; absent axes stay `0`)
-- **Held state:** `a_button`, `lb_button`, `dpad_hat_switch_up`, etc.
-- **Rising-edge (single press):** `a_just_pressed`, `lb_just_pressed`, etc.
+
+> [!WARNING]
+> **Held State vs Rising Edge (CRITICAL)**
+> Use the correct button property to avoid flickering or flashing effects:
+> - **`aButton`, `lbButton`, etc. (Held State)**: Use ONLY for sustained actions, chords (e.g. `c.chord(c.lbButton, c.rbButton)`), or continuous modifiers ("while A is held"). Always map to a continuous value using `lerp()` to keep the effect smooth:
+>   `float target = c.aButton ? 1.0 : 0.0; effect = lerp(effect, target, 0.12);`
+> - **`aJustPressed`, `lbJustPressed`, etc. (Rising Edge)**: Use ONLY for single-frame events like toggling a menu, stepping an array index, or spawning a quick particle burst. It returns true for exactly *one frame*. If you use this for sustained behavior, your effect will instantly flash and decay.
 
 Scene **14 (Neural Weave)** uses extra global-key exclusions in `Music_Visualizer_CK.pde` so `B`/`G`/`X`/stick-clicks do not clash with scene bindings; see `documentation/neural_weave.md`.
 

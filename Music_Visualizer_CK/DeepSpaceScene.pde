@@ -130,4 +130,8 @@ class DeepSpaceScene implements IScene {
       "nebula = noise(x, y, time) * energy"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

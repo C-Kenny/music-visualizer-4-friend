@@ -15,3 +15,7 @@ Music_Visualizer_CK/.devscene.bak
 # Smoke test (trigger + result are transient)
 Music_Visualizer_CK/.smoketest
 Music_Visualizer_CK/.smoketest_result
+
+# JavaScript tooling artifacts
+node_modules/
+npm-debug.log*
