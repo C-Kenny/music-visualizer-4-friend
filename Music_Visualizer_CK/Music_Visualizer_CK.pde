@@ -26,6 +26,8 @@ float uiScale() { return max(1.0, min(width, height) / 1080.0); }
 PImage h3_emblem;
 PImage newHaloEmblem;
 
+PShape xboxFrontSVG;
+
 HandyRenderer h, h1, h2;
 HandyRenderer[] HANDY_RENDERERS;
 HandyRenderer CURRENT_HANDY_RENDERER;
@@ -342,6 +344,9 @@ void setup() {
   } catch (Exception e) { /* ignore — missing or malformed file */ }
   // load Halo 3 emblem used as reference for colors and texture
   h3_emblem = loadImage("../media/h3_emblem.jpg");
+
+  xboxFrontSVG = loadShape("controller/front.svg");
+  if (xboxFrontSVG != null) xboxFrontSVG.disableStyle();
 }
 
 void stop() {
@@ -513,13 +518,15 @@ public void getUserInput() {
     config.DRAW_PLASMA = false;
   }
 
-  if (controller.lbJustPressed) {
-    println("CONTROLLER: LB pressed -> switching prev");
-    switchScene(prevActiveScene());
-  }
-  if (controller.rbJustPressed) {
-    println("CONTROLLER: RB pressed -> switching next");
-    switchScene(nextActiveScene());
+  if (!controller.chord(controller.lbButton, controller.rbButton)) {
+    if (controller.lbJustPressed) {
+      println("CONTROLLER: LB pressed -> switching prev");
+      switchScene(prevActiveScene());
+    }
+    if (controller.rbJustPressed) {
+      println("CONTROLLER: RB pressed -> switching next");
+      switchScene(nextActiveScene());
+    }
   }
   
   if (controller.backJustPressed) {
