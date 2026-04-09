@@ -190,8 +190,8 @@ class ShoalLuminaScene implements IScene {
     glow = lerp(glow, c.lt, 0.11);
     sparkle = lerp(sparkle, c.rt, 0.11);
 
-    if (c.y_just_pressed) palette = (palette + 1) % 3;
-    if (c.a_just_pressed) surge = 1.0;
+    if (c.yJustPressed) palette = (palette + 1) % 3;
+    if (c.aJustPressed) surge = 1.0;
   }
 
   void adjustLayers(int d) {
@@ -231,5 +231,9 @@ class ShoalLuminaScene implements IScene {
     else if (k == '-' || k == '_') adjustSpeed(-0.002);
     else if (k == '=' || k == '+') adjustSpeed(0.002);
     else if (k == ' ') triggerSurge();
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
   }
 }

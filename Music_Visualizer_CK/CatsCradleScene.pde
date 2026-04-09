@@ -24,7 +24,7 @@ class CatsCradleScene implements IScene {
     numAnchors = constrain(newAnchors, 4, 14);
 
     // A button → inject a manual beat pulse
-    if (c.a_just_pressed) pulse = 1.0;
+    if (c.aJustPressed) pulse = 1.0;
   }
 
   // --- code overlay -----------------------------------------------
@@ -168,4 +168,12 @@ class CatsCradleScene implements IScene {
   void onExit() {}
 
   void handleKey(char k) {}
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {
+      new ControllerLayout("LStick ↕", "Rotation speed"),
+      new ControllerLayout("RStick ↔", "Number of anchors (4–14)"),
+      new ControllerLayout("A Button", "Inject beat pulse")
+    };
+  }
 }

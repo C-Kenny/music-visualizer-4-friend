@@ -229,10 +229,10 @@ class FFTWormScene implements IScene {
       float z = c.stick.getSlider("z").getValue();
       speedScale = map(z, -1, 1, 0.2, 2.5);
     } catch (Exception e) {}
-    if (c.a_just_pressed) { circleMode = true; }
-    if (c.b_just_pressed) { circleMode = false; }
-    if (c.x_just_pressed) { reversed   = !reversed; }
-    if (c.y_just_pressed) { palette    = (palette + 1) % 4; }
+    if (c.aJustPressed) { circleMode = true; }
+    if (c.bJustPressed) { circleMode = false; }
+    if (c.xJustPressed) { reversed   = !reversed; }
+    if (c.yJustPressed) { palette    = (palette + 1) % 4; }
   }
 
   void onEnter() { background(5, 5, 14); }
@@ -250,5 +250,9 @@ class FFTWormScene implements IScene {
       "Head = sub-bass, tail = highs",
       "seg_radius = lerp(14, 3, t) + amp * 0.5 + ripple * 5"
     };
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
   }
 }

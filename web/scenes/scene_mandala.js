@@ -1,10 +1,10 @@
 /**
  * scene1.js — Fins / Diamonds / Waveform (port of Scene 1 from Processing)
  *
- * Draws into a centered square of side s1Size.
+ * Draws into a centered square scene region.
  * All coordinates are relative to (0,0) at the top-left of that square.
  * The caller (sketch.js) calls scene1.draw(pg) each frame where pg is a p5
- * graphics buffer of size s1Size × s1Size.
+ * graphics buffer of size sceneSquareSize × sceneSquareSize.
  */
 
 class SceneMandala {
@@ -25,34 +25,44 @@ class SceneMandala {
     // Blend mode map (mirrors Processing modes array)
     // p5.js blend mode constants accessed via p5 instance
     this.modeNames = [
-      'BLEND', 'ADD', 'SUBTRACT', 'EXCLUSION',
-      'DIFFERENCE', 'MULTIPLY', 'SCREEN',
-      'REPLACE'
+      'BLEND',
+      'ADD',
+      'SUBTRACT',
+      'EXCLUSION',
+      'DIFFERENCE',
+      'MULTIPLY',
+      'SCREEN',
+      'REPLACE',
     ];
 
     // Particle pool for beat bursts (not used in this scene, but wired up)
   }
 
-  /** Call once s1Size is known so we can init tunnel/plasma lookup tables. */
-  init(s1Size) {
-    this.s1Size = s1Size;
-    Config.initForSize(s1Size);
-    this.tunnel = new TunnelEffect(this.p, s1Size, s1Size);
-    this.plasma = new PlasmaEffect(this.p, s1Size, s1Size);
-    this.polarPlasma = new PolarPlasmaEffect(this.p, s1Size, s1Size);
+  /** Call once sceneSquareSize is known so we can init tunnel/plasma lookup tables. */
+  init(sceneSquareSize) {
+    this.sceneSquareSize = sceneSquareSize;
+    Config.initForSize(sceneSquareSize);
+    this.tunnel = new TunnelEffect(this.p, sceneSquareSize, sceneSquareSize);
+    this.plasma = new PlasmaEffect(this.p, sceneSquareSize, sceneSquareSize);
+    this.polarPlasma = new PolarPlasmaEffect(this.p, sceneSquareSize, sceneSquareSize);
   }
 
   /** Called every frame by sketch.js.  pg = p5.Graphics buffer. */
   draw(pg) {
     const p = pg; // treat the graphics buffer as the drawing surface
-    const s = this.s1Size;
+    const sceneSquareSize = this.sceneSquareSize;
     this.frameCount++;
 
     // ── Background ────────────────────────────────────────────────────────────
     // When no special background is active, fill with light grey (matches original Processing bg).
     // Using background() here fully clears the buffer each frame — which is what we want.
-    // The pg1.clear() in sketch.js handles the alpha reset; this paints the visible colour.
-    if (Config.BACKGROUND_ENABLED && !Config.DRAW_TUNNEL && !Config.DRAW_PLASMA && !Config.DRAW_POLAR_PLASMA) {
+    // The mandalaGraphicsBuffer.clear() call in sketch.js handles alpha reset.
+    if (
+      Config.BACKGROUND_ENABLED &&
+      !Config.DRAW_TUNNEL &&
+      !Config.DRAW_PLASMA &&
+      !Config.DRAW_POLAR_PLASMA
+    ) {
       // Keep the original Processing look as the default (light grey),
       // with an optional dark mode toggle in sketch.js.
       p.background(Config.MANDALA_DARK_MODE ? 18 : 200);
@@ -121,19 +131,25 @@ class SceneMandala {
 
     // ── Waveform ──────────────────────────────────────────────────────────────
     if (Config.DRAW_WAVEFORM) {
-      this._drawWaveform(p, s);
+      this._drawWaveform(p, sceneSquareSize);
     }
 
     // ── Diamonds ──────────────────────────────────────────────────────────────
     if (Config.DRAW_DIAMONDS) {
       p.push();
-      this._drawDiamonds(p, s);
+      this._drawDiamonds(p, sceneSquareSize);
       p.pop();
     }
 
     // ── Bezier Fins ───────────────────────────────────────────────────────────
     if (Config.DRAW_FINS) {
-      this._drawBezierFins(p, s, Config.FIN_REDNESS, Config.FINS, Config.finRotationClockWise);
+      this._drawBezierFins(
+        p,
+        sceneSquareSize,
+        Config.FIN_REDNESS,
+        Config.FINS,
+        Config.finRotationClockWise,
+      );
     }
 
     // ── Dashed line offset ────────────────────────────────────────────────────
@@ -147,11 +163,11 @@ class SceneMandala {
     if (audio.ready && audio.sourceType === 'file') {
       const songDuration = audio.player.length();
       if (songDuration > 0) {
-        const playheadX = p.map(audio.player.position(), 0, songDuration, 0, s);
+        const playheadX = p.map(audio.player.position(), 0, songDuration, 0, sceneSquareSize);
         p.push();
         p.stroke(252, 4, 243);
         p.strokeWeight(2);
-        p.line(playheadX, s, playheadX, s * 0.975);
+        p.line(playheadX, sceneSquareSize, playheadX, sceneSquareSize * 0.975);
         p.pop();
       }
     }
@@ -161,20 +177,20 @@ class SceneMandala {
 
   _drawWaveform(p, s) {
     const mix = audio.player.mix;
-    const bufSz = mix.length;
+    const waveformBufferSize = mix.length;
     const r = (this.frameCount % 255) / 10.0;
     const g = (this.frameCount % 255) - 75;
-    const b = (this.frameCount % 255);
+    const b = this.frameCount % 255;
     p.push();
     p.strokeWeight(4);
     p.strokeCap(p.ROUND);
     p.stroke(r, g, b);
     p.noFill();
-    for (let i = 0; i < bufSz - 1; i++) {
-      const x1 = p.map(i,   0, bufSz, 0, s);
-      const x2 = p.map(i+1, 0, bufSz, 0, s);
-      const y1 = s/2 + mix[i]   * Config.WAVE_MULTIPLIER;
-      const y2 = s/2 + mix[i+1] * Config.WAVE_MULTIPLIER;
+    for (let i = 0; i < waveformBufferSize - 1; i++) {
+      const x1 = p.map(i, 0, waveformBufferSize, 0, s);
+      const x2 = p.map(i + 1, 0, waveformBufferSize, 0, s);
+      const y1 = s / 2 + mix[i] * Config.WAVE_MULTIPLIER;
+      const y2 = s / 2 + mix[i + 1] * Config.WAVE_MULTIPLIER;
       p.line(x1, y1, x2, y2);
     }
     p.pop();
@@ -183,20 +199,25 @@ class SceneMandala {
   /** Draw a single dashed quad corner. Mirrors drawDiamond() in Processing. */
   _drawDashedQuad(p, x1, y1, x2, y2, x3, y3, x4, y4) {
     // Simulate dashed lines with segmented line drawing
-    const pts = [[x1,y1],[x2,y2],[x3,y3],[x4,y4],[x1,y1]];
+    const pts = [
+      [x1, y1],
+      [x2, y2],
+      [x3, y3],
+      [x4, y4],
+      [x1, y1],
+    ];
     for (let seg = 0; seg < 4; seg++) {
-      const ax = pts[seg][0], ay = pts[seg][1];
-      const bx = pts[seg+1][0], by = pts[seg+1][1];
-      const len = Math.sqrt((bx-ax)**2+(by-ay)**2);
-      let d = (this.dashDist % (this.DASH_PATTERN + this.DASH_GAP));
+      const ax = pts[seg][0],
+        ay = pts[seg][1];
+      const bx = pts[seg + 1][0],
+        by = pts[seg + 1][1];
+      const len = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
+      let d = this.dashDist % (this.DASH_PATTERN + this.DASH_GAP);
       if (d < 0) d += this.DASH_PATTERN + this.DASH_GAP;
       while (d < len) {
         const t0 = d / len;
         const t1 = Math.min((d + this.DASH_PATTERN) / len, 1);
-        p.line(
-          ax + t0*(bx-ax), ay + t0*(by-ay),
-          ax + t1*(bx-ax), ay + t1*(by-ay)
-        );
+        p.line(ax + t0 * (bx - ax), ay + t0 * (by - ay), ax + t1 * (bx - ax), ay + t1 * (by - ay));
         d += this.DASH_PATTERN + this.DASH_GAP;
       }
     }
@@ -206,8 +227,8 @@ class SceneMandala {
     const c = s / 2.0 + Config.DIAMOND_DISTANCE_FROM_CENTER;
     const rex = Config.DIAMOND_RIGHT_EDGE_X + Config.DIAMOND_WIDTH_OFFSET;
     const rey = Config.DIAMOND_RIGHT_EDGE_Y + Config.DIAMOND_HEIGHT_OFFSET;
-    const lex = Config.DIAMOND_LEFT_EDGE_X  - Config.DIAMOND_WIDTH_OFFSET;
-    const ley = Config.DIAMOND_LEFT_EDGE_Y  - Config.DIAMOND_HEIGHT_OFFSET;
+    const lex = Config.DIAMOND_LEFT_EDGE_X - Config.DIAMOND_WIDTH_OFFSET;
+    const ley = Config.DIAMOND_LEFT_EDGE_Y - Config.DIAMOND_HEIGHT_OFFSET;
 
     // Apply flip transformation
     const fx = flipX ? -1 : 1;
@@ -218,12 +239,7 @@ class SceneMandala {
     const tx = (v) => ox + fx * v;
     const ty = (v) => oy + fy * v;
 
-    this._drawDashedQuad(p,
-      tx(c),   ty(c),
-      tx(rex), ty(rey),
-      tx(s),   ty(s),
-      tx(lex), ty(ley)
-    );
+    this._drawDashedQuad(p, tx(c), ty(c), tx(rex), ty(rey), tx(s), ty(s), tx(lex), ty(ley));
   }
 
   _drawDiamonds(p, s) {
@@ -234,9 +250,9 @@ class SceneMandala {
 
     // Four corners
     this._drawOneDiamond(p, s, false, false);
-    this._drawOneDiamond(p, s, true,  false);
+    this._drawOneDiamond(p, s, true, false);
     this._drawOneDiamond(p, s, false, true);
-    this._drawOneDiamond(p, s, true,  true);
+    this._drawOneDiamond(p, s, true, true);
   }
 
   _drawBezierFins(p, s, redness, fins, clockWise) {
@@ -258,10 +274,10 @@ class SceneMandala {
       }
 
       p.push();
-      let rotAmt = (2 * (i / fins) * Math.PI);
+      let rotAmt = 2 * (i / fins) * Math.PI;
       if (clockWise) rotAmt = -rotAmt;
 
-      p.translate(s/2, s/2);
+      p.translate(s / 2, s / 2);
       p.scale(1.75);
       // Add small per-frame random noise spin (same seed each frame for consistency)
       const noise = 0.01 + (((i * 7 + this.frameCount * 3) % 100) / 100) * 0.98;
@@ -269,22 +285,34 @@ class SceneMandala {
       p.rotate(rotAmt);
 
       p.bezier(
-        -36 + xOffset, -126 + yOffset,
-        -36 + xOffset, -126 + yOffset,
-         32 + xOffset, -118 + yOffset,
-         68 + xOffset,  -52 + yOffset
+        -36 + xOffset,
+        -126 + yOffset,
+        -36 + xOffset,
+        -126 + yOffset,
+        32 + xOffset,
+        -118 + yOffset,
+        68 + xOffset,
+        -52 + yOffset,
       );
       p.bezier(
-        -36 + xOffset, -126 + yOffset,
-        -36 + xOffset, -126 + yOffset,
-        -10 + xOffset,  -88 + yOffset,
-        -22 + xOffset,  -52 + yOffset
+        -36 + xOffset,
+        -126 + yOffset,
+        -36 + xOffset,
+        -126 + yOffset,
+        -10 + xOffset,
+        -88 + yOffset,
+        -22 + xOffset,
+        -52 + yOffset,
       );
       p.bezier(
-        -22 + xOffset,  -52 + yOffset,
-        -22 + xOffset,  -52 + yOffset,
-         20 + xOffset,  -74 + yOffset,
-         68 + xOffset,  -52 + yOffset
+        -22 + xOffset,
+        -52 + yOffset,
+        -22 + xOffset,
+        -52 + yOffset,
+        20 + xOffset,
+        -74 + yOffset,
+        68 + xOffset,
+        -52 + yOffset,
       );
       p.pop();
     }
@@ -298,9 +326,9 @@ class SceneMandala {
     p.textSize(18);
     p.textAlign(p.CENTER, p.BOTTOM);
     p.fill(0);
-    p.text(name, s/2 + 2, s - 3);
+    p.text(name, s / 2 + 2, s - 3);
     p.fill(255);
-    p.text(name, s/2, s - 5);
+    p.text(name, s / 2, s - 5);
     p.pop();
   }
 
@@ -320,7 +348,7 @@ class SceneMandala {
     const size = audio.fft.avgSize();
     for (let i = 0; i < size; i++) {
       const amplitude = audio.fft.getAvg(i);
-      const bandDB = 20 * Math.log10(Math.max(1e-10, 2 * amplitude / audio.fft.timeSize()));
+      const bandDB = 20 * Math.log10(Math.max(1e-10, (2 * amplitude) / audio.fft.timeSize()));
 
       if (i >= 0 && i <= 5 && bandDB > -10) {
         this._applyBlendModeOnDrop(3);
@@ -361,7 +389,7 @@ class SceneMandala {
   }
 
   _modifyDiamondCenterPoint(closer) {
-    const delta = (this.s1Size || 1080) * 0.02;
+    const delta = (this.sceneSquareSize || 1080) * 0.02;
     if (closer) {
       Config.DIAMOND_DISTANCE_FROM_CENTER += delta;
     } else {
@@ -375,7 +403,7 @@ class SceneMandala {
       if (Config.PLASMA_INCREMENTING) {
         Config.PLASMA_SEED = (Config.PLASMA_SEED + Math.abs(amount)) % max;
       } else {
-        Config.PLASMA_SEED = ((Config.PLASMA_SEED - amount) % max + max) % max;
+        Config.PLASMA_SEED = (((Config.PLASMA_SEED - amount) % max) + max) % max;
       }
     }
   }
@@ -383,8 +411,14 @@ class SceneMandala {
   /** Get the p5 blend mode constant for the current index. */
   getBlendMode(p) {
     const modes = [
-      p.BLEND, p.ADD, p.SUBTRACT, p.EXCLUSION,
-      p.DIFFERENCE, p.MULTIPLY, p.SCREEN, p.REPLACE
+      p.BLEND,
+      p.ADD,
+      p.SUBTRACT,
+      p.EXCLUSION,
+      p.DIFFERENCE,
+      p.MULTIPLY,
+      p.SCREEN,
+      p.REPLACE,
     ];
     return modes[Config.CURRENT_BLEND_MODE_INDEX % modes.length];
   }
@@ -405,7 +439,7 @@ class TunnelEffect {
     for (let j = 0; j < this.TEX_SIZE; j++) {
       for (let i = 0; i < this.TEX_SIZE; i++) {
         const r = (i ^ j) & 0xff;
-        let g = (((i >> 6) & 1) ^ ((j >> 6) & 1)) ? 255 : 0;
+        let g = ((i >> 6) & 1) ^ ((j >> 6) & 1) ? 255 : 0;
         g = ((g * 5 + 3 * r) >> 3) & 0xff;
         this.texture[this.TEX_SIZE * j + i] = 0xff000000 | (g << 16) | (g << 8) | g;
       }
@@ -416,15 +450,15 @@ class TunnelEffect {
     for (let j = h - 1; j > 0; j--) {
       for (let i = w - 1; i > 0; i--) {
         const x = -1.0 + i * (2.0 / w);
-        const y =  1.0 - j * (2.0 / h);
-        const rr = Math.sqrt(x*x + y*y);
-        const a  = Math.atan2(x, y);
+        const y = 1.0 - j * (2.0 / h);
+        const rr = Math.sqrt(x * x + y * y);
+        const a = Math.atan2(x, y);
         const u = 1.0 / rr;
         const v = a / Math.PI;
         let ww = rr * rr;
         if (ww > 1.0) ww = 1.0;
         const iu = (u * 255) & 0xff;
-        const iv = (v * 255 + 255) & 0xff;  // shift to positive
+        const iv = (v * 255 + 255) & 0xff; // shift to positive
         const iw = (ww * 255) & 0xff;
         this.lut[w * j + i] = (iw << 16) | (iv << 8) | iu;
       }
@@ -436,7 +470,7 @@ class TunnelEffect {
     const tex = this.texture;
     const lut = this.lut;
     const pix = p.pixels;
-    const maskSz = (this.TEX_SIZE * this.TEX_SIZE) - 1;
+    const maskSz = this.TEX_SIZE * this.TEX_SIZE - 1;
     const timeShift = (frame + tunnelZoomIncrement) << 1;
 
     for (let i = 0; i < this.w * this.h; i++) {
@@ -445,13 +479,13 @@ class TunnelEffect {
       const iu = val & 0xff;
       const iv = (val >> 8) & 0xff;
       const iw = (val >> 16) & 0xff;
-      const texIdx = ((iu + iv * 256 + timeShift)) & maskSz;
+      const texIdx = (iu + iv * 256 + timeShift) & maskSz;
       const col = tex[texIdx] & 0xffffff;
       const base = i * 4;
-      pix[base]   = (col >> 16) & 0xff;
-      pix[base+1] = (col >> 8)  & 0xff;
-      pix[base+2] =  col        & 0xff;
-      pix[base+3] = iw;  // alpha = distance fog
+      pix[base] = (col >> 16) & 0xff;
+      pix[base + 1] = (col >> 8) & 0xff;
+      pix[base + 2] = col & 0xff;
+      pix[base + 3] = iw; // alpha = distance fog
     }
     p.updatePixels();
   }
@@ -470,7 +504,7 @@ class PlasmaEffect {
     // Build colour palette
     this.pal = new Uint32Array(PLASMA_SIZE);
     for (let i = 0; i < PLASMA_SIZE; i++) {
-      const s1 = Math.sin(i * Math.PI / 25);
+      const s1 = Math.sin((i * Math.PI) / 25);
       const r = Math.round(128 + s1 * 128);
       const g = Math.round(Math.random() * 255);
       const bv = Math.round(Math.random() * 255);
@@ -482,11 +516,12 @@ class PlasmaEffect {
     const bubbleSize = 24 + Math.random() * 104;
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
-        const v = (
-          (127.5 + 127.5 * Math.sin(x / bubbleSize)) +
-          (127.5 + 127.5 * Math.cos(y / bubbleSize)) +
-          (127.5 + 127.5 * Math.sin(Math.sqrt(x*x + y*y) / bubbleSize))
-        ) / 4;
+        const v =
+          (127.5 +
+            127.5 * Math.sin(x / bubbleSize) +
+            (127.5 + 127.5 * Math.cos(y / bubbleSize)) +
+            (127.5 + 127.5 * Math.sin(Math.sqrt(x * x + y * y) / bubbleSize))) /
+          4;
         this.cls[x + y * w] = Math.floor(v) & (PLASMA_SIZE - 1);
       }
     }
@@ -502,10 +537,10 @@ class PlasmaEffect {
     for (let i = 0; i < cls.length; i++) {
       const c = pal[(cls[i] + plasmaSeed) & mask];
       const base = i * 4;
-      pix[base]   = (c >> 16) & 0xff;
-      pix[base+1] = (c >> 8)  & 0xff;
-      pix[base+2] =  c        & 0xff;
-      pix[base+3] = 255;
+      pix[base] = (c >> 16) & 0xff;
+      pix[base + 1] = (c >> 8) & 0xff;
+      pix[base + 2] = c & 0xff;
+      pix[base + 3] = 255;
     }
     p.updatePixels();
   }
@@ -519,24 +554,26 @@ class PolarPlasmaEffect {
     this.w = w;
     this.h = h;
     const PLASMA_SIZE = Config.PLASMA_SIZE;
-    const cx = w / 2, cy = h / 2;
+    const cx = w / 2,
+      cy = h / 2;
 
     this.pal = new Uint32Array(PLASMA_SIZE);
     for (let i = 0; i < PLASMA_SIZE; i++) {
       const t = i / PLASMA_SIZE;
       const r = Math.round(128 + 127 * Math.sin(t * Math.PI * 2));
       const g = Math.round(128 + 127 * Math.sin(t * Math.PI * 2 + 2.094));
-      const bv= Math.round(128 + 127 * Math.sin(t * Math.PI * 2 + 4.189));
+      const bv = Math.round(128 + 127 * Math.sin(t * Math.PI * 2 + 4.189));
       this.pal[i] = 0xff000000 | (r << 16) | (g << 8) | bv;
     }
 
     this.cls = new Float32Array(w * h);
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
-        const dx = x - cx, dy = y - cy;
-        const r = Math.sqrt(dx*dx + dy*dy) / (w * 0.4);
+        const dx = x - cx,
+          dy = y - cy;
+        const r = Math.sqrt(dx * dx + dy * dy) / (w * 0.4);
         const a = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
-        this.cls[x + y*w] = (r + a) * PLASMA_SIZE;
+        this.cls[x + y * w] = (r + a) * PLASMA_SIZE;
       }
     }
   }
@@ -552,10 +589,10 @@ class PolarPlasmaEffect {
     for (let i = 0; i < cls.length; i++) {
       const c = pal[(Math.floor(cls[i]) + shift) & mask];
       const base = i * 4;
-      pix[base]   = (c >> 16) & 0xff;
-      pix[base+1] = (c >> 8)  & 0xff;
-      pix[base+2] =  c        & 0xff;
-      pix[base+3] = 255;
+      pix[base] = (c >> 16) & 0xff;
+      pix[base + 1] = (c >> 8) & 0xff;
+      pix[base + 2] = c & 0xff;
+      pix[base + 3] = 255;
     }
     p.updatePixels();
   }

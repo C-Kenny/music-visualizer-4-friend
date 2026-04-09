@@ -24,7 +24,7 @@ class PrismCodexScene implements IScene {
     driftSpeed = map(ry, -1, 1, 2.0, 0.05);
 
     // A button → inject a manual glow flash
-    if (c.a_just_pressed) beatGlow = 1.0;
+    if (c.aJustPressed) beatGlow = 1.0;
   }
 
   String[] getCodeLines() {
@@ -242,4 +242,8 @@ class PrismCodexScene implements IScene {
   void onExit() {}
 
   void handleKey(char k) {}
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

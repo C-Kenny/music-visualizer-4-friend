@@ -38,4 +38,15 @@ interface IScene {
    * Return an empty array if no overlay is needed.
    */
   String[] getCodeLines();
+
+  /**
+   * Returns an array of controller mappings describing this scene's controls.
+   * Used to dynamically render a "Controller Guide" overlay.
+   * Return an empty array or null if no guide is needed.
+   *
+   * Example:
+   *   new ControllerLayout("LStick ↕", "Rotate faster"),
+   *   new ControllerLayout("A Button", "Inject beat"),
+   */
+  ControllerLayout[] getControllerLayout();
 }

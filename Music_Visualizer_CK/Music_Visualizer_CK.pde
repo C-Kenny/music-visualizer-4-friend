@@ -24,7 +24,9 @@ PShader bloomShader;
 float uiScale() { return max(1.0, min(width, height) / 1080.0); }
 
 PImage h3_emblem;
-PImage new_h3_emblem;
+PImage newHaloEmblem;
+
+PShape xboxFrontSVG;
 
 HandyRenderer h, h1, h2;
 HandyRenderer[] HANDY_RENDERERS;
@@ -36,7 +38,7 @@ String[]modeNames;
 PeasyCam cam;
 
 void loadSongToVisualize() {
-  log_to_stdo("Loading song to visualize");
+  logToStdout("Loading song to visualize");
   audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
   config.SONG_PLAYING = true;
 }
@@ -48,11 +50,11 @@ void setupController() {
     config.TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins";
     controller.debugPrintControls();
   }
-  log_to_stdo("USING CONTROLLER? " + config.USING_CONTROLLER);
+  logToStdout("USING CONTROLLER? " + config.USING_CONTROLLER);
 }
 
 void initializeGlobals() {
-  log_to_stdo("initializeGlobals");
+  logToStdout("initializeGlobals");
 
   config = new Config();
 
@@ -97,16 +99,16 @@ boolean isDevMode() {
   };
   for (String path : candidates) {
     java.io.File f = new java.io.File(path);
-    log_to_stdo("devmode check: " + f.getAbsolutePath() + " → " + f.exists());
+    logToStdout("devmode check: " + f.getAbsolutePath() + " → " + f.exists());
     if (f.exists()) return true;
   }
   return false;
 }
 
 void setSongToVisualize() {
-  log_to_stdo("Current song: " + config.SONG_TO_VISUALIZE);
-  log_to_stdo("sketchPath() = " + sketchPath());
-  log_to_stdo("user.dir     = " + System.getProperty("user.dir"));
+  logToStdout("Current song: " + config.SONG_TO_VISUALIZE);
+  logToStdout("sketchPath() = " + sketchPath());
+  logToStdout("user.dir     = " + System.getProperty("user.dir"));
 
   // Dev / smoke-test shortcuts — skip the dialog
   if (isDevMode() || SMOKE_TEST_MODE) {
@@ -118,7 +120,7 @@ void setSongToVisualize() {
           config.SONG_TO_VISUALIZE = devSongPath;
           config.SONG_NAME = getSongNameFromFilePath(devSongPath, config.OS_TYPE);
           config.STATE = 1;
-          log_to_stdo("Dev song: " + config.SONG_TO_VISUALIZE);
+          logToStdout("Dev song: " + config.SONG_TO_VISUALIZE);
           return;
         }
       }
@@ -129,12 +131,12 @@ void setSongToVisualize() {
     if (config.songList.size() > 0) {
       config.currentSongIndex = (int) random(config.songList.size());
       config.SONG_TO_VISUALIZE = config.songList.get(config.currentSongIndex);
-      log_to_stdo("Random song selected: " + config.SONG_TO_VISUALIZE);
+      logToStdout("Random song selected: " + config.SONG_TO_VISUALIZE);
       config.STATE = 1;
       config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
       return;
     }
-    log_to_stdo("No songs found in ~/Music, falling back to file picker");
+    logToStdout("No songs found in ~/Music, falling back to file picker");
     // fall through to dialog
   }
 
@@ -157,12 +159,12 @@ void setSongToVisualize() {
     if (config.songList.size() > 0) {
       config.currentSongIndex = (int) random(config.songList.size());
       config.SONG_TO_VISUALIZE = config.songList.get(config.currentSongIndex);
-      log_to_stdo("Random song selected: " + config.SONG_TO_VISUALIZE);
+      logToStdout("Random song selected: " + config.SONG_TO_VISUALIZE);
       config.STATE = 1;
       config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
       return;
     }
-    log_to_stdo("No songs found in ~/Music, falling back to file picker");
+    logToStdout("No songs found in ~/Music, falling back to file picker");
   }
 
   // Browse (choice == 1, or random had no songs)
@@ -171,7 +173,7 @@ void setSongToVisualize() {
     delay(1);
   }
   config.STATE = 1;
-  log_to_stdo("SONG TO VISUALIZE: " + config.SONG_TO_VISUALIZE);
+  logToStdout("SONG TO VISUALIZE: " + config.SONG_TO_VISUALIZE);
   config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
 }
 
@@ -180,7 +182,7 @@ void loadSongByPath(String path) {
   config.SONG_TO_VISUALIZE = path;
   config.SONG_NAME = getSongNameFromFilePath(path, config.OS_TYPE);
   loadSongToVisualize();
-  log_to_stdo("Now playing: " + config.SONG_NAME);
+  logToStdout("Now playing: " + config.SONG_NAME);
 }
 
 void nextSong() {
@@ -217,11 +219,11 @@ void collectSongs(java.io.File dir, ArrayList<String> songs) {
 
 void fileSelected(File selection) {
   if (selection == null) {
-    log_to_stdo("No file selected. Window might have been closed/cancelled");
+    logToStdout("No file selected. Window might have been closed/cancelled");
     return;
   }
   String path = selection.getAbsolutePath();
-  log_to_stdo("File selected: " + path);
+  logToStdout("File selected: " + path);
   config.SONG_TO_VISUALIZE = path;
   config.SONG_NAME = getSongNameFromFilePath(path, config.OS_TYPE);
   // Always rescan parent folder so n/N works with the new location
@@ -250,18 +252,18 @@ String discoverOperatingSystem() {
   }
 }
 
-String getSongNameFromFilePath(String song_path, String os_type) {
-  log_to_stdo("Getting song name from file path, where os_type is: " + os_type);
+String getSongNameFromFilePath(String song_path, String osType) {
+  logToStdout("Getting song name from file path, where osType is: " + osType);
   String[] file_name_parts;
-  if (os_type == "linux") {
+  if (osType == "linux") {
     file_name_parts = split(song_path, "/");
-  } else if (os_type == "win") {
+  } else if (osType == "win") {
     file_name_parts = split(song_path, "\\");
   } else {
     file_name_parts = split(song_path, "\\");
   }
   config.SONG_NAME = file_name_parts[file_name_parts.length-1];
-  log_to_stdo("SONG_NAME: " + config.SONG_NAME);
+  logToStdout("SONG_NAME: " + config.SONG_NAME);
   return config.SONG_NAME;
 }
 
@@ -276,7 +278,7 @@ void setup() {
   background(200);
   config = new Config();
   analyzer = new AudioAnalyser();
-  log_to_stdo("canvas spawned");
+  logToStdout("canvas spawned");
   initializeGlobals();
   // Detect smoke test early so setSongToVisualize() skips the file picker
   if (isSmokeTestMode()) {
@@ -342,6 +344,9 @@ void setup() {
   } catch (Exception e) { /* ignore — missing or malformed file */ }
   // load Halo 3 emblem used as reference for colors and texture
   h3_emblem = loadImage("../media/h3_emblem.jpg");
+
+  xboxFrontSVG = loadShape("controller/front.svg");
+  if (xboxFrontSVG != null) xboxFrontSVG.disableStyle();
 }
 
 void stop() {
@@ -399,6 +404,7 @@ void keyPressed() {
   if (key == 'o' || key == 'O') selectInput("Select song to visualize", "fileSelected");
   if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
+  if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
   if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
   if (key == 'q' || key == 'Q' || key == ESC) {
     key = 0; // suppress Processing's default ESC→exit behaviour
@@ -466,16 +472,16 @@ void cycleHandDrawn() {
 }
 
 void reset(){
-  log_to_stdo("reset");
+  logToStdout("reset");
   audio.stop();
   config.SONG_TO_VISUALIZE = "";
   setSongToVisualize();
   loadSongToVisualize();
 }
 
-void log_to_stdo(String message_to_log) {
+void logToStdout(String messageToLog) {
   if (config.LOGGING_ENABLED) {
-    println(message_to_log);
+    println(messageToLog);
   }
 }
 
@@ -494,38 +500,40 @@ public void getUserInput() {
   }
 
   // 2. Global Controller Shortcuts
-  if (controller.dpad_up_just_pressed) {
+  if (controller.dpadUpJustPressed) {
     config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
     if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
   }
-  if (controller.dpad_left_just_pressed) {
+  if (controller.dpadLeftJustPressed) {
     config.DRAW_PLASMA = !config.DRAW_PLASMA;
     if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
   }
-  if (controller.dpad_right_just_pressed) {
+  if (controller.dpadRightJustPressed) {
     config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
     if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
   }
-  if (controller.dpad_down_just_pressed) {
+  if (controller.dpadDownJustPressed) {
     config.DRAW_TUNNEL = false;
     config.DRAW_POLAR_PLASMA = false;
     config.DRAW_PLASMA = false;
   }
 
-  if (controller.lb_just_pressed) {
-    println("CONTROLLER: LB pressed -> switching prev");
-    switchScene(prevActiveScene());
-  }
-  if (controller.rb_just_pressed) {
-    println("CONTROLLER: RB pressed -> switching next");
-    switchScene(nextActiveScene());
+  if (!controller.chord(controller.lbButton, controller.rbButton)) {
+    if (controller.lbJustPressed) {
+      println("CONTROLLER: LB pressed -> switching prev");
+      switchScene(prevActiveScene());
+    }
+    if (controller.rbJustPressed) {
+      println("CONTROLLER: RB pressed -> switching next");
+      switchScene(nextActiveScene());
+    }
   }
   
-  if (controller.back_just_pressed) {
+  if (controller.backJustPressed) {
     println("CONTROLLER: BACK pressed -> stopping");
     stopSong();
   }
-  if (controller.start_just_pressed) {
+  if (controller.startJustPressed) {
     println("CONTROLLER: START pressed -> starting");
     startSong();
   }
@@ -618,7 +626,7 @@ void draw() {
   }
 
   // 2. Continuous Logic Updates
-  if (frameCount % 480 == 0) log_to_stdo("Draw state=" + config.STATE);
+  if (frameCount % 480 == 0) logToStdout("Draw state=" + config.STATE);
 
   // Auto-advance to a shuffled song when the current one finishes
   if (config.SONG_PLAYING && !audio.player.isPlaying()
@@ -663,6 +671,12 @@ void draw() {
     // 5. Global overlays (UI drawn at native res, over the buffer)
     if (config.SHOW_CODE) {
       drawCodeOverlay(scenes[config.STATE].getCodeLines());
+    }
+    if (config.SHOW_CONTROLLER_GUIDE) {
+      ControllerLayout[] layout = scenes[config.STATE].getControllerLayout();
+      if (layout != null) {
+        drawControllerGuide(layout);
+      }
     }
   }
 

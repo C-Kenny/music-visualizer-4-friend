@@ -108,4 +108,8 @@ class CyberGridScene implements IScene {
       "sun = layered_gradient_ellipses"
     };
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

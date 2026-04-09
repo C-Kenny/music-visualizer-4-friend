@@ -31,3 +31,14 @@ $ ffmpeg \
   -vf scale=420:-1 \
   music_visualizer_preview.gif
 ```
+
+### Processing style audit (`.pde` files)
+
+Run the naming/layout audit for Processing sources:
+
+```bash
+./scripts/pde_style_audit.sh
+```
+
+This reports probable style drift (warnings) and helps keep naming and
+formatting consistent as scenes evolve.

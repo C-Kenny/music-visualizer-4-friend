@@ -262,4 +262,8 @@ class OscilloscopeScene implements IScene {
     else if (k == ';') adjustTrail(-2);
     else if (k == '\'') adjustTrail(2);
   }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

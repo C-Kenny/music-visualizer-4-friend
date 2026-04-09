@@ -1,8 +1,6 @@
 class HeartGridScene implements IScene {
-  BezierHeart bezier_heart_0;
-  BezierHeart bezier_heart_1;
-  BezierHeart bezier_heart_2;
-  BezierHeart bezier_heart_3;
+  BezierHeart primaryHeart;
+  BezierHeart secondaryHeart;
 
   float heartBeatDecay = 0;    
   float heartHue       = 0;    
@@ -12,23 +10,24 @@ class HeartGridScene implements IScene {
   float heartFocusNY   = 0.0;  
 
   HeartGridScene() {
-    bezier_heart_0 = new BezierHeart(0.0, 0.25, 300);
-    bezier_heart_1 = new BezierHeart(0.0, 0.25, 300);
-    bezier_heart_2 = new BezierHeart(0.0, 0.25, 300);
-    bezier_heart_3 = new BezierHeart(0.0, 0.25, 300);
+    primaryHeart = new BezierHeart(0.0, 0.25, 300);
+    secondaryHeart = new BezierHeart(0.0, 0.25, 300);
   }
 
   void applyController(Controller c) {
-    float lx_norm = map(c.lx, 0, width, -1, 1);
-    config.HEART_COLS = constrain(round(map(lx_norm, -1, 1, 3, 15)), 3, 15);
+    float leftStickNormalizedX = map(c.lx, 0, width, -1, 1);
+    config.HEART_COLS = constrain(round(map(leftStickNormalizedX, -1, 1, 3, 15)), 3, 15);
 
-    float rx_norm = map(c.rx, 0, width, -1, 1);
-    float ry_norm = map(c.ry, 0, height, -1, 1);
-    float stickMag = sqrt(rx_norm * rx_norm + ry_norm * ry_norm);
-    if (stickMag > 0.15) {
+    float rightStickNormalizedX = map(c.rx, 0, width, -1, 1);
+    float rightStickNormalizedY = map(c.ry, 0, height, -1, 1);
+    float rightStickMagnitude = sqrt(
+      rightStickNormalizedX * rightStickNormalizedX
+      + rightStickNormalizedY * rightStickNormalizedY
+    );
+    if (rightStickMagnitude > 0.15) {
       heartZoom = min(heartZoom + 0.02, 3.5);
-      heartFocusNX = lerp(heartFocusNX, rx_norm, 0.04);
-      heartFocusNY = lerp(heartFocusNY, ry_norm, 0.04);
+      heartFocusNX = lerp(heartFocusNX, rightStickNormalizedX, 0.04);
+      heartFocusNY = lerp(heartFocusNY, rightStickNormalizedY, 0.04);
     } else {
       heartZoom = max(heartZoom - 0.015, 1.0);
       heartFocusNX *= 0.95;
@@ -39,10 +38,10 @@ class HeartGridScene implements IScene {
   void drawScene(PGraphics pg) {
     pg.background(0);
 
-    final float HEART_NAT_W = 831.0;
-    final float HEART_NAT_H = 562.0;
-    float baseScale = pg.width / (config.HEART_COLS * HEART_NAT_W);
-    float cellH     = HEART_NAT_H;
+    final float HEART_NATIVE_WIDTH = 831.0;
+    final float HEART_NATIVE_HEIGHT = 562.0;
+    float baseScale = pg.width / (config.HEART_COLS * HEART_NATIVE_WIDTH);
+    float cellH     = HEART_NATIVE_HEIGHT;
     int   rows      = ceil(pg.height / (cellH * baseScale)) + 1;
 
     float breath = sin(pg.parent.frameCount * 0.03) * 12;
@@ -62,12 +61,12 @@ class HeartGridScene implements IScene {
     color c0 = color(heartHue, 210, 220);
     color c1 = color((heartHue + 180) % 360, 210, 220);
     pg.colorMode(RGB, 255);
-    bezier_heart_0.bezier_heart_fill_color_r = red(c0);
-    bezier_heart_0.bezier_heart_fill_color_g = green(c0);
-    bezier_heart_0.bezier_heart_fill_color_b = blue(c0);
-    bezier_heart_1.bezier_heart_fill_color_r = red(c1);
-    bezier_heart_1.bezier_heart_fill_color_g = green(c1);
-    bezier_heart_1.bezier_heart_fill_color_b = blue(c1);
+    primaryHeart.fillRed = red(c0);
+    primaryHeart.fillGreen = green(c0);
+    primaryHeart.fillBlue = blue(c0);
+    secondaryHeart.fillRed = red(c1);
+    secondaryHeart.fillGreen = green(c1);
+    secondaryHeart.fillBlue = blue(c1);
 
     config.HEART_PULSE = breath + heartBeatDecay;
 
@@ -79,10 +78,10 @@ class HeartGridScene implements IScene {
       pg.translate(-focusX, -focusY);
       for (int row = 0; row < rows; row++) {
         for (int col = 0; col < config.HEART_COLS; col++) {
-          float xOff = col * HEART_NAT_W + 443.0;
-          float yOff = row * HEART_NAT_H;
-          BezierHeart heart = ((row + col) % 2 == 0) ? bezier_heart_0 : bezier_heart_1;
-          heart.drawBezierHeart(pg, xOff, yOff, baseScale);
+          float xOff = col * HEART_NATIVE_WIDTH + 443.0;
+          float yOff = row * HEART_NATIVE_HEIGHT;
+          BezierHeart heart = ((row + col) % 2 == 0) ? primaryHeart : secondaryHeart;
+          heart.drawHeart(pg, xOff, yOff, baseScale);
         }
       }
     pg.popMatrix();
@@ -154,6 +153,14 @@ class HeartGridScene implements IScene {
     } else if (k == ']') {
       config.HEART_COLS = min(10, config.HEART_COLS + 1);
     }
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {
+      new ControllerLayout("LStick ↔", "Grid columns (3–15)"),
+      new ControllerLayout("RStick", "Zoom & pan focus point"),
+      new ControllerLayout("[ ]", "Decrease/increase columns")
+    };
   }
 
   String[] getCodeLines() {

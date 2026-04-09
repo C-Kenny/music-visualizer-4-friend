@@ -28,8 +28,8 @@ class AntigravityScene implements IScene {
     float ry = map(c.ry, 0, height, -1, 1);
     gravity = ry * 2.5 - 1.5;
 
-    if (c.a_just_pressed) triggerPulse();
-    if (c.y_just_pressed) cyclePalette();
+    if (c.aJustPressed) triggerPulse();
+    if (c.yJustPressed) cyclePalette();
   }
 
   void triggerPulse() {
@@ -292,5 +292,9 @@ class AntigravityScene implements IScene {
       "p.applyForce(new PVector(wind, gravity + bass * -2.0))",
       "p.loc.x += jitter(highHat)"
     };
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
   }
 }

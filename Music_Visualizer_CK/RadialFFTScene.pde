@@ -193,8 +193,8 @@ class RadialFFTScene implements IScene {
     }
     spread = map(rx, -1, 1, 0.6, 1.6);
 
-    if (c.a_just_pressed) beatPulse = 1.0;
-    if (c.y_just_pressed) palette = (palette + 1) % 4;
+    if (c.aJustPressed) beatPulse = 1.0;
+    if (c.yJustPressed) palette = (palette + 1) % 4;
   }
 
   String[] getCodeLines() {
@@ -232,5 +232,9 @@ class RadialFFTScene implements IScene {
     if (k == 'r' || k == 'R') reverseDirection();
     else if (k == '[') adjustSpeed(-0.001);
     else if (k == ']') adjustSpeed(0.001);
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
   }
 }

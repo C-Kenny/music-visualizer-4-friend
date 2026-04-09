@@ -242,8 +242,8 @@ class SpirographScene implements IScene {
     if (abs(rx) > 0.12) dNudge = constrain(dNudge + rx * 1.5, -curveR * 0.4, curveR * 0.4);
     curveScale = map(ry, -1, 1, 1.6, 0.5);
 
-    if (c.a_just_pressed) fading = true;
-    if (c.y_just_pressed) palette = (palette + 1) % 4;
+    if (c.aJustPressed) fading = true;
+    if (c.yJustPressed) palette = (palette + 1) % 4;
   }
 
   String[] getCodeLines() {
@@ -277,4 +277,8 @@ class SpirographScene implements IScene {
   void onExit() {}
 
   void handleKey(char k) {}
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
+  }
 }

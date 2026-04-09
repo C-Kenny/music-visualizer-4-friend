@@ -708,13 +708,13 @@ class TableTennis3DScene extends TableTennisScene {
     if (abs(rxN) > 0.15) camAzim += rxN * 0.030;
     if (abs(ryN) > 0.15) camElev  = constrain(camElev + ryN * 0.020, 0.08, PI / 2 - 0.05);
 
-    if (c.x_just_pressed) adjustSpeed(-0.1);
-    if (c.y_just_pressed) adjustSpeed( 0.1);
-    if (c.b_just_pressed) cyclePlayer();
+    if (c.xJustPressed) adjustSpeed(-0.1);
+    if (c.yJustPressed) adjustSpeed( 0.1);
+    if (c.bJustPressed) cyclePlayer();
 
     // D-pad L/R → cycle shader style
-    if (c.dpad_left_just_pressed)  cycleShader(-1);
-    if (c.dpad_right_just_pressed) cycleShader( 1);
+    if (c.dpadLeftJustPressed)  cycleShader(-1);
+    if (c.dpadRightJustPressed) cycleShader( 1);
   }
 
   // a/d → orbit  |  w/e → tilt  |  z/x → zoom
@@ -759,5 +759,9 @@ class TableTennis3DScene extends TableTennisScene {
     else                  { pg.fill(255, 220, 60); }
     pg.text("Player: " + playerLabels[playerSide] + "  (V / B)",  12, 8 + mg + lh*7);
     pg.popStyle();
+  }
+
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {};
   }
 }
