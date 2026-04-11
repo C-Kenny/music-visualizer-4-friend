@@ -40,7 +40,7 @@ class PrismCodexScene implements IScene {
       "beam_weight = 1 + 2.5 * combined_energy",
       "",
       "// Background grid drifts diagonally to suggest machine vision",
-      "grid_offset = frameCount * 0.35",
+      "grid_offset = config.logicalFrameCount * 0.35",
       "",
       "// Beat onset injects a white pulse into the center prism",
       "beat_glow *= 0.92 between beats"
@@ -130,7 +130,7 @@ class PrismCodexScene implements IScene {
 
       for (int i = 0; i < nodeCounts[ring]; i++) {
         float angle = ringRotation + TWO_PI * i / nodeCounts[ring];
-        float wobble = sin(pg.parent.frameCount * 0.02 + i + ring * 0.7) * (8 + ringEnergy * 1.8);
+        float wobble = sin(config.logicalFrameCount * 0.02 + i + ring * 0.7) * (8 + ringEnergy * 1.8);
         float x = cos(angle) * (radius + wobble);
         float y = sin(angle) * (radius + wobble);
         nodeX[ring][i] = x;

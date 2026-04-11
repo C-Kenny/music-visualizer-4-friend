@@ -4,4 +4,4 @@
 DEVMODE="Music_Visualizer_CK/.devmode"
 touch "$DEVMODE"
 trap 'rm -f "$DEVMODE"' EXIT
-processing cli --sketch=Music_Visualizer_CK --force --run
+processing cli --sketch=Music_Visualizer_CK --force --run "$@"

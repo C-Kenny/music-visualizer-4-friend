@@ -120,15 +120,15 @@ class AuroraRibbonsScene implements IScene {
       pg.beginShape(TRIANGLE_STRIP);
       for (float x = 0; x <= pg.width + spacing; x += spacing) {
         float nx = x * freq;
-        float n1 = noise(nx + drift * speed, pg.parent.frameCount * 0.0035 + layer * 13.0);
-        float n2 = noise(nx + drift * speed + 33.0, pg.parent.frameCount * 0.0045 + layer * 19.0);
+        float n1 = noise(nx + drift * speed, config.logicalFrameCount * 0.0035 + layer * 13.0);
+        float n2 = noise(nx + drift * speed + 33.0, config.logicalFrameCount * 0.0045 + layer * 19.0);
         float sway = (n1 - 0.5) * swayAmp;
         float centerSide = (x < pg.width * 0.5) ? -1.0 : 1.0;
 
         float topY = map(n2, 0, 1, -20, 45 + layer * 14);
         float bottomY = topY + len + (n1 - 0.5) * (65 + low * 35.0);
 
-        float hue = (hueOffset + pHue + layer * 17 + sin(pg.parent.frameCount * 0.01 + x * 0.015) * 16 + mid * 26) % 360;
+        float hue = (hueOffset + pHue + layer * 17 + sin(config.logicalFrameCount * 0.01 + x * 0.015) * 16 + mid * 26) % 360;
         float sat = constrain((170 + 65 * (1.0 - layerMix)) * pSat, 0, 255);
         float bri = constrain((145 + layer * 14 + high * 90) * pBri, 0, 255);
         float aTop = 42 + layer * 10 + beatFlash * 65;
@@ -163,7 +163,7 @@ class AuroraRibbonsScene implements IScene {
   void drawMist(PGraphics pg, float highNorm, float pHue, float pSat, float pBri) {
     int pCount = int(24 + highNorm * 42);
     for (int i = 0; i < pCount; i++) {
-      float t = pg.parent.frameCount * 0.004 + i * 0.17;
+      float t = config.logicalFrameCount * 0.004 + i * 0.17;
       float x = noise(i * 2.7, t + drift * 0.2) * pg.width;
       float y = pg.height * (0.22 + noise(i * 5.1, t * 0.9) * 0.72);
       float r = 1.2 + noise(i * 7.3, t * 1.1) * (2.0 + highNorm * 5.5);

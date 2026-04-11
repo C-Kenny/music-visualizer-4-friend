@@ -228,7 +228,7 @@ class Halo2LogoScene implements IScene {
   // Scrolling plasma-style colour sweep — rendered at rW×rH for performance
   void drawPlasmaSweep(PGraphics g, float bass, float mid, float high) {
     g.loadPixels();
-    float t = frameCount * 0.015;
+    float t = config.logicalFrameCount * 0.015;
     for (int y = 0; y < rH; y++) {
       for (int x = 0; x < rW; x++) {
         float nx = x / (float) rW;
@@ -250,7 +250,7 @@ class Halo2LogoScene implements IScene {
     g.loadPixels();
     float cx = rW / 2.0;
     float cy = rH / 2.0;
-    float t  = frameCount * 0.02;
+    float t  = config.logicalFrameCount * 0.02;
     for (int y = 0; y < rH; y++) {
       for (int x = 0; x < rW; x++) {
         float dx = x - cx;

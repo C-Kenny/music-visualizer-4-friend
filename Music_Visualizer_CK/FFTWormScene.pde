@@ -84,7 +84,7 @@ class FFTWormScene implements IScene {
         vxx += dx / d * 1.5;
         vyy += dy / d * 1.5;
       } else {
-        float t      = pg.parent.frameCount * 0.003 + noiseOff;
+        float t      = config.logicalFrameCount * 0.003 + noiseOff;
         float wander = pg.parent.noise(sx[0] * 0.003 + noiseOff,
                              sy[0] * 0.003 + noiseOff * 1.6, t) * TWO_PI * 2.5;
         vxx += cos(wander) * 0.3 * (1 + mid * 0.04);
@@ -144,7 +144,7 @@ class FFTWormScene implements IScene {
       if (perp_len > 0.01) { px = -perp_dy / perp_len; py = perp_dx / perp_len; }
 
       float freqSpeed = map(i, 0, N-1, 0.04, 0.35);
-      float wiggleAmt = sin(pg.parent.frameCount * freqSpeed + drawIdx * 0.6) * amp * 0.45;
+      float wiggleAmt = sin(config.logicalFrameCount * freqSpeed + drawIdx * 0.6) * amp * 0.45;
       float wx = sx[drawIdx] + px * wiggleAmt;
       float wy = sy[drawIdx] + py * wiggleAmt;
 

@@ -701,7 +701,7 @@ class TableTennisScene implements IScene {
 
       pg.stroke(ballHue, 255, 255, 200);
       pg.strokeWeight(2.5);
-      float angle = pg.parent.frameCount * spin * 4;
+      float angle = config.logicalFrameCount * spin * 4;
       float r     = BALL_RADIUS * 0.65;
       pg.line(ballX + cos(angle)*r, ballY + sin(angle)*r,
            ballX - cos(angle)*r, ballY - sin(angle)*r);

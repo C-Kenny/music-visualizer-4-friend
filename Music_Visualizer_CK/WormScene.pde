@@ -52,7 +52,7 @@ class Worm {
               float speedScale) {
 
     float topSpeed = (2.2 + mid * 0.2) * speedMult * speedScale;
-    float t      = pg.parent.frameCount * 0.003 + noiseOff;
+    float t      = config.logicalFrameCount * 0.003 + noiseOff;
     float wander = pg.parent.noise(sx[0] * 0.004 + noiseOff,
                          sy[0] * 0.004 + noiseOff * 1.7, t) * TWO_PI * 2.5;
 
@@ -98,7 +98,7 @@ class Worm {
       float ang = random(TWO_PI);
       vx += cos(ang) * bass * 0.55;
       vy += sin(ang) * bass * 0.55;
-      hue = (baseHue + pg.parent.frameCount * 0.8 + random(40)) % 360;
+      hue = (baseHue + config.logicalFrameCount * 0.8 + random(40)) % 360;
     }
   }
 
@@ -111,7 +111,7 @@ class Worm {
       float r    = lerp(17, 4, t) * pulse;
       float segHue;
       switch (colorMode) {
-        case 1:  segHue = (hue + i * 10 + pg.parent.frameCount * 0.6f) % 360; break; 
+        case 1:  segHue = (hue + i * 10 + config.logicalFrameCount * 0.6f) % 360; break; 
         case 2:  segHue = map(i, 0, N - 1, hue, (hue + 120) % 360); break; 
         default: segHue = hue; break;                                         
       }

@@ -80,7 +80,7 @@ class Shapes3DScene implements IScene {
     float plateSize = radius * 1.4 * plateScale;
 
     // gentle rotation for the whole emblem
-    pg.rotate(angle + pg.parent.frameCount * 0.0006);
+    pg.rotate(angle + config.logicalFrameCount * 0.0006);
     // background plate (rotated square -> diamond) — darker for contrast
     pg.pushMatrix();
       pg.rotate(radians(45));
@@ -238,7 +238,7 @@ class Shapes3DScene implements IScene {
       "=== 3D-Style Shapes (Emblem) ===",
       "// Logic: Symmetrical fins pulse with audio energy",
       "fin_length = radius * (1.0 + pulse * sensitivity)",
-      "rotation = frameCount * speed + onset_kick"
+      "rotation = config.logicalFrameCount * speed + onset_kick"
     };
   }
 

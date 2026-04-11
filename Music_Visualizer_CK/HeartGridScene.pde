@@ -44,7 +44,7 @@ class HeartGridScene implements IScene {
     float cellH     = HEART_NATIVE_HEIGHT;
     int   rows      = ceil(pg.height / (cellH * baseScale)) + 1;
 
-    float breath = sin(pg.parent.frameCount * 0.03) * 12;
+    float breath = sin(config.logicalFrameCount * 0.03) * 12;
 
     if (analyzer.isBeat) {
       heartBeatDecay = 35.0;

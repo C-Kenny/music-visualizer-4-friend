@@ -1,4 +1,5 @@
 class PolarPlasma {
+  PImage buffer;
   int[] radius;
   int[] angle;
   color[] sinePalette;
@@ -7,27 +8,35 @@ class PolarPlasma {
   int rang;
   float d2r;
   float d2b;
-  int xc;
-  int yc;
-  int screenSize;
 
   PolarPlasma() {
-    screenSize = width * height;
-    xc = width / 2;
-    yc = height / 2;
     rang = 512;
     d2r = 180/PI;
     d2b = (rang * d2r) / 360;
+    sinePalette = new color[256];
+    
+    for (int i = 0; i < 256; i++) {
+      int r = int((cos(i * 2.0 * PI / 256.0) + 1) * 32);
+      int g = int(sin(i * 2.0 * PI / 512.0) * 255 * cos(i * 2.0 * PI / 1024.0));
+      int b = int(sin(i * 2.0 * PI / 512.0) * 255);
+      sinePalette[i] = color(r, g, b);
+    }
+    init(width, height);
+  }
 
+  void init(int w, int h) {
+    int screenSize = w * h;
+    int xc = w / 2;
+    int yc = h / 2;
     radius = new int[screenSize];
     angle = new int[screenSize];
-    sinePalette = new color[256];
-    fsin1 = new int[width*4];
-    fsin2 = new int[width*4];
+    fsin1 = new int[w*4];
+    fsin2 = new int[w*4];
+    buffer = createImage(w, h, RGB);
 
     int count=0;
-    for (int y=0; y<height; y++) {
-      for (int x=0; x<width; x++) {
+    for (int y=0; y<h; y++) {
+      for (int x=0; x<w; x++) {
         int xs = x - xc;
         int ys = y - yc;
         radius[count] = (int)(sqrt(pow(xs, 2) + pow(ys, 2)));
@@ -41,23 +50,24 @@ class PolarPlasma {
       fsin1[x] = (int)(cos(x/(l*d2b))*48+64);
       fsin2[x] = (int)(sin(x/(l*d2b/2))*40+48);
     }
-
-    for (int i = 0; i < 256; i++) {
-      int r = int((cos(i * 2.0 * PI / 256.0) + 1) * 32);
-      int g = int(sin(i * 2.0 * PI / 512.0) * 255 * cos(i * 2.0 * PI / 1024.0));
-      int b = int(sin(i * 2.0 * PI / 512.0) * 255);
-      sinePalette[i] = color(r, g, b);
-    }
   }
 
   void draw(PGraphics pg) {
-    int k = frameCount&0xff;
-    pg.loadPixels();
-    for (int i=0; i < pg.pixels.length; i++) {
-        if (i >= radius.length) break;
-      int c = sinePalette[(angle[i] + fsin1[radius[i] + fsin2[radius[i]]+k]) & 0xFF];
-      pg.pixels[i] = 0xFF000000 | (c & 0xFFFFFF);
+    if (buffer == null || buffer.width != pg.width || buffer.height != pg.height) {
+      init(pg.width, pg.height);
     }
-    pg.updatePixels();
+    int k = config.logicalFrameCount&0xff;
+    buffer.loadPixels();
+    for (int i=0; i < buffer.pixels.length; i++) {
+      if (i >= radius.length) break;
+      int c = sinePalette[(angle[i] + fsin1[radius[i] + fsin2[radius[i]]+k]) & 0xFF];
+      buffer.pixels[i] = 0xFF000000 | (c & 0xFFFFFF);
+    }
+    buffer.updatePixels();
+    
+    // Draw independently of any preceding pg.translate() offsets to prevent cutoff
+    pg.pushMatrix();
+    pg.image(buffer, 0, 0);
+    pg.popMatrix();
   }
 }

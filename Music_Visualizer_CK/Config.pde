@@ -95,6 +95,7 @@ class Config {
 
   boolean SCREEN_RECORDING;
   boolean SHOW_CODE;
+  boolean SHOW_METADATA;
   boolean BLOOM_ENABLED;
 
   ArrayList<String> songList;
@@ -106,8 +107,10 @@ class Config {
 
   int TUNNEL_ZOOM_INCREMENT;
 
+  int logicalFrameCount;
+
   Config() {
-    TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins, (n)ext song, (N)shuffle";
+    TITLE_BAR = "(t)unnel (b)lendmode, (d)iamonds, (f)in direction, (h)and-drawn, (p)lasma, (s)top, (w)ave, (>)toggle diamonds, (/)toggle fins, (n)ext song, (N)shuffle, (m)etadata";
 
     OS_TYPE = discoverOperatingSystem();
 
@@ -190,8 +193,19 @@ class Config {
     SHOW_CODE = false;
     LOGGING_ENABLED = false;
     BLOOM_ENABLED = false;
+    SHOW_METADATA = false;
+
+    logicalFrameCount = 0;
 
     songList = new ArrayList<String>();
     currentSongIndex = 0;
+
+    if (args != null) {
+      for (String arg : args) {
+        if (arg.equals("--fancy")) {
+          BLOOM_ENABLED = true;
+        }
+      }
+    }
   }
 }
