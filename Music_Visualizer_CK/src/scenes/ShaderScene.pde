@@ -66,7 +66,8 @@ class ShaderScene implements IScene {
 
     // 1. SET THE UNIFORMS (Talk to the GPU!)
     // Pass the standard screen and time values
-    milkdropShader.set("u_resolution", float(pg.width), float(pg.height));
+    float d = displayDensity();
+    milkdropShader.set("u_resolution", float(pg.width) * d, float(pg.height) * d);
     milkdropShader.set("u_time", pg.parent.millis() / 1000.0);
     
     // Pass our music reaction layers
