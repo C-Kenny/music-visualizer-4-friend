@@ -96,7 +96,7 @@ class OriginalScene implements IScene {
     if (config.RAINBOW_FINS) pg.colorMode(HSB, 360, 255, 255);
     for (int i = 0; i < fins; i++) {
       if (config.RAINBOW_FINS) {
-        float hue = (((float)i / fins) * 360 + pg.parent.frameCount * 0.4 + config.GLOBAL_REDNESS * 60) % 360;
+        float hue = (((float)i / fins) * 360 + config.logicalFrameCount * 0.4 + config.GLOBAL_REDNESS * 60) % 360;
         pg.stroke(hue, 220, 255);
         pg.fill(config.APPEAR_HAND_DRAWN ? color(hue, 200, 200, 100) : color(0, 0));
       } else {
@@ -112,8 +112,8 @@ class OriginalScene implements IScene {
         }
         pg.translate(s1Size/2.0, s1Size/2.0);
         pg.scale(1.75 * uiScale());
-        float random_noise_spin = noise(i * 0.3, pg.parent.frameCount * 0.01);
-        pg.rotate( (radians(pg.parent.frameCount + random_noise_spin) / 2.0) );
+        float random_noise_spin = noise(i * 0.3, config.logicalFrameCount * 0.01);
+        pg.rotate( (radians(config.logicalFrameCount + random_noise_spin) / 2.0) );
         pg.rotate(rotationAmount);
         pg.bezier(-36 + xOffset,-126 + yOffset, -36 + xOffset,-126 + yOffset, 32 + xOffset,-118 + yOffset, 68 + xOffset,-52 + yOffset);
         pg.bezier(-36 + xOffset,-126 + yOffset, -36 + xOffset,-126 + yOffset, -10 + xOffset,-88 + yOffset, -22 + xOffset,-52 + yOffset);
@@ -211,17 +211,21 @@ class OriginalScene implements IScene {
     }
     
     if (config.DRAW_PLASMA) {
+      pg.pushMatrix(); pg.translate(-s1OffsetX, 0); // Reverse shift for background element
       plasma.draw(pg, config.PLASMA_SEED);
+      pg.popMatrix();
     }
 
     if (config.DRAW_POLAR_PLASMA) {
+      pg.pushMatrix(); pg.translate(-s1OffsetX, 0); // Reverse shift for background element
       polarPlasma.draw(pg);
+      pg.popMatrix();
     }
 
     if (config.DRAW_WAVEFORM) {
-      float r_line = (pg.parent.frameCount % 255) / 10.0;
-      float g_line = (pg.parent.frameCount % 255) - 75;
-      float b_line = (pg.parent.frameCount % 255);
+      float r_line = (config.logicalFrameCount % 255) / 10.0;
+      float g_line = (config.logicalFrameCount % 255) - 75;
+      float b_line = (config.logicalFrameCount % 255);
       int wBufSz = audio.player.bufferSize();
       pg.pushStyle();
         pg.strokeWeight(4);
@@ -383,7 +387,7 @@ class OriginalScene implements IScene {
       "=== Original Scene (Mandala) ===",
       "// Logic: logarithmic FFT bands -> diamond depth & fin rotation",
       "dist = sin(t) * amplitude",
-      "rotation = frameCount * speed + bass_energy"
+      "rotation = config.logicalFrameCount * speed + bass_energy"
     };
   }
 

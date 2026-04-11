@@ -52,13 +52,13 @@ class NeuralWeaveScene implements IScene {
   float nodeJX(int i, int j) {
     float m = (0.12 + metabolism * 0.88) * (1.0 + growthMode * 0.07);
     return sin(i * 1.31 + j * 0.77 + organicPhase * 1.2) * (5.5 + techInject * 5.0) * m
-         + cos(frameCount * 0.019 + i * 0.4) * 2.2 * m;
+         + cos(config.logicalFrameCount * 0.019 + i * 0.4) * 2.2 * m;
   }
 
   float nodeJY(int i, int j) {
     float m = (0.12 + metabolism * 0.88) * (1.0 + growthMode * 0.07);
     return cos(j * 1.21 + i * 0.63 + organicPhase) * (5.5 + techInject * 5.0) * m
-         + sin(frameCount * 0.017 + j * 0.35) * 2.2 * m;
+         + sin(config.logicalFrameCount * 0.017 + j * 0.35) * 2.2 * m;
   }
 
   void regenBridges() {
@@ -103,7 +103,7 @@ class NeuralWeaveScene implements IScene {
       float h = (globalHue + k * 26 + (labMode ? 15 : 0)) % 360;
       float al = (6 + metabolism * 62 + pulse * 35) * (labMode ? 0.75 : 1.0);
       pg.fill(h, 150 + (labMode ? 40 : 0), 255, constrain(al, 0, 115));
-      float wob = 1.0 + sin(pg.parent.frameCount * 0.018 + k * 1.1) * 0.07;
+      float wob = 1.0 + sin(config.logicalFrameCount * 0.018 + k * 1.1) * 0.07;
       pg.ellipse(bx, by, spread * wob * 1.05, spread * 0.95 * wob);
     }
   }
@@ -118,7 +118,7 @@ class NeuralWeaveScene implements IScene {
     if (len < 0.001) return;
     float nx = -dy / len;
     float ny = dx / len;
-    float bow = (14 + techInject * 22) * (1.0 + sin(pg.parent.frameCount * 0.035 + band) * 0.35);
+    float bow = (14 + techInject * 22) * (1.0 + sin(config.logicalFrameCount * 0.035 + band) * 0.35);
     float cx1 = mx + nx * bow;
     float cy1 = my + ny * bow;
 
@@ -258,7 +258,7 @@ class NeuralWeaveScene implements IScene {
         float x = i * cellW + nodeJX(i, j);
         float y = j * cellH + nodeJY(i, j);
         float d = dist(x, y, mx, my);
-        float rip = ripple * (0.4 + 0.6 * sin(d * 0.08 + pg.parent.frameCount * 0.12));
+        float rip = ripple * (0.4 + 0.6 * sin(d * 0.08 + config.logicalFrameCount * 0.12));
         int b = (i * 13 + j * 17) % N;
         float a = smoothAmp[b];
         float hue = hueFor((float)b / max(1, N - 1), a);
@@ -319,7 +319,7 @@ class NeuralWeaveScene implements IScene {
     pg.strokeWeight(sw);
 
     int segs = max(4, (int)(dist(x1, y1, x2, y2) / 14));
-    float ph = pg.parent.frameCount * 0.04 + band * 0.3;
+    float ph = config.logicalFrameCount * 0.04 + band * 0.3;
     float org = metabolism * (1.2 + growthMode * 0.15);
     pg.noFill();
     pg.beginShape();

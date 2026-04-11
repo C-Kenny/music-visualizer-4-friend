@@ -1,12 +1,11 @@
 class Tunnel {
+  PImage buffer;
   int[] lookUpTable;
   int[] texture;
 
   Tunnel() {
-    lookUpTable = new int[width*height];
     int texSize = 128;
     texture = new int[texSize*texSize];
-
     for (int j=0; j<texSize; j++) {
       for (int i=0; i<texSize; i++) {
         int r = (i ^ j);
@@ -15,49 +14,58 @@ class Tunnel {
         texture[texSize*j+i] = 0xff000000 | (g<<16) | (g<<8) | g;
       }
     }
+    init(width, height);
+  }
 
-    for (int j=height-1; j>0; j--) {
-      for (int i=width-1; i>0; i--) {
-        float x = -1.0f + (float)i*(2.0f/(float)width);
-        float y =  1.0f - (float)j*(2.0f/(float)height);
+  void init(int w, int h) {
+    lookUpTable = new int[w*h];
+    buffer = createImage(w, h, RGB);
+
+    for (int j=h-1; j>0; j--) {
+      for (int i=w-1; i>0; i--) {
+        float x = -1.0f + (float)i*(2.0f/(float)w);
+        float y =  1.0f - (float)j*(2.0f/(float)h);
         float r = sqrt(x*x+y*y);
         float a = atan2(x, y);
 
         float u = 1.0f/r;
         float v = a*(1.0f/3.14159f);
-        float w = r*r;
-        if (w>1.0f) w=1.0f;
+        float w2 = r*r;
+        if (w2>1.0f) w2=1.0f;
 
         int iu = (int)(u*255.0f);
         int iv = (int)(v*255.0f);
-        int iw = (int)(w*255.0f);
+        int iw = (int)(w2*255.0f);
 
-        lookUpTable[width*j+i] = ((iw&255)<<16) | ((iv&255)<<8) | (iu&255);
+        lookUpTable[w*j+i] = ((iw&255)<<16) | ((iv&255)<<8) | (iu&255);
       }
     }
   }
 
-  // xOffset / squareSize limit rendering to the scene's square viewport so the
-  // tunnel doesn't bleed into the letterbox margins. Pixel coordinates outside
-  // [xOffset, xOffset+squareSize) are left untouched.
   void draw(PGraphics pg, int tunnelZoomIncrement, int xOffset, int squareSize) {
-    pg.loadPixels();
+    if (buffer == null || buffer.width != pg.width || buffer.height != pg.height) {
+      init(pg.width, pg.height);
+    }
+    buffer.loadPixels();
     int pgW = pg.width;
     int pgH = pg.height;
     int xEnd = min(xOffset + squareSize, pgW);
     for (int row = 0; row < pgH; row++) {
       for (int col = xOffset; col < xEnd; col++) {
         int pgIdx  = row * pgW + col;
-        int luIdx  = row * width + col; // lookUpTable was built against global width
+        int luIdx  = row * buffer.width + col;
         if (luIdx >= lookUpTable.length) continue;
         int val = lookUpTable[luIdx];
         int texel = texture[
-          ((val & 0x0000ffff) + ((frameCount + tunnelZoomIncrement) << 1)) & ((128*128)-1)
+          ((val & 0x0000ffff) + ((config.logicalFrameCount + tunnelZoomIncrement) << 1)) & ((128*128)-1)
         ];
         int alpha = (val >> 16) & 0xFF;
-        pg.pixels[pgIdx] = (alpha << 24) | (texel & 0xFFFFFF);
+        buffer.pixels[pgIdx] = (alpha << 24) | (texel & 0xFFFFFF);
       }
     }
-    pg.updatePixels();
+    buffer.updatePixels();
+    // We expect the translated context to shift it if drawn within a translate. 
+    // Tunnel is drawn before translation, so pg.image(buffer, 0, 0) is perfectly centered.
+    pg.image(buffer, 0, 0);
   }
 }

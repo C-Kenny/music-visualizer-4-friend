@@ -116,7 +116,7 @@ class VoidBloomScene implements IScene {
     globalRotation += 0.004 * (1.0 + midSmooth * 1.8);
 
     // Continuous slow particle emission from a random petal tip
-    if (frameCount % 2 == 0) {
+    if (config.logicalFrameCount % 2 == 0) {
       float base2  = min(width, height) * 0.30 * zoom;
       int   pIdx   = (int) random(numPetals);
       float pAngle = pIdx * TWO_PI / numPetals + globalRotation;
@@ -193,7 +193,7 @@ class VoidBloomScene implements IScene {
   void drawStars(PGraphics pg) {
     pg.noStroke();
     for (int i = 0; i < NUM_STARS; i++) {
-      float twinkle = 0.6 + 0.4 * sin(frameCount * 0.025 + i * 1.37);
+      float twinkle = 0.6 + 0.4 * sin(config.logicalFrameCount * 0.025 + i * 1.37);
       float bri     = sBri[i] * twinkle * (0.5 + highSmooth * 0.6);
       pg.fill(210, 15, bri, 88);
       pg.ellipse(sx[i], sy[i], sSize[i], sSize[i]);
@@ -258,7 +258,7 @@ class VoidBloomScene implements IScene {
   // ── Central glow ─────────────────────────────────────────────────────────────
   void drawCore(PGraphics pg, float cx, float cy, float base) {
     float cR = base * 0.08 * (1 + bassSmooth * 1.1);
-    float h  = getHue(0.5 + 0.1 * sin(frameCount * 0.02));
+    float h  = getHue(0.5 + 0.1 * sin(config.logicalFrameCount * 0.02));
     pg.noStroke();
     for (int g = 6; g >= 1; g--) {
       float r     = cR * (1 + g * 0.85);

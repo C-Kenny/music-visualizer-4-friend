@@ -100,7 +100,7 @@ class ShoalLuminaScene implements IScene {
     for (int i = 0; i < NUM_STARS; i++) {
       float sx = starX[i] * pg.width;
       float sy = starY[i] * pg.height * 0.46;
-      float tw = 0.35 + high * 0.95 + sin(pg.parent.frameCount * 0.04 + starPhase[i]) * 0.25;
+      float tw = 0.35 + high * 0.95 + sin(config.logicalFrameCount * 0.04 + starPhase[i]) * 0.25;
       float br = 90 + high * 155 * tw;
       pg.fill(40, 30, br, 40 + high * 200);
       pg.ellipse(sx, sy, 2.2 + high * 3, 2.2 + high * 3);
@@ -127,7 +127,7 @@ class ShoalLuminaScene implements IScene {
         float y = horizon + layer * (5.2 * uiScale())
                 + sin(u) * amp
                 + sin(u * 2.17 + layer * 0.3) * amp * 0.45
-                + sin(x * 0.001 + pg.parent.frameCount * 0.02) * amp * 0.15;
+                + sin(x * 0.001 + config.logicalFrameCount * 0.02) * amp * 0.15;
         pg.vertex(x, y);
       }
       pg.endShape();

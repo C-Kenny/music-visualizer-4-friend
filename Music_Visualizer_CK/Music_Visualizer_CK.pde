@@ -269,7 +269,18 @@ String getSongNameFromFilePath(String song_path, String osType) {
 
 void settings() {
   size(displayWidth, displayHeight - 80, P3D);
-  smooth(2);
+  boolean useFancy = false;
+  if (args != null) {
+    for (String arg : args) {
+      if (arg.equals("--fancy")) useFancy = true;
+    }
+  }
+  
+  if (useFancy) {
+    smooth(2);
+  } else {
+    noSmooth();
+  }
 }
 
 void setup() {
@@ -287,7 +298,7 @@ void setup() {
   }
   setSongToVisualize();
   surface.setResizable(true);
-  frameRate(60);
+  frameRate(999);
   surface.setTitle(config.TITLE_BAR);
   setupController();
   loadSongToVisualize();
@@ -403,6 +414,7 @@ void keyPressed() {
   if (key == 'N') shuffleSong();
   if (key == 'o' || key == 'O') selectInput("Select song to visualize", "fileSelected");
   if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
+  if (key == 'm' || key == 'M') config.SHOW_METADATA = !config.SHOW_METADATA;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
   if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
   if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
@@ -586,6 +598,9 @@ void switchScene(int newState) {
   config.STATE      = newState;
 }
 
+long lastLogicalFrame = 0;
+float accumulator = 0;
+
 void draw() {
   // ── Smoke test fast-path ─────────────────────────────────────────────────
   if (SMOKE_TEST_MODE) {
@@ -594,12 +609,13 @@ void draw() {
     audio.beat.detect(audio.player.mix);
     analyzer.update(audio);
     smokeTestRunner.tick(sceneBuffer);
-    blendMode(BLEND);
+    blendMode(REPLACE);
     image(sceneBuffer, 0, 0);
     return;
   }
   // ────────────────────────────────────────────────────────────────────────
   if (frameCount % 60 == 0) println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
+  
   // 1. Scene Lifecycle Management
   if (config.STATE != previousState) {
     if (previousState >= 0 && previousState < SCENE_COUNT) {
@@ -610,65 +626,73 @@ void draw() {
       scenes[config.STATE].onEnter();
     }
     // ── Clean render state on every scene switch ─────────────────────────
-    // 1. Clear the persistent sceneBuffer so old scene pixels don't bleed
-    //    through on the first few frames of the incoming scene.
     sceneBuffer.beginDraw();
     sceneBuffer.blendMode(BLEND);
     sceneBuffer.background(0);
     sceneBuffer.endDraw();
-    // 2. Reset stacking mode — BACKGROUND_ENABLED = false is OriginalScene-
-    //    specific and must not carry over to other scenes.
     config.BACKGROUND_ENABLED = true;
-    // 3. Reset blend mode — changeBlendMode() is OriginalScene-specific and
-    //    must not affect how other scenes composite onto the main canvas.
     config.CURRENT_BLEND_MODE_INDEX = 0;
     blendMode(BLEND);
   }
 
-  // 2. Continuous Logic Updates
-  if (frameCount % 480 == 0) logToStdout("Draw state=" + config.STATE);
+  // Calculate Delta Time for Fixed Update Loop
+  long now = millis();
+  if (lastLogicalFrame == 0) lastLogicalFrame = now;
+  float dtMs = now - lastLogicalFrame;
+  lastLogicalFrame = now;
+  if (dtMs > 100) dtMs = 16.666667; 
+  accumulator += dtMs;
+  
+  boolean didRenderScene = false;
 
-  // Auto-advance to a shuffled song when the current one finishes
-  if (config.SONG_PLAYING && !audio.player.isPlaying()
-      && config.songList.size() > 0) {
-    shuffleSong();
+  // Fixed 60Hz Timestep for all Physics and Logic
+  while (accumulator >= 16.666667) {
+    accumulator -= 16.666667;
+    config.logicalFrameCount++;
+
+    // 2. Continuous Logic Updates
+    if (frameCount % 480 == 0) logToStdout("Draw state=" + config.STATE);
+
+    if (config.SONG_PLAYING && !audio.player.isPlaying()
+        && config.songList.size() > 0) {
+      shuffleSong();
+    }
+
+    audio.forward();
+    audio.beat.detect(audio.player.mix);
+    analyzer.update(audio);
+    getUserInput();
+
+    // 3. Render Active Scene to Buffer
+    if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+      if (sceneBuffer.width != width || sceneBuffer.height != height) {
+        sceneBuffer = createGraphics(width, height, P3D);
+        sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
+      }
+
+      sceneBuffer.beginDraw();
+      if (monoFont != null) sceneBuffer.textFont(monoFont);
+      sceneBuffer.pushMatrix();
+      scenes[config.STATE].drawScene(sceneBuffer);
+      sceneBuffer.popMatrix();
+      sceneBuffer.endDraw();
+      didRenderScene = true;
+    }
+  } // End Fixed Timestep
+
+  // 4. Post-Processing & Final Output (Runs Unlocked at >144FPS)
+  blendMode(REPLACE); // Massive Performance improvement for laptops
+  if (config.BLOOM_ENABLED) {
+    shader(bloomShader);
+  }
+  image(sceneBuffer, 0, 0);
+  if (config.BLOOM_ENABLED) {
+    resetShader();
   }
 
-  // Audio update
-  audio.forward();
-  audio.beat.detect(audio.player.mix);
-  analyzer.update(audio);
-
-  // Input update
-  getUserInput();
-
-  // 3. Render Active Scene to Buffer
+  // 5. Global overlays (UI drawn at native res, over the buffer)
+  blendMode(BLEND); 
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
-    // Handle window resizing for buffer
-    if (sceneBuffer.width != width || sceneBuffer.height != height) {
-      sceneBuffer = createGraphics(width, height, P3D);
-      sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
-    }
-
-    sceneBuffer.beginDraw();
-    if (monoFont != null) sceneBuffer.textFont(monoFont);
-    // Default transformation for the buffer
-    sceneBuffer.pushMatrix();
-    scenes[config.STATE].drawScene(sceneBuffer);
-    sceneBuffer.popMatrix();
-    sceneBuffer.endDraw();
-
-    // 4. Post-Processing & Final Output
-    blendMode(BLEND); // always reset before compositing sceneBuffer — changeBlendMode() cycles main-canvas blend mode
-    if (config.BLOOM_ENABLED) {
-      shader(bloomShader);
-    }
-    image(sceneBuffer, 0, 0);
-    if (config.BLOOM_ENABLED) {
-      resetShader();
-    }
-
-    // 5. Global overlays (UI drawn at native res, over the buffer)
     if (config.SHOW_CODE) {
       drawCodeOverlay(scenes[config.STATE].getCodeLines());
     }
@@ -684,10 +708,11 @@ void draw() {
 
   // ── Crossfade overlay ───────────────────────────────────────────────────────
   if (crossfadeSnapshot != null) {
-    crossfadeFrame++;
-    // Beat-snap: if a beat lands when we're past the halfway point, finish early
-    if (audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
-      crossfadeFrame = CROSSFADE_DURATION;
+    if (didRenderScene) {
+      crossfadeFrame++;
+      if (audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
+        crossfadeFrame = CROSSFADE_DURATION;
+      }
     }
 
     if (crossfadeFrame >= CROSSFADE_DURATION) {
@@ -700,6 +725,56 @@ void draw() {
       noTint();
     }
   }
+
+  if (config.SHOW_METADATA) {
+    drawMetadataOverlay();
+  }
+}
+
+void drawMetadataOverlay() {
+  String[] lines = {
+    "=== SYSTEM METADATA ===",
+    "FPS (Render)    : " + int(frameRate),
+    "Scene Index     : " + config.STATE,
+    "Scene Name      : " + scenes[config.STATE].getClass().getSimpleName(),
+    "Logical Frames  : " + config.logicalFrameCount,
+    "",
+    "=== AUDIO METADATA ===",
+    "Song Name       : " + config.SONG_NAME,
+    "Playing         : " + config.SONG_PLAYING,
+    "Controller Match: " + config.USING_CONTROLLER
+  };
+
+  blendMode(BLEND);
+  pushStyle();
+  textFont(monoFont);
+  
+  float maxTextWidth = 0;
+  for (String line : lines) {
+    float w = textWidth(line);
+    if (w > maxTextWidth) maxTextWidth = w;
+  }
+  
+  float lineH = 18 * uiScale();
+  float pad   = 14 * uiScale();
+  float boxW  = maxTextWidth + pad * 2;
+  float boxH  = pad * 2 + lines.length * lineH;
+  float boxX  = width - boxW - 12 * uiScale();
+  float boxY  = 12 * uiScale();
+
+  fill(0, 200);   
+  stroke(0, 255, 0); 
+  strokeWeight(2);
+  rect(boxX, boxY, boxW, boxH, 8);
+
+  fill(0, 255, 0);
+  noStroke();
+  float ty = boxY + pad + lineH * 0.8;
+  for (int i = 0; i < lines.length; i++) {
+    text(lines[i], boxX + pad, ty);
+    ty += lineH;
+  }
+  popStyle();
 }
 
 // Generic right-side terminal HUD — used by worm scenes (and any future scene).
