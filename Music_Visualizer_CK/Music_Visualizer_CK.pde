@@ -5,12 +5,15 @@ import org.gicentre.handy.*;
 import java.util.Map;
 import garciadelcastillo.dashedlines.*;
 import peasy.*;
+import java.util.ArrayList;
+import java.util.HashSet;
 
 Config config;
 Audio audio;
 Controller controller;
 IScene[] scenes;
-final int SCENE_COUNT = 27;
+SceneSwitcher sceneSwitcher;
+final int SCENE_COUNT = 31;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -333,6 +336,13 @@ void setup() {
   scenes[24] = new KaleidoscopeScene();
   scenes[25] = new TableTennis3DScene();
   scenes[26] = new VoidBloomScene();
+  scenes[27] = new CircuitMazeScene();
+  scenes[28] = new MazePuzzleScene();
+  scenes[29] = new LissajousKnotScene();
+  scenes[30] = new FluidSimScene();
+
+  // SceneSwitcher — must be created AFTER scenes[] is populated
+  sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
@@ -398,6 +408,15 @@ void mousePressed() {
 }
 
 void keyPressed() {
+  // Tab always toggles scene switcher (checked before anything else)
+  if (key == TAB) { sceneSwitcher.toggle(); return; }
+
+  // While switcher is open, route ALL keys to it and suppress everything else
+  if (sceneSwitcher.isOpen) {
+    sceneSwitcher.handleKey(key, keyCode);
+    return;
+  }
+
   // 1. Delegate to current scene first
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
     scenes[config.STATE].handleKey(key);
@@ -418,6 +437,7 @@ void keyPressed() {
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
   if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
   if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
+  if (key == 'c' || key == 'C') controller.calibrate();
   if (key == 'q' || key == 'Q' || key == ESC) {
     key = 0; // suppress Processing's default ESC→exit behaviour
     audio.stop();
@@ -555,7 +575,7 @@ public void getUserInput() {
 // in the codebase but excluded from rotation for now.
 // Fan-favourite scenes, in display order. Only these are reachable via
 // LB/RB cycling or keyboard number keys. Add a scene number here to re-enable it.
-final int[] SCENE_ORDER = {1, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24, 26};
+final int[] SCENE_ORDER = {1, 28, 29, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24, 26, 27};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -564,15 +584,8 @@ int _sceneOrderIndex(int state) {
   return 0; // default to first if current scene not in list
 }
 
-int nextActiveScene() {
-  int idx = (_sceneOrderIndex(config.STATE) + 1) % SCENE_ORDER.length;
-  return SCENE_ORDER[idx];
-}
-
-int prevActiveScene() {
-  int idx = (_sceneOrderIndex(config.STATE) - 1 + SCENE_ORDER.length) % SCENE_ORDER.length;
-  return SCENE_ORDER[idx];
-}
+int nextActiveScene() { return sceneSwitcher.nextScene(config.STATE); }
+int prevActiveScene() { return sceneSwitcher.prevScene(config.STATE); }
 
 // ── Scene crossfade ───────────────────────────────────────────────────────────
 // When switchScene() is called, we capture the current frame as a frozen
@@ -585,17 +598,27 @@ final int CROSSFADE_DURATION = 45; // frames  (~0.75 s at 60 fps)
 
 void switchScene(int newState) {
   if (SMOKE_TEST_MODE) return; // runner manages scene state directly
-  // Only allow scenes listed in SCENE_ORDER — keeps disabled scenes unreachable
-  // from both LB/RB cycling and keyboard number keys.
-  boolean inRotation = false;
-  for (int i = 0; i < SCENE_ORDER.length; i++) {
-    if (SCENE_ORDER[i] == newState) { inRotation = true; break; }
+  // Allow any scene in the switcher's active order (or direct calls from switcher itself)
+  if (!sceneSwitcher.isInRotation(newState) && newState != config.STATE) {
+    // Also allow direct jumps — just let it through if it's a valid scene index
+    if (newState < 0 || newState >= SCENE_COUNT) return;
   }
-  if (!inRotation) return;
   if (config.STATE == newState) return;
   crossfadeSnapshot = get();        // freeze the last frame of the current scene
   crossfadeFrame    = 0;
   config.STATE      = newState;
+}
+
+// Direct switch called from SceneSwitcher — bypasses rotation guard
+void switchSceneDirect(int newState) {
+  if (SMOKE_TEST_MODE) return;
+  if (newState < 0 || newState >= SCENE_COUNT) return;
+  if (config.STATE == newState) return;
+  crossfadeSnapshot = get();
+  crossfadeFrame    = 0;
+  scenes[config.STATE].onExit();
+  config.STATE      = newState;
+  scenes[config.STATE].onEnter();
 }
 
 long lastLogicalFrame = 0;
@@ -728,6 +751,12 @@ void draw() {
 
   if (config.SHOW_METADATA) {
     drawMetadataOverlay();
+  }
+
+  // Scene switcher overlay — drawn last so it always floats on top
+  if (sceneSwitcher.isOpen) {
+    sceneSwitcher.update();
+    sceneSwitcher.drawOverlay();
   }
 }
 

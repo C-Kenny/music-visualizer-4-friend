@@ -1,1 +1,6 @@
-Kula world inspired visualizer
+3d Ball Maze Puzzle inspired visualizer
+
+
+Fill up hour glass with sand then on MASSIVE BEAT DROP flip it over. 
+(is it possible to pre-seek forward to scan for big drops, rather than finding it out in real time?)
+

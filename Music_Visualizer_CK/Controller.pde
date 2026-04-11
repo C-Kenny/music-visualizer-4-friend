@@ -28,6 +28,8 @@ class Controller {
 
   float lx, ly;
   float rx, ry;
+  float lxOffset, lyOffset, rxOffset, ryOffset;
+  float ltOffset, rtOffset;
 
   /** Left / right trigger depression, ~0 (released) … 1 (full). Absent axes stay 0. */
   float lt, rt;
@@ -321,6 +323,28 @@ class Controller {
     previousLb = previousRb = false;
     previousLeftStickClick = previousRightStickClick = false;
     previousDpadUp = previousDpadDown = previousDpadLeft = previousDpadRight = false;
+    
+    // Reset offsets on hard reset
+    lxOffset = lyOffset = rxOffset = ryOffset = 0;
+    ltOffset = rtOffset = 0;
+  }
+
+  // Captures the current stick and trigger positions as 'neutral'
+  void calibrate() {
+    if (stick == null) return;
+    println("[Controller] Calibrating offsets...");
+    lxOffset = getSliderValue("lx", "x",  0);
+    lyOffset = getSliderValue("ly", "y",  0);
+    rxOffset = getSliderValue("rx", "rx", 0);
+    ryOffset = getSliderValue("ry", "ry", 0);
+    
+    // For triggers, we want the current value to be 'zero' (usually -1 but depends on driver)
+    ltOffset = getSliderValue("z",  "z",  -1);
+    rtOffset = getSliderValue("rz", "rz", -1);
+    
+    println("  LX/LY: " + nf(lxOffset,1,3) + ", " + nf(lyOffset,1,3));
+    println("  RX/RY: " + nf(rxOffset,1,3) + ", " + nf(ryOffset,1,3));
+    println("  LT/RT: " + nf(ltOffset,1,3) + ", " + nf(rtOffset,1,3));
   }
 
   // Attempt to find a matched device. Safe to call repeatedly.
@@ -483,18 +507,29 @@ class Controller {
 
     // Try virtual names first (getMatchedDevice path: "lx"/"ly"),
     // fall back to hardware names (getDevice fallback path: "x"/"y").
-    float raw_x  = getSliderValue("lx", "x",  0);
-    float raw_y  = getSliderValue("ly", "y",  0);
-    float raw_rx = getSliderValue("rx", "rx", 0);
-    float raw_ry = getSliderValue("ry", "ry", 0);
-    float raw_z  = getSliderValue("z",  "z",  -1);
-    float raw_rz = getSliderValue("rz", "rz", -1);
+    // Apply calibration offsets
+    float raw_x  = getSliderValue("lx", "x",  0)  - lxOffset;
+    float raw_y  = getSliderValue("ly", "y",  0)  - lyOffset;
+    float raw_rx = getSliderValue("rx", "rx", 0)  - rxOffset;
+    float raw_ry = getSliderValue("ry", "ry", 0)  - ryOffset;
+    float raw_z  = getSliderValue("z",  "z",  -1) - ltOffset;
+    float raw_rz = getSliderValue("rz", "rz", -1) - rtOffset;
+    
+    // Manual deadzone to clean up tiny jitter remaining after offset
+    float DEADZONE = 0.08;
+    if (abs(raw_x) < DEADZONE)  raw_x = 0;
+    if (abs(raw_y) < DEADZONE)  raw_y = 0;
+    if (abs(raw_rx) < DEADZONE) raw_rx = 0;
+    if (abs(raw_ry) < DEADZONE) raw_ry = 0;
+    if (abs(raw_z) < DEADZONE)  raw_z = 0;
+    if (abs(raw_rz) < DEADZONE) raw_rz = 0;
+
     lx = map(raw_x,  -1, 1, 0, width);
     ly = map(raw_y,  -1, 1, 0, height);
     rx = map(raw_rx, -1, 1, 0, width);
     ry = map(raw_ry, -1, 1, 0, height);
-    lt = constrain(map(raw_z,  -1, 1, 0, 1), 0, 1);
-    rt = constrain(map(raw_rz, -1, 1, 0, 1), 0, 1);
+    lt = constrain(map(raw_z,  0, 1, 0, 1), 0, 1);
+    rt = constrain(map(raw_rz, 0, 1, 0, 1), 0, 1);
 
     // Try virtual names (a/b/x/y) and common hardware aliases.
     aButton = getButtonState("a", "A") || getButtonState("Button 0");

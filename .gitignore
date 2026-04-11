@@ -19,3 +19,4 @@ Music_Visualizer_CK/.smoketest_result
 # JavaScript tooling artifacts
 node_modules/
 npm-debug.log*
+Music_Visualizer_CK/.scene_prefs
