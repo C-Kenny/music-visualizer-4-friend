@@ -136,9 +136,12 @@ class CircuitMazeScene implements IScene {
     int tail = 0;
 
     reachable[0][0] = true;
-    qx[tail] = 0;
-    qy[tail] = 0;
-    tail++;
+    for (int y = 0; y < rows; y++) {
+      reachable[0][y] = true;
+      qx[tail] = 0;
+      qy[tail] = y;
+      tail++;
+    }
 
     while (head < tail) {
       int cx = qx[head];
@@ -236,9 +239,11 @@ class CircuitMazeScene implements IScene {
         boolean energised = reachable[x][y];
         float r = energised ? 5.0 : 3.0;
 
-        if (x == 0 && y == 0) {
-          pg.fill(255, 140, 80, 240);
-          pg.ellipse(px, py, 12, 12);
+        if (x == 0) {
+          pg.fill(90, 255, 255, 220); // Bright Battery
+          pg.ellipse(px, py, 14, 14);
+          pg.fill(40, 255, 255, 180 + beatFlash * 70);
+          pg.ellipse(px, py, 8 + beatFlash * 8, 8 + beatFlash * 8);
         }
 
         if (x == cols - 1 && y == rows - 1) {
@@ -282,6 +287,16 @@ class CircuitMazeScene implements IScene {
       // Horizontal gate wire.
       pg.line(x1, y1, cx - gap, cy);
       pg.line(cx + gap, cy, x2, y2);
+      
+      // Electric Spark
+      if (g.glow > 0.5) {
+        float p = (frameCount * 0.1) % 1.0;
+        float sx = lerp(x1, x2, p);
+        pg.strokeWeight(4);
+        pg.stroke(0, 0, 255, 200 * g.glow); // White-hot
+        pg.line(sx - 5, y1, sx + 5, y1);
+      }
+      
       if (gap > 1.0) {
         pg.noStroke();
         pg.fill(255, 90, 90, 190);
@@ -292,6 +307,16 @@ class CircuitMazeScene implements IScene {
       // Vertical gate wire.
       pg.line(x1, y1, cx, cy - gap);
       pg.line(cx, cy + gap, x2, y2);
+      
+      // Electric Spark
+      if (g.glow > 0.5) {
+        float p = (frameCount * 0.1) % 1.0;
+        float sy = lerp(y1, y2, p);
+        pg.strokeWeight(4);
+        pg.stroke(0, 0, 255, 200 * g.glow);
+        pg.line(x1, sy - 5, x1, sy + 5);
+      }
+      
       if (gap > 1.0) {
         pg.noStroke();
         pg.fill(255, 90, 90, 190);

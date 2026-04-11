@@ -263,26 +263,35 @@ class MazePuzzleScene implements IScene {
   void tryMove(int dir) {
     PVector fwd = PVector.mult(forward, dir);
     PVector target = PVector.add(pos, fwd);
-    // Integer-grounded check
+    
+    // 1. Check for floor under the target
     int bx = round(target.x - up.x);
     int by = round(target.y - up.y);
     int bz = round(target.z - up.z);
 
     if (hasBlock(bx, by, bz)) {
-        animStartPos = pos.copy(); animEndPos = target.copy();
-        animTimer = 0; state = MazeState.MOVING;
+        // Normal floor exists
+        animStartPos = pos.copy();
+        animEndPos = target.copy();
+        animTimer = 0;
+        state = MazeState.MOVING;
     } else {
-        // Wall?
-        int wx = round(target.x + up.x - fwd.x);
-        int wy = round(target.y + up.y - fwd.y);
-        int wz = round(target.z + up.z - fwd.z);
+        // 2. Check for Wall in front (the target space itself contains a block)
+        int wx = round(target.x);
+        int wy = round(target.y);
+        int wz = round(target.z);
         if (hasBlock(wx, wy, wz)) {
+            // New UP is toward the ball (away from wall), New FWD is current UP
             startGravityShift(PVector.mult(forward, -dir), up.copy());
         } else {
-            // Edge wrap?
+            // 3. Edge wrap (no floor, no wall - roll around the corner)
+            // Destination is "under" where the floor would have been
+            PVector wrapTarget = PVector.sub(target, up);
             startGravityShift(PVector.mult(forward, dir), PVector.mult(up, -1));
-            animStartPos = pos.copy(); animEndPos = target.copy();
-            animTimer = 0; state = MazeState.MOVING;
+            animStartPos = pos.copy();
+            animEndPos = wrapTarget;
+            animTimer = 0;
+            state = MazeState.MOVING;
         }
     }
   }
