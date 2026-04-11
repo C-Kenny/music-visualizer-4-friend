@@ -1,4 +1,5 @@
 class Config {
+  String CIRCUIT_TEXT = "CK";
   float PULSE_VALUE;
   float HEART_PULSE;
   int   HEART_COLS;
@@ -204,6 +205,9 @@ class Config {
       for (String arg : args) {
         if (arg.equals("--fancy")) {
           BLOOM_ENABLED = true;
+        }
+        if (arg.startsWith("--circuit-text=")) {
+          CIRCUIT_TEXT = arg.substring("--circuit-text=".length());
         }
       }
     }
