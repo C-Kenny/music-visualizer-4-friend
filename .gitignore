@@ -20,3 +20,4 @@ Music_Visualizer_CK/.smoketest_result
 node_modules/
 npm-debug.log*
 Music_Visualizer_CK/.scene_prefs
+.build/

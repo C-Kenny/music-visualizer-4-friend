@@ -1,28 +1,41 @@
 import java.util.HashSet;
 
 /**
- * MazePuzzleScene — Overhauled 3D
+ * MazePuzzleScene — Overhauled 3D (Grid-Locked)
  * 
  * A 3D geometry experience featuring a rolling sphere that shifts gravity 
  * when crossing edges of floating cube platforms.
  * 
+ * Mechanics:
+ *   Grid-locked: Moves exactly one block at a time.
+ *   Snapping: Ball is always centered on paths.
+ * 
  * Controls:
- *   L-Stick: Move and Turn
+ *   L-Stick ↕: Move forward/back
+ *   L-Stick ↔: Turn 90°
  *   R-Stick: Orbit Camera
- *   C-Key: Calibrate Controller
  */
 class MazePuzzleScene implements IScene {
 
   // ── Level Logic ──────────────────────────────────────────────────────────
-  HashSet<String> blocks;     // Keys as "x,y,z"
+  HashSet<String> blocks;     
   final float BLOCK_SIZE = 100;
   
   // ── Player State ─────────────────────────────────────────────────────────
-  PVector pos;           // Position in grid-space (center of cube-surface)
+  PVector pos;           // Current discrete position (in grid-space)
   PVector up;            // Current gravity UP vector
   PVector forward;       // Current forward heading
   float ballRoll = 0;
   float ballSpin = 0;
+  
+  // ── Animation State ──────────────────────────────────────────────────────
+  PVector animStartPos;
+  PVector animEndPos;
+  float moveTimer = 1.0; // 0..1, 1.0 = stationary
+  
+  PVector animStartFwd;
+  PVector animEndFwd;
+  float turnTimer = 1.0; // 0..1, 1.0 = stationary
   
   // Audio physics
   float jumpY = 0;
@@ -30,14 +43,14 @@ class MazePuzzleScene implements IScene {
   final float GRAVITY = 0.015;
   
   // ── Camera State ─────────────────────────────────────────────────────────
-  float camAzim = 0;     // Manual orbit azimuth (offset from forward)
-  float camElev = 0.4;   // Manual orbit elevation
+  float camAzim = 0;     // Orbit azimuth (offset from forward)
+  float camElev = 0.4;   // Orbit elevation
   float camDist = 600;
   
-  // ── Transition State ─────────────────────────────────────────────────────
+  // ── Transition State (Gravity Shift) ──────────────────────────────────────
   PVector oldUp, targetUp;
   PVector oldForward, targetForward;
-  float transitionFrac = 1.0; // 0..1, 1.0 = stable
+  float transitionFrac = 1.0; 
   
   // ── Visuals ──────────────────────────────────────────────────────────────
   color themeHue;
@@ -51,25 +64,23 @@ class MazePuzzleScene implements IScene {
 
   void setupLevel() {
     blocks.clear();
-    // Create a 3x3 platform
+    // Start platform
     for (int x = -2; x <= 2; x++) {
       for (int z = -2; z <= 2; z++) {
         addBlock(x, 0, z);
       }
     }
-    // Vertical pillars (wrapping opportunities)
+    // Pillars
     addBlock(3, 0, 0);
     addBlock(3, 1, 0);
     addBlock(3, 2, 0);
     addBlock(3, 2, 1);
     addBlock(3, 2, 2);
     
-    // Remote puzzle structure
     addBlock(0, -3, 0);
     addBlock(1, -3, 0);
     addBlock(0, -3, 1);
     
-    // Add a hole in the middle for gravity testing
     blocks.remove("0,0,0");
   }
   
@@ -82,9 +93,15 @@ class MazePuzzleScene implements IScene {
   }
 
   void resetPlayer() {
-    pos = new PVector(1, 1, 0); // start atop a block
+    pos = new PVector(1, 1, 0); 
     up = new PVector(0, 1, 0);
     forward = new PVector(0, 0, 1);
+    
+    animStartPos = pos.copy();
+    animEndPos = pos.copy();
+    animStartFwd = forward.copy();
+    animEndFwd = forward.copy();
+    
     oldUp = up.copy();
     targetUp = up.copy();
     oldForward = forward.copy();
@@ -103,38 +120,31 @@ class MazePuzzleScene implements IScene {
     pg.background(0);
     pg.colorMode(HSB, 360, 255, 255);
     
-    // ── Audio Physics ──────────────────────────────────────────────────────
-    updateAudioPhysics();
-    
     // ── Update Logic ───────────────────────────────────────────────────────
+    updateAudioPhysics();
+    updateMovement();
     updateTransition();
     
     // ── Camera ─────────────────────────────────────────────────────────────
     setupCamera(pg);
     
-    // ── Lighting / Effects ─────────────────────────────────────────────────
+    // ── Lighting ───────────────────────────────────────────────────────────
     pg.ambientLight(100, 50, 80);
     pg.directionalLight(0, 0, 255, 1, 1, -1);
     
     pulse = lerp(pulse, analyzer.isBeat ? 1.0 : 0.0, 0.2);
     
-    // ── Draw Level ─────────────────────────────────────────────────────────
+    // ── Render ─────────────────────────────────────────────────────────────
     for (String key : blocks) {
       String[] parts = key.split(",");
-      int x = int(parts[0]);
-      int y = int(parts[1]);
-      int z = int(parts[2]);
-      drawBlock(pg, x, y, z);
+      drawBlock(pg, int(parts[0]), int(parts[1]), int(parts[2]));
     }
-    
-    // ── Draw Ball ──────────────────────────────────────────────────────────
     drawBall(pg);
     
     pg.endDraw();
   }
 
   void updateAudioPhysics() {
-    // 1. Jump on Bass
     if (analyzer.bass > 0.8 && jumpY == 0) {
       jumpVel = 0.2 + analyzer.bass * 0.1;
     }
@@ -146,9 +156,24 @@ class MazePuzzleScene implements IScene {
         jumpVel = 0;
       }
     }
-    
-    // 2. Extra spin on Mids
     ballSpin += analyzer.mid * 0.2;
+  }
+
+  void updateMovement() {
+    if (moveTimer < 1.0) {
+      moveTimer += 0.08;
+      if (moveTimer >= 1.0) {
+        moveTimer = 1.0;
+        pos = animEndPos.copy();
+      }
+    }
+    if (turnTimer < 1.0) {
+      turnTimer += 0.12;
+      if (turnTimer >= 1.0) {
+        turnTimer = 1.0;
+        forward = animEndFwd.copy();
+      }
+    }
   }
 
   void updateTransition() {
@@ -165,135 +190,120 @@ class MazePuzzleScene implements IScene {
     PVector currentFwd = PVector.lerp(oldForward, targetForward, transitionFrac);
     currentFwd.normalize();
     
-    // We want the primary orbit to be around 'currentUp' and 'currentFwd'
-    PVector right = currentFwd.cross(currentUp).normalize();
+    // Interpolate visual forward/pos if animating
+    PVector visualFwd = PVector.lerp(animStartFwd, animEndFwd, transitionFrac < 1.0 ? 1.0 : turnTimer);
+    visualFwd.normalize();
+    PVector visualPos = PVector.lerp(animStartPos, animEndPos, transitionFrac < 1.0 ? 1.0 : moveTimer);
+
+    PVector right = visualFwd.cross(currentUp).normalize();
+    PVector rotatedFwd = PVector.add(PVector.mult(visualFwd, cos(camAzim)), PVector.mult(right, sin(camAzim)));
     
-    // Apply user orbit offset (camAzim/camElev)
-    // Rotated forward vector
-    PVector rotatedFwd = currentFwd.copy();
-    // Azimuth rotation around currentUp
-    float angle = camAzim;
-    rotatedFwd = PVector.add(PVector.mult(currentFwd, cos(angle)), PVector.mult(right, sin(angle)));
+    PVector ballWorldPos = PVector.mult(visualPos, BLOCK_SIZE);
+    ballWorldPos.add(PVector.mult(currentUp, jumpY * BLOCK_SIZE));
     
     PVector camOffset = PVector.add(PVector.mult(rotatedFwd, -camDist * cos(camElev)), PVector.mult(currentUp, camDist * sin(camElev)));
-    PVector ballWorldPos = PVector.mult(pos, BLOCK_SIZE);
-    ballWorldPos.add(PVector.mult(up, jumpY * BLOCK_SIZE)); // camera follows the jump
-    
     PVector camPos = PVector.add(ballWorldPos, camOffset);
-    PVector lookAt = ballWorldPos;
     
-    pg.camera(camPos.x, camPos.y, camPos.z, 
-              lookAt.x, lookAt.y, lookAt.z, 
-              currentUp.x, currentUp.y, currentUp.z);
-    
+    pg.camera(camPos.x, camPos.y, camPos.z, ballWorldPos.x, ballWorldPos.y, ballWorldPos.z, currentUp.x, currentUp.y, currentUp.z);
     pg.perspective(PI/3.0, (float)pg.width/pg.height, 10, 10000);
   }
 
   void drawBlock(PGraphics pg, int x, int y, int z) {
     pg.pushMatrix();
     pg.translate(x * BLOCK_SIZE, y * BLOCK_SIZE, z * BLOCK_SIZE);
-    
     float glow = pulse * 40;
     pg.stroke(200, 150, 255, 100);
     pg.noFill();
-    pg.box(BLOCK_SIZE * 0.98); // Wireframe look
-    
+    pg.box(BLOCK_SIZE * 0.98); 
     pg.fill(200, 100, 100 + glow, 150);
     pg.noStroke();
-    pg.box(BLOCK_SIZE * 0.90); // Solid core
-    
+    pg.box(BLOCK_SIZE * 0.90); 
     pg.popMatrix();
   }
 
   void drawBall(PGraphics pg) {
-    pg.pushMatrix();
-    pg.translate(pos.x * BLOCK_SIZE, pos.y * BLOCK_SIZE, pos.z * BLOCK_SIZE);
+    PVector visualPos = PVector.lerp(animStartPos, animEndPos, moveTimer);
+    PVector visualFwd = PVector.lerp(animStartFwd, animEndFwd, turnTimer);
+    visualFwd.normalize();
     
-    // Jump offset locally
+    pg.pushMatrix();
+    pg.translate(visualPos.x * BLOCK_SIZE, visualPos.y * BLOCK_SIZE, visualPos.z * BLOCK_SIZE);
     pg.translate(up.x * jumpY * BLOCK_SIZE, up.y * jumpY * BLOCK_SIZE, up.z * jumpY * BLOCK_SIZE);
     
-    // Orientation matrix
     PVector yAxis = up;
-    PVector zAxis = forward;
+    PVector zAxis = visualFwd;
     PVector xAxis = yAxis.cross(zAxis);
-    
-    pg.applyMatrix(xAxis.x, yAxis.x, zAxis.x, 0,
-                   xAxis.y, yAxis.y, zAxis.y, 0,
-                   xAxis.z, yAxis.z, zAxis.z, 0,
-                   0,       0,       0,       1);
+    pg.applyMatrix(xAxis.x, yAxis.x, zAxis.x, 0, xAxis.y, yAxis.y, zAxis.y, 0, xAxis.z, yAxis.z, zAxis.z, 0, 0, 0, 0, 1);
                    
-    pg.rotateX(ballRoll);
+    pg.rotateX(ballRoll + (moveTimer * PI));
     pg.rotateY(ballSpin);
     
     pg.fill(40, 255, 255);
     pg.noStroke();
     pg.sphere(35);
-    
-    // Inner structure (spinning)
     pg.fill(0, 255, 255);
     pg.box(10, 75, 10);
     pg.rotateZ(HALF_PI);
     pg.box(10, 75, 10);
-    
     pg.popMatrix();
   }
 
   void applyController(Controller c) {
-    if (transitionFrac < 1.0) return; 
+    if (moveTimer < 1.0 || turnTimer < 1.0 || transitionFrac < 1.0) return; 
     
     if (c.isConnected()) {
-      // Left Stick: Move & Turn
       float dy = -map(c.ly, 0, height, -1, 1);
       float dx = map(c.lx, 0, width, -1, 1);
-      if (abs(dy) > 0.2) move(dy * 0.1);
-      if (abs(dx) > 0.2) rotateHeading(dx * 0.08);
       
-      // Right Stick: Camera Orbit
+      if (dy > 0.5) tryMove(1);
+      else if (dy < -0.5) tryMove(-1);
+      else if (dx > 0.5) tryTurn(1);
+      else if (dx < -0.5) tryTurn(-1);
+      
       float ry = -map(c.ry, 0, height, -1, 1);
       float rx = map(c.rx, 0, width, -1, 1);
       camAzim += rx * 0.05;
       camElev = constrain(camElev + ry * 0.04, 0.1, 1.4);
       
-      if (c.aJustPressed) { jumpVel = 0.3; } // manual jump
+      if (c.aJustPressed) jumpVel = 0.3;
     }
   }
 
-  void move(float step) {
-    PVector nextPos = PVector.add(pos, PVector.mult(forward, step));
+  void tryMove(int dir) {
+    PVector localMove = PVector.mult(forward, dir);
+    PVector nextPos = PVector.add(pos, localMove);
     
-    // Detect edge/wall
     int bx = round(nextPos.x - up.x);
     int by = round(nextPos.y - up.y);
     int bz = round(nextPos.z - up.z);
     
     if (hasBlock(bx, by, bz)) {
-      pos = nextPos;
-      ballRoll += step * 2.5;
+      animStartPos = pos.copy();
+      animEndPos = nextPos.copy();
+      moveTimer = 0;
     } else {
-      // Wall in front?
-      int fx = round(nextPos.x + forward.x - up.x);
-      int fy = round(nextPos.y + forward.y - up.y);
-      int fz = round(nextPos.z + forward.z - up.z);
+      // Wall / Edge
+      int fx = round(nextPos.x + localMove.x/dir - up.x);
+      int fy = round(nextPos.y + localMove.y/dir - up.y);
+      int fz = round(nextPos.z + localMove.z/dir - up.z);
       
       if (hasBlock(fx, fy, fz)) {
-         // Snap to corner and walk UP
-         pos = new PVector(round(pos.x), round(pos.y), round(pos.z));
-         startGravityShift(PVector.mult(forward, -1), up.copy());
+         startGravityShift(PVector.mult(forward, -dir), up.copy());
       } else {
-         // Walk OVER edge
-         pos = new PVector(round(nextPos.x), round(nextPos.y), round(nextPos.z));
-         startGravityShift(forward.copy(), PVector.mult(up, -1));
+         startGravityShift(PVector.mult(forward, dir), PVector.mult(up, -1));
+         animStartPos = pos.copy();
+         animEndPos = new PVector(round(nextPos.x), round(nextPos.y), round(nextPos.z));
+         moveTimer = 0;
       }
     }
   }
 
-  void rotateHeading(float angle) {
+  void tryTurn(int dir) {
+    animStartFwd = forward.copy();
     PVector right = forward.cross(up);
-    forward.mult(cos(angle));
-    forward.add(PVector.mult(right, sin(angle)));
-    forward.normalize();
-    // Keep camera following reasonably behind
-    camAzim *= 0.9; 
+    animEndFwd = PVector.add(PVector.mult(forward, 0), PVector.mult(right, dir));
+    animEndFwd.normalize(); // Should already be unit 90 deg
+    turnTimer = 0;
   }
 
   void startGravityShift(PVector newUp, PVector newForward) {
@@ -301,38 +311,37 @@ class MazePuzzleScene implements IScene {
     targetUp = newUp.copy();
     oldForward = forward.copy();
     targetForward = newForward.copy();
-    
     up = targetUp;
     forward = targetForward;
+    animStartFwd = forward.copy();
+    animEndFwd = forward.copy();
     transitionFrac = 0.0;
-    
-    // Lock camera snap to back
     camAzim = 0;
   }
 
   void handleKey(char k) {
-    if (k == 'w') move(0.25);
-    if (k == 's') move(-0.25);
-    if (k == 'a') rotateHeading(-0.15);
-    if (k == 'd') rotateHeading(0.15);
+    if (moveTimer < 1.0 || turnTimer < 1.0 || transitionFrac < 1.0) return;
+    if (k == 'w') tryMove(1);
+    if (k == 's') tryMove(-1);
+    if (k == 'a') tryTurn(-1);
+    if (k == 'd') tryTurn(1);
     if (k == ' ') jumpVel = 0.3;
   }
 
   String[] getCodeLines() {
     return new String[] {
-      "// Maze Puzzle",
+      "// Maze Puzzle (Grid Locked)",
+      "Mode: Discrete Steps",
       "p: " + pos + " up: " + up,
-      "Bass -> Jump | Mid -> Spin",
       "R-Stick -> Orbit Cam"
     };
   }
 
   ControllerLayout[] getControllerLayout() {
     return new ControllerLayout[] {
-      new ControllerLayout("L-Stick", "Move / Turn Ball"),
+      new ControllerLayout("L-Stick Tap", "Move / Turn (Discrete)"),
       new ControllerLayout("R-Stick", "Orbit Camera"),
-      new ControllerLayout("A Button", "Manual Jump"),
-      new ControllerLayout("Music", "Auto Jump & Spin")
+      new ControllerLayout("A Button", "Manual Jump")
     };
   }
 }

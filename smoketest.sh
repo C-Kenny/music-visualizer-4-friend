@@ -1,25 +1,28 @@
 #!/usr/bin/env bash
 # smoketest.sh — run the smoke-test harness and report pass/fail
-#
-# Usage:
-#   ./smoketest.sh
-#
-# Requirements:
-#   • Music_Visualizer_CK/.devsong must exist (or ~/Music must have audio files)
-#     so the sketch doesn't open a file picker.
-#   • The Processing CLI must be on PATH (same requirement as ./run.sh).
-#
-# Exit codes:
-#   0  — all checks passed
-#   1  — one or more failures
-#   2  — result file never written (sketch crashed before finishing)
 
 set -euo pipefail
 
-SKETCH_DIR="Music_Visualizer_CK"
-TRIGGER="$SKETCH_DIR/.smoketest"
-DEVMODE="$SKETCH_DIR/.devmode"
-RESULT="$SKETCH_DIR/.smoketest_result"
+# ── Stage Build ───────────────────────────────────────────────────────────────
+BUILD_ROOT=".build"
+SKETCH_NAME="Music_Visualizer_CK"
+BUILD_DIR="$BUILD_ROOT/$SKETCH_NAME"
+
+rm -rf "$BUILD_ROOT"
+mkdir -p "$BUILD_DIR"
+
+cp Music_Visualizer_CK/*.pde "$BUILD_DIR/" 2>/dev/null || true
+cp Music_Visualizer_CK/src/core/*.pde "$BUILD_DIR/" 2>/dev/null || true
+cp Music_Visualizer_CK/src/scenes/*.pde "$BUILD_DIR/" 2>/dev/null || true
+
+ORIGIN_DIR="$(pwd)/Music_Visualizer_CK"
+ln -s "$ORIGIN_DIR/data" "$BUILD_DIR/data"
+ln -s "$ORIGIN_DIR/libraries" "$BUILD_DIR/libraries"
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+TRIGGER="$BUILD_DIR/.smoketest"
+DEVMODE="$BUILD_DIR/.devmode"
+RESULT="$BUILD_DIR/.smoketest_result"
 
 RED=$'\e[31m'
 GREEN=$'\e[32m'
@@ -27,45 +30,19 @@ YELLOW=$'\e[33m'
 BOLD=$'\e[1m'
 RESET=$'\e[0m'
 
-# ── Sanity checks ─────────────────────────────────────────────────────────────
-if ! command -v processing &>/dev/null; then
-  echo "${RED}ERROR: 'processing' not found on PATH.${RESET}"
-  echo "Install the Processing CLI or add it to PATH."
-  exit 2
+# Link .devsong if it exists
+if [[ -f "Music_Visualizer_CK/.devsong" ]]; then
+  ln -s "$ORIGIN_DIR/.devsong" "$BUILD_DIR/.devsong"
 fi
 
-# Warn (don't block) if no song source is configured
-if [[ ! -f "$SKETCH_DIR/.devsong" ]] && [[ -z "$(find ~/Music -maxdepth 3 -name '*.mp3' -o -name '*.wav' -o -name '*.flac' 2>/dev/null | head -1)" ]]; then
-  echo "${YELLOW}WARNING: No .devsong file found and ~/Music appears empty.${RESET}"
-  echo "The sketch may open a file-picker and block.  Create .devsong to avoid this:"
-  echo "  echo '/path/to/song.mp3' > $SKETCH_DIR/.devsong"
-fi
-
-# ── Setup ─────────────────────────────────────────────────────────────────────
-rm -f "$RESULT"          # clear stale result from any previous run
-touch "$TRIGGER"         # signal to the sketch to enter smoke-test mode
-
-# Also ensure devmode so the file picker is skipped
-CREATED_DEVMODE=false
-if [[ ! -f "$DEVMODE" ]]; then
-  touch "$DEVMODE"
-  CREATED_DEVMODE=true
-fi
-
-cleanup() {
-  rm -f "$TRIGGER"
-  if $CREATED_DEVMODE; then rm -f "$DEVMODE"; fi
-}
-trap cleanup EXIT
+touch "$TRIGGER"
+touch "$DEVMODE"
 
 # ── Run ───────────────────────────────────────────────────────────────────────
-echo "${BOLD}Running smoke test across all scenes…${RESET}"
-echo "(The Processing window will open, iterate every scene, then close.)"
+echo "${BOLD}Running smoke test across refactored structure…${RESET}"
 echo
 
-# processing cli exits with 0 even on sketch exceptions, so we rely on the
-# result file rather than the exit code.
-processing cli --sketch="$SKETCH_DIR" --force --run 2>&1 | \
+processing cli --sketch="$BUILD_DIR" --force --run 2>&1 | \
   grep --line-buffered -E '^\[SMOKE\]|^\[FAIL\]|╔|╠|╚|║|scenes=|checks=|failures=' || true
 
 # ── Read result ───────────────────────────────────────────────────────────────
@@ -73,8 +50,6 @@ echo
 
 if [[ ! -f "$RESULT" ]]; then
   echo "${RED}${BOLD}ERROR: result file was never written.${RESET}"
-  echo "The sketch likely crashed before finishing the smoke test."
-  echo "Re-run with ./run.sh (no .smoketest trigger) to see the full error in the Processing console."
   exit 2
 fi
 

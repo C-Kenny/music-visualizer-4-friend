@@ -29,7 +29,7 @@ class CircuitMazeScene implements IScene {
   float lampGlow = 0.0;
   float beatFlash = 0.0;
 
-  float openBias = 0.58;
+  float openBias = 0.72;
 
   CircuitMazeScene() {
     buildCircuit();
@@ -42,7 +42,7 @@ class CircuitMazeScene implements IScene {
 
     for (int x = 0; x < cols - 1; x++) {
       for (int y = 0; y < rows; y++) {
-        boolean exists = random(1) < 0.72;
+        boolean exists = random(1) < 0.45;
         boolean gateOpen = random(1) < openBias;
         rightGates[x][y] = new CircuitGate(x, y, x + 1, y, exists, gateOpen);
       }
@@ -50,7 +50,7 @@ class CircuitMazeScene implements IScene {
 
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows - 1; y++) {
-        boolean exists = random(1) < 0.62;
+        boolean exists = random(1) < 0.35;
         boolean gateOpen = random(1) < openBias;
         downGates[x][y] = new CircuitGate(x, y, x, y + 1, exists, gateOpen);
       }
@@ -97,7 +97,7 @@ class CircuitMazeScene implements IScene {
   void triggerBeatPulse(float bass, float high) {
     beatFlash = 1.0;
 
-    int toggles = 2 + (int) map(constrain(bass, 0, 25), 0, 25, 0, 7);
+    int toggles = 4 + (int) map(constrain(bass, 0, 25), 0, 25, 0, 9);
     for (int i = 0; i < toggles; i++) {
       toggleRandomGate();
     }
@@ -309,8 +309,8 @@ class CircuitMazeScene implements IScene {
       triggerBeatPulse(bass, high);
     }
 
-    if (config.logicalFrameCount % 90 == 0) {
-      if (random(1) < 0.7) toggleRandomGate();
+    if (config.logicalFrameCount % 60 == 0) {
+      if (random(1) < 0.8) toggleRandomGate();
     }
 
     refreshFlowState();
