@@ -17,6 +17,27 @@ class CircuitGate {
   }
 }
 
+boolean isLetterNode(int x, int y) {
+  // C (Columns 2-5, rows 1-6)
+  if (x >= 2 && x <= 5 && y >= 1 && y <= 6) {
+    if (x == 2) return true; // Left bar
+    if (y == 1 || y == 6) return true; // Top/Bottom bars
+  }
+  // K (Columns 7-10, rows 1-6)
+  if (x >= 7 && x <= 10 && y >= 1 && y <= 6) {
+    if (x == 7) return true; // Left bar
+    // diagonal from (10,1) to (8,3) and (8,4) to (10,6)
+    if (x == 8 && (y == 3 || y == 4)) return true;
+    if (x == 9 && (y == 2 || y == 5)) return true;
+    if (x == 10 && (y == 1 || y == 6)) return true;
+  }
+  return false;
+}
+
+boolean isLetterGate(CircuitGate g) {
+  return isLetterNode(g.x1, g.y1) && isLetterNode(g.x2, g.y2);
+}
+
 class CircuitMazeScene implements IScene {
   int cols = 12;
   int rows = 8;
@@ -42,7 +63,8 @@ class CircuitMazeScene implements IScene {
 
     for (int x = 0; x < cols - 1; x++) {
       for (int y = 0; y < rows; y++) {
-        boolean exists = random(1) < 0.45;
+        boolean letter = isLetterNode(x, y) && isLetterNode(x+1, y);
+        boolean exists = letter || (random(1) < 0.2); // Less random noise
         boolean gateOpen = random(1) < openBias;
         rightGates[x][y] = new CircuitGate(x, y, x + 1, y, exists, gateOpen);
       }
@@ -50,7 +72,8 @@ class CircuitMazeScene implements IScene {
 
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows - 1; y++) {
-        boolean exists = random(1) < 0.35;
+        boolean letter = isLetterNode(x, y) && isLetterNode(x, y+1);
+        boolean exists = letter || (random(1) < 0.15);
         boolean gateOpen = random(1) < openBias;
         downGates[x][y] = new CircuitGate(x, y, x, y + 1, exists, gateOpen);
       }
@@ -255,7 +278,8 @@ class CircuitMazeScene implements IScene {
         }
 
         if (energised) {
-          pg.fill(90, 255, 240, 200);
+          if (isLetterNode(x, y)) pg.fill(50, 255, 255, 220); // Gold-ish Neon
+          else pg.fill(90, 255, 240, 200);
         } else {
           pg.fill(55, 80, 90, 180);
         }
@@ -279,7 +303,11 @@ class CircuitMazeScene implements IScene {
     float alpha = 70 + g.glow * 150;
 
     pg.strokeWeight(2.4 + g.glow * 1.7);
-    pg.stroke(90, 255, bright, alpha);
+    if (isLetterGate(g) && g.glow > 0.3) {
+      pg.stroke(50, 255, bright, alpha); // Golden highlight
+    } else {
+      pg.stroke(90, 255, bright, alpha);
+    }
 
     float gap = 12.0 * (1.0 - g.openVis);
 
