@@ -694,6 +694,12 @@ void draw() {
       }
 
       sceneBuffer.beginDraw();
+      sceneBuffer.colorMode(PConstants.RGB, 255);
+      sceneBuffer.rectMode(PConstants.CORNER);
+      sceneBuffer.ellipseMode(PConstants.CENTER);
+      sceneBuffer.imageMode(PConstants.CORNER);
+      sceneBuffer.hint(PConstants.ENABLE_DEPTH_TEST);
+      
       if (monoFont != null) sceneBuffer.textFont(monoFont);
       sceneBuffer.pushMatrix();
       scenes[config.STATE].drawScene(sceneBuffer);
