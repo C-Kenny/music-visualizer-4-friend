@@ -13,7 +13,7 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 34;
+final int SCENE_COUNT = 40;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -366,6 +366,12 @@ void setup() {
   scenes[31] = new HourglassScene();
   scenes[32] = new SacredGeometryScene();
   scenes[33] = new MathWaveScene();
+  scenes[34] = new TorusKnotScene();
+  scenes[35] = new RoseCurveScene();
+  scenes[36] = new SriYantraScene();
+  scenes[37] = new NetOfBeingScene();
+  scenes[38] = new PsychedelicEyeScene();
+  scenes[39] = new CosmicLatticeScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
@@ -627,7 +633,13 @@ final int[] SCENE_ORDER = {
   SCENE_CIRCUIT_MAZE,
   SCENE_HOURGLASS,
   SCENE_SACRED_GEOMETRY,
-  SCENE_MATH_WAVE
+  SCENE_MATH_WAVE,
+  SCENE_TORUS_KNOT,
+  SCENE_ROSE_CURVE,
+  SCENE_SRI_YANTRA,
+  SCENE_NET_OF_BEING,
+  SCENE_PSYCHEDELIC_EYE,
+  SCENE_COSMIC_LATTICE
 };
 
 int _sceneOrderIndex(int state) {
