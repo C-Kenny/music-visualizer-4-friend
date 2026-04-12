@@ -1344,3 +1344,27 @@ game  RIGHT wins  11-4  (games L:3 R:2)
   point  LEFT   [receiver]  rally:1  score 4-3
 === session 2026-04-11 22:20:25 ===
 === session 2026-04-11 22:20:26 ===
+=== session 2026-04-11 22:58:14 ===
+=== session 2026-04-11 22:58:14 ===
+=== session 2026-04-11 22:59:37 ===
+=== session 2026-04-11 22:59:37 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
+  point  LEFT   [server  ]  rally:1  score 2-0
+  point  LEFT   [receiver]  rally:1  score 3-0
+=== session 2026-04-11 23:03:21 ===
+=== session 2026-04-11 23:03:21 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+=== session 2026-04-11 23:08:27 ===
+=== session 2026-04-11 23:08:27 ===
+=== session 2026-04-11 23:10:13 ===
+=== session 2026-04-11 23:10:13 ===
+=== session 2026-04-11 23:17:05 ===
+=== session 2026-04-11 23:17:05 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+=== session 2026-04-11 23:18:28 ===
+=== session 2026-04-11 23:18:28 ===
+  point  RIGHT  [receiver]  rally:1  score 0-1
+  point  LEFT   [server  ]  rally:1  score 1-1
+=== session 2026-04-11 23:23:00 ===
+=== session 2026-04-11 23:23:00 ===
+  point  LEFT   [server  ]  rally:1  score 1-0
