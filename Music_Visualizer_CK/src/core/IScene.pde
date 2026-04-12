@@ -34,6 +34,12 @@ interface IScene {
   void handleKey(char k);
 
   /**
+   * Called when the mouse wheel is scrolled. delta is -1 (up/zoom-in) or +1 (down/zoom-out).
+   * Default: no-op. Override in scenes that support scroll-zoom.
+   */
+  default void handleMouseWheel(int delta) {}
+
+  /**
    * Returns an array of strings to display in the code overlay.
    * Return an empty array if no overlay is needed.
    */

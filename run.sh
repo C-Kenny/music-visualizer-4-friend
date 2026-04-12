@@ -31,5 +31,10 @@ if [[ -f "Music_Visualizer_CK/.devsong" ]]; then
   ln -s "$ORIGIN_DIR/.devsong" "$BUILD_DIR/.devsong"
 fi
 
+# Link .devscene if it exists
+if [[ -f "Music_Visualizer_CK/.devscene" ]]; then
+  ln -s "$ORIGIN_DIR/.devscene" "$BUILD_DIR/.devscene"
+fi
+
 # Run using processing cli
 processing cli --sketch="$BUILD_DIR" --force --run "$@"

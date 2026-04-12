@@ -13,10 +13,11 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 31;
+final int SCENE_COUNT = 33;
 int previousState = -1;
 
 AudioAnalyser analyzer;
+DropPredictor dropPredictor;
 PFont monoFont;
 PGraphics sceneBuffer;
 PShader bloomShader;
@@ -44,6 +45,7 @@ void loadSongToVisualize() {
   logToStdout("Loading song to visualize");
   audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
   config.SONG_PLAYING = true;
+  if (dropPredictor != null) dropPredictor.scan(config.SONG_TO_VISUALIZE);
 }
 
 void setupController() {
@@ -60,6 +62,7 @@ void initializeGlobals() {
   logToStdout("initializeGlobals");
 
   config = new Config();
+  dropPredictor = new DropPredictor();
 
   ellipseMode(CENTER);
   blendMode(BLEND);
@@ -340,6 +343,8 @@ void setup() {
   scenes[28] = new MazePuzzleScene();
   scenes[29] = new LissajousKnotScene();
   scenes[30] = new FluidSimScene();
+  scenes[31] = new HourglassScene();
+  scenes[32] = new SacredGeometryScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
@@ -405,6 +410,12 @@ void startSong(){
 
 void mousePressed() {
   scenes[config.STATE].handleKey(' '); // reuse handleKey for simple click-bursts if scene desires
+}
+
+void mouseWheel(MouseEvent event) {
+  if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+    scenes[config.STATE].handleMouseWheel(event.getCount());
+  }
 }
 
 void keyPressed() {
@@ -575,7 +586,7 @@ public void getUserInput() {
 // in the codebase but excluded from rotation for now.
 // Fan-favourite scenes, in display order. Only these are reachable via
 // LB/RB cycling or keyboard number keys. Add a scene number here to re-enable it.
-final int[] SCENE_ORDER = {1, 28, 29, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24, 26, 27};
+final int[] SCENE_ORDER = {1, 28, 29, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24, 26, 27, 31, 32};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
