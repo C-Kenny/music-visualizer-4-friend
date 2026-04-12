@@ -13,7 +13,7 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 33;
+final int SCENE_COUNT = 34;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -111,6 +111,26 @@ boolean isDevMode() {
   return false;
 }
 
+// Explicit opt-in for frame preview saves — separate from devmode so it never
+// runs unless you specifically need Claude to see the visuals.
+// Enable:  touch Music_Visualizer_CK/.devpreview
+// Disable: rm Music_Visualizer_CK/.devpreview
+boolean isDevPreview() {
+  String[] candidates = {
+    sketchPath() + "/.devpreview",
+    sketchPath() + "/../.devpreview",
+    System.getProperty("user.dir") + "/.devpreview"
+  };
+  for (String path : candidates) {
+    if (new java.io.File(path).exists()) return true;
+  }
+  return false;
+}
+
+void saveDevPreview() {
+  if (isDevPreview() && frameCount % 300 == 1) saveFrame("/tmp/vis_preview.png");
+}
+
 void setSongToVisualize() {
   logToStdout("Current song: " + config.SONG_TO_VISUALIZE);
   logToStdout("sketchPath() = " + sketchPath());
@@ -125,7 +145,7 @@ void setSongToVisualize() {
         if (new java.io.File(devSongPath).exists()) {
           config.SONG_TO_VISUALIZE = devSongPath;
           config.SONG_NAME = getSongNameFromFilePath(devSongPath, config.OS_TYPE);
-          config.STATE = 1;
+          config.STATE = SCENE_ORIGINAL;
           logToStdout("Dev song: " + config.SONG_TO_VISUALIZE);
           return;
         }
@@ -138,7 +158,7 @@ void setSongToVisualize() {
       config.currentSongIndex = (int) random(config.songList.size());
       config.SONG_TO_VISUALIZE = config.songList.get(config.currentSongIndex);
       logToStdout("Random song selected: " + config.SONG_TO_VISUALIZE);
-      config.STATE = 1;
+      config.STATE = SCENE_ORIGINAL;
       config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
       return;
     }
@@ -166,7 +186,7 @@ void setSongToVisualize() {
       config.currentSongIndex = (int) random(config.songList.size());
       config.SONG_TO_VISUALIZE = config.songList.get(config.currentSongIndex);
       logToStdout("Random song selected: " + config.SONG_TO_VISUALIZE);
-      config.STATE = 1;
+      config.STATE = SCENE_ORIGINAL;
       config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
       return;
     }
@@ -178,7 +198,7 @@ void setSongToVisualize() {
   while (config.SONG_TO_VISUALIZE == "") {
     delay(1);
   }
-  config.STATE = 1;
+  config.STATE = SCENE_ORIGINAL;
   logToStdout("SONG TO VISUALIZE: " + config.SONG_TO_VISUALIZE);
   config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
 }
@@ -345,6 +365,7 @@ void setup() {
   scenes[30] = new FluidSimScene();
   scenes[31] = new HourglassScene();
   scenes[32] = new SacredGeometryScene();
+  scenes[33] = new MathWaveScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
@@ -355,11 +376,9 @@ void setup() {
     println("[SMOKE TEST] Runner initialised — starting on next draw()");
   }
 
-  // Initial lifecycle trigger (skipped in smoke test — runner manages this)
-  previousState = config.STATE;
-  if (!SMOKE_TEST_MODE) scenes[config.STATE].onEnter();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
+  // Must be resolved BEFORE onEnter() so the correct scene receives the call.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
   try {
     java.io.File devScene = new java.io.File(sketchPath(".devscene"));
@@ -368,6 +387,10 @@ void setup() {
       config.STATE = Integer.parseInt(raw);
     }
   } catch (Exception e) { /* ignore — missing or malformed file */ }
+
+  // Initial lifecycle trigger (skipped in smoke test — runner manages this)
+  previousState = config.STATE;
+  if (!SMOKE_TEST_MODE) scenes[config.STATE].onEnter();
   // load Halo 3 emblem used as reference for colors and texture
   h3_emblem = loadImage("../media/h3_emblem.jpg");
 
@@ -582,11 +605,30 @@ public void getUserInput() {
   }
 }
 // ── Active scene list ─────────────────────────────────────────────────────────
-// Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
-// in the codebase but excluded from rotation for now.
 // Fan-favourite scenes, in display order. Only these are reachable via
-// LB/RB cycling or keyboard number keys. Add a scene number here to re-enable it.
-final int[] SCENE_ORDER = {1, 28, 29, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24, 26, 27, 31, 32};
+// LB/RB cycling or keyboard number keys. Add a SceneIds constant to re-enable.
+// Scenes 3 (SHAPES_3D) and 9 (HALO2_LOGO) are kept in code but excluded for now.
+final int[] SCENE_ORDER = {
+  SCENE_ORIGINAL,
+  SCENE_MAZE_PUZZLE,
+  SCENE_LISSAJOUS_KNOT,
+  SCENE_CATS_CRADLE,
+  SCENE_TABLE_TENNIS,
+  SCENE_TABLE_TENNIS_3D,
+  SCENE_PRISM_CODEX,
+  SCENE_GRAVITY_STRINGS,
+  SCENE_NEURAL_WEAVE,
+  SCENE_FRACTAL,
+  SCENE_SHADER,
+  SCENE_WORM,
+  SCENE_RECURSIVE_MANDALA,
+  SCENE_KALEIDOSCOPE,
+  SCENE_VOID_BLOOM,
+  SCENE_CIRCUIT_MAZE,
+  SCENE_HOURGLASS,
+  SCENE_SACRED_GEOMETRY,
+  SCENE_MATH_WAVE
+};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -649,6 +691,7 @@ void draw() {
   }
   // ────────────────────────────────────────────────────────────────────────
   if (frameCount % 60 == 0) println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
+  saveDevPreview();
   
   // 1. Scene Lifecycle Management
   if (config.STATE != previousState) {
@@ -891,7 +934,7 @@ void drawCodeOverlay(String[] lines) {
 
 void addFPSToTitleBar() {
   if (frameCount % 100 == 0) {
-    surface.setTitle("fps: " + int(frameRate) + " | scene: " + config.STATE
+    surface.setTitle("Music Visualizer CK | fps: " + int(frameRate) + " | scene: " + config.STATE
       + " | " + config.SONG_TO_VISUALIZE);
   }
 }

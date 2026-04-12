@@ -1,69 +1,127 @@
 # Music Visualizer for a Friend
 
 ### What?
-2D Music Visualizer, made using [Processing 3.](https://processing.org/)
 
-
-### Current State?
-
-With sound: [Music Visualizer with Controller Overlay](https://vimeo.com/501329047)
-
-
-Without sound:
-
-![MusicVisualizerCK](output/music_visualizer_output_2021_01_17.gif)
-
-### Xbox 360 Controller Layout:
-
-![Xbox 360 Controller Layout](documentation/xbox-360-controller.png)
-
-### How to run development build?
-
-This visualizer relies on [processing-java](https://github.com/processing/processing/wiki/Command-Line) to be installed.
-
-```
-$ which processing-java
-/usr/local/bin/processing-java
-```
-
-Once that has been setup, you can clone the repo:
-
-`$ git clone git@github.com:C-Kenny/music-visualizer-4-friend.git`
-
-then launch the visualizer with:
-
-`$ ./run.sh`
-
-### How to run Visualizer from Linux?
-
-From a Linux file browser you can double click the launcher file located at:
-
-`Music_Visualizer_CK/application.linux64/Music_Visualizer_CK`
-
-### How to run Visualizer from Windows?
-
-From Windows you can double click the `Music_Visualizer_CK.exe` from `Music_Visualizer_CK\application.windows64` folder
+Real-time audio-reactive music visualizer with 18 active scenes, built in [Processing 4](https://processing.org/). Controlled with an Xbox 360 / Xbox One controller. Visualizes audio via FFT, beat detection, and oscilloscope waveforms.
 
 ### Why?
 
-One of my friends passed away, we used to play a lot of Halo together. This music visualizer is dedicated to him, and we use his Halo 3 Emblem as inspiration.
+One of my friends passed away — we used to play a lot of Halo together. This visualizer is dedicated to him, using his Halo 3 Emblem as inspiration.
 
 ![Halo3Emblem](media/h3_emblem.jpg)
 
-### Credits:
+---
 
-- [Luis Gonzalez for the amazing Processing tunnels + plasma. Used as toggle-able backgrounds](https://luis.net/)
-- ttaM for the incredible help on the Bezier Curves (fins)!
+### Preview
 
-### Required Libraries:
+With controller overlay: [Music Visualizer with Controller Overlay](https://vimeo.com/501329047)
 
-- [Handy. Used to make lines look 'hand-drawn'](https://github.com/gicentre/handy)
-- [Game Control Plus. Used to handle Xbox 360 controller input](http://lagers.org.uk/gamecontrol/)
-- [Minim. Used by the computer to listen to the music + break into frequencies/decibels](http://code.compartmental.net/tools/minim/)
+Without sound:
 
+![MusicVisualizerCK](output/current_output_animated.gif)
 
-### Resources:
+---
 
-- [Music Visualizer source code on GitHub](https://github.com/C-Kenny/music-visualizer-4-friend)
-- [GitHub Issue tracker for repo](https://github.com/C-Kenny/music-visualizer-4-friend/issues)
+### Active Scenes
+
+Scenes cycle with **LB / RB** on controller, or **number keys 1–9** (by position in rotation). More scenes reachable with LB/RB beyond key 9.
+
+| Key | Scene | Description |
+|-----|-------|-------------|
+| 1 | Original | Classic Halo emblem tunnel |
+| 2 | Maze Puzzle | Audio-reactive maze |
+| 3 | Lissajous Knot | 3D Lissajous curves |
+| 4 | Cats Cradle | Bezier string physics |
+| 5 | Table Tennis | 2D pong-style reactive |
+| 6 | Table Tennis 3D | 3D perspective variant |
+| 7 | Prism Codex | Geometry + colour prisms |
+| 8 | Gravity Strings | String tension simulation |
+| 9 | Neural Weave | Organic neural net |
+| LB/RB | Fractal | Recursive fractal zoom |
+| LB/RB | Shader | GLSL shader scene |
+| LB/RB | Worm Colony | Worm swarm FFT response |
+| LB/RB | Recursive Mandala | Layered mandala rings |
+| LB/RB | Kaleidoscope | Mirror kaleidoscope |
+| LB/RB | Void Bloom | Particle bloom |
+| LB/RB | Circuit Maze | PCB-style circuit paths |
+| LB/RB | Hourglass | Sand physics + skybox |
+| LB/RB | Sacred Geometry | Golden ratio geometry |
+
+---
+
+### Controller Layout
+
+![Xbox 360 Controller Layout](documentation/xbox-360-controller.png)
+
+**LB / RB** — previous / next scene  
+**Left stick** — varies per scene  
+**Right stick** — varies per scene  
+**Start** — toggle HUD  
+**Back** — toggle code overlay  
+
+---
+
+### How to Run (Dev Build)
+
+Requires [processing-java](https://github.com/processing/processing/wiki/Command-Line) on your PATH:
+
+```bash
+which processing-java
+# /usr/local/bin/processing-java
+```
+
+Clone and run:
+
+```bash
+git clone git@github.com:C-Kenny/music-visualizer-4-friend.git
+cd music-visualizer-4-friend
+./run.sh         # opens file picker, select a song
+./watch.sh       # hot-reload dev mode (restarts on .pde file save)
+```
+
+**Dev overrides** (create inside `Music_Visualizer_CK/`, all gitignored):
+
+| File | Effect |
+|------|--------|
+| `.devmode` | Skip file picker, use default/random song |
+| `.devsong` | Override song path |
+| `.devscene` | Override starting scene number (e.g. `10`) |
+
+### How to Run (Linux — prebuilt)
+
+Double-click the launcher in a file browser:
+
+```
+Music_Visualizer_CK/application.linux64/Music_Visualizer_CK
+```
+
+---
+
+### Required Libraries
+
+Install via Processing's **Contribution Manager** (Sketch → Import Library → Manage Libraries):
+
+| Library | Used for |
+|---------|----------|
+| [Minim](http://code.compartmental.net/tools/minim/) | Audio playback, FFT, beat detection |
+| [Game Control Plus v1.2.2](http://lagers.org.uk/gamecontrol/) | Xbox controller input |
+| [Handy](https://github.com/gicentre/handy) | Hand-drawn line aesthetic |
+| [PeasyCam](https://mrfeinberg.com/peasycam/) | 3D camera (Shapes3D scene) |
+| [DashedLines](https://github.com/garciadelcastillo/dashed-lines) | Dashed line rendering |
+
+---
+
+### Credits
+
+- [Luis Gonzalez](https://luis.net/) — Processing tunnels + plasma backgrounds
+- ttaM — incredible help on Bezier curves (fins)
+
+---
+
+### Resources
+
+- [Source code on GitHub](https://github.com/C-Kenny/music-visualizer-4-friend)
+- [Issue tracker](https://github.com/C-Kenny/music-visualizer-4-friend/issues)
 - [Processing coding standards](documentation/coding_standards_processing.md)
+- [Scene list + state numbers](documentation/scene_list.md)
+- [Architecture notes](documentation/architecture.md)
