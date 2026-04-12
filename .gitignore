@@ -22,20 +22,8 @@ npm-debug.log*
 Music_Visualizer_CK/.scene_prefs
 .build/
 
-# Skybox assets — large binary packs excluded, only active cubemaps committed
-media/skyboxes/*.zip
-media/skyboxes/*.exr
-media/skyboxes/*.hdr
-media/skyboxes/*.part
-media/skyboxes/Skybox*/
-media/skyboxes/spacescape/
-media/skyboxes/skybox/
-media/skyboxes/skybox2/
-media/skyboxes/skybox3/
-media/skyboxes/retro_skyboxes_pack/
-media/skyboxes/sbs_-_cloudy_skyboxes_-_cubemap/
-media/skyboxes/Blue\ Sky\ Skybox\ Pack/
-media/skyboxes/sky_23_2k\ \(1\)/
+# Skybox assets — copyright unclear, keep off remote until verified
+media/skyboxes/
 
 # Caveman compress backup
 CLAUDE.original.md
