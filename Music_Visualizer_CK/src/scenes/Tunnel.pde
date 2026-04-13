@@ -43,6 +43,12 @@ class Tunnel {
   }
 
   void draw(PGraphics pg, int tunnelZoomIncrement, int xOffset, int squareSize) {
+    draw(pg, tunnelZoomIncrement, 0, xOffset, squareSize);
+  }
+
+  // twistOffset shifts the angle dimension of the texture independently of
+  // the zoom — a value of ~32 produces a visible ~90° rotation twist.
+  void draw(PGraphics pg, int tunnelZoomIncrement, int twistOffset, int xOffset, int squareSize) {
     if (buffer == null || buffer.width != pg.width || buffer.height != pg.height) {
       init(pg.width, pg.height);
     }
@@ -57,7 +63,7 @@ class Tunnel {
         if (luIdx >= lookUpTable.length) continue;
         int val = lookUpTable[luIdx];
         int texel = texture[
-          ((val & 0x0000ffff) + ((config.logicalFrameCount + tunnelZoomIncrement) << 1)) & ((128*128)-1)
+          ((val & 0x0000ffff) + ((config.logicalFrameCount + tunnelZoomIncrement) << 1) + (twistOffset << 8)) & ((128*128)-1)
         ];
         int alpha = (val >> 16) & 0xFF;
         buffer.pixels[pgIdx] = (alpha << 24) | (texel & 0xFFFFFF);

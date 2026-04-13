@@ -280,18 +280,11 @@ class WormScene implements IScene {
     }
 
     String[] modeNames = {"Mono", "Rainbow", "Gradient"};
-    pg.pushStyle();
-      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
-      pg.fill(0, 150); pg.noStroke(); pg.rectMode(CORNER);
-      pg.rect(8, 8, 290 * uiScale(), mg + lh * 5);
-      pg.fill(80, 255, 120); pg.textSize(ts); pg.textAlign(LEFT, TOP);
-      pg.text("Worm Colony",                                        12, 8 + mg);
-      pg.fill(200, 255, 200);
-      pg.text("Worms: " + worms.size() + "/" + MAX_WORMS + "  (A add / B remove)",  12, 8 + mg + lh);
-      pg.text("Color: " + modeNames[colorM] + "  (Y to cycle)",                  12, 8 + mg + lh * 2);
-      pg.text("Speed: " + nf(speedS, 1, 2) + "  (LT slow / RT turbo)",          12, 8 + mg + lh * 3);
-      pg.text("bass:" + nf(bass,1,1) + "  mid:" + nf(mid,1,1) + "  high:" + nf(high,1,1), 12, 8 + mg + lh * 4);
-    pg.popStyle();
+    sceneHUD(pg, "Worm Colony", new String[]{
+      "Worms: " + worms.size() + "/" + MAX_WORMS + "  (A add / B remove)",
+      "Color: " + modeNames[colorM] + "  (Y)   Speed: " + nf(speedS,1,2) + "  (LT/RT)",
+      "bass:" + nf(bass,1,1) + "  mid:" + nf(mid,1,1) + "  high:" + nf(high,1,1)
+    });
 
     drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
   }

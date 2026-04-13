@@ -47,3 +47,4 @@ static final int SCENE_SRI_YANTRA        = 36;
 static final int SCENE_NET_OF_BEING      = 37;
 static final int SCENE_PSYCHEDELIC_EYE   = 38;
 static final int SCENE_COSMIC_LATTICE    = 39;
+static final int SCENE_ORIGINAL_3D       = 40;

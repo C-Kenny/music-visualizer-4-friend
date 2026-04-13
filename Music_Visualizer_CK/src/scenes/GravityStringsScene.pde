@@ -132,18 +132,9 @@ class GravityStringsScene implements IScene {
 
     drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
 
-    // --- top-left HUD ----------------------------------------------------
-    pg.pushStyle();
-      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 6 * uiScale();
-      pg.fill(0, 140); pg.noStroke(); pg.rectMode(CORNER);
-      pg.rect(8, 8, 310 * uiScale(), mg * 2 + lh * 2);
-      pg.fill(255, 220, 120); pg.textSize(ts); pg.textAlign(LEFT, TOP);
-      pg.text("Gravity Strings", 12, 8 + mg);
-      pg.fill(200, 200, 200);
-      pg.text("L \u2195 gravity: " + nf(gravity, 1, 2)
-           + "   R \u2194 anchors: " + numAnchors
-           + "   A pluck", 12, 8 + mg + lh);
-    pg.popStyle();
+    sceneHUD(pg, "Gravity Strings", new String[]{
+      "L \u2195 gravity: " + nf(gravity, 1, 2) + "   R \u2194 anchors: " + numAnchors + "   A pluck"
+    });
   }
 
   // Draw one string between (x1,y1)→(x2,y2).
