@@ -13,7 +13,7 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 41;
+final int SCENE_COUNT = 44;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -373,6 +373,9 @@ void setup() {
   scenes[38] = new PsychedelicEyeScene();
   scenes[39] = new CosmicLatticeScene();
   scenes[40] = new Original3DScene();
+  scenes[41] = new DotMandalaScene();
+  scenes[42] = new MerkabaStarScene();
+  scenes[43] = new PentagonalVortexScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
@@ -640,7 +643,10 @@ final int[] SCENE_ORDER = {
   SCENE_SRI_YANTRA,
   SCENE_NET_OF_BEING,
   SCENE_PSYCHEDELIC_EYE,
-  SCENE_COSMIC_LATTICE
+  SCENE_COSMIC_LATTICE,
+  SCENE_DOT_MANDALA,
+  SCENE_MERKABA_STAR,
+  SCENE_PENTAGONAL_VORTEX
 };
 
 int _sceneOrderIndex(int state) {
@@ -869,7 +875,7 @@ void drawMetadataOverlay() {
     "Logical Frames  : " + config.logicalFrameCount,
     "",
     "=== AUDIO METADATA ===",
-    "Song Name       : " + config.SONG_NAME,
+    "Song Name       : " + (config.SONG_NAME.length() > 20 ? config.SONG_NAME.substring(0, 20) + "\u2026" : config.SONG_NAME),
     "Playing         : " + config.SONG_PLAYING,
     "Controller Match: " + config.USING_CONTROLLER
   };
