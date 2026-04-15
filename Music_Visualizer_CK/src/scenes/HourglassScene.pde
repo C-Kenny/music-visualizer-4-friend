@@ -25,6 +25,20 @@ class HourglassScene implements IScene {
   float zoomLevel = 1.0;
 
   Skybox skybox = new Skybox();
+  int skyboxIndex = 0;
+  String[] SKYBOX_PATHS = {
+    "cloudy_01", "cloudy_02", "cloudy_03", "cloudy_04", "cloudy_05",
+    "cloudy_06", "cloudy_07", "cloudy_08", "cloudy_09", "cloudy_10",
+    "cloudy_11", "cloudy_12", "cloudy_13", "cloudy_14", "cloudy_15",
+    "cloudy_16", "cloudy_17", "cloudy_18", "cloudy_19", "cloudy_20",
+    "cloudy_21", "cloudy_22", "cloudy_23", "cloudy_24", "cloudy_25"
+  };
+
+  void loadSkybox(int idx) {
+    skyboxIndex = ((idx % SKYBOX_PATHS.length) + SKYBOX_PATHS.length) % SKYBOX_PATHS.length;
+    skybox = new Skybox();
+    skybox.load(sketchPath("../../media/skyboxes/" + SKYBOX_PATHS[skyboxIndex]));
+  }
 
   // Neck trickle — grains through the narrow neck
   int TRICKLE_COUNT = 30;
@@ -55,9 +69,7 @@ class HourglassScene implements IScene {
     zoomLevel = 1.0;
     for (int i = 0; i < TRICKLE_COUNT; i++) resetTrickle(i, true);
     for (int i = 0; i < FALL_COUNT;   i++) resetFallGrain(i, true, 1);
-    if (!skybox.loaded) {
-      skybox.load(sketchPath("../../media/skyboxes/sky_23_2k/sky_23_cubemap_2k"));
-    }
+    if (!skybox.loaded) loadSkybox(0);
   }
 
   void onExit() {}
@@ -79,7 +91,7 @@ class HourglassScene implements IScene {
   // ── Main draw ──────────────────────────────────────────────────────────────
 
   void drawScene(PGraphics canvas) {
-    if (!skybox.loaded) skybox.load(sketchPath("../../media/skyboxes/sky_23_2k/sky_23_cubemap_2k"));
+    if (!skybox.loaded) loadSkybox(0);
     smoothBass  = lerp(smoothBass,  analyzer.bass,  0.1);
     smoothMid   = lerp(smoothMid,   analyzer.mid,   0.1);
     smoothHigh  = lerp(smoothHigh,  analyzer.high,  0.1);
@@ -87,19 +99,19 @@ class HourglassScene implements IScene {
     beatWobble *= 0.88;
 
     float audioBoost = 1.0 + smoothBass * 3.5;
-    sandFraction += 0.00035 * audioBoost;
+    sandFraction += 0.0007 * audioBoost;  // fills ~10-20s avg depending on bass
     sandFraction  = constrain(sandFraction, 0, 1);
 
     // Flip on a major pre-scanned drop (always top-20 strongest peaks per song).
-    // 3s window, threshold 0.75 → triggers within ~750ms of a pre-scanned peak.
-    // No real-time beat detector gate — trust the pre-scan timing.
-    // Require bass > 0.4 as sanity check + 8s cooldown to prevent double-fires.
-    dropImminence = dropPredictor.majorImminentDropFactor(audio.player.position(), 3.0);
+    // 4s window, threshold 0.5 → triggers within ~2s of a pre-scanned peak.
+    // Bass sanity check lowered (drops often have brief silence before bass hits).
+    // 8s cooldown prevents double-fires; 0.65 fill threshold avoids flip on empty.
+    dropImminence = dropPredictor.majorImminentDropFactor(audio.player.position(), 4.0);
     boolean cooldownOk  = (frameCount - lastFlipFrame) > 480; // 8 s at 60 fps
     boolean massiveDrop = dropPredictor.isReady
-                       && dropImminence > 0.75
-                       && smoothBass > 0.4
-                       && sandFraction >= 0.95  // bottom must be nearly full before flipping
+                       && dropImminence > 0.5
+                       && smoothBass > 0.2
+                       && sandFraction >= 0.65  // at least 2/3 full before flipping
                        && cooldownOk;
     if (massiveDrop) {
       targetRotation += PI;
@@ -424,21 +436,12 @@ class HourglassScene implements IScene {
   // ── HUD ───────────────────────────────────────────────────────────────────
 
   void drawHUD(PGraphics canvas) {
-    canvas.pushStyle();
     canvas.hint(PConstants.DISABLE_DEPTH_TEST);
-    float ts = 11 * uiScale();
-    canvas.fill(200, 255, 230);
-    canvas.textSize(ts);
-    canvas.textAlign(LEFT, TOP);
-    canvas.text("Hourglass", 20, 20);
-    canvas.fill(color(200, 200, 200));
-    canvas.text("Fill: " + nf(sandFraction * 100, 0, 1) + "%", 20, 20 + ts * 1.5f);
-    if (dropImminence > 0.01) {
-      canvas.fill(255, 100, 100);
-      canvas.text("DROP: " + nf(dropImminence * 100, 0, 0) + "%", 20, 20 + ts * 3.0f);
-    }
+    sceneHUD(canvas, "Hourglass", new String[]{
+      "Fill: " + nf(sandFraction * 100, 0, 1) + "%   Sky: " + SKYBOX_PATHS[skyboxIndex].split("/")[0] + "  [ ] to cycle",
+      dropImminence > 0.01 ? "DROP INCOMING: " + nf(dropImminence * 100, 0, 0) + "%" : "bass / mid / drop prediction active"
+    });
     canvas.hint(PConstants.ENABLE_DEPTH_TEST);
-    canvas.popStyle();
   }
 
   // ── Beat timeline strip ────────────────────────────────────────────────────
@@ -522,6 +525,8 @@ class HourglassScene implements IScene {
   void applyController(Controller c) {
     // Flip — preserve sand amounts (bottom 10% becomes top 10% after flip)
     if (c.aJustPressed) { targetRotation += PI; flipCount++; sandFraction = 1.0 - sandFraction; }
+    // Cycle skybox — Y button
+    if (c.yJustPressed) loadSkybox(skyboxIndex + 1);
 
     // Camera orbit via right stick — center is width/2, height/2
     float nx = (c.rx / (float)width)  - 0.5;
@@ -534,6 +539,8 @@ class HourglassScene implements IScene {
 
   void handleKey(char keyChar) {
     if (keyChar == ' ') { targetRotation += PI; flipCount++; sandFraction = 1.0 - sandFraction; }
+    if (keyChar == ']') loadSkybox(skyboxIndex + 1);
+    if (keyChar == '[') loadSkybox(skyboxIndex - 1);
     if (keyChar == 'a' || keyChar == 'A') camRotY -= 0.05;
     if (keyChar == 'd' || keyChar == 'D') camRotY += 0.05;
     if (keyChar == 'w' || keyChar == 'W') camRotX -= 0.05;

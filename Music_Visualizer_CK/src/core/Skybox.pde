@@ -56,10 +56,18 @@ class Skybox {
     //   +X cube face = RIGHT = pz  |  -X cube face = LEFT  = nz
     //   -Y cube face = UP   = py   |  +Y cube face = DOWN  = ny  (Processing Y is flipped)
     float s = size;
-    _face(canvas, faces[4],  s,-s, s,   s,-s,-s,   s, s,-s,   s, s, s);  // +X right  → pz (RIGHT)
-    _face(canvas, faces[5], -s,-s,-s,  -s,-s, s,  -s, s, s,  -s, s,-s);  // -X left   → nz (LEFT)
-    _face(canvas, faces[3], -s, s, s,   s, s, s,   s, s,-s,  -s, s,-s);  // +Y floor  → ny (DOWN)
-    _face(canvas, faces[2], -s,-s,-s,   s,-s,-s,   s,-s, s,  -s,-s, s);  // -Y ceiling → py (UP)
+    // Vertex winding: v0=TL, v1=TR, v2=BR, v3=BL  →  UV (0,0)(w,0)(w,h)(0,h)
+    // Verified empirically with sign-encoded equirectangular via py360convert:
+    //   px F: TL=(-X+Y-Z) TR=(+X+Y-Z) BL=(-X-Y-Z) BR=(+X-Y-Z)
+    //   pz R: TL=(+X+Y-Z) TR=(+X+Y+Z) BL=(+X-Y-Z) BR=(+X-Y+Z)
+    //   nx B: TL=(+X+Y+Z) TR=(-X+Y+Z) BL=(+X-Y+Z) BR=(-X-Y+Z)
+    //   nz L: TL=(-X+Y+Z) TR=(-X+Y-Z) BL=(-X-Y+Z) BR=(-X-Y-Z)
+    //   py U: TL=(-X+Y+Z) TR=(+X+Y+Z) BL=(-X+Y-Z) BR=(+X+Y-Z)  [+Y=up in py360=-Y in Processing=ceiling]
+    //   ny D: TL=(-X-Y-Z) TR=(+X-Y-Z) BL=(-X-Y+Z) BR=(+X-Y+Z)  [-Y=down in py360=+Y in Processing=floor]
+    _face(canvas, faces[4],  s,-s,-s,   s,-s, s,   s, s, s,   s, s,-s);  // +X right  → pz (RIGHT)
+    _face(canvas, faces[5], -s,-s, s,  -s,-s,-s,  -s, s,-s,  -s, s, s);  // -X left   → nz (LEFT)
+    _face(canvas, faces[3], -s, s,-s,   s, s,-s,   s, s, s,  -s, s, s);  // +Y floor  → ny (DOWN)
+    _face(canvas, faces[2], -s,-s, s,   s,-s, s,   s,-s,-s,  -s,-s,-s);  // -Y ceiling → py (UP)
     _face(canvas, faces[1],  s,-s, s,  -s,-s, s,  -s, s, s,   s, s, s);  // +Z back   → nx (BACK)
     _face(canvas, faces[0], -s,-s,-s,   s,-s,-s,   s, s,-s,  -s, s,-s);  // -Z front  → px (FRONT)
 

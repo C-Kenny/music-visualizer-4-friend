@@ -8,6 +8,7 @@ class SacredGeometryScene implements IScene {
   float rotation = 0;
   float sBass = 0, sMid = 0, sHigh = 0;
   int geometryType = 0; // 0: Flower, 1: Metatron, 2: Seed, 3: Torus
+
   
   SacredGeometryScene() {}
 
@@ -29,7 +30,9 @@ class SacredGeometryScene implements IScene {
     pg.strokeWeight(1.5 + sHigh * 2.5);
     
     if (geometryType == 0) {
-      drawFlowerOfLife(pg, 80 + sBass * 40, 3 + (int)(sMid * 3));
+      // Always draw all 3 levels; deeper levels fade in with bass
+      float baseR = 80 + sBass * 30;
+      drawFlowerOfLife(pg, 0, 0, baseR, 3);
     } else if (geometryType == 1) {
       drawMetatron(pg, 120 + sBass * 60);
     } else if (geometryType == 2) {
@@ -41,19 +44,35 @@ class SacredGeometryScene implements IScene {
     drawHUD(pg);
   }
 
-  void drawFlowerOfLife(PGraphics pg, float r, int depth) {
-    pg.stroke(180, 255, 255, 180);
-    pg.ellipse(0, 0, r*2, r*2);
-    
-    for (int d = 1; d <= depth; d++) {
-      float alpha = map(d, 1, depth, 150, 40);
-      pg.stroke(180 + d * 10, 255, 255, alpha);
-      for (int i = 0; i < 6 * d; i++) {
-         float angle = TWO_PI * i / (6.0 * d);
-         float x = cos(angle) * r * d;
-         float y = sin(angle) * r * d;
-         pg.ellipse(x, y, r*2, r*2);
-      }
+  // Self-similar Flower of Life: center circle + 6 petals at radius r,
+  // each petal containing its own sub-flower at half scale.
+  // depth=3 is the outermost (always visible).
+  // depth=2 fades in with mid energy.
+  // depth=1 fades in with bass — the "innermost bloom".
+  void drawFlowerOfLife(PGraphics pg, float cx, float cy, float r, int depth) {
+    if (depth <= 0 || r < 5) return;
+
+    // Alpha per level: outer always on, inner driven by audio
+    float alpha;
+    if      (depth == 3) alpha = 180;
+    else if (depth == 2) alpha = 30 + sMid * 170;   // 30..200 with mids
+    else                 alpha = sBass * 140;         // 0..140 with bass
+
+    if (alpha < 4) return;  // skip invisible levels
+
+    float hue = (180 + (3 - depth) * 50 + config.logicalFrameCount * 0.2) % 360;
+    pg.colorMode(HSB, 360, 255, 255, 255);
+    pg.stroke(hue, 210, 255, alpha);
+    pg.colorMode(RGB, 255);
+
+    pg.ellipse(cx, cy, r * 2, r * 2);
+
+    for (int i = 0; i < 6; i++) {
+      float angle = TWO_PI * i / 6.0;
+      float px = cx + cos(angle) * r;
+      float py = cy + sin(angle) * r;
+      pg.ellipse(px, py, r * 2, r * 2);
+      drawFlowerOfLife(pg, px, py, r * 0.5, depth - 1);
     }
   }
 
@@ -111,19 +130,15 @@ class SacredGeometryScene implements IScene {
   }
 
   void drawHUD(PGraphics pg) {
-    pg.pushStyle();
     pg.resetMatrix();
-    float ts = 11 * uiScale();
-    pg.fill(200, 255, 230);
-    pg.textSize(ts);
-    pg.textAlign(LEFT, TOP);
     String typeName = "Flower of Life";
     if (geometryType == 1) typeName = "Metatron's Cube";
     if (geometryType == 2) typeName = "Seed of Life";
     if (geometryType == 3) typeName = "Tube Torus";
-    pg.text("Sacred Geometry: " + typeName, 20, 20);
-    pg.text("Press A (Controller) or SPACE (Key) to toggle", 20, 20 + ts * 1.5);
-    pg.popStyle();
+    sceneHUD(pg, "Sacred Geometry", new String[]{
+      "Type: " + typeName,
+      "A (controller) or SPACE to cycle"
+    });
   }
 
   void applyController(Controller c) {

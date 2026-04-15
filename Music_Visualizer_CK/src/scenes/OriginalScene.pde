@@ -9,6 +9,13 @@ class OriginalScene implements IScene {
   Plasma plasma;
   PolarPlasma polarPlasma;
 
+  // ── Audio triggers ────────────────────────────────────────────────────────
+  // Bass sustain → accelerate tunnel zoom.  Beat onset → twist burst.
+  TriggerEngine bassTrigger = new TriggerEngine(0.7, 0.06, 0.03);
+  float twistValue     = 0;   // 0..1, fired on beat, decays at 0.10/frame
+  int   tunnelTwistOff = 0;   // passed to Tunnel.draw() (0..32)
+
+
   OriginalScene(PApplet parent) {
     this.tunnel = new Tunnel();
     this.plasma = new Plasma();
@@ -159,7 +166,7 @@ class OriginalScene implements IScene {
     // Tunnel writes directly to pg.pixels[], bypassing transforms, so it must
     // be drawn before the translate and receives the square bounds explicitly.
     if (config.DRAW_TUNNEL) {
-      tunnel.draw(pg, config.TUNNEL_ZOOM_INCREMENT, (int)s1OffsetX, s1Size);
+      tunnel.draw(pg, config.TUNNEL_ZOOM_INCREMENT, tunnelTwistOff, (int)s1OffsetX, s1Size);
     }
 
     pg.pushMatrix();
@@ -293,15 +300,10 @@ class OriginalScene implements IScene {
     pg.popMatrix(); // end square canvas translate
 
     // ── top-left HUD (outside the square translate so it sits at canvas coords) ──
-    pg.pushStyle();
-      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 6 * uiScale();
-      pg.fill(0, 140); pg.noStroke(); pg.rectMode(CORNER);
-      pg.rect(8, 8, 330 * uiScale(), mg * 2 + lh * 2);
-      pg.fill(255, 220, 120); pg.textSize(ts); pg.textAlign(LEFT, TOP);
-      pg.text("Mandala  (fins: " + nf(config.FINS, 1, 1) + "  blend: " + modeNames[config.CURRENT_BLEND_MODE_INDEX] + ")", 12, 8 + mg);
-      pg.fill(200, 200, 200);
-      pg.text("w waveform  x stacking  f fins  b blend  A rainbow  Y flip", 12, 8 + mg + lh);
-    pg.popStyle();
+    sceneHUD(pg, "Mandala", new String[]{
+      "fins: " + nf(config.FINS, 1, 1) + "  blend: " + modeNames[config.CURRENT_BLEND_MODE_INDEX],
+      "w waveform  x stacking  f fins  b blend  A rainbow  Y flip"
+    });
   }
 
   void changeDashedLineSpeed(float amountToChange) {
@@ -328,12 +330,24 @@ class OriginalScene implements IScene {
     if (config.canChangeFinDirection && analyzer.high > 0.1) {
       changeFinRotation();
     }
-    
+
     if (analyzer.master > 0.05) {
       changePlasmaFlow(1);
       changeDashedLineSpeed(0.1);
       if (random(1) < 0.05) config.PLASMA_INCREMENTING = !config.PLASMA_INCREMENTING;
     }
+
+    // ── TriggerEngine: bass sustain → accelerate tunnel zoom ──────────────
+    if (config.DRAW_TUNNEL) {
+      bassTrigger.update(analyzer.bass);
+      config.TUNNEL_ZOOM_INCREMENT += (int)(bassTrigger.getValue() * 6);
+    }
+
+    // ── Beat twist burst ───────────────────────────────────────────────────
+    if (analyzer.isBeat) twistValue = 1.0;
+    twistValue    = lerp(twistValue, 0, 0.10);
+    tunnelTwistOff = (int)(twistValue * 32);
+
   }
 
   void changePlasmaFlow(int amountToChange){

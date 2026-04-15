@@ -238,32 +238,14 @@ class KaleidoscopeScene implements IScene {
   // ── HUD ─────────────────────────────────────────────────────────────────────
 
   void drawHUD(PGraphics pg) {
-    pg.pushStyle();
-    float ts = 11 * uiScale(), lh = ts * 1.35;
-    pg.noStroke(); pg.rectMode(CORNER);
-    pg.fill(0, 150);
-    pg.rect(8, 8, 415 * uiScale(), 8 + lh * 8);
-    pg.textSize(ts); pg.textAlign(LEFT, TOP);
-    pg.fill(100, 220, 255);
-    pg.text("=== Kaleidoscope ===", 12, 12);
-    pg.fill(180, 230, 255);
-    pg.text("Bass:" + nf(sBass,1,2) + "  Mid:" + nf(sMid,1,2) + "  High:" + nf(sHigh,1,2),
-            12, 12 + lh);
-    pg.text("Segments:" + segments +
-            "  Zoom:" + nf(zoom,1,2) +
-            "  RotSpd:" + nf(rotSpeed,1,3),
-            12, 12 + lh * 2);
-    pg.text("Palette:" + paletteNames[paletteIdx] +
-            "  Trail:" + nf(trailAlpha,1,0) +
-            "  AutoRot:" + (autoRotate ? "ON" : "OFF") +
-            "  Dir:" + (flipDir ? "CCW" : "CW"),
-            12, 12 + lh * 3);
-    pg.fill(120, 180, 220);
-    pg.text("A segs+2  B segs-2  Y palette  X reset", 12, 12 + lh * 4.8);
-    pg.text("L-stick rotate/zoom  LT slow  RT fast",  12, 12 + lh * 5.8);
-    pg.text("[/] segs  -/= speed  z/Z zoom  c hue  f flip  a auto  r reset",
-            12, 12 + lh * 6.8);
-    pg.popStyle();
+    sceneHUD(pg, "Kaleidoscope", new String[]{
+      "Bass:" + nf(sBass,1,2) + "  Mid:" + nf(sMid,1,2) + "  High:" + nf(sHigh,1,2),
+      "Segments:" + segments + "  Zoom:" + nf(zoom,1,2) + "  RotSpd:" + nf(rotSpeed,1,3),
+      "Palette:" + paletteNames[paletteIdx] + "  Trail:" + nf(trailAlpha,1,0) + "  AutoRot:" + (autoRotate ? "ON" : "OFF") + "  Dir:" + (flipDir ? "CCW" : "CW"),
+      "A segs+2  B segs-2  Y palette  X reset",
+      "L-stick rotate/zoom  LT slow  RT fast",
+      "[/] segs  -/= speed  z/Z zoom  c hue  f flip  a auto  r reset"
+    });
   }
 
   // ── Controller ──────────────────────────────────────────────────────────────

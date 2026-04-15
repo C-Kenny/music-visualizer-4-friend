@@ -13,7 +13,7 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 33;
+final int SCENE_COUNT = 44;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -111,6 +111,26 @@ boolean isDevMode() {
   return false;
 }
 
+// Explicit opt-in for frame preview saves — separate from devmode so it never
+// runs unless you specifically need Claude to see the visuals.
+// Enable:  touch Music_Visualizer_CK/.devpreview
+// Disable: rm Music_Visualizer_CK/.devpreview
+boolean isDevPreview() {
+  String[] candidates = {
+    sketchPath() + "/.devpreview",
+    sketchPath() + "/../.devpreview",
+    System.getProperty("user.dir") + "/.devpreview"
+  };
+  for (String path : candidates) {
+    if (new java.io.File(path).exists()) return true;
+  }
+  return false;
+}
+
+void saveDevPreview() {
+  if (isDevPreview() && frameCount % 300 == 1) saveFrame("/tmp/vis_preview.png");
+}
+
 void setSongToVisualize() {
   logToStdout("Current song: " + config.SONG_TO_VISUALIZE);
   logToStdout("sketchPath() = " + sketchPath());
@@ -125,7 +145,7 @@ void setSongToVisualize() {
         if (new java.io.File(devSongPath).exists()) {
           config.SONG_TO_VISUALIZE = devSongPath;
           config.SONG_NAME = getSongNameFromFilePath(devSongPath, config.OS_TYPE);
-          config.STATE = 1;
+          config.STATE = SCENE_ORIGINAL;
           logToStdout("Dev song: " + config.SONG_TO_VISUALIZE);
           return;
         }
@@ -138,7 +158,7 @@ void setSongToVisualize() {
       config.currentSongIndex = (int) random(config.songList.size());
       config.SONG_TO_VISUALIZE = config.songList.get(config.currentSongIndex);
       logToStdout("Random song selected: " + config.SONG_TO_VISUALIZE);
-      config.STATE = 1;
+      config.STATE = SCENE_ORIGINAL;
       config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
       return;
     }
@@ -166,7 +186,7 @@ void setSongToVisualize() {
       config.currentSongIndex = (int) random(config.songList.size());
       config.SONG_TO_VISUALIZE = config.songList.get(config.currentSongIndex);
       logToStdout("Random song selected: " + config.SONG_TO_VISUALIZE);
-      config.STATE = 1;
+      config.STATE = SCENE_ORIGINAL;
       config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
       return;
     }
@@ -178,7 +198,7 @@ void setSongToVisualize() {
   while (config.SONG_TO_VISUALIZE == "") {
     delay(1);
   }
-  config.STATE = 1;
+  config.STATE = SCENE_ORIGINAL;
   logToStdout("SONG TO VISUALIZE: " + config.SONG_TO_VISUALIZE);
   config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
 }
@@ -345,6 +365,17 @@ void setup() {
   scenes[30] = new FluidSimScene();
   scenes[31] = new HourglassScene();
   scenes[32] = new SacredGeometryScene();
+  scenes[33] = new MathWaveScene();
+  scenes[34] = new TorusKnotScene();
+  scenes[35] = new RoseCurveScene();
+  scenes[36] = new SriYantraScene();
+  scenes[37] = new NetOfBeingScene();
+  scenes[38] = new PsychedelicEyeScene();
+  scenes[39] = new CosmicLatticeScene();
+  scenes[40] = new Original3DScene();
+  scenes[41] = new DotMandalaScene();
+  scenes[42] = new MerkabaStarScene();
+  scenes[43] = new PentagonalVortexScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
@@ -355,11 +386,9 @@ void setup() {
     println("[SMOKE TEST] Runner initialised — starting on next draw()");
   }
 
-  // Initial lifecycle trigger (skipped in smoke test — runner manages this)
-  previousState = config.STATE;
-  if (!SMOKE_TEST_MODE) scenes[config.STATE].onEnter();
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
+  // Must be resolved BEFORE onEnter() so the correct scene receives the call.
   // e.g.  echo 6 > Music_Visualizer_CK/.devscene
   try {
     java.io.File devScene = new java.io.File(sketchPath(".devscene"));
@@ -368,6 +397,10 @@ void setup() {
       config.STATE = Integer.parseInt(raw);
     }
   } catch (Exception e) { /* ignore — missing or malformed file */ }
+
+  // Initial lifecycle trigger (skipped in smoke test — runner manages this)
+  previousState = config.STATE;
+  if (!SMOKE_TEST_MODE) scenes[config.STATE].onEnter();
   // load Halo 3 emblem used as reference for colors and texture
   h3_emblem = loadImage("../media/h3_emblem.jpg");
 
@@ -582,11 +615,39 @@ public void getUserInput() {
   }
 }
 // ── Active scene list ─────────────────────────────────────────────────────────
-// Only these scenes are reachable via LB/RB cycling. Scenes 3 and 9 are kept
-// in the codebase but excluded from rotation for now.
 // Fan-favourite scenes, in display order. Only these are reachable via
-// LB/RB cycling or keyboard number keys. Add a scene number here to re-enable it.
-final int[] SCENE_ORDER = {1, 28, 29, 4, 6, 25, 7, 13, 14, 17, 18, 19, 23, 24, 26, 27, 31, 32};
+// LB/RB cycling or keyboard number keys. Add a SceneIds constant to re-enable.
+// Scenes 3 (SHAPES_3D) and 9 (HALO2_LOGO) are kept in code but excluded for now.
+final int[] SCENE_ORDER = {
+  SCENE_ORIGINAL,
+  SCENE_MAZE_PUZZLE,
+  SCENE_LISSAJOUS_KNOT,
+  SCENE_CATS_CRADLE,
+  SCENE_TABLE_TENNIS,
+  SCENE_TABLE_TENNIS_3D,
+  SCENE_PRISM_CODEX,
+  SCENE_GRAVITY_STRINGS,
+  SCENE_NEURAL_WEAVE,
+  SCENE_FRACTAL,
+  SCENE_SHADER,
+  SCENE_WORM,
+  SCENE_RECURSIVE_MANDALA,
+  SCENE_KALEIDOSCOPE,
+  SCENE_VOID_BLOOM,
+  SCENE_CIRCUIT_MAZE,
+  SCENE_HOURGLASS,
+  SCENE_SACRED_GEOMETRY,
+  SCENE_MATH_WAVE,
+  SCENE_TORUS_KNOT,
+  SCENE_ROSE_CURVE,
+  SCENE_SRI_YANTRA,
+  SCENE_NET_OF_BEING,
+  SCENE_PSYCHEDELIC_EYE,
+  SCENE_COSMIC_LATTICE,
+  SCENE_DOT_MANDALA,
+  SCENE_MERKABA_STAR,
+  SCENE_PENTAGONAL_VORTEX
+};
 
 int _sceneOrderIndex(int state) {
   for (int i = 0; i < SCENE_ORDER.length; i++) {
@@ -607,6 +668,14 @@ PImage crossfadeSnapshot  = null;
 int    crossfadeFrame     = 0;
 final int CROSSFADE_DURATION = 45; // frames  (~0.75 s at 60 fps)
 
+// ── Beat-synced scene queue ───────────────────────────────────────────────────
+// Scene changes requested via switchScene() are held here and executed on the
+// next beat onset. If no beat fires within MAX_BEAT_WAIT logical frames (~1 s)
+// the switch executes anyway so the UI never feels unresponsive.
+int pendingScene     = -1;
+int pendingFrameCount = 0;
+final int MAX_BEAT_WAIT = 60; // logical frames before giving up on beat timing
+
 void switchScene(int newState) {
   if (SMOKE_TEST_MODE) return; // runner manages scene state directly
   // Allow any scene in the switcher's active order (or direct calls from switcher itself)
@@ -615,9 +684,19 @@ void switchScene(int newState) {
     if (newState < 0 || newState >= SCENE_COUNT) return;
   }
   if (config.STATE == newState) return;
-  crossfadeSnapshot = get();        // freeze the last frame of the current scene
+  // Queue for beat-timed execution
+  pendingScene      = newState;
+  pendingFrameCount = 0;
+}
+
+// Execute a queued scene switch — captures snapshot and updates state.
+void commitPendingScene() {
+  if (pendingScene < 0) return;
+  crossfadeSnapshot = sceneBuffer.get();  // last frame of outgoing scene
   crossfadeFrame    = 0;
-  config.STATE      = newState;
+  config.STATE      = pendingScene;
+  pendingScene      = -1;
+  pendingFrameCount = 0;
 }
 
 // Direct switch called from SceneSwitcher — bypasses rotation guard
@@ -649,6 +728,7 @@ void draw() {
   }
   // ────────────────────────────────────────────────────────────────────────
   if (frameCount % 60 == 0) println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
+  saveDevPreview();
   
   // 1. Scene Lifecycle Management
   if (config.STATE != previousState) {
@@ -720,6 +800,15 @@ void draw() {
     }
   } // End Fixed Timestep
 
+  // ── Beat-timed pending scene commit ─────────────────────────────────────
+  // Fires once per rendered frame so pendingFrameCount tracks logical frames.
+  if (pendingScene >= 0 && didRenderScene) {
+    pendingFrameCount++;
+    if (analyzer.isBeat || pendingFrameCount >= MAX_BEAT_WAIT) {
+      commitPendingScene();
+    }
+  }
+
   // 4. Post-Processing & Final Output (Runs Unlocked at >144FPS)
   blendMode(REPLACE); // Massive Performance improvement for laptops
   if (config.BLOOM_ENABLED) {
@@ -786,7 +875,7 @@ void drawMetadataOverlay() {
     "Logical Frames  : " + config.logicalFrameCount,
     "",
     "=== AUDIO METADATA ===",
-    "Song Name       : " + config.SONG_NAME,
+    "Song Name       : " + (config.SONG_NAME.length() > 20 ? config.SONG_NAME.substring(0, 20) + "\u2026" : config.SONG_NAME),
     "Playing         : " + config.SONG_PLAYING,
     "Controller Match: " + config.USING_CONTROLLER
   };
@@ -821,6 +910,30 @@ void drawMetadataOverlay() {
     ty += lineH;
   }
   popStyle();
+}
+
+// ── Standard top-left matrix-green HUD used by all scenes ──────────────────
+// title : scene name (first row, bright green)
+// lines : info/control rows (dim green)
+void sceneHUD(PGraphics pg, String title, String[] lines) {
+  pg.pushStyle();
+  float ts = 11 * uiScale(), lh = ts * 1.35, mg = 6 * uiScale();
+  float boxW = 390 * uiScale();
+  float boxH = mg * 2 + (1 + lines.length) * lh;
+  pg.textFont(monoFont);
+  pg.noStroke(); pg.rectMode(CORNER);
+  pg.fill(0, 0, 0, 200);
+  pg.rect(8, 8, boxW, boxH, 4 * uiScale());
+  pg.stroke(0, 220, 80, 160); pg.strokeWeight(1.5 * uiScale()); pg.noFill();
+  pg.rect(8, 8, boxW, boxH, 4 * uiScale());
+  pg.textAlign(LEFT, TOP); pg.textSize(ts);
+  pg.fill(0, 255, 120);
+  pg.text("== " + title + " ==", 14, 8 + mg);
+  pg.fill(160, 255, 160);
+  for (int i = 0; i < lines.length; i++) {
+    pg.text(lines[i], 14, 8 + mg + (i + 1) * lh);
+  }
+  pg.popStyle();
 }
 
 // Generic right-side terminal HUD — used by worm scenes (and any future scene).
@@ -891,7 +1004,7 @@ void drawCodeOverlay(String[] lines) {
 
 void addFPSToTitleBar() {
   if (frameCount % 100 == 0) {
-    surface.setTitle("fps: " + int(frameRate) + " | scene: " + config.STATE
+    surface.setTitle("Music Visualizer CK | fps: " + int(frameRate) + " | scene: " + config.STATE
       + " | " + config.SONG_TO_VISUALIZE);
   }
 }

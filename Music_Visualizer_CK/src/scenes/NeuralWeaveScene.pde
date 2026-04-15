@@ -291,22 +291,13 @@ class NeuralWeaveScene implements IScene {
 
     String[] palNames = {"Nebula", "Solar", "Glacier", "Mono"};
     String[] growthNames = {"Mesh", "Synapse web", "Tissue bloom"};
-    pg.pushStyle();
-    float ts = 11 * uiScale(), lh = ts * 1.28, mg = 5 * uiScale();
-    pg.fill(0, 165); pg.noStroke(); pg.rectMode(CORNER);
-    pg.rect(8, 8, 360 * uiScale(), mg + lh * 7);
-    pg.fill(180, 230, 255); pg.textSize(ts); pg.textAlign(LEFT, TOP);
-    pg.text("Neural Weave  (" + cols + "\u00d7" + rows + ")", 12, 8 + mg);
-    pg.fill(200, 215, 235);
-    pg.text("Growth: " + growthNames[growthMode] + "  (B / G)",                    12, 8 + mg + lh);
-    pg.text("Palette: " + palNames[palette] + "  (K | pad Y)   Vesicles: "
-         + (vesicles ? "on" : "off") + "  (V)",                                  12, 8 + mg + lh * 2);
-    pg.text("LT metabolism " + nf(metabolism, 1, 2) + "   RT tech " + nf(techInject, 1, 2), 12, 8 + mg + lh * 3);
-    pg.text("Lab: " + (labMode ? "on" : "off") + "  (E | pad X)   Edge: "
-         + nf(edgeGain, 1, 2) + "  (- / =)",                                      12, 8 + mg + lh * 4);
-    pg.text("L3 reset view   R3 reshuffle bridges",                                  12, 8 + mg + lh * 5);
-    pg.text("Ripple " + nf(ripple, 1, 2) + "   [ ] grid",                            12, 8 + mg + lh * 6);
-    pg.popStyle();
+    sceneHUD(pg, "Neural Weave (" + cols + "\u00d7" + rows + ")", new String[]{
+      "Growth: " + growthNames[growthMode] + "  (B/G)   Palette: " + palNames[palette] + "  (K)",
+      "Vesicles: " + (vesicles ? "on" : "off") + "  (V)   Lab: " + (labMode ? "on" : "off") + "  (E)",
+      "LT metabolism " + nf(metabolism,1,2) + "   RT tech " + nf(techInject,1,2),
+      "Edge: " + nf(edgeGain,1,2) + "  (-/=)   Ripple: " + nf(ripple,1,2) + "   [ ] grid",
+      "L3 reset view   R3 reshuffle bridges"
+    });
   }
 
   void edgeSeg(PGraphics pg, float x1, float y1, float x2, float y2,

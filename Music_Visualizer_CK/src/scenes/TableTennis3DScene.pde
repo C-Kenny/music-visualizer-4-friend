@@ -32,6 +32,14 @@ class TableTennis3DScene extends TableTennisScene {
   float ballVZ     = 0;
   int   prevRallyCount = 0;
 
+  // ── Out-of-bounds 2-bounce rule ───────────────────────────────────────────
+  // Ball can go past the paddle. Only scored when it bounces twice on the floor
+  // or exits through the back wall of the enclosure (ENV_HW).
+  boolean outOfBounds    = false;   // ball has passed a paddle edge
+  boolean outLeftScored  = false;   // if true → left scored (ball went right); if false → right scored
+  int     outBounceCount = 0;       // floor bounces since ball passed paddle
+  float   floorY         = 0;       // set on onEnter (tableY + ENV_BOT_OFFSET)
+
   // ── paddle Z positions ────────────────────────────────────────────────────
   float leftPaddleZ  = 0;
   float rightPaddleZ = 0;
@@ -68,6 +76,58 @@ class TableTennis3DScene extends TableTennisScene {
     super.onEnter();
     playerTargetY = tableY - 120;
     playerTargetZ = 0;
+    floorY = tableY + ENV_BOT_OFFSET;
+  }
+
+  // ── 2-bounce escape rule ──────────────────────────────────────────────────
+  // Overrides the parent's instant-score so the ball can travel past the paddle
+  // into the enclosure and only scores when it bounces twice on the floor or
+  // exits through the back wall.
+  void checkEscape() {
+    if (!outOfBounds) {
+      if (ballX < leftHomeX - 80) {
+        outOfBounds   = true;
+        outLeftScored = false;  // right scores (ball went off left)
+        outBounceCount = 0;
+      } else if (ballX > rightHomeX + 80) {
+        outOfBounds   = true;
+        outLeftScored = true;   // left scores (ball went off right)
+        outBounceCount = 0;
+      }
+      return;
+    }
+
+    float cx     = width / 2.0;
+    float backWallL = cx - ENV_HW;   // X position of left enclosure wall
+    float backWallR = cx + ENV_HW;   // X position of right enclosure wall
+
+    // Back wall exit → immediate point
+    if (ballX < backWallL || ballX > backWallR) {
+      outOfBounds = false;
+      awardPoint(outLeftScored);
+      return;
+    }
+
+    // Back wall deflection (bounce off wall instead of exiting)
+    if (ballX <= backWallL + BALL_RADIUS && ballVX < 0) {
+      ballX  = backWallL + BALL_RADIUS;
+      ballVX *= -0.55;
+    } else if (ballX >= backWallR - BALL_RADIUS && ballVX > 0) {
+      ballX  = backWallR - BALL_RADIUS;
+      ballVX *= -0.55;
+    }
+
+    // Floor bounce tracking (floor is below the table surface)
+    if (ballY + BALL_RADIUS >= floorY && ballVY > 0) {
+      ballY  = floorY - BALL_RADIUS;
+      ballVY *= -0.50;
+      ballVX *= 0.80;
+      outBounceCount++;
+      if (outBounceCount >= 2) {
+        outOfBounds = false;
+        awardPoint(outLeftScored);
+      }
+    }
   }
 
   // ── lazy shader/buffer init ───────────────────────────────────────────────
@@ -275,6 +335,13 @@ class TableTennis3DScene extends TableTennisScene {
     if (key == 'k' || key == 'K') playerTargetY += ySpeed;
     if (key == 'j' || key == 'J') playerTargetZ -= zSpeed;
     if (key == 'm' || key == 'M') playerTargetZ += zSpeed;
+  }
+
+  // Reset out-of-bounds state on each serve
+  void serve() {
+    outOfBounds    = false;
+    outBounceCount = 0;
+    super.serve();
   }
 
   void cyclePlayer() {
@@ -741,24 +808,13 @@ class TableTennis3DScene extends TableTennisScene {
   void drawHUD(PGraphics pg) {
     String sp = spin > 0.05 ? "topspin" : spin < -0.05 ? "backspin" : "flat";
     String[] playerLabels = {"AI vs AI", "YOU (left/red)", "YOU (right/blue)"};
-    pg.pushStyle();
-    float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
-    pg.fill(0, 150); pg.noStroke(); pg.rectMode(CORNER);
-    pg.rect(8, 8, 270 * uiScale(), mg + lh * 8);
-    pg.fill(255); pg.textSize(ts); pg.textAlign(LEFT, TOP);
-    pg.text("Table Tennis 3D",                                   12, 8 + mg);
-    pg.text("Spin: " + sp + " (" + nf(spin,1,2) + ")",           12, 8 + mg + lh);
-    pg.text("Gravity: " + nf(gravity,1,2) + "  (+/-)",            12, 8 + mg + lh*2);
-    pg.text("Magnus: " + nf(magnusStrength,1,3) + "  ([/])",      12, 8 + mg + lh*3);
-    pg.text("Speed: " + nf(speedMult,1,1) + "x  (,/.)",           12, 8 + mg + lh*4);
-    pg.text("Cam: WASD/EZ or R-stick",                            12, 8 + mg + lh*5);
-    pg.fill(80, 255, 180);
-    pg.text("FX: " + STYLE_NAMES[shaderStyle] + "  (F / D-pad)",  12, 8 + mg + lh*6);
-    // Player status — highlight when human-controlled
-    if (playerSide == 0) { pg.fill(180, 180, 180); }
-    else                  { pg.fill(255, 220, 60); }
-    pg.text("Player: " + playerLabels[playerSide] + "  (V / B)",  12, 8 + mg + lh*7);
-    pg.popStyle();
+    sceneHUD(pg, "Table Tennis 3D", new String[]{
+      "Spin: " + sp + " (" + nf(spin,1,2) + ")",
+      "Gravity: " + nf(gravity,1,2) + "  (+/-)   Magnus: " + nf(magnusStrength,1,3) + "  ([/])",
+      "Speed: " + nf(speedMult,1,1) + "x  (,/.)   Cam: WASD/EZ or R-stick",
+      "FX: " + STYLE_NAMES[shaderStyle] + "  (F / D-pad)",
+      "Player: " + playerLabels[playerSide] + "  (V / B btn)"
+    });
   }
 
   ControllerLayout[] getControllerLayout() {

@@ -18,6 +18,7 @@ Guidance for Claude Code (claude.ai/code) when working with this repo.
 - `.devmode` — Skip file picker, use random/default song
 - `.devsong` — Override song path
 - `.devscene` — Override starting scene number (e.g. `10`)
+- `.devpreview` — Save frame to `/tmp/vis_preview.png` every 5s (for visual verification). **Never leave active** — `saveFrame()` blocks the render thread and causes visible stuttering.
 
 No automated tests. Manual testing = run sketch, verify scene visually.
 
