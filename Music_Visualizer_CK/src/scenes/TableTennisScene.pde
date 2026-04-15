@@ -355,15 +355,17 @@ class TableTennisScene implements IScene {
       if (inServeDrop) { trail.add(new PVector(ballX, ballY)); if (trail.size() > MAX_TRAIL) trail.remove(0); return; }
     }
 
-    // Ball escaped past a paddle — award point
-    if (ballX < leftHomeX - 80) {
-      awardPoint(false);  // right wins
-    } else if (ballX > rightHomeX + 80) {
-      awardPoint(true);   // left wins
-    }
+    // Ball escaped past a paddle — virtual so 3D subclass can override
+    checkEscape();
 
     trail.add(new PVector(ballX, ballY));
     if (trail.size() > MAX_TRAIL) trail.remove(0);
+  }
+
+  // Overridable escape check. Default: immediate point at paddle bounds.
+  void checkEscape() {
+    if (ballX < leftHomeX - 80)  awardPoint(false);   // right wins
+    else if (ballX > rightHomeX + 80) awardPoint(true);  // left wins
   }
 
   void onTableBounce() {
@@ -754,17 +756,11 @@ class TableTennisScene implements IScene {
 
   void drawHUD(PGraphics pg) {
     String sp = spin > 0.05 ? "topspin" : spin < -0.05 ? "backspin" : "flat";
-    pg.pushStyle();
-      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 4 * uiScale();
-      pg.fill(0, 150); pg.noStroke(); pg.rectMode(CORNER);
-      pg.rect(8, 8, 240 * uiScale(), mg + lh * 5);
-      pg.fill(255); pg.textSize(ts); pg.textAlign(LEFT, TOP);
-      pg.text("Table Tennis",                                   12, 8 + mg);
-      pg.text("Spin: " + sp + " (" + nf(spin,1,2) + ")",       12, 8 + mg + lh);
-      pg.text("Gravity: " + nf(gravity,1,2) + "  (+/-)",        12, 8 + mg + lh*2);
-      pg.text("Magnus: " + nf(magnusStrength,1,3) + "  ([/])",  12, 8 + mg + lh*3);
-      pg.text("Speed: " + nf(speedMult,1,1) + "x  (,/.)",       12, 8 + mg + lh*4);
-    pg.popStyle();
+    sceneHUD(pg, "Table Tennis", new String[]{
+      "Spin: " + sp + " (" + nf(spin,1,2) + ")",
+      "Gravity: " + nf(gravity,1,2) + "  (+/-)   Magnus: " + nf(magnusStrength,1,3) + "  ([/])",
+      "Speed: " + nf(speedMult,1,1) + "x  (,/.)"
+    });
   }
 
   // ── keyboard tuning ───────────────────────────────────────────────────────

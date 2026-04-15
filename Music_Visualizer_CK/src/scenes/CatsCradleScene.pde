@@ -118,16 +118,10 @@ class CatsCradleScene implements IScene {
 
     drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
 
-    // ── top-left HUD ──────────────────────────────────────────────────────
-    pg.pushStyle();
-      float ts = 11 * uiScale(), lh = ts * 1.3, mg = 6 * uiScale();
-      pg.fill(0, 140); pg.noStroke(); pg.rectMode(CORNER);
-      pg.rect(8, 8, 310 * uiScale(), mg * 2 + lh * 2);
-      pg.fill(255, 220, 120); pg.textSize(ts); pg.textAlign(LEFT, TOP);
-      pg.text("Cat's Cradle  (anchors: " + numAnchors + "  speed: " + nf(rotationSpeed, 1, 4) + ")", 12, 8 + mg);
-      pg.fill(200, 200, 200);
-      pg.text("L \u2195 rotation speed   R \u2194 anchor count   A beat pulse", 12, 8 + mg + lh);
-    pg.popStyle();
+    sceneHUD(pg, "Cat's Cradle", new String[]{
+      "anchors: " + numAnchors + "  speed: " + nf(rotationSpeed, 1, 4),
+      "L \u2195 rotation speed   R \u2194 anchor count   A beat pulse"
+    });
   }
 
   // Draw one vibrating string between (x1,y1) and (x2,y2).

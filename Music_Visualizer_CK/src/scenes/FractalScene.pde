@@ -170,23 +170,12 @@ class FractalScene implements IScene {
   }
 
   void drawHud(PGraphics pg, float low, float mid, float high) {
-    pg.pushStyle();
-      float ts = 11 * uiScale();
-      float lh = ts * 1.3;
-      pg.fill(0, 125);
-      pg.noStroke();
-      pg.rectMode(CORNER);
-      pg.rect(8, 8, 380 * uiScale(), 8 + lh * 6);
-      pg.fill(255);
-      pg.textSize(ts);
-      pg.textAlign(LEFT, TOP);
-      pg.text("Scene: Recursive Fractal", 12, 12);
-      pg.text("low / mid / high (norm): " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh);
-      pg.text("zoom lvl: " + nf(globalZoom, 1, 2) + "  rotate speed: " + nf(rotationSpeed, 1, 3), 12, 12 + lh * 2);
-      pg.text("angle base: " + nf(degrees(baseAngle), 1, 1) + "  symmetries: " + symmetries, 12, 12 + lh * 3);
-      pg.text("palette: " + paletteNames[paletteIndex], 12, 12 + lh * 4);
-      pg.text("A symmetries  Y palette  X reset zoom  [ ] zoom  -/= rotate", 12, 12 + lh * 5);
-    pg.popStyle();
+    sceneHUD(pg, "Recursive Fractal", new String[]{
+      "low / mid / high: " + nf(low,1,2) + " / " + nf(mid,1,2) + " / " + nf(high,1,2),
+      "zoom: " + nf(globalZoom,1,2) + "  rotate: " + nf(rotationSpeed,1,3) + "  angle: " + nf(degrees(baseAngle),1,1) + "\u00b0",
+      "symmetries: " + symmetries + "  palette: " + paletteNames[paletteIndex],
+      "A sym  Y palette  X reset  [ ] zoom  -/= rotate"
+    });
   }
   void onEnter() {
     globalZoom = 0;

@@ -13,7 +13,7 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 34;
+final int SCENE_COUNT = 44;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -366,6 +366,16 @@ void setup() {
   scenes[31] = new HourglassScene();
   scenes[32] = new SacredGeometryScene();
   scenes[33] = new MathWaveScene();
+  scenes[34] = new TorusKnotScene();
+  scenes[35] = new RoseCurveScene();
+  scenes[36] = new SriYantraScene();
+  scenes[37] = new NetOfBeingScene();
+  scenes[38] = new PsychedelicEyeScene();
+  scenes[39] = new CosmicLatticeScene();
+  scenes[40] = new Original3DScene();
+  scenes[41] = new DotMandalaScene();
+  scenes[42] = new MerkabaStarScene();
+  scenes[43] = new PentagonalVortexScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
@@ -627,7 +637,16 @@ final int[] SCENE_ORDER = {
   SCENE_CIRCUIT_MAZE,
   SCENE_HOURGLASS,
   SCENE_SACRED_GEOMETRY,
-  SCENE_MATH_WAVE
+  SCENE_MATH_WAVE,
+  SCENE_TORUS_KNOT,
+  SCENE_ROSE_CURVE,
+  SCENE_SRI_YANTRA,
+  SCENE_NET_OF_BEING,
+  SCENE_PSYCHEDELIC_EYE,
+  SCENE_COSMIC_LATTICE,
+  SCENE_DOT_MANDALA,
+  SCENE_MERKABA_STAR,
+  SCENE_PENTAGONAL_VORTEX
 };
 
 int _sceneOrderIndex(int state) {
@@ -649,6 +668,14 @@ PImage crossfadeSnapshot  = null;
 int    crossfadeFrame     = 0;
 final int CROSSFADE_DURATION = 45; // frames  (~0.75 s at 60 fps)
 
+// ── Beat-synced scene queue ───────────────────────────────────────────────────
+// Scene changes requested via switchScene() are held here and executed on the
+// next beat onset. If no beat fires within MAX_BEAT_WAIT logical frames (~1 s)
+// the switch executes anyway so the UI never feels unresponsive.
+int pendingScene     = -1;
+int pendingFrameCount = 0;
+final int MAX_BEAT_WAIT = 60; // logical frames before giving up on beat timing
+
 void switchScene(int newState) {
   if (SMOKE_TEST_MODE) return; // runner manages scene state directly
   // Allow any scene in the switcher's active order (or direct calls from switcher itself)
@@ -657,9 +684,19 @@ void switchScene(int newState) {
     if (newState < 0 || newState >= SCENE_COUNT) return;
   }
   if (config.STATE == newState) return;
-  crossfadeSnapshot = get();        // freeze the last frame of the current scene
+  // Queue for beat-timed execution
+  pendingScene      = newState;
+  pendingFrameCount = 0;
+}
+
+// Execute a queued scene switch — captures snapshot and updates state.
+void commitPendingScene() {
+  if (pendingScene < 0) return;
+  crossfadeSnapshot = sceneBuffer.get();  // last frame of outgoing scene
   crossfadeFrame    = 0;
-  config.STATE      = newState;
+  config.STATE      = pendingScene;
+  pendingScene      = -1;
+  pendingFrameCount = 0;
 }
 
 // Direct switch called from SceneSwitcher — bypasses rotation guard
@@ -763,6 +800,15 @@ void draw() {
     }
   } // End Fixed Timestep
 
+  // ── Beat-timed pending scene commit ─────────────────────────────────────
+  // Fires once per rendered frame so pendingFrameCount tracks logical frames.
+  if (pendingScene >= 0 && didRenderScene) {
+    pendingFrameCount++;
+    if (analyzer.isBeat || pendingFrameCount >= MAX_BEAT_WAIT) {
+      commitPendingScene();
+    }
+  }
+
   // 4. Post-Processing & Final Output (Runs Unlocked at >144FPS)
   blendMode(REPLACE); // Massive Performance improvement for laptops
   if (config.BLOOM_ENABLED) {
@@ -829,7 +875,7 @@ void drawMetadataOverlay() {
     "Logical Frames  : " + config.logicalFrameCount,
     "",
     "=== AUDIO METADATA ===",
-    "Song Name       : " + config.SONG_NAME,
+    "Song Name       : " + (config.SONG_NAME.length() > 20 ? config.SONG_NAME.substring(0, 20) + "\u2026" : config.SONG_NAME),
     "Playing         : " + config.SONG_PLAYING,
     "Controller Match: " + config.USING_CONTROLLER
   };
@@ -864,6 +910,30 @@ void drawMetadataOverlay() {
     ty += lineH;
   }
   popStyle();
+}
+
+// ── Standard top-left matrix-green HUD used by all scenes ──────────────────
+// title : scene name (first row, bright green)
+// lines : info/control rows (dim green)
+void sceneHUD(PGraphics pg, String title, String[] lines) {
+  pg.pushStyle();
+  float ts = 11 * uiScale(), lh = ts * 1.35, mg = 6 * uiScale();
+  float boxW = 390 * uiScale();
+  float boxH = mg * 2 + (1 + lines.length) * lh;
+  pg.textFont(monoFont);
+  pg.noStroke(); pg.rectMode(CORNER);
+  pg.fill(0, 0, 0, 200);
+  pg.rect(8, 8, boxW, boxH, 4 * uiScale());
+  pg.stroke(0, 220, 80, 160); pg.strokeWeight(1.5 * uiScale()); pg.noFill();
+  pg.rect(8, 8, boxW, boxH, 4 * uiScale());
+  pg.textAlign(LEFT, TOP); pg.textSize(ts);
+  pg.fill(0, 255, 120);
+  pg.text("== " + title + " ==", 14, 8 + mg);
+  pg.fill(160, 255, 160);
+  for (int i = 0; i < lines.length; i++) {
+    pg.text(lines[i], 14, 8 + mg + (i + 1) * lh);
+  }
+  pg.popStyle();
 }
 
 // Generic right-side terminal HUD — used by worm scenes (and any future scene).

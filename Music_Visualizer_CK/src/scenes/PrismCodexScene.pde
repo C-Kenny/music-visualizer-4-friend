@@ -216,23 +216,10 @@ class PrismCodexScene implements IScene {
   }
 
   void drawHud(PGraphics pg, float lowEnergy, float midEnergy, float highEnergy, float masterEnergy) {
-    pg.pushStyle();
-      float ts = 11 * uiScale();
-      float lh = ts * 1.3;
-      float margin = 4 * uiScale();
-      pg.fill(0, 125);
-      pg.noStroke();
-      pg.rectMode(CORNER);
-      pg.rect(8, 8, 275 * uiScale(), margin + lh * 5);
-      pg.fill(255);
-      pg.textSize(ts);
-      pg.textAlign(LEFT, TOP);
-      pg.text("Scene: Prism Orbit", 12, 8 + margin);
-      pg.text("low / mid / high: " + nf(lowEnergy, 1, 2) + " / " + nf(midEnergy, 1, 2) + " / " + nf(highEnergy, 1, 2), 12, 8 + margin + lh);
-      pg.text("master energy: " + nf(masterEnergy, 1, 2), 12, 8 + margin + lh * 2);
-      pg.text("beat glow: " + nf(beatGlow, 1, 2), 12, 8 + margin + lh * 3);
-      pg.text("intent: symmetry + signal + soft neon", 12, 8 + margin + lh * 4);
-    pg.popStyle();
+    sceneHUD(pg, "Prism Orbit", new String[]{
+      "low / mid / high: " + nf(lowEnergy,1,2) + " / " + nf(midEnergy,1,2) + " / " + nf(highEnergy,1,2),
+      "master: " + nf(masterEnergy,1,2) + "  beat glow: " + nf(beatGlow,1,2)
+    });
   }
 
   void onEnter() {

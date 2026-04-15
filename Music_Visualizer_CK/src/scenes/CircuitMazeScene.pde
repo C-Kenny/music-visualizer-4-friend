@@ -312,16 +312,11 @@ class CircuitMazeScene implements IScene {
     for (int x = 0; x < cols - 1; x++) for (int y = 0; y < rows; y++) drawGate(pg, rightGates[x][y], padX, padY, stepX, stepY);
     for (int x = 0; x < cols; x++) for (int y = 0; y < rows - 1; y++) drawGate(pg, downGates[x][y], padX, padY, stepX, stepY);
     drawGridNodes(pg, padX, padY, stepX, stepY);
-    pg.pushStyle(); float ts = 11 * uiScale(); float lh = ts * 1.35; pg.fill(0, 165); pg.noStroke(); pg.rectMode(CORNER); pg.rect(10, 10, 360 * uiScale(), lh * 4.2, 8);
-    pg.fill(100, 255, 230); pg.textSize(ts); pg.textAlign(LEFT, TOP); pg.text("Dynamic Circuit Maze: \"" + config.CIRCUIT_TEXT + "\"", 16, 14);
-    pg.fill(200, 255, 230); pg.text("Beat toggles random gates", 16, 14 + lh);
-    pg.text("Complete path: " + (hasCompletePath ? "YES - lamp lit" : "NO"), 16, 14 + lh * 2);
-    if (debugOverrideOpen) {
-      pg.fill(0, 255, 255); pg.text("[FORCE ON OVERRIDE ACTIVE]", 16, 14 + lh * 3);
-    } else {
-      pg.text("Grid size: " + cols + "x" + rows, 16, 14 + lh * 3);
-    }
-    pg.popStyle();
+    sceneHUD(pg, "Circuit Maze: \"" + config.CIRCUIT_TEXT + "\"", new String[]{
+      "Beat toggles random gates   Grid: " + cols + "x" + rows,
+      "Complete path: " + (hasCompletePath ? "YES \u2014 lamp lit" : "NO"),
+      debugOverrideOpen ? "[FORCE ON OVERRIDE ACTIVE]" : "A rebuild  Y force-open toggle"
+    });
   }
 
   void onEnter() { buildCircuit(); }

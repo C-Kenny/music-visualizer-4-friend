@@ -244,34 +244,15 @@ class RecursiveMandalaScene implements IScene {
   // ── HUD ─────────────────────────────────────────────────────────────────────
 
   void drawHUD(PGraphics pg) {
-    pg.pushStyle();
-    float ts = 11 * uiScale(), lh = ts * 1.35;
-    pg.noStroke(); pg.rectMode(CORNER);
-    pg.fill(0, 150);
-    pg.rect(8, 8, 420 * uiScale(), 8 + lh * 8.5);
-    pg.textSize(ts); pg.textAlign(LEFT, TOP);
-    pg.fill(100, 255, 160);
-    pg.text("=== Recursive Mandala ===", 12, 12);
-    pg.fill(180, 255, 200);
-    pg.text("Bass:" + nf(sBass,1,2) + "  Mid:" + nf(sMid,1,2) + "  High:" + nf(sHigh,1,2),
-            12, 12 + lh);
-    pg.text("Arms:" + symmetry +
-            "  Depth:" + maxDepth + " (hard cap " + HARD_MAX_DEPTH + ")" +
-            "  Shrink:" + nf(shrink,1,2),
-            12, 12 + lh * 2);
-    pg.text("Spread:" + nf(degrees(spreadAngle),1,0) + "°" +
-            "  RotSpd:" + nf(rotSpeed,1,3) +
-            "  Zoom:" + nf(zoom,1,2) +
-            "  Drift:" + nf(driftAmp,1,2),
-            12, 12 + lh * 3);
-    pg.text("Palette:" + paletteNames[paletteIdx], 12, 12 + lh * 4);
-    pg.fill(120, 200, 140);
-    pg.text("A arms  B depth  Y palette  X reset", 12, 12 + lh * 5.5);
-    pg.text("L-stick zoom/rot  R-stick spread/shrink  LT slow  RT fast",
-            12, 12 + lh * 6.5);
-    pg.text("d/D depth  [/] shrink  -/= speed  z/Z zoom  m/M drift  c palette",
-            12, 12 + lh * 7.5);
-    pg.popStyle();
+    sceneHUD(pg, "Recursive Mandala", new String[]{
+      "Bass:" + nf(sBass,1,2) + "  Mid:" + nf(sMid,1,2) + "  High:" + nf(sHigh,1,2),
+      "Arms:" + symmetry + "  Depth:" + maxDepth + " (cap " + HARD_MAX_DEPTH + ")  Shrink:" + nf(shrink,1,2),
+      "Spread:" + nf(degrees(spreadAngle),1,0) + "\u00b0  RotSpd:" + nf(rotSpeed,1,3) + "  Zoom:" + nf(zoom,1,2) + "  Drift:" + nf(driftAmp,1,2),
+      "Palette: " + paletteNames[paletteIdx],
+      "A arms  B depth  Y palette  X reset",
+      "L-stick zoom/rot  R-stick spread/shrink  LT/RT speed",
+      "d/D depth  [/] shrink  -/= spd  z/Z zoom  m/M drift  c palette"
+    });
   }
 
   // ── Controller ──────────────────────────────────────────────────────────────

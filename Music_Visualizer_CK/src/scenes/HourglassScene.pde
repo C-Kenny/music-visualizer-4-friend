@@ -436,23 +436,12 @@ class HourglassScene implements IScene {
   // ── HUD ───────────────────────────────────────────────────────────────────
 
   void drawHUD(PGraphics canvas) {
-    canvas.pushStyle();
     canvas.hint(PConstants.DISABLE_DEPTH_TEST);
-    float ts = 11 * uiScale();
-    canvas.fill(200, 255, 230);
-    canvas.textSize(ts);
-    canvas.textAlign(LEFT, TOP);
-    canvas.text("Hourglass", 20, 20);
-    canvas.fill(color(200, 200, 200));
-    canvas.text("Fill: " + nf(sandFraction * 100, 0, 1) + "%", 20, 20 + ts * 1.5f);
-    canvas.fill(color(150, 200, 255));
-    canvas.text("Sky: " + SKYBOX_PATHS[skyboxIndex].split("/")[0] + "  [ ] to cycle", 20, 20 + ts * 3.0f);
-    if (dropImminence > 0.01) {
-      canvas.fill(255, 100, 100);
-      canvas.text("DROP: " + nf(dropImminence * 100, 0, 0) + "%", 20, 20 + ts * 4.5f);
-    }
+    sceneHUD(canvas, "Hourglass", new String[]{
+      "Fill: " + nf(sandFraction * 100, 0, 1) + "%   Sky: " + SKYBOX_PATHS[skyboxIndex].split("/")[0] + "  [ ] to cycle",
+      dropImminence > 0.01 ? "DROP INCOMING: " + nf(dropImminence * 100, 0, 0) + "%" : "bass / mid / drop prediction active"
+    });
     canvas.hint(PConstants.ENABLE_DEPTH_TEST);
-    canvas.popStyle();
   }
 
   // ── Beat timeline strip ────────────────────────────────────────────────────
