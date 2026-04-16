@@ -1,0 +1,129 @@
+
+(process:168483): pxbackend-WARNING **: 20:28:36.620: Could not query proxy: GDBus.Error:org.freedesktop.portal.Error.NotAllowed: This call is not available inside the sandbox
+[SMOKE TEST] Detected — will exercise all 46 scenes
+=======================================================
+  GameControlPlus V1.2.2 created by
+  Christian Riekoff and Peter Lager
+=======================================================
+Linux plugin claims to have found 13 controllers
+[Controller] Connected via matched-silent: Microsoft X-Box 360 pad 0
+=== Controller matched: Microsoft X-Box 360 pad 0 ===
+  SLIDER: 'x'
+  SLIDER: 'y'
+  SLIDER: 'z'
+  SLIDER: 'rx'
+  SLIDER: 'ry'
+  SLIDER: 'rz'
+  BUTTON: 'A'
+  BUTTON: 'B'
+  BUTTON: 'X'
+  BUTTON: 'Y'
+  BUTTON: 'Left Thumb'
+  BUTTON: 'Right Thumb'
+  BUTTON: 'Select'
+  BUTTON: 'Unknown'
+  BUTTON: 'Mode'
+  BUTTON: 'Left Thumb 3'
+  BUTTON: 'Right Thumb 3'
+  HAT: 'cooliehat: pov'
+==== JavaSound Minim Error ====
+==== Don't know the ID3 code APIC
+
+==== JavaSound Minim Error ====
+==== Don't know the ID3 code APIC
+
+Successfully loaded the GPU Milkdrop Shader!
+discoverSkyboxNames: found 26 skyboxes in /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/
+[SMOKE TEST] Runner initialised — starting on next draw()
+The file "../media/h3_emblem.jpg" is missing or inaccessible, make sure the URL is valid or that the file has been added to your sketch and is readable.
+[SMOKE] scene 1 (OriginalScene) done — failures so far: 0
+[SMOKE] scene 28 (MazePuzzleScene) done — failures so far: 0
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/cloudy_01/
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/cloudy_02/
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/cloudy_01/
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/cloudy_02/
+[SMOKE] scene 29 (LissajousKnotScene) done — failures so far: 0
+[SMOKE] scene 4 (CatsCradleScene) done — failures so far: 0
+[SMOKE] scene 6 (TableTennisScene) done — failures so far: 0
+[SMOKE] scene 25 (TableTennis3DScene) done — failures so far: 0
+[SMOKE] scene 7 (PrismCodexScene) done — failures so far: 0
+[SMOKE] scene 13 (GravityStringsScene) done — failures so far: 0
+[SMOKE] scene 14 (NeuralWeaveScene) done — failures so far: 0
+[SMOKE] scene 17 (FractalScene) done — failures so far: 0
+Successfully loaded the GPU Milkdrop Shader!
+[SMOKE] scene 18 (ShaderScene) done — failures so far: 0
+[SMOKE] scene 19 (WormScene) done — failures so far: 0
+[SMOKE] scene 23 (RecursiveMandalaScene) done — failures so far: 0
+[SMOKE] scene 24 (KaleidoscopeScene) done — failures so far: 0
+[SMOKE] scene 26 (VoidBloomScene) done — failures so far: 0
+[SMOKE] scene 27 (CircuitMazeScene) done — failures so far: 0
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/cloudy_01/
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/cloudy_02/
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/cloudy_01/
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/cloudy_02/
+[SMOKE] scene 31 (HourglassScene) done — failures so far: 0
+[SMOKE] scene 32 (SacredGeometryScene) done — failures so far: 0
+[SMOKE] scene 33 (MathWaveScene) done — failures so far: 0
+[SMOKE] scene 34 (TorusKnotScene) done — failures so far: 0
+[SMOKE] scene 35 (RoseCurveScene) done — failures so far: 0
+[SMOKE] scene 36 (SriYantraScene) done — failures so far: 0
+[SMOKE] scene 37 (NetOfBeingScene) done — failures so far: 0
+[SMOKE] scene 38 (PsychedelicEyeScene) done — failures so far: 0
+[SMOKE] scene 39 (CosmicLatticeScene) done — failures so far: 0
+[SMOKE] scene 41 (DotMandalaScene) done — failures so far: 0
+[SMOKE] scene 42 (MerkabaStarScene) done — failures so far: 0
+[SMOKE] scene 43 (PentagonalVortexScene) done — failures so far: 0
+Skybox: loaded OK  /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/../../media/skyboxes/studio_09/
+[SMOKE] scene 44 (TunnelYantraScene) done — failures so far: 0
+[SMOKE] scene 45 (VisualizerExplainerScene) done — failures so far: 0
+
+╔══════════════════════════════════════════════════╗
+║            SMOKE TEST COMPLETE                   ║
+╠══════════════════════════════════════════════════╣
+║  Scenes tested  : 030                            ║
+║  Checks passed  : 5940                            ║
+║  Failures found : 000                            ║
+╠══════════════════════════════════════════════════╣
+║  ALL CHECKS PASSED — no exceptions thrown        ║
+╚══════════════════════════════════════════════════╝
+
+[SMOKE] Performance Leaderboard (worst to best):
+[SMOKE]   - RecursiveMandalaScene     :  12.15 ms / frame (~82.3 fps)
+[SMOKE]   - TunnelYantraScene         :   6.70 ms / frame (~149.2 fps)
+[SMOKE]   - NetOfBeingScene           :   4.97 ms / frame (~201.2 fps)
+[SMOKE]   - CosmicLatticeScene        :   4.61 ms / frame (~217.0 fps)
+[SMOKE]   - OriginalScene             :   3.53 ms / frame (~283.3 fps)
+[SMOKE]   - HourglassScene            :   3.41 ms / frame (~292.9 fps)
+[SMOKE]   - RoseCurveScene            :   3.40 ms / frame (~294.2 fps)
+[SMOKE]   - LissajousKnotScene        :   2.53 ms / frame (~395.3 fps)
+[SMOKE]   - MerkabaStarScene          :   2.07 ms / frame (~483.0 fps)
+[SMOKE]   - TableTennis3DScene        :   2.07 ms / frame (~483.6 fps)
+[SMOKE]   - MathWaveScene             :   1.88 ms / frame (~532.6 fps)
+[SMOKE]   - NeuralWeaveScene          :   1.84 ms / frame (~544.1 fps)
+[SMOKE]   - TorusKnotScene            :   1.81 ms / frame (~552.1 fps)
+[SMOKE]   - WormScene                 :   1.71 ms / frame (~584.6 fps)
+[SMOKE]   - VoidBloomScene            :   1.65 ms / frame (~605.9 fps)
+[SMOKE]   - DotMandalaScene           :   1.17 ms / frame (~856.2 fps)
+[SMOKE]   - MazePuzzleScene           :   1.11 ms / frame (~898.8 fps)
+[SMOKE]   - TableTennisScene          :   1.07 ms / frame (~937.0 fps)
+[SMOKE]   - SacredGeometryScene       :   0.95 ms / frame (~999.0 fps)
+[SMOKE]   - SriYantraScene            :   0.85 ms / frame (~999.0 fps)
+[SMOKE]   - PrismCodexScene           :   0.77 ms / frame (~999.0 fps)
+[SMOKE]   - FractalScene              :   0.75 ms / frame (~999.0 fps)
+[SMOKE]   - PentagonalVortexScene     :   0.73 ms / frame (~999.0 fps)
+[SMOKE]   - CatsCradleScene           :   0.71 ms / frame (~999.0 fps)
+[SMOKE]   - CircuitMazeScene          :   0.64 ms / frame (~999.0 fps)
+[SMOKE]   - KaleidoscopeScene         :   0.62 ms / frame (~999.0 fps)
+[SMOKE]   - GravityStringsScene       :   0.52 ms / frame (~999.0 fps)
+[SMOKE]   - VisualizerExplainerScene  :   0.44 ms / frame (~999.0 fps)
+[SMOKE]   - ShaderScene               :   0.37 ms / frame (~999.0 fps)
+[SMOKE]   - PsychedelicEyeScene       :   0.37 ms / frame (~999.0 fps)
+
+[SMOKE] Result written to: /home/xdd/Documents/code/music-visualizer-4-friend/.build/Music_Visualizer_CK/.smoketest_result
+
+X11Util.Display: Shutdown (JVM shutdown: true, open (no close attempt): 3/3, reusable (open, marked uncloseable): 0, pending (open in creation order): 3)
+X11Util: Open X11 Display Connections: 3
+X11Util: Open[0]: NamedX11Display[:0, 0x7fc8d0815a20, refCount 1, unCloseable false]
+X11Util: Open[1]: NamedX11Display[:0, 0x7fc74c002da0, refCount 1, unCloseable false]
+X11Util: Open[2]: NamedX11Display[:0, 0x7fc74c014400, refCount 1, unCloseable false]
+Finished.

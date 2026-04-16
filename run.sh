@@ -22,6 +22,9 @@ ORIGIN_DIR="$(pwd)/Music_Visualizer_CK"
 ln -s "$ORIGIN_DIR/data" "$BUILD_DIR/data"
 ln -s "$ORIGIN_DIR/libraries" "$BUILD_DIR/libraries"
 
+# Also symlink media so skyboxes can load from ../../media/skyboxes
+ln -s "$(pwd)/media" "$BUILD_DIR/../media"
+
 # ── Runner Logic ──────────────────────────────────────────────────────────────
 # Create devmode flag
 touch "$BUILD_DIR/.devmode"
@@ -36,5 +39,10 @@ if [[ -f "Music_Visualizer_CK/.devscene" ]]; then
   ln -s "$ORIGIN_DIR/.devscene" "$BUILD_DIR/.devscene"
 fi
 
+# Link .smoketest if it exists
+if [[ -f "Music_Visualizer_CK/.smoketest" ]]; then
+  ln -s "$ORIGIN_DIR/.smoketest" "$BUILD_DIR/.smoketest"
+fi
+
 # Run using processing cli
-processing cli --sketch="$BUILD_DIR" --force --run "$@"
+processing cli --sketch="$BUILD_DIR" --force --run --vm-args="-Xmx1g" "$@"

@@ -54,6 +54,9 @@ class SmokeTestRunner {
 
   int passCount = 0;
   ArrayList<String> failures = new ArrayList<String>();
+  
+  long[] sceneTimeTotalNs = new long[100]; // safe padding
+  int[] sceneFrameCount = new int[100];
 
   // Frames of plain drawScene() to run before exercising inputs
   final int BASELINE_FRAMES = 5;
@@ -67,7 +70,11 @@ class SmokeTestRunner {
     'e', 'E', 'f', 'F', 'r', 'R', 'u', 'U',
     'v', 'V', 'w', 'W', 'z', 'Z', 'k', 'K',
     'm', 'M', 'i', 'I', 'j', 'J', 'o', 'O',
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+    // TunnelYantraScene: bg/fg cycle, blend mode
+    '[', ']', '{', '}', '=',
+    // VisualizerExplainerScene: page nav
+    ',', '.'
   };
 
   // ── Main tick — called once per draw() frame ──────────────────────────────
@@ -170,14 +177,27 @@ class SmokeTestRunner {
     try {
       pg.beginDraw();
       pg.background(0);
+      pg.pushStyle();
       pg.pushMatrix();
+      
+      long startNs = System.nanoTime();
       scene.drawScene(pg);
+      long endNs = System.nanoTime();
+      
+      if (currentScene < SCENE_ORDER.length) {
+        int sceneIdx = SCENE_ORDER[currentScene];
+        sceneTimeTotalNs[sceneIdx] += (endNs - startNs);
+        sceneFrameCount[sceneIdx]++;
+      }
+
       pg.popMatrix();
+      pg.popStyle();
       pg.endDraw();
       passCount++;
     } catch (Exception e) {
       // Attempt graceful recovery so the buffer stays valid for next tick
       try { pg.popMatrix(); } catch (Exception ignored) {}
+      try { pg.popStyle();  } catch (Exception ignored) {}
       try { pg.endDraw();   } catch (Exception ignored) {}
       logFailure(sName, "drawScene() [" + ctx + "]", e);
     }
@@ -317,7 +337,27 @@ class SmokeTestRunner {
       for (String f : failures) println("  " + f);
     }
     println("╚══════════════════════════════════════════════════╝");
-    println("[SMOKE] Result written to: " + resultPath);
+    
+    println("\n[SMOKE] Performance Leaderboard (worst to best):");
+    ArrayList<int[]> perfData = new ArrayList<int[]>();
+    for (int i = 0; i < SCENE_ORDER.length; i++) {
+        int sceneIdx = SCENE_ORDER[i];
+        if (sceneFrameCount[sceneIdx] > 0) {
+            float avgMs = (sceneTimeTotalNs[sceneIdx] / (float)sceneFrameCount[sceneIdx]) / 1000000.0f;
+            perfData.add(new int[]{ sceneIdx, Float.floatToIntBits(avgMs) });
+        }
+    }
+    // Sort descending by avgMs
+    perfData.sort((a, b) -> Float.compare(Float.intBitsToFloat(b[1]), Float.intBitsToFloat(a[1])));
+    for (int[] p : perfData) {
+        int idx = p[0];
+        float ms = Float.intBitsToFloat(p[1]);
+        String sName = scenes[idx].getClass().getSimpleName();
+        String fps = ms > 0 ? nf(min(999, 1000.0f / ms), 0, 1) : "999";
+        println(String.format("[SMOKE]   - %-25s : %6.2f ms / frame (~%s fps)", sName, ms, fps));
+    }
+    
+    println("\n[SMOKE] Result written to: " + resultPath);
     println();
   }
 }

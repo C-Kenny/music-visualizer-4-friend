@@ -4,6 +4,7 @@
 
 class Shapes3DScene implements IScene {
   float angle = 0.0;
+  float continuousAngle = 0.0;  // replaces logicalFrameCount * 0.0006 drift
   int blades = 8;
   float pulse = 0.0;
   // runtime-adjustable parameters

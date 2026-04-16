@@ -51,3 +51,5 @@ static final int SCENE_ORIGINAL_3D       = 40;
 static final int SCENE_DOT_MANDALA       = 41;
 static final int SCENE_MERKABA_STAR      = 42;
 static final int SCENE_PENTAGONAL_VORTEX = 43;
+static final int SCENE_TUNNEL_YANTRA     = 44;
+static final int SCENE_EXPLAINER         = 45;

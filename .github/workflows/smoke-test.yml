@@ -1,0 +1,70 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+    branches: [develop, master]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Processing 4.5.2 ──────────────────────────────────────────────────
+      - name: Cache Processing
+        uses: actions/cache@v4
+        id: cache-processing
+        with:
+          path: ~/processing-4.5.2
+          key: processing-4.5.2-linux-x64
+
+      - name: Install Processing 4.5.2
+        if: steps.cache-processing.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64.tgz
+          tar xzf processing-4.5.2-linux-x64.tgz -C ~/
+          rm processing-4.5.2-linux-x64.tgz
+
+      # ── Libraries ─────────────────────────────────────────────────────────
+      - name: Cache Processing libraries
+        uses: actions/cache@v4
+        id: cache-libs
+        with:
+          path: ~/sketchbook/libraries
+          key: processing-libs-v1
+
+      - name: Install Processing libraries
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        run: bash scripts/ci-install-libs.sh
+
+      # ── System deps ───────────────────────────────────────────────────────
+      - name: Install display + OpenGL
+        run: sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa
+
+      # ── Smoke test ────────────────────────────────────────────────────────
+      - name: Run smoke test
+        timeout-minutes: 8
+        run: |
+          export PATH="$HOME/processing-4.5.2:$PATH"
+          touch Music_Visualizer_CK/.smoketest
+          Xvfb :99 -screen 0 1920x1080x24 &
+          sleep 2
+          DISPLAY=:99 ./run.sh
+
+      - name: Assert PASS
+        run: |
+          RESULT=$(head -1 .build/Music_Visualizer_CK/.smoketest_result 2>/dev/null || echo "MISSING")
+          echo "Result: $RESULT"
+          grep -q "^PASS$" .build/Music_Visualizer_CK/.smoketest_result
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoketest-result
+          path: .build/Music_Visualizer_CK/.smoketest_result
+          if-no-files-found: warn

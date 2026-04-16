@@ -13,7 +13,7 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 44;
+final int SCENE_COUNT = 46;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -310,10 +310,10 @@ void settings() {
 }
 
 void setup() {
-  sceneBuffer = createGraphics(width, height, P3D);
+  config = new Config();
+  sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
   sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
   background(200);
-  config = new Config();
   analyzer = new AudioAnalyser();
   logToStdout("canvas spawned");
   initializeGlobals();
@@ -376,6 +376,8 @@ void setup() {
   scenes[41] = new DotMandalaScene();
   scenes[42] = new MerkabaStarScene();
   scenes[43] = new PentagonalVortexScene();
+  scenes[44] = new TunnelYantraScene();
+  scenes[45] = new VisualizerExplainerScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
@@ -411,6 +413,20 @@ void setup() {
 void stop() {
   audio.stop();
   super.stop();
+}
+
+int sceneBufferRenderWidth() {
+  if (config != null && config.LOW_POWER_MODE) {
+    return max(1, width / config.LOW_POWER_SCALE);
+  }
+  return width;
+}
+
+int sceneBufferRenderHeight() {
+  if (config != null && config.LOW_POWER_MODE) {
+    return max(1, height / config.LOW_POWER_SCALE);
+  }
+  return height;
 }
 
 void toggleHandDrawn(){
@@ -576,22 +592,25 @@ public void getUserInput() {
   }
 
   // 2. Global Controller Shortcuts
-  if (controller.dpadUpJustPressed) {
-    config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
-    if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
-  }
-  if (controller.dpadLeftJustPressed) {
-    config.DRAW_PLASMA = !config.DRAW_PLASMA;
-    if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
-  }
-  if (controller.dpadRightJustPressed) {
-    config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
-    if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
-  }
-  if (controller.dpadDownJustPressed) {
-    config.DRAW_TUNNEL = false;
-    config.DRAW_POLAR_PLASMA = false;
-    config.DRAW_PLASMA = false;
+  // TunnelYantraScene owns the dpad for bg/fg cycling — skip global handlers.
+  if (config.STATE != SCENE_TUNNEL_YANTRA) {
+    if (controller.dpadUpJustPressed) {
+      config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
+      if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
+    }
+    if (controller.dpadLeftJustPressed) {
+      config.DRAW_PLASMA = !config.DRAW_PLASMA;
+      if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
+    }
+    if (controller.dpadRightJustPressed) {
+      config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
+      if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
+    }
+    if (controller.dpadDownJustPressed) {
+      config.DRAW_TUNNEL = false;
+      config.DRAW_POLAR_PLASMA = false;
+      config.DRAW_PLASMA = false;
+    }
   }
 
   if (!controller.chord(controller.lbButton, controller.rbButton)) {
@@ -646,7 +665,9 @@ final int[] SCENE_ORDER = {
   SCENE_COSMIC_LATTICE,
   SCENE_DOT_MANDALA,
   SCENE_MERKABA_STAR,
-  SCENE_PENTAGONAL_VORTEX
+  SCENE_PENTAGONAL_VORTEX,
+  SCENE_TUNNEL_YANTRA,
+  SCENE_EXPLAINER
 };
 
 int _sceneOrderIndex(int state) {
@@ -777,28 +798,33 @@ void draw() {
     analyzer.update(audio);
     getUserInput();
 
-    // 3. Render Active Scene to Buffer
-    if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
-      if (sceneBuffer.width != width || sceneBuffer.height != height) {
-        sceneBuffer = createGraphics(width, height, P3D);
-        sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
-      }
-
-      sceneBuffer.beginDraw();
-      sceneBuffer.colorMode(PConstants.RGB, 255);
-      sceneBuffer.rectMode(PConstants.CORNER);
-      sceneBuffer.ellipseMode(PConstants.CENTER);
-      sceneBuffer.imageMode(PConstants.CORNER);
-      sceneBuffer.hint(PConstants.ENABLE_DEPTH_TEST);
-      
-      if (monoFont != null) sceneBuffer.textFont(monoFont);
-      sceneBuffer.pushMatrix();
-      scenes[config.STATE].drawScene(sceneBuffer);
-      sceneBuffer.popMatrix();
-      sceneBuffer.endDraw();
-      didRenderScene = true;
-    }
+    didRenderScene = true;
   } // End Fixed Timestep
+
+  // 3. Render Active Scene to Buffer — once per display frame (after all logic ticks)
+  if (didRenderScene && config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+    int targetW = sceneBufferRenderWidth();
+    int targetH = sceneBufferRenderHeight();
+    if (sceneBuffer.width != targetW || sceneBuffer.height != targetH) {
+      sceneBuffer = createGraphics(targetW, targetH, P3D);
+      sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
+    }
+
+    sceneBuffer.beginDraw();
+    sceneBuffer.colorMode(PConstants.RGB, 255);
+    sceneBuffer.rectMode(PConstants.CORNER);
+    sceneBuffer.ellipseMode(PConstants.CENTER);
+    sceneBuffer.imageMode(PConstants.CORNER);
+    sceneBuffer.hint(PConstants.ENABLE_DEPTH_TEST);
+
+    if (monoFont != null) sceneBuffer.textFont(monoFont);
+    sceneBuffer.pushStyle();
+    sceneBuffer.pushMatrix();
+    scenes[config.STATE].drawScene(sceneBuffer);
+    sceneBuffer.popMatrix();
+    sceneBuffer.popStyle();
+    sceneBuffer.endDraw();
+  }
 
   // ── Beat-timed pending scene commit ─────────────────────────────────────
   // Fires once per rendered frame so pendingFrameCount tracks logical frames.

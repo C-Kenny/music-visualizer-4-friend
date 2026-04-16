@@ -68,7 +68,7 @@ class FractalScene implements IScene {
     float midRaw = analyzer.mid;
     float higRaw = analyzer.high;
 
-    globalRotation += rotationSpeed + (higRaw * 0.01 * sign(rotationSpeed));
+    globalRotation += analyzer.rotDir * (rotationSpeed + higRaw * 0.01 * sign(rotationSpeed));
 
     // Calculate dynamic properties
     float dynamicBaseLen = pg.height * 0.15 + (basRaw * pg.height * 0.05); // Bass pumps the base length

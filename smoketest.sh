@@ -42,6 +42,14 @@ touch "$DEVMODE"
 echo "${BOLD}Running smoke test across refactored structure…${RESET}"
 echo
 
+info_build=$(processing cli --sketch="$BUILD_DIR" --build 2>&1)
+if printf '%s' "$info_build" | grep -qi "error"; then
+  echo "${RED}${BOLD}ERROR: smoke test build failed before run.${RESET}"
+  printf '%s
+' "$info_build"
+  exit 1
+fi
+
 processing cli --sketch="$BUILD_DIR" --force --run 2>&1 | \
   grep --line-buffered -E '^\[SMOKE\]|^\[FAIL\]|╔|╠|╚|║|scenes=|checks=|failures=' || true
 

@@ -99,6 +99,9 @@ class Config {
   boolean SHOW_METADATA;
   boolean BLOOM_ENABLED;
 
+  boolean LOW_POWER_MODE;
+  int LOW_POWER_SCALE;
+
   ArrayList<String> songList;
   int currentSongIndex;
 
@@ -196,6 +199,9 @@ class Config {
     BLOOM_ENABLED = false;
     SHOW_METADATA = false;
 
+    LOW_POWER_MODE = false;
+    LOW_POWER_SCALE = 2;
+
     logicalFrameCount = 0;
 
     songList = new ArrayList<String>();
@@ -208,6 +214,20 @@ class Config {
         }
         if (arg.startsWith("--circuit-text=")) {
           CIRCUIT_TEXT = arg.substring("--circuit-text=".length());
+        }
+        if (arg.equals("--lowpower")) {
+          LOW_POWER_MODE = true;
+          BLOOM_ENABLED = false;
+        }
+        if (arg.startsWith("--lowpower-scale=")) {
+          try {
+            LOW_POWER_SCALE = Integer.parseInt(arg.substring("--lowpower-scale=".length()));
+            if (LOW_POWER_SCALE < 2) LOW_POWER_SCALE = 2;
+          } catch (Exception e) {
+            LOW_POWER_SCALE = 2;
+          }
+          LOW_POWER_MODE = true;
+          BLOOM_ENABLED = false;
         }
       }
     }

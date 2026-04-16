@@ -26,8 +26,7 @@ pass "Sketch compiles cleanly"
 
 # ── 2. Ensure Maven is available ──────────────────────────────────────────────
 if ! command -v mvn &>/dev/null; then
-  info "Maven not found. Installing via apt..."
-  sudo apt-get install -y maven
+  fail "Maven not found. Install Maven and rerun tests, e.g. 'sudo apt-get install -y maven' or use your OS package manager."
 fi
 
 # ── 3. Unit tests ─────────────────────────────────────────────────────────────
