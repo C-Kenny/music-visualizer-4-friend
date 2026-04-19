@@ -13,8 +13,9 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-SceneGuard   sceneGuard;
-KillSwitch   killSwitch;
+SceneGuard     sceneGuard;
+KillSwitch     killSwitch;
+DisplayManager displayManager;
 final int SCENE_COUNT = 48;
 int previousState = -1;
 
@@ -384,9 +385,11 @@ void setup() {
   scenes[47] = new StrangeAttractorScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
-  sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
-  sceneGuard    = new SceneGuard();
-  killSwitch    = new KillSwitch();
+  sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
+  sceneGuard     = new SceneGuard();
+  killSwitch     = new KillSwitch();
+  displayManager = new DisplayManager();
+  displayManager.initFromPrefs();
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
@@ -487,6 +490,18 @@ void keyPressed() {
   if (key == ESC) {
     key = 0; // suppress Processing's default ESC→exit behaviour
     killSwitch.toggle();
+    return;
+  }
+
+  // F11 toggles "fill current display" mode (borderless-style fullscreen).
+  if (keyCode == java.awt.event.KeyEvent.VK_F11) {
+    displayManager.toggleFullscreen();
+    return;
+  }
+
+  // Ctrl+1..9 moves window to that display (1-indexed in UI, 0-indexed internally).
+  if (keyEvent != null && keyEvent.isControlDown() && key >= '1' && key <= '9') {
+    displayManager.moveTo(key - '1');
     return;
   }
 

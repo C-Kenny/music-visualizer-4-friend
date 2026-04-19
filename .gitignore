@@ -12,6 +12,9 @@ Music_Visualizer_CK/.devscene
 Music_Visualizer_CK/.devsong
 Music_Visualizer_CK/.devscene.bak
 
+# Display selection persistence (per-machine)
+Music_Visualizer_CK/.display
+
 # Smoke test (trigger + result are transient)
 Music_Visualizer_CK/.smoketest
 Music_Visualizer_CK/.smoketest_result
