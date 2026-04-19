@@ -30,3 +30,12 @@ CLAUDE.original.md
 
 # Codex tooling marker
 .codex
+
+# Runtime logs
+*.log
+
+# Maven test artifacts
+tests/target/maven-status/
+tests/target/test-classes/
+tests/target/surefire-reports/
+tests/target/generated-test-sources/
