@@ -13,7 +13,9 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 46;
+SceneGuard   sceneGuard;
+KillSwitch   killSwitch;
+final int SCENE_COUNT = 48;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -378,9 +380,12 @@ void setup() {
   scenes[43] = new PentagonalVortexScene();
   scenes[44] = new TunnelYantraScene();
   scenes[45] = new VisualizerExplainerScene();
+  scenes[46] = new ChladniPlateScene();
+  scenes[47] = new StrangeAttractorScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
+  sceneGuard    = new SceneGuard();
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
@@ -667,6 +672,8 @@ final int[] SCENE_ORDER = {
   SCENE_MERKABA_STAR,
   SCENE_PENTAGONAL_VORTEX,
   SCENE_TUNNEL_YANTRA,
+  SCENE_CHLADNI_PLATE,
+  SCENE_STRANGE_ATTRACTOR,
   SCENE_EXPLAINER
 };
 
@@ -677,8 +684,24 @@ int _sceneOrderIndex(int state) {
   return 0; // default to first if current scene not in list
 }
 
-int nextActiveScene() { return sceneSwitcher.nextScene(config.STATE); }
-int prevActiveScene() { return sceneSwitcher.prevScene(config.STATE); }
+int nextActiveScene() {
+  int n = sceneSwitcher.activeOrder.size();
+  int cur = config.STATE;
+  for (int i = 0; i < n; i++) {
+    cur = sceneSwitcher.nextScene(cur);
+    if (sceneGuard == null || !sceneGuard.isBlacklisted(cur)) return cur;
+  }
+  return sceneSwitcher.nextScene(config.STATE);
+}
+int prevActiveScene() {
+  int n = sceneSwitcher.activeOrder.size();
+  int cur = config.STATE;
+  for (int i = 0; i < n; i++) {
+    cur = sceneSwitcher.prevScene(cur);
+    if (sceneGuard == null || !sceneGuard.isBlacklisted(cur)) return cur;
+  }
+  return sceneSwitcher.prevScene(config.STATE);
+}
 
 // ── Scene crossfade ───────────────────────────────────────────────────────────
 // When switchScene() is called, we capture the current frame as a frozen
@@ -718,6 +741,21 @@ void commitPendingScene() {
   config.STATE      = pendingScene;
   pendingScene      = -1;
   pendingFrameCount = 0;
+}
+
+// Walks the active rotation forward from `from`, returning the first scene
+// that isn't blacklisted by SceneGuard. Falls back to `from` when every scene
+// in rotation is blacklisted (pathological — caller should render a card).
+int nextNonBlacklistedScene(int from) {
+  if (sceneSwitcher == null) return from;
+  int n = sceneSwitcher.activeOrder.size();
+  if (n == 0) return from;
+  int cur = from;
+  for (int i = 0; i < n; i++) {
+    cur = sceneSwitcher.nextScene(cur);
+    if (!sceneGuard.isBlacklisted(cur)) return cur;
+  }
+  return from;
 }
 
 // Direct switch called from SceneSwitcher — bypasses rotation guard
@@ -818,12 +856,45 @@ void draw() {
     sceneBuffer.hint(PConstants.ENABLE_DEPTH_TEST);
 
     if (monoFont != null) sceneBuffer.textFont(monoFont);
-    sceneBuffer.pushStyle();
-    sceneBuffer.pushMatrix();
-    scenes[config.STATE].drawScene(sceneBuffer);
-    sceneBuffer.popMatrix();
-    sceneBuffer.popStyle();
-    sceneBuffer.endDraw();
+
+    boolean sceneThrew = false;
+    int     skipTarget = -1;
+    try {
+      sceneBuffer.pushStyle();
+      sceneBuffer.pushMatrix();
+      try {
+        if (sceneGuard.isRecovering()) {
+          sceneGuard.drawRecoveryCard(sceneBuffer);
+          if (sceneGuard.tickRecovery()) {
+            if (sceneGuard.isBlacklisted(config.STATE)) {
+              skipTarget = nextNonBlacklistedScene(config.STATE);
+            }
+            sceneGuard.clearRecovery();
+          }
+        } else if (sceneGuard.isBlacklisted(config.STATE)) {
+          sceneBuffer.background(0);
+          skipTarget = nextNonBlacklistedScene(config.STATE);
+        } else {
+          scenes[config.STATE].drawScene(sceneBuffer);
+        }
+      } finally {
+        try { sceneBuffer.popMatrix(); } catch (Throwable ignored) {}
+        try { sceneBuffer.popStyle();  } catch (Throwable ignored) {}
+      }
+    } catch (Throwable t) {
+      sceneThrew = true;
+      sceneGuard.recordFailure(config.STATE, t);
+    }
+    try { sceneBuffer.endDraw(); } catch (Throwable ignored) {}
+
+    if (sceneThrew) {
+      // P3D renderer state may be corrupt mid-draw — recreate buffer fresh.
+      sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
+      sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
+    }
+    if (skipTarget >= 0 && skipTarget != config.STATE) {
+      switchSceneDirect(skipTarget);
+    }
   }
 
   // ── Beat-timed pending scene commit ─────────────────────────────────────
@@ -846,16 +917,18 @@ void draw() {
   }
 
   // 5. Global overlays (UI drawn at native res, over the buffer)
-  blendMode(BLEND); 
-  if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+  blendMode(BLEND);
+  if (config.STATE >= 0 && config.STATE < SCENE_COUNT
+      && !sceneGuard.isBlacklisted(config.STATE) && !sceneGuard.isRecovering()) {
     if (config.SHOW_CODE) {
-      drawCodeOverlay(scenes[config.STATE].getCodeLines());
+      try { drawCodeOverlay(scenes[config.STATE].getCodeLines()); }
+      catch (Throwable ignored) {}
     }
     if (config.SHOW_CONTROLLER_GUIDE) {
-      ControllerLayout[] layout = scenes[config.STATE].getControllerLayout();
-      if (layout != null) {
-        drawControllerGuide(layout);
-      }
+      try {
+        ControllerLayout[] layout = scenes[config.STATE].getControllerLayout();
+        if (layout != null) drawControllerGuide(layout);
+      } catch (Throwable ignored) {}
     }
   }
 
