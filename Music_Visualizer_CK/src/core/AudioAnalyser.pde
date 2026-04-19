@@ -14,6 +14,15 @@ class AudioAnalyser {
   // Full spectrum of normalized averages for complex scenes
   float[] spectrum;
 
+  // ── Global rotation direction ─────────────────────────────────────────────
+  // +1 = clockwise, -1 = counter-clockwise.
+  // Flips on a pre-scanned major drop (top-20 energy peaks in the song).
+  // 20-second cooldown prevents rapid toggling.
+  // Scenes multiply their rotation increment by analyzer.rotDir to respect this.
+  int   rotDir           = 1;
+  float smoothDropBass   = 0;   // slow-smoothed bass for drop sanity check
+  int   lastRotFlipFrame = 0;
+
   AudioAnalyser() {
     bass = 0;
     mid = 0;
@@ -26,7 +35,7 @@ class AudioAnalyser {
   void update(Audio audio) {
     if (audio == null || audio.fft == null) return;
 
-    // The main sketch should have called audio.forward() and 
+    // The main sketch should have called audio.forward() and
     // audio.beat.detect() before calling this.
 
     isBeat = audio.beat.isOnset();
@@ -37,7 +46,7 @@ class AudioAnalyser {
     int bCount = 0, mCount = 0, hCount = 0;
 
     int totalBands = audio.fft.avgSize();
-    
+
     // Divide the first 42 bands into 3 logical sectors
     for (int i = 0; i < totalBands; i++) {
       float val = audio.normalisedAvg(i);
@@ -61,5 +70,21 @@ class AudioAnalyser {
 
     // Master amplitude
     master = (audio.player.left.level() + audio.player.right.level()) / 2.0;
+
+    // ── Rotation direction flip ───────────────────────────────────────────
+    // Same pattern as HourglassScene: pre-scanned major drop + bass sanity +
+    // 20-second cooldown (1200 frames at 60 fps).
+    smoothDropBass = lerp(smoothDropBass, bass, 0.04);
+    if (dropPredictor != null && dropPredictor.isReady) {
+      float dropFactor   = dropPredictor.majorImminentDropFactor(audio.player.position(), 4.0);
+      boolean cooldownOk = (frameCount - lastRotFlipFrame) > 1200;
+      boolean shouldFlip = dropFactor > 0.5
+                        && smoothDropBass > 0.25
+                        && cooldownOk;
+      if (shouldFlip) {
+        rotDir = -rotDir;
+        lastRotFlipFrame = frameCount;
+      }
+    }
   }
 }

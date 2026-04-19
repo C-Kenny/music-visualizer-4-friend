@@ -27,7 +27,7 @@
  *   X           — manual beat burst
  *   LB / RB     — reverse / step ring count
  */
-class DotMandalaScene implements IScene {
+class DotMandalaScene implements IScene, IForeground {
 
   // ── Audio smoothing ────────────────────────────────────────────────────────
   float sBass = 0, sMid = 0, sHigh = 0;
@@ -112,7 +112,31 @@ class DotMandalaScene implements IScene {
   }
 
   // ── Draw ──────────────────────────────────────────────────────────────────
+  String fgLabel() { return "Dot Mandala"; }
+
   void drawScene(PGraphics pg) {
+    pg.beginDraw();
+    pg.background(5, 8, 22);
+    pg.blendMode(ADD);
+    drawForeground(pg);
+    pg.blendMode(BLEND);
+
+    // ── HUD ───────────────────────────────────────────────────────────────
+    float ts = uiScale();
+    String[] modeNames = {"Blue/Gold", "Rainbow", "Ice", "Ember"};
+    pg.textFont(monoFont);
+    pg.textSize(9 * ts);
+    pg.textAlign(RIGHT, BOTTOM);
+    pg.fill(255, 255, 255, 70);
+    pg.text("Dot Mandala \u2502 " + modeNames[colorMode] + (showWave ? " \u2502 wave" : ""),
+            pg.width - 12 * ts, pg.height - 10 * ts);
+    pg.textAlign(LEFT, BOTTOM);
+    pg.text("A colour  B wave  X burst  LT/RT speed", 12 * ts, pg.height - 10 * ts);
+
+    pg.endDraw();
+  }
+
+  void drawForeground(PGraphics pg) {
     // -- Audio update --
     sBass = lerp(sBass, analyzer.bass, 0.08);
     sMid  = lerp(sMid,  analyzer.mid,  0.08);
@@ -138,10 +162,8 @@ class DotMandalaScene implements IScene {
     rotation += rotSpeed;
     userScale = lerp(userScale, targetScale, 0.05);
 
-    pg.beginDraw();
-    pg.background(5, 8, 22);
-    pg.blendMode(ADD);
     pg.noStroke();
+    pg.pushMatrix();
     pg.translate(pg.width * 0.5, pg.height * 0.5);
 
     float S  = min(pg.width, pg.height) * 0.44 * userScale;
@@ -207,21 +229,8 @@ class DotMandalaScene implements IScene {
     setBeatBinduColor(pg);
     pg.ellipse(0, 0, cr * 2, cr * 2);
 
+    pg.popMatrix();
     pg.blendMode(BLEND);
-
-    // ── HUD ───────────────────────────────────────────────────────────────
-    pg.resetMatrix();
-    String[] modeNames = {"Blue/Gold", "Rainbow", "Ice", "Ember"};
-    pg.textFont(monoFont);
-    pg.textSize(9 * ts);
-    pg.textAlign(RIGHT, BOTTOM);
-    pg.fill(255, 255, 255, 70);
-    pg.text("Dot Mandala \u2502 " + modeNames[colorMode] + (showWave ? " \u2502 wave" : ""),
-            pg.width - 12 * ts, pg.height - 10 * ts);
-    pg.textAlign(LEFT, BOTTOM);
-    pg.text("A colour  B wave  X burst  LT/RT speed", 12 * ts, pg.height - 10 * ts);
-
-    pg.endDraw();
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

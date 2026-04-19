@@ -20,7 +20,7 @@ class SacredGeometryScene implements IScene {
     sMid = lerp(sMid, analyzer.mid, 0.1);
     sHigh = lerp(sHigh, analyzer.high, 0.1);
     
-    rotation += 0.005 + sMid * 0.02;
+    rotation += analyzer.rotDir * (0.005 + sMid * 0.02);
 
     pg.background(5, 5, 10);
     pg.translate(pg.width/2, pg.height/2);

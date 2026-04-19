@@ -25,7 +25,7 @@
  *   Mid        — lotus petals bloom
  *   Beat       — full flash
  */
-class SriYantraScene implements IScene {
+class SriYantraScene implements IScene, IForeground {
 
   // ── Visual state ──────────────────────────────────────────────────────────
   float rotation   = 0;
@@ -36,6 +36,9 @@ class SriYantraScene implements IScene {
 
   // ── Audio smoothing ────────────────────────────────────────────────────────
   float sBass = 0, sMid = 0, sHigh = 0, sBeat = 0;
+
+  // ── Prebuilt triangle PShapes (normalized S=1, rebuilt on onEnter) ────────
+  PShape[] triShapes;
 
   // ── Triangle data ─────────────────────────────────────────────────────────
   // Each row: [tip_x, tip_y, base_y, half_width]  — normalized, y-up, unit=1
@@ -62,8 +65,31 @@ class SriYantraScene implements IScene {
 
   // ── IScene lifecycle ──────────────────────────────────────────────────────
 
-  void onEnter()  { rotation = 0; }
-  void onExit()   {}
+  String fgLabel() { return "Sri Yantra"; }
+
+  void onEnter() {
+    rotation = 0;
+    // Build normalized (S=1) triangle PShapes — vertex coords are fixed,
+    // only scale changes per frame. Caller applies pg.scale(S*(1+pulse)).
+    triShapes = new PShape[downTri.length + upTri.length];
+    for (int i = 0; i < downTri.length; i++)
+      triShapes[i] = _buildTriShape(downTri[i]);
+    for (int i = 0; i < upTri.length; i++)
+      triShapes[downTri.length + i] = _buildTriShape(upTri[i]);
+  }
+  void onExit() {}
+
+  // Normalized triangle at S=1. disableStyle() so caller controls stroke/fill.
+  PShape _buildTriShape(float[] t) {
+    PShape s = createShape();
+    s.beginShape();
+    s.vertex( t[0], -t[1]);   // tip
+    s.vertex(-t[3], -t[2]);   // base-left
+    s.vertex( t[3], -t[2]);   // base-right
+    s.endShape(CLOSE);
+    s.disableStyle();
+    return s;
+  }
 
   // ── Controller ────────────────────────────────────────────────────────────
 
@@ -85,59 +111,14 @@ class SriYantraScene implements IScene {
   // ── Draw ──────────────────────────────────────────────────────────────────
 
   void drawScene(PGraphics pg) {
-    sBass = lerp(sBass, analyzer.bass, 0.06);
-    sMid  = lerp(sMid,  analyzer.mid,  0.06);
-    sHigh = lerp(sHigh, analyzer.high, 0.06);
-    if (audio.beat.isOnset()) sBeat = 1.0;
-    sBeat = lerp(sBeat, 0, 0.06);
-
-    userScale = lerp(userScale, targetScale, 0.04);
-    if (autoRotate) rotation += 0.0015 + sMid * 0.008;
-
     pg.beginDraw();
     pg.background(4, 3, 10);
     pg.blendMode(ADD);
-    pg.translate(pg.width * 0.5, pg.height * 0.5);
-    pg.rotate(rotation);
-
-    // Scale: fill ~85% of shorter axis, bass pulse
-    float S = min(pg.width, pg.height) * 0.42 * userScale * (1.0 + sBass * 0.06);
-    float ts = uiScale();
-
-    // ── Outer square (Bhupura) ─────────────────────────────────────────────
-    drawBhupura(pg, S * 1.28, ts);
-
-    // ── Lotus petals ──────────────────────────────────────────────────────
-    drawLotus(pg, S * 1.08, 16, sMid * 0.10, ts, 0);    // 16-petal outer
-    drawLotus(pg, S * 0.88, 8,  sMid * 0.14, ts, PI/8); // 8-petal inner
-
-    // ── 9 triangles ───────────────────────────────────────────────────────
-    // Downward first (Shakti, behind upward)
-    for (int i = 0; i < downTri.length; i++) {
-      float pulse = (i == 0) ? sBass * 0.05 : (i < 3 ? sMid * 0.04 : sHigh * 0.03);
-      drawYantraTriangle(pg, downTri[i], S * (1 + pulse), false, i, ts);
-    }
-    // Upward (Shiva, drawn on top)
-    for (int i = 0; i < upTri.length; i++) {
-      float pulse = (i == 0) ? sBass * 0.04 : sMid * 0.03;
-      drawYantraTriangle(pg, upTri[i], S * (1 + pulse), true, i + 5, ts);
-    }
-
-    // ── Central circle ────────────────────────────────────────────────────
-    pg.noFill();
-    setYantraStroke(pg, 0, sBass + sBeat, 0.6, ts);
-    pg.strokeWeight(1.5 * ts);
-    pg.ellipse(0, 0, S * 0.18, S * 0.18);
-
-    // ── Bindu (central dot) ───────────────────────────────────────────────
-    float bindR = S * 0.025 * (1 + sBeat * 0.8);
-    pg.noStroke();
-    setYantraFill(pg, 0, 1.0 + sBeat, ts);
-    pg.ellipse(0, 0, bindR * 2, bindR * 2);
-
+    drawForeground(pg);
     pg.blendMode(BLEND);
 
     // ── Labels ─────────────────────────────────────────────────────────────
+    float ts = uiScale();
     pg.textFont(monoFont);
     pg.fill(255, 215, 80, 140);
     pg.textSize(10 * ts);
@@ -149,26 +130,58 @@ class SriYantraScene implements IScene {
     pg.endDraw();
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // Draw only the yantra geometry — no background, no blend mode changes.
+  // Used by combo scenes that supply their own background layer.
+  void drawForeground(PGraphics pg) {
+    sBass = lerp(sBass, analyzer.bass, 0.06);
+    sMid  = lerp(sMid,  analyzer.mid,  0.06);
+    sHigh = lerp(sHigh, analyzer.high, 0.06);
+    if (audio.beat.isOnset()) sBeat = 1.0;
+    sBeat = lerp(sBeat, 0, 0.06);
 
-  // Draw one triangle. pts[] = [tip_x, tip_y, base_y, half_width] (y-up normalized).
-  // onScreen: flip y → screen_y = -math_y * S
-  void drawYantraTriangle(PGraphics pg, float[] t, float S, boolean up, int idx, float ts) {
-    float tipX  = t[0] * S;
-    float tipY  = -t[1] * S;       // flip to screen
-    float baseY = -t[2] * S;
-    float hw    = t[3] * S;
+    userScale = lerp(userScale, targetScale, 0.04);
+    if (autoRotate) rotation += analyzer.rotDir * (0.0015 + sMid * 0.008);
+
+    float S  = min(pg.width, pg.height) * 0.42 * userScale * (1.0 + sBass * 0.06);
+    float ts = uiScale();
+
+    pg.pushMatrix();
+    pg.translate(pg.width * 0.5, pg.height * 0.5);
+    pg.rotate(rotation);
+
+    drawBhupura(pg, S * 1.28, ts);
+    drawLotus(pg, S * 1.08, 16, sMid * 0.10, ts, 0);
+    drawLotus(pg, S * 0.88, 8,  sMid * 0.14, ts, PI/8);
+
+    for (int i = 0; i < downTri.length; i++) {
+      float pulse = (i == 0) ? sBass * 0.05 : (i < 3 ? sMid * 0.04 : sHigh * 0.03);
+      pg.noFill();
+      setYantraStroke(pg, i, 0.5 + sBass * 0.3 + sBeat * 0.4, 0.7, ts);
+      pg.strokeWeight(ts * (1.2 + sHigh * 1.0));
+      pg.pushMatrix(); pg.scale(S * (1 + pulse)); pg.shape(triShapes[i]); pg.popMatrix();
+    }
+    for (int i = 0; i < upTri.length; i++) {
+      float pulse = (i == 0) ? sBass * 0.04 : sMid * 0.03;
+      pg.noFill();
+      setYantraStroke(pg, i + 5, 0.5 + sBass * 0.3 + sBeat * 0.4, 0.9, ts);
+      pg.strokeWeight(ts * (1.2 + sHigh * 1.0));
+      pg.pushMatrix(); pg.scale(S * (1 + pulse)); pg.shape(triShapes[downTri.length + i]); pg.popMatrix();
+    }
 
     pg.noFill();
-    setYantraStroke(pg, idx, 0.5 + sBass * 0.3 + sBeat * 0.4, up ? 0.9 : 0.7, ts);
-    pg.strokeWeight(ts * (1.2 + sHigh * 1.0));
+    setYantraStroke(pg, 0, sBass + sBeat, 0.6, ts);
+    pg.strokeWeight(1.5 * ts);
+    pg.ellipse(0, 0, S * 0.18, S * 0.18);
 
-    pg.beginShape();
-    pg.vertex(tipX, tipY);
-    pg.vertex(-hw, baseY);
-    pg.vertex( hw, baseY);
-    pg.endShape(CLOSE);
+    float bindR = S * 0.025 * (1 + sBeat * 0.8);
+    pg.noStroke();
+    setYantraFill(pg, 0, 1.0 + sBeat, ts);
+    pg.ellipse(0, 0, bindR * 2, bindR * 2);
+
+    pg.popMatrix();
   }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   void drawLotus(PGraphics pg, float R, int petals, float bloom, float ts, float phaseOffset) {
     pg.noFill();

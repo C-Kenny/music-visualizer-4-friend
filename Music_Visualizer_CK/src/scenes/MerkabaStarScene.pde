@@ -158,7 +158,7 @@ class MerkabaStarScene implements IScene {
     camDist  = lerp(camDist,  targetDist,   0.06);
     rotSpeed = lerp(rotSpeed, targetRotSpeed, 0.05);
 
-    float spd = rotSpeed * (1.0 + sMid * 2.0);
+    float spd = analyzer.rotDir * rotSpeed * (1.0 + sMid * 2.0);
     float[] pr = PATH_RATES[rotPath];
 
     // Y-orbit rate varies per path (0 = camera frozen → pure geometric tumble)

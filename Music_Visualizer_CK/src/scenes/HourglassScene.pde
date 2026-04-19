@@ -525,8 +525,9 @@ class HourglassScene implements IScene {
   void applyController(Controller c) {
     // Flip — preserve sand amounts (bottom 10% becomes top 10% after flip)
     if (c.aJustPressed) { targetRotation += PI; flipCount++; sandFraction = 1.0 - sandFraction; }
-    // Cycle skybox — Y button
-    if (c.yJustPressed) loadSkybox(skyboxIndex + 1);
+    // Cycle skybox
+    if (c.yJustPressed || c.dpadRightJustPressed) loadSkybox(skyboxIndex + 1);
+    if (c.dpadLeftJustPressed) loadSkybox(skyboxIndex - 1);
 
     // Camera orbit via right stick — center is width/2, height/2
     float nx = (c.rx / (float)width)  - 0.5;
@@ -558,5 +559,12 @@ class HourglassScene implements IScene {
     return new String[]{ "Sand Volume Fill", "Beat-Reactive Surface", "Drop Imminence Flip" };
   }
 
-  ControllerLayout[] getControllerLayout() { return new ControllerLayout[]{}; }
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[]{
+      new ControllerLayout("A Button", "Flip Hourglass"),
+      new ControllerLayout("D-Pad ↔",  "Cycle Skybox"),
+      new ControllerLayout("R-Stick",  "Orbit Camera"),
+      new ControllerLayout("LB / RB",  "Change Scene")
+    };
+  }
 }

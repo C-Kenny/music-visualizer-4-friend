@@ -24,7 +24,7 @@
  *   LB / RB     — palette cycle
  *   A           — reset
  */
-class NetOfBeingScene implements IScene {
+class NetOfBeingScene implements IScene, IForeground {
 
   // ── Grid config ───────────────────────────────────────────────────────────
   float cellSize     = 260;
@@ -86,7 +86,33 @@ class NetOfBeingScene implements IScene {
   }
 
   // ── Draw ──────────────────────────────────────────────────────────────────
+  String fgLabel() { return "Net of Being"; }
+
   void drawScene(PGraphics pg) {
+    pg.beginDraw();
+    pg.background(4, 3, 8);
+    drawForeground(pg);
+
+    // ── HUD ─────────────────────────────────────────────────────────────
+    float ts = uiScale();
+    pg.blendMode(BLEND);
+    pg.colorMode(RGB, 255);
+    pg.textFont(monoFont);
+    pg.textAlign(LEFT, TOP);
+    pg.fill(255, 255, 255, 150);
+    pg.textSize(16 * ts);
+    pg.text("Net of Being", 18 * ts, 14 * ts);
+    pg.fill(255, 255, 255, 70);
+    pg.textSize(10 * ts);
+    pg.text("palette " + (paletteIdx + 1) + "/" + palettes.length, 18 * ts, 36 * ts);
+    pg.textAlign(RIGHT, TOP);
+    pg.fill(255, 255, 255, 60);
+    pg.text("[ ] palette   -/= density", pg.width - 14 * ts, 14 * ts);
+
+    pg.endDraw();
+  }
+
+  void drawForeground(PGraphics pg) {
     sBass = lerp(sBass, analyzer.bass, 0.10);
     sMid  = lerp(sMid,  analyzer.mid,  0.10);
     sHigh = lerp(sHigh, analyzer.high, 0.10);
@@ -105,9 +131,7 @@ class NetOfBeingScene implements IScene {
     float accentHue = palettes[paletteIdx][1];
     float threadHue = palettes[paletteIdx][2];
 
-    pg.beginDraw();
     pg.hint(DISABLE_DEPTH_TEST);
-    pg.background(4, 3, 8);
     pg.colorMode(HSB, 360, 100, 100, 100);
     pg.noFill();
 
@@ -190,23 +214,9 @@ class NetOfBeingScene implements IScene {
       pg.ellipse(pg.width * 0.5, pg.height * 0.5, rr * 2.3, rr * 2.3);
     }
 
-    // ── HUD ─────────────────────────────────────────────────────────────
+    pg.hint(ENABLE_DEPTH_TEST);
     pg.blendMode(BLEND);
     pg.colorMode(RGB, 255);
-    pg.textFont(monoFont);
-    pg.textAlign(LEFT, TOP);
-    pg.fill(255, 255, 255, 150);
-    pg.textSize(16 * ts);
-    pg.text("Net of Being", 18 * ts, 14 * ts);
-    pg.fill(255, 255, 255, 70);
-    pg.textSize(10 * ts);
-    pg.text("palette " + (paletteIdx + 1) + "/" + palettes.length, 18 * ts, 36 * ts);
-
-    pg.textAlign(RIGHT, TOP);
-    pg.fill(255, 255, 255, 60);
-    pg.text("[ ] palette   -/= density", pg.width - 14 * ts, 14 * ts);
-
-    pg.endDraw();
   }
 
   // ── Googly eye node ────────────────────────────────────────────────────────

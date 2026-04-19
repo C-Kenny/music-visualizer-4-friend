@@ -191,7 +191,7 @@ class NeuralWeaveScene implements IScene {
       globalHue = (globalHue + random(28, 72)) % 360;
     }
     ripple *= 0.91;
-    rot += rotSpeed + mid * 0.00012 + high * 0.00004;
+    rot += analyzer.rotDir * (rotSpeed + mid * 0.00012 + high * 0.00004);
 
     bridgeTick++;
     if (growthMode > 0 && bridgeTick % 90 == 0) {

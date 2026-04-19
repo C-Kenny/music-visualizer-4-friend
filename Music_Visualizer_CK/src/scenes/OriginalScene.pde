@@ -15,7 +15,9 @@ class OriginalScene implements IScene {
   float twistValue     = 0;   // 0..1, fired on beat, decays at 0.10/frame
   int   tunnelTwistOff = 0;   // passed to Tunnel.draw() (0..32)
 
-
+  // Background cycling (D-pad L/R)
+  int backgroundMode = 4; // 0=None(Stacking), 1=Clear, 2=Tunnel, 3=Plasma, 4=Polar, 5=All
+  
   OriginalScene(PApplet parent) {
     this.tunnel = new Tunnel();
     this.plasma = new Plasma();
@@ -55,6 +57,17 @@ class OriginalScene implements IScene {
     if (c.xJustPressed || c.leftStickClickJustPressed) config.BACKGROUND_ENABLED = !config.BACKGROUND_ENABLED;
     if (c.yJustPressed) config.finRotationClockWise = !config.finRotationClockWise;
     if (c.rightStickClickJustPressed) config.DRAW_INNER_DIAMONDS = !config.DRAW_INNER_DIAMONDS;
+    
+    if (c.dpadRightJustPressed) cycleBackgroundMode(1);
+    if (c.dpadLeftJustPressed)  cycleBackgroundMode(-1);
+  }
+  
+  void cycleBackgroundMode(int dir) {
+    backgroundMode = (backgroundMode + dir + 6) % 6;
+    config.BACKGROUND_ENABLED = (backgroundMode != 0);
+    config.DRAW_TUNNEL       = (backgroundMode == 2 || backgroundMode == 5);
+    config.DRAW_PLASMA       = (backgroundMode == 3 || backgroundMode == 5);
+    config.DRAW_POLAR_PLASMA = (backgroundMode == 4 || backgroundMode == 5);
   }
 
   void drawDiamond(PGraphics pg, float dashDistanceFromCenter) {
@@ -164,9 +177,10 @@ class OriginalScene implements IScene {
     h2.setGraphics(pg);
 
     // Tunnel writes directly to pg.pixels[], bypassing transforms, so it must
-    // be drawn before the translate and receives the square bounds explicitly.
+    // be drawn before the translate. Span full canvas width so widescreen
+    // windows don't show black bars either side of the square foreground.
     if (config.DRAW_TUNNEL) {
-      tunnel.draw(pg, config.TUNNEL_ZOOM_INCREMENT, tunnelTwistOff, (int)s1OffsetX, s1Size);
+      tunnel.draw(pg, config.TUNNEL_ZOOM_INCREMENT, tunnelTwistOff, 0, pg.width);
     }
 
     pg.pushMatrix();
@@ -409,7 +423,8 @@ class OriginalScene implements IScene {
     return new ControllerLayout[] {
       new ControllerLayout("LStick ↕", "Oscillation amplitude"),
       new ControllerLayout("RStick ↔", "Scroll speed (vertical offset)"),
-      new ControllerLayout("LB/RB", "Rotate through scenes")
+      new ControllerLayout("D-Pad ↔",  "Cycle Background FX"),
+      new ControllerLayout("LB/RB",    "Rotate through scenes")
     };
   }
 }
