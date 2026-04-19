@@ -386,6 +386,7 @@ void setup() {
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
   sceneGuard    = new SceneGuard();
+  killSwitch    = new KillSwitch();
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
@@ -482,6 +483,13 @@ void keyPressed() {
     return;
   }
 
+  // Esc fires the emergency kill switch (fade-to-black). Q quits.
+  if (key == ESC) {
+    key = 0; // suppress Processing's default ESC→exit behaviour
+    killSwitch.toggle();
+    return;
+  }
+
   // 1. Delegate to current scene first
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
     scenes[config.STATE].handleKey(key);
@@ -503,8 +511,7 @@ void keyPressed() {
   if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
   if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
   if (key == 'c' || key == 'C') controller.calibrate();
-  if (key == 'q' || key == 'Q' || key == ESC) {
-    key = 0; // suppress Processing's default ESC→exit behaviour
+  if (key == 'q' || key == 'Q') {
     audio.stop();
     exit();
   }
@@ -589,6 +596,7 @@ public void getUserInput() {
   // Update the flag each frame so scenes react as soon as the device appears.
   controller.read();
   config.USING_CONTROLLER = controller.isConnected();
+  killSwitch.pollController(controller);
   if (!config.USING_CONTROLLER) return;
 
   // 1. Delegate to active scene
@@ -963,6 +971,10 @@ void draw() {
     sceneSwitcher.update();
     sceneSwitcher.drawOverlay();
   }
+
+  // KillSwitch composites a black quad over EVERYTHING — must be the very last draw.
+  killSwitch.tick();
+  killSwitch.draw();
 }
 
 void drawMetadataOverlay() {
