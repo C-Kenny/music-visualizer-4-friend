@@ -55,6 +55,7 @@ class MazePuzzleScene implements IScene {
   final int TURN_RIGHT = 1;
   final int TURN_LEFT = -1;
   final float ANALOG_MOVE_THRESHOLD = 0.6;
+  final float ANALOG_FORWARD_JUMP_THRESHOLD = 0.35;
   final float ANALOG_CAMERA_THRESHOLD = 0.2;
   final float MOVE_ANIMATION_SPEED = 0.12;
   final float JUMP_ANIMATION_SPEED = 0.04;
@@ -114,6 +115,13 @@ class MazePuzzleScene implements IScene {
   final int BALL_CROSS_HUE = 180;       // cyan
   final int BALL_CROSS_SAT = 200;
   final int BALL_CROSS_BRIGHT = 255;
+  final int BALL_FORWARD_HUE = 35;
+  final int BALL_FORWARD_SAT = 255;
+  final int BALL_FORWARD_BRIGHT = 255;
+  final float BALL_FORWARD_MARKER_RADIUS = 12;
+  final float BALL_FORWARD_MARKER_OFFSET = 32;
+  final float BALL_FORWARD_ARROW_LENGTH = 24;
+  final float BALL_FORWARD_ARROW_HALF_WIDTH = 14;
   final float AUTO_THINK_DOT_PERIOD = 15;
   final int AUTO_THINK_DOT_COUNT = 4;
   final float AUTO_THINK_MIN_WIDTH = 100;
@@ -131,6 +139,10 @@ class MazePuzzleScene implements IScene {
   final float BLOCK_FILL_SCALE = 0.9;
   final int BLOCK_FILL_ALPHA = 120;
   final float GOAL_PULSE_RISE = 0.5;
+  final float GOAL_PULSE_WIDTH_SCALE = 0.35;
+  final float GOAL_PULSE_HEIGHT_SCALE = 1.2;
+  final float GOAL_PULSE_TOP_OFFSET = 0.6;
+  final float GOAL_PULSE_SPHERE_SCALE = 0.25;
   final float AUTO_THINK_HEIGHT = 20;
   final float AUTO_THINK_CORNER_RADIUS = 10;
 
@@ -155,6 +167,8 @@ class MazePuzzleScene implements IScene {
   final float AUTO_THINK_FRAMES = 45; // how long it considers before moving
   final float AUTO_BEAT_MOVE_DELAY = 12; // frames between beat-triggered moves
   int autoBeatCooldown = 0;
+  boolean stickTurnLatched = false;
+  boolean stickMoveLatched = false;
 
   MazePuzzleScene() {
     blocks = new HashSet<String>();
@@ -248,11 +262,22 @@ class MazePuzzleScene implements IScene {
     oldForward = forward.copy(); targetForward = forward.copy();
     state = MazeState.STATIONARY;
     animTimer = 1.0; transitionFrac = 1.0;
-    jumpY = 0; jumpVel = 0; ballRoll = 0;
-    camAngle = 0; camPitch = 0.4; targetCamAngle = 0;
+    jumpY = 0; jumpVel = 0; ballRoll = 0; ballSpin = 0;
+    camAngle = 0; camPitch = 0.4; targetCamAngle = 0; targetCamPitch = 0.4;
+    camIdleFrames = 0;
+    autoThinkTimer = 0;
+    autoBeatCooldown = 0;
+    stickTurnLatched = false;
+    stickMoveLatched = false;
   }
 
-  void onEnter() { }
+  void onEnter() {
+    setupLevel(0);
+    levelComplete = false;
+    levelCompleteTimer = 0;
+    autoMode = false;
+    resetPlayer();
+  }
   void onExit()  { }
 
   void drawScene(PGraphics pg) {
@@ -446,10 +471,8 @@ class MazePuzzleScene implements IScene {
 
   void setupCamera(PGraphics pg) {
     PVector curUp = PVector.lerp(oldUp, targetUp, transitionFrac).normalize();
-    PVector curFwd = PVector.lerp(oldForward, targetForward, transitionFrac).normalize();
+    PVector curFwd = getCameraForward(curUp);
     PVector vPos = PVector.lerp(animStartPos, animEndPos, animTimer);
-
-    targetCamAngle = 0;
 
     PVector right = curUp.cross(curFwd).normalize();
     PVector rotFwd = PVector.add(PVector.mult(curFwd, cos(camAngle)), PVector.mult(right, sin(camAngle)));
@@ -461,6 +484,23 @@ class MazePuzzleScene implements IScene {
               worldBall.x, worldBall.y, worldBall.z,
               -curUp.x, -curUp.y, -curUp.z);
     pg.perspective(CAM_FOV, (float)pg.width/pg.height, CAM_NEAR_CLIP, CAM_FAR_CLIP);
+  }
+
+  PVector getCameraForward(PVector curUp) {
+    if (state == MazeState.TURNING) {
+      PVector turningForward = PVector.lerp(animStartFwd, animEndFwd, animTimer);
+      if (turningForward.magSq() > 0) return turningForward.normalize();
+    }
+
+    if (transitionFrac < 1.0) {
+      PVector shiftingForward = PVector.lerp(oldForward, targetForward, transitionFrac);
+      if (shiftingForward.magSq() > 0) return shiftingForward.normalize();
+    }
+
+    PVector stableForward = forward.copy();
+    if (abs(stableForward.dot(curUp)) > 0.99) stableForward = targetForward.copy();
+    if (stableForward.magSq() == 0) stableForward = new PVector(0, 0, 1);
+    return stableForward.normalize();
   }
 
   void drawBlock(PGraphics pg, int x, int y, int z, boolean isSpike) {
@@ -488,17 +528,20 @@ class MazePuzzleScene implements IScene {
   void drawGoalBlock(PGraphics pg, int x, int y, int z) {
     pg.pushMatrix();
     pg.translate(x * BLOCK_SIZE, y * BLOCK_SIZE, z * BLOCK_SIZE);
-    float puls = GOAL_PULSE_BASE + GOAL_PULSE_MAG * sin(u_time * GOAL_PULSE_FREQ);
+    float puls = GOAL_PULSE_BASE + GOAL_PULSE_MAG * sin(u_time * GOAL_PULSE_FREQ + analyzer.high * 2.0);
+    float beatGlow = 1.0 + pulse * 0.4;
     // Pillar rising from block surface
     pg.translate(0, BLOCK_SIZE * GOAL_PULSE_RISE, 0);
     pg.fill(45, 255, 255);          // gold hue in HSB
     pg.stroke(45, 180, 255, 200);
-    pg.box(BLOCK_SIZE * 0.35 * puls, BLOCK_SIZE * GOAL_PULSE_HEIGHT_SCALE, BLOCK_SIZE * 0.35 * puls);
+    pg.box(BLOCK_SIZE * GOAL_PULSE_WIDTH_SCALE * puls * beatGlow,
+           BLOCK_SIZE * GOAL_PULSE_HEIGHT_SCALE * beatGlow,
+           BLOCK_SIZE * GOAL_PULSE_WIDTH_SCALE * puls * beatGlow);
     // Glowing top cap
     pg.translate(0, -BLOCK_SIZE * GOAL_PULSE_TOP_OFFSET * puls, 0);
     pg.fill(50, 200, 255, 180);
     pg.noStroke();
-    pg.sphere(BLOCK_SIZE * GOAL_PULSE_SPHERE_SCALE * puls);
+    pg.sphere(BLOCK_SIZE * GOAL_PULSE_SPHERE_SCALE * puls * beatGlow);
     pg.popMatrix();
   }
 
@@ -510,6 +553,9 @@ class MazePuzzleScene implements IScene {
     pg.translate(up.x * jumpY * BLOCK_SIZE, up.y * jumpY * BLOCK_SIZE, up.z * jumpY * BLOCK_SIZE);
     PVector xAxis = up.cross(vFwd);
     pg.applyMatrix(xAxis.x, up.x, vFwd.x, 0, xAxis.y, up.y, vFwd.y, 0, xAxis.z, up.z, vFwd.z, 0, 0, 0, 0, 1);
+    drawBallForwardMarker(pg);
+
+    pg.pushMatrix();
     pg.rotateX(ballRoll); pg.rotateY(ballSpin);
     pg.noStroke();
     // Main sphere: cyan normal, bright matrix-green in auto mode
@@ -530,34 +576,70 @@ class MazePuzzleScene implements IScene {
     pg.rotateZ(HALF_PI);
     pg.box(BALL_CROSS_BAR_WIDTH, BALL_CROSS_BAR_LENGTH, BALL_CROSS_BAR_WIDTH);
     pg.popMatrix();
+    pg.popMatrix();
+  }
+
+  void drawBallForwardMarker(PGraphics pg) {
+    pg.noStroke();
+    pg.fill(BALL_FORWARD_HUE, BALL_FORWARD_SAT, BALL_FORWARD_BRIGHT);
+    pg.pushMatrix();
+    pg.translate(0, 0, BALL_RADIUS + BALL_FORWARD_MARKER_OFFSET);
+    pg.sphere(BALL_FORWARD_MARKER_RADIUS);
+    pg.popMatrix();
+
+    pg.fill(BALL_FORWARD_HUE, BALL_FORWARD_SAT, BALL_FORWARD_BRIGHT, 220);
+    pg.beginShape(TRIANGLES);
+    pg.vertex(0, 0, BALL_RADIUS + BALL_FORWARD_MARKER_OFFSET + BALL_FORWARD_ARROW_LENGTH);
+    pg.vertex(-BALL_FORWARD_ARROW_HALF_WIDTH, 0, BALL_RADIUS + BALL_FORWARD_MARKER_OFFSET);
+    pg.vertex(BALL_FORWARD_ARROW_HALF_WIDTH, 0, BALL_RADIUS + BALL_FORWARD_MARKER_OFFSET);
+    pg.endShape();
   }
 
   void applyController(Controller c) {
     if (levelComplete) return;
     if (autoMode) {
-      if (c.aJustPressed || c.bJustPressed || c.xJustPressed || c.yJustPressed || c.lbJustPressed || c.rbJustPressed || c.startJustPressed || c.backJustPressed || abs(c.lx - width/2.0) > 0.2 || abs(c.ly - height/2.0) > 0.2) {
+      float lx = map(c.lx, 0, width, -1, 1);
+      float ly = map(c.ly, 0, height, -1, 1);
+      float rx = map(c.rx, 0, width, -1, 1);
+      float ry = map(c.ry, 0, height, -1, 1);
+      if (c.aJustPressed || c.bJustPressed || c.xJustPressed || c.yJustPressed || c.lbJustPressed || c.rbJustPressed || c.startJustPressed || c.backJustPressed
+          || abs(lx) > ANALOG_CAMERA_THRESHOLD || abs(ly) > ANALOG_CAMERA_THRESHOLD
+          || abs(rx) > ANALOG_CAMERA_THRESHOLD || abs(ry) > ANALOG_CAMERA_THRESHOLD) {
         autoMode = false;
       }
       return;
     }
     if ((state != MazeState.STATIONARY && state != MazeState.TURNING) || transitionFrac < 1.0) return;
 
+    float dy = -map(c.ly, 0, height, -1, 1);
+    float dx = map(c.lx, 0, width, -1, 1);
+
     if (state == MazeState.TURNING) {
-      if (c.xJustPressed || c.aJustPressed) {
+      if (c.aJustPressed) {
         completeAction();
-        tryJump();
+        tryJump(isForwardJumpHeld(dy));
       }
       return;
     }
 
-    float dy = -map(c.ly, 0, height, -1, 1);
-    float dx = map(c.lx, 0, width, -1, 1);
-    if (dy > ANALOG_MOVE_THRESHOLD) tryMove(MOVE_FORWARD);
-    else if (dy < -ANALOG_MOVE_THRESHOLD) tryMove(MOVE_BACKWARD);
-    else if (dx > ANALOG_MOVE_THRESHOLD) tryTurn(TURN_RIGHT);
-    else if (dx < -ANALOG_MOVE_THRESHOLD) tryTurn(TURN_LEFT);
+    if (abs(dx) < ANALOG_MOVE_THRESHOLD * 0.5) stickTurnLatched = false;
+    if (dy < ANALOG_MOVE_THRESHOLD * 0.5) stickMoveLatched = false;
 
-    if (c.xJustPressed || c.aJustPressed) tryJump();
+    if (c.aJustPressed) {
+      tryJump(isForwardJumpHeld(dy));
+      return;
+    }
+
+    if (dy > ANALOG_MOVE_THRESHOLD && !stickMoveLatched) {
+      tryMove(MOVE_FORWARD);
+      stickMoveLatched = true;
+    } else if (dx > ANALOG_MOVE_THRESHOLD && !stickTurnLatched) {
+      tryTurn(TURN_RIGHT);
+      stickTurnLatched = true;
+    } else if (dx < -ANALOG_MOVE_THRESHOLD && !stickTurnLatched) {
+      tryTurn(TURN_LEFT);
+      stickTurnLatched = true;
+    }
 
     float ry = -map(c.ry, 0, height, -1, 1);
     float rx = map(c.rx, 0, width, -1, 1);
@@ -575,7 +657,7 @@ class MazePuzzleScene implements IScene {
     if (state == MazeState.TURNING) {
       if (k == ' ' || k == 'x' || k == 'X') {
         completeAction();
-        tryJump();
+        tryJump(false);
       }
       return;
     }
@@ -588,7 +670,7 @@ class MazePuzzleScene implements IScene {
     if (autoMode && k != 'r' && k != 'R' && k != 'n' && k != 'N') return;
     if (k == 'w') tryMove(MOVE_FORWARD); if (k == 's') tryMove(MOVE_BACKWARD);
     if (k == 'a') tryTurn(TURN_LEFT); if (k == 'd') tryTurn(TURN_RIGHT);
-    if (k == ' ') tryJump();
+    if (k == ' ') tryJump(false);
     if (k == 'n' || k == 'N') {
       // Debug: skip to next level
       int next = (currentLevel + 1) % LEVEL_COUNT;
@@ -639,8 +721,17 @@ class MazePuzzleScene implements IScene {
 
   void tryTurn(int dir) {
     animStartFwd = forward.copy();
-    animEndFwd = up.cross(forward).mult(dir).normalize();
+    animEndFwd = findTurnDirection(dir);
     animTimer = 0; state = MazeState.TURNING;
+  }
+
+  PVector findTurnDirection(int dir) {
+    PVector candidate = forward.copy();
+    for (int i = 0; i < 4; i++) {
+      candidate = up.cross(candidate).mult(dir).normalize();
+      if (isPlayableFacing(candidate)) return candidate;
+    }
+    return up.cross(forward).mult(dir).normalize();
   }
 
   void attemptAutoMove() {
@@ -652,6 +743,7 @@ class MazePuzzleScene implements IScene {
     else if (move == 1) tryMove(MOVE_BACKWARD);
     else if (move == 2) tryTurn(TURN_RIGHT);
     else if (move == 3) tryTurn(TURN_LEFT);
+    else if (move == 4) tryJump(true);
     autoThinkTimer = 0;
   }
 
@@ -659,6 +751,7 @@ class MazePuzzleScene implements IScene {
     ArrayList<Integer> valid = new ArrayList<Integer>();
     if (canMove(1)) valid.add(0);
     if (canMove(-1)) valid.add(1);
+    if (canJump()) valid.add(4);
     if (true) {
       valid.add(2); // allow turns always as part of consideration
       valid.add(3);
@@ -668,16 +761,38 @@ class MazePuzzleScene implements IScene {
 
   boolean canMove(int dir) {
     PVector fwd = PVector.mult(forward, dir);
+    return canMoveInDirection(fwd);
+  }
+
+  boolean canMoveInDirection(PVector dir) {
+    PVector fwd = dir.copy().normalize();
     PVector target = PVector.add(pos, fwd);
     int floorX = round(target.x - up.x);
     int floorY = round(target.y - up.y);
     int floorZ = round(target.z - up.z);
-    if (hasBlock(floorX, floorY, floorZ)) return true;
+    if (hasBlock(floorX, floorY, floorZ)) return isSafeAutoLanding(target);
     int wallX = round(target.x);
     int wallY = round(target.y);
     int wallZ = round(target.z);
-    if (hasBlock(wallX, wallY, wallZ)) return true;
-    return false;
+    if (hasBlock(wallX, wallY, wallZ)) return isSafeAutoLanding(PVector.add(target, fwd));
+    return isSafeAutoLanding(PVector.add(PVector.sub(pos, up), fwd));
+  }
+
+  boolean canJump() {
+    return canJumpInDirection(forward);
+  }
+
+  boolean canJumpInDirection(PVector dir) {
+    PVector target = PVector.add(pos, PVector.mult(dir.copy().normalize(), 2));
+    return hasSupportBelow(target) && !isSolidCell(target) && !hasSpikeAtPosition(target);
+  }
+
+  boolean isPlayableFacing(PVector dir) {
+    return canMoveInDirection(dir) || canMoveInDirection(PVector.mult(dir, -1)) || canJumpInDirection(dir);
+  }
+
+  boolean isForwardJumpHeld(float dy) {
+    return dy > ANALOG_FORWARD_JUMP_THRESHOLD;
   }
 
   int chooseAutoMove(ArrayList<Integer> moves) {
@@ -693,8 +808,10 @@ class MazePuzzleScene implements IScene {
       else if (m == 1) candidatePos.add(PVector.mult(candidateFwd, -1));
       else if (m == 2) candidateFwd = candidateFwd.cross(up).normalize();
       else if (m == 3) candidateFwd = PVector.mult(candidateFwd.cross(up), -1).normalize();
+      else if (m == 4) candidatePos.add(PVector.mult(candidateFwd, 2));
       float dist = abs(candidatePos.x - goal.x) + abs(candidatePos.y - goal.y) + abs(candidatePos.z - goal.z);
       float score = 1.0f / (dist + 1.0f);
+      if (m == 4) score *= 1.2f;
       score *= 0.6 + random(0, 0.8);
       if (score > bestScore) { bestScore = score; bestIndex = i; }
     }
@@ -709,17 +826,35 @@ class MazePuzzleScene implements IScene {
     return null;
   }
 
-  void tryJump() {
-    PVector target = PVector.add(pos, PVector.mult(forward, 2));
-    int floorX = round(target.x - up.x);
-    int floorY = round(target.y - up.y);
-    int floorZ = round(target.z - up.z);
-    if (!hasBlock(floorX, floorY, floorZ)) return;
-
+  void tryJump(boolean jumpForward) {
+    PVector target = pos.copy();
+    if (jumpForward) {
+      target = PVector.add(pos, PVector.mult(forward, 2));
+      if (!hasSupportBelow(target) || isSolidCell(target)) return;
+    }
     state = MazeState.JUMPING;
     animStartPos = pos.copy();
     animEndPos = target.copy();
     animTimer = 0; ballRoll += PI;
+  }
+
+  boolean hasSupportBelow(PVector target) {
+    int floorX = round(target.x - up.x);
+    int floorY = round(target.y - up.y);
+    int floorZ = round(target.z - up.z);
+    return hasBlock(floorX, floorY, floorZ);
+  }
+
+  boolean isSolidCell(PVector target) {
+    return hasBlock(round(target.x), round(target.y), round(target.z));
+  }
+
+  boolean hasSpikeAtPosition(PVector target) {
+    return hasSpike(round(target.x), round(target.y), round(target.z));
+  }
+
+  boolean isSafeAutoLanding(PVector target) {
+    return !isSolidCell(target) && !hasSpikeAtPosition(target);
   }
 
   void startGravityShift(PVector nUp, PVector nFwd) {
@@ -737,9 +872,14 @@ class MazePuzzleScene implements IScene {
       "",
       "Reach the gold pillar",
       "",
-      "WASD / L-Stick: Move",
-      "Space / X / A: Jump",
+      "WASD: Move / Turn",
+      "L-Stick Up: Roll forward",
+      "L-Stick Left/Right: Turn",
+      "A: Jump up",
+      "Hold forward + A: Jump forward",
+      "Space: Jump up",
       "U: Toggle Auto / Manual",
+      "Auto can jump gaps on beat",
       "R-Stick: Look / Auto-Snap",
       "N: Skip level  R: Restart",
     };
@@ -747,8 +887,8 @@ class MazePuzzleScene implements IScene {
 
   ControllerLayout[] getControllerLayout() {
     return new ControllerLayout[]{
-      new ControllerLayout("L-Stick", "Grid Move / Turn"),
-      new ControllerLayout("X / A",   "Jump"),
+      new ControllerLayout("L-Stick", "Up rolls, left/right turns"),
+      new ControllerLayout("A",       "Jump up / hold forward to leap"),
       new ControllerLayout("R-Stick", "Look / Auto-Snap"),
       new ControllerLayout("U",       "Toggle Auto / Manual"),
     };

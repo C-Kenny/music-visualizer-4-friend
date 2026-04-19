@@ -177,9 +177,10 @@ class OriginalScene implements IScene {
     h2.setGraphics(pg);
 
     // Tunnel writes directly to pg.pixels[], bypassing transforms, so it must
-    // be drawn before the translate and receives the square bounds explicitly.
+    // be drawn before the translate. Span full canvas width so widescreen
+    // windows don't show black bars either side of the square foreground.
     if (config.DRAW_TUNNEL) {
-      tunnel.draw(pg, config.TUNNEL_ZOOM_INCREMENT, tunnelTwistOff, (int)s1OffsetX, s1Size);
+      tunnel.draw(pg, config.TUNNEL_ZOOM_INCREMENT, tunnelTwistOff, 0, pg.width);
     }
 
     pg.pushMatrix();
