@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 # run.sh — Stages a flattened build for Processing and runs it.
+set -euo pipefail
+
+run_processing() {
+  if command -v snap >/dev/null 2>&1; then
+    snap run processing cli "$@"
+  elif [[ -x /snap/bin/processing ]]; then
+    /snap/bin/processing cli "$@"
+  elif command -v processing >/dev/null 2>&1; then
+    processing cli "$@"
+  else
+    echo "Processing CLI not found. Install Processing 4 CLI or make 'snap run processing cli' available." >&2
+    return 127
+  fi
+}
 
 # ── Stage Build ───────────────────────────────────────────────────────────────
 # Processing requires the folder name to match the main .pde filename.
@@ -45,4 +59,4 @@ if [[ -f "Music_Visualizer_CK/.smoketest" ]]; then
 fi
 
 # Run using processing cli
-processing cli --sketch="$BUILD_DIR" --force --run --vm-args="-Xmx1g" "$@"
+run_processing --sketch="$BUILD_DIR" --force --run --vm-args="-Xmx1g" "$@"
