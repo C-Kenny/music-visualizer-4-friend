@@ -1,0 +1,13 @@
+=== Mon Apr 20 18:18:46 NZST 2026  scene=1 OriginalScene  failCount=1 ===
+java.lang.ThreadDeath
+	at java.base/java.lang.Thread.stop(Thread.java:942)
+	at com.jogamp.newt.opengl.GLWindow$GLLifecycleHook$1.run(GLWindow.java:762)
+	at com.jogamp.common.util.SecurityUtil.doPrivileged(SecurityUtil.java:80)
+	at com.jogamp.newt.opengl.GLWindow$GLLifecycleHook.shutdownRenderingAction(GLWindow.java:757)
+	at jogamp.newt.WindowImpl.shutdown(WindowImpl.java:663)
+	at jogamp.newt.WindowImpl.shutdownAll(WindowImpl.java:127)
+	at jogamp.newt.DisplayImpl$1.run(DisplayImpl.java:77)
+	at com.jogamp.nativewindow.NativeWindowFactory.shutdown(NativeWindowFactory.java:329)
+	at com.jogamp.nativewindow.NativeWindowFactory$1$1.run(NativeWindowFactory.java:234)
+	at java.base/java.lang.Thread.run(Thread.java:833)
+

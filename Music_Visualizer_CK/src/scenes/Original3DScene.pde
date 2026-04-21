@@ -50,8 +50,8 @@ class Original3DScene implements IScene {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   void onEnter() {
-    buf = createGraphics(width, height, P3D);
-    S = min(width, height) * 0.45;
+    buf = createGraphics(sceneBuffer.width, sceneBuffer.height, P3D);
+    S = min(sceneBuffer.width, sceneBuffer.height) * 0.45;
     diamondDistCenter = S * 0.07;
   }
   void onExit() { if (buf != null) { buf.dispose(); buf = null; } }
@@ -89,7 +89,10 @@ class Original3DScene implements IScene {
   // ── Main draw ─────────────────────────────────────────────────────────────
 
   void drawScene(PGraphics pg) {
-    if (buf == null) return;
+    if (buf == null || buf.width != pg.width || buf.height != pg.height) {
+      if (buf != null) buf.dispose();
+      buf = createGraphics(pg.width, pg.height, P3D);
+    }
     S = min(buf.width, buf.height) * 0.45;
 
     // Audio

@@ -53,8 +53,15 @@ class PolarPlasma {
   }
 
   void draw(PGraphics pg) {
-    if (buffer == null || buffer.width != pg.width || buffer.height != pg.height) {
-      init(pg.width, pg.height);
+    // Cap internal buffer — polar plasma inner loop is O(w*h) per frame and
+    // the radius/angle init tables are even more expensive. Stage-size buffers
+    // dragged fps from 900→15. Stretched via pg.image with bilinear.
+    final int BMAX_W = 640, BMAX_H = 360;
+    float aspect = (float)pg.width / pg.height;
+    int bw = (aspect >= BMAX_W / (float)BMAX_H) ? BMAX_W : (int)(BMAX_H * aspect);
+    int bh = (aspect >= BMAX_W / (float)BMAX_H) ? (int)(BMAX_W / aspect) : BMAX_H;
+    if (buffer == null || buffer.width != bw || buffer.height != bh) {
+      init(bw, bh);
     }
     int k = config.logicalFrameCount&0xff;
     buffer.loadPixels();
@@ -67,7 +74,7 @@ class PolarPlasma {
     
     // Draw independently of any preceding pg.translate() offsets to prevent cutoff
     pg.pushMatrix();
-    pg.image(buffer, 0, 0);
+    pg.image(buffer, 0, 0, pg.width, pg.height);
     pg.popMatrix();
   }
 }

@@ -97,7 +97,7 @@ class MerkabaStarScene implements IScene {
 
   // ── IScene lifecycle ───────────────────────────────────────────────────────
   void onEnter() {
-    buf = createGraphics(width, height, P3D);
+    buf = createGraphics(sceneBuffer.width, sceneBuffer.height, P3D);
     camAzim=0.55; camElev=0.30; beatExpand=0;
     rotX=0; rotZ=0; rotPath=0; pathFrames=0;
   }
@@ -146,7 +146,10 @@ class MerkabaStarScene implements IScene {
 
   // ── Draw ──────────────────────────────────────────────────────────────────
   void drawScene(PGraphics pg) {
-    if (buf == null) return;
+    if (buf == null || buf.width != pg.width || buf.height != pg.height) {
+      if (buf != null) buf.dispose();
+      buf = createGraphics(pg.width, pg.height, P3D);
+    }
 
     sBass = lerp(sBass, analyzer.bass, 0.07);
     sMid  = lerp(sMid,  analyzer.mid,  0.07);

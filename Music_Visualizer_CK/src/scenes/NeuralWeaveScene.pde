@@ -363,8 +363,8 @@ class NeuralWeaveScene implements IScene {
     metabolism = lerp(metabolism, c.lt, 0.14);
     techInject = lerp(techInject, c.rt, 0.14);
 
-    panX = lerp(panX, lx * min(width, height) * 0.22, 0.08);
-    panY = lerp(panY, ly * min(width, height) * 0.18, 0.08);
+    panX = lerp(panX, lx * min(sceneBuffer.width, sceneBuffer.height) * 0.22, 0.08);
+    panY = lerp(panY, ly * min(sceneBuffer.width, sceneBuffer.height) * 0.18, 0.08);
 
     if (abs(ry) < 0.14) {
       rotSpeed = lerp(rotSpeed, 0, 0.06);

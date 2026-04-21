@@ -91,7 +91,8 @@ class RecursiveMandalaScene implements IScene {
     beatBoost = 0; manualRotDelta = 0;
     driftPhase = random(100); breathePhase = 0; driftX = 0; driftY = 0;
     glowShader = loadShader("mandala_glow.glsl");
-    glowBuf    = createGraphics(width, height, P3D);
+    glowBuf    = createGraphics(sceneBuffer.width / 2, sceneBuffer.height / 2, P3D);
+    glowBuf.smooth(4);
     glowBuf.beginDraw(); glowBuf.background(0); glowBuf.endDraw();
     
     petalShape = createShape();
@@ -111,6 +112,7 @@ class RecursiveMandalaScene implements IScene {
   void drawScene(PGraphics pg) {
     if (glowBuf == null || glowBuf.width != pg.width/2 || glowBuf.height != pg.height/2) {
       glowBuf = createGraphics(pg.width/2, pg.height/2, P3D);
+      glowBuf.smooth(4);
     }
     if (glowShader == null) glowShader = loadShader("mandala_glow.glsl");
 

@@ -91,9 +91,7 @@ class TableTennisScene implements IScene {
 
   TableTennisScene() {
     openScoreLog();
-    tableY       = height * 0.68;
-    leftHomeX    = width * 0.20;
-    rightHomeX   = width * 0.80;
+    relayoutForBuffer(sceneBuffer.width, sceneBuffer.height);
     leftPaddleX  = leftHomeX;
     rightPaddleX = rightHomeX;
     leftTargetX  = leftHomeX;
@@ -102,6 +100,15 @@ class TableTennisScene implements IScene {
     leftPaddleY  = rightPaddleY = restY;
     leftTargetY  = rightTargetY = restY;
     serve();
+  }
+
+  // Re-derive table layout from buffer dimensions. Called from ctor and from
+  // drawScene() so resize / render-cap changes propagate. Skips the slide-on-
+  // resize for game state — paddles can drift but rally physics stays valid.
+  void relayoutForBuffer(int w, int h) {
+    tableY     = h * 0.68;
+    leftHomeX  = w * 0.20;
+    rightHomeX = w * 0.80;
   }
 
   // ── serve ─────────────────────────────────────────────────────────────────
@@ -139,6 +146,11 @@ class TableTennisScene implements IScene {
 
   void drawScene(PGraphics pg) {
     pg.background(15, 35, 15);
+
+    // Re-layout to current buffer dims. Window resize via DisplayManager and
+    // 1080p render-cap on 4K stages both change pg dims; without this rebuild
+    // table/paddles/net would draw to obsolete cached coords.
+    relayoutForBuffer(pg.width, pg.height);
 
     float bass = 0, mid = 0;
     for (int i = 0; i < 8; i++) bass += analyzer.spectrum[i];
@@ -214,7 +226,7 @@ class TableTennisScene implements IScene {
       lastDirSign = dirSign;
     }
 
-    float netX    = width / 2.0;
+    float netX    = sceneBuffer.width / 2.0;
     float xMargin = PADDLE_W * 2;
 
     if (ballVX < 0) {
@@ -308,7 +320,7 @@ class TableTennisScene implements IScene {
     // Net collision — block ball if it crosses the centre line below net height.
     // Skip during serve drop (ball is above the table, can't hit the net yet).
     if (!inServeDrop) {
-      float netX   = width / 2.0;
+      float netX   = sceneBuffer.width / 2.0;
       float netTop = tableY - NET_H;
       if (ballY + BALL_RADIUS > netTop && ballY + BALL_RADIUS < tableY) {
         boolean crossedNet = (prevBallX < netX) != (ballX < netX);
@@ -369,14 +381,14 @@ class TableTennisScene implements IScene {
   }
 
   void onTableBounce() {
-    int side = ballX < width / 2.0 ? -1 : 1;
+    int side = ballX < sceneBuffer.width / 2.0 ? -1 : 1;
 
     // ── Serve bounce handling ─────────────────────────────────────────────────
     if (!serveBounced) {
       int serverSide = leftServes ? -1 : 1;
       if (side == serverSide) {
         // Correct: ball hit server's own half. Override VY so ball clears the net.
-        float distToNet = abs(width / 2.0 - ballX);
+        float distToNet = abs(sceneBuffer.width / 2.0 - ballX);
         float tNet      = distToNet / max(abs(ballVX), 0.5);
         float critVY    = (tableY - BALL_RADIUS - ballY - 0.5 * gravity * tNet * tNet) / tNet;
         ballVY = constrain(critVY - 4, -22, -5);

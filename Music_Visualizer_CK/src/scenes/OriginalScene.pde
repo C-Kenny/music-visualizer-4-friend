@@ -17,6 +17,11 @@ class OriginalScene implements IScene {
 
   // Background cycling (D-pad L/R)
   int backgroundMode = 4; // 0=None(Stacking), 1=Clear, 2=Tunnel, 3=Plasma, 4=Polar, 5=All
+
+  // Square scratch buffer for Tunnel — Tunnel's lookup table is keyed to the
+  // PGraphics it's handed, so a square buffer makes the radial pattern fit the
+  // square pillarbox region instead of being compressed into a center slice.
+  PGraphics tunnelBuf;
   
   OriginalScene(PApplet parent) {
     this.tunnel = new Tunnel();
@@ -160,31 +165,65 @@ class OriginalScene implements IScene {
   }
 
   void drawScene(PGraphics pg) {
-    // Correct viewport sizing to handle resizing
+    // Belt-and-suspenders: force CORNER modes in case a prior scene left
+    // imageMode/rectMode in CENTER. resetMatrix is NOT safe here — it wipes
+    // P3D's default camera and leaves scene blank.
+    pg.imageMode(CORNER);
+    pg.rectMode(CORNER);
+
+    // Square-pillarbox tribute to the original 2D emblem. min() picks shortest
+    // canvas axis; offsets center the square. Black bars fill any leftover.
     s1Size = min(pg.width, pg.height);
-    s1OffsetX = (pg.width - s1Size) / 2.0;
+    s1OffsetX = (pg.width  - s1Size) / 2.0;
+    float s1OffsetY = (pg.height - s1Size) / 2.0;
+
+    // Recompute diamond layout every frame from current s1Size. Frozen init
+    // values (constructor-time) caused quad vertices to misalign whenever
+    // the buffer differed from setup-time dimensions — diamonds rendered
+    // as triangles because one corner shot off the square.
+    config.DIAMOND_RIGHT_EDGE_X = s1Size * 0.92;
+    config.DIAMOND_LEFT_EDGE_X  = s1Size * 0.74;
+    config.DIAMOND_RIGHT_EDGE_Y = s1Size * 0.71;
+    config.DIAMOND_LEFT_EDGE_Y  = s1Size * 0.92;
+    config.MAX_DIAMOND_DISTANCE = s1Size * 0.3;
+    config.MIN_DIAMOND_DISTANCE = s1Size * 0.1;
 
     pg.stroke(0);
     pg.noStroke();
 
-    if(config.BACKGROUND_ENABLED) {
-      pg.background(200);
+    // Background fill only when not stacking. When BACKGROUND_ENABLED is false
+    // the previous frame's pixels are kept inside the square (trails), while
+    // the final pillarbox overlay still keeps the bars black each frame.
+    if (config.BACKGROUND_ENABLED) {
+      pg.background(0);
+      pg.pushStyle();
+      pg.noStroke();
+      pg.fill(200);
+      pg.rect(s1OffsetX, s1OffsetY, s1Size, s1Size);
+      pg.popStyle();
     }
-    
+
     // HandyRenderer usually needs to be explicitly told which buffer to draw to
     h.setGraphics(pg);
     h1.setGraphics(pg);
     h2.setGraphics(pg);
 
-    // Tunnel writes directly to pg.pixels[], bypassing transforms, so it must
-    // be drawn before the translate. Span full canvas width so widescreen
-    // windows don't show black bars either side of the square foreground.
+    // Tunnel renders into a square scratch buffer, then we blit it into the
+    // pillarbox region. Tunnel keys its radial lookup off the buffer it's
+    // given — a square buffer gives a square radial pattern.
     if (config.DRAW_TUNNEL) {
-      tunnel.draw(pg, config.TUNNEL_ZOOM_INCREMENT, tunnelTwistOff, 0, pg.width);
+      int sq = (int)s1Size;
+      if (tunnelBuf == null || tunnelBuf.width != sq) {
+        tunnelBuf = createGraphics(sq, sq, P2D);
+      }
+      tunnelBuf.beginDraw();
+      tunnel.draw(tunnelBuf, config.TUNNEL_ZOOM_INCREMENT, tunnelTwistOff, 0, sq);
+      tunnelBuf.endDraw();
+      pg.image(tunnelBuf, s1OffsetX, s1OffsetY);
     }
 
     pg.pushMatrix();
-    pg.translate(s1OffsetX, 0);
+    pg.translate(s1OffsetX, s1OffsetY);
 
     if (!config.EPILEPSY_MODE_ON) {
       h.setSeed(117);
@@ -228,17 +267,19 @@ class OriginalScene implements IScene {
       pg.fill(255, 76, 52);
     } else {
       pg.fill(255);
-      if (config.BACKGROUND_ENABLED) pg.background(200);
+      // NOTE: do NOT call pg.background() here — the tunnel/plasma was already
+      // rendered above the translate. A second background clear would wipe it.
     }
     
+    // Plasma fills full pg — clipped back to square by final pillarbox overlay.
     if (config.DRAW_PLASMA) {
-      pg.pushMatrix(); pg.translate(-s1OffsetX, 0); // Reverse shift for background element
+      pg.pushMatrix(); pg.translate(-s1OffsetX, -s1OffsetY);
       plasma.draw(pg, config.PLASMA_SEED);
       pg.popMatrix();
     }
 
     if (config.DRAW_POLAR_PLASMA) {
-      pg.pushMatrix(); pg.translate(-s1OffsetX, 0); // Reverse shift for background element
+      pg.pushMatrix(); pg.translate(-s1OffsetX, -s1OffsetY);
       polarPlasma.draw(pg);
       pg.popMatrix();
     }
@@ -313,6 +354,23 @@ class OriginalScene implements IScene {
 
     pg.popMatrix(); // end square canvas translate
 
+    // Pillarbox: paint black over anything plasma/polar-plasma drew outside
+    // the square. Keeps the original-emblem aspect on widescreen stages.
+    pg.pushStyle();
+    pg.noStroke();
+    pg.rectMode(CORNER);
+    pg.colorMode(RGB, 255);
+    pg.fill(0);
+    if (s1OffsetX > 0) {
+      pg.rect(0, 0, s1OffsetX, pg.height);
+      pg.rect(s1OffsetX + s1Size, 0, pg.width - s1OffsetX - s1Size, pg.height);
+    }
+    if (s1OffsetY > 0) {
+      pg.rect(0, 0, pg.width, s1OffsetY);
+      pg.rect(0, s1OffsetY + s1Size, pg.width, pg.height - s1OffsetY - s1Size);
+    }
+    pg.popStyle();
+
     // ── top-left HUD (outside the square translate so it sits at canvas coords) ──
     sceneHUD(pg, "Mandala", new String[]{
       "fins: " + nf(config.FINS, 1, 1) + "  blend: " + modeNames[config.CURRENT_BLEND_MODE_INDEX],
@@ -357,10 +415,9 @@ class OriginalScene implements IScene {
       config.TUNNEL_ZOOM_INCREMENT += (int)(bassTrigger.getValue() * 6);
     }
 
-    // ── Beat twist burst ───────────────────────────────────────────────────
-    if (analyzer.isBeat) twistValue = 1.0;
-    twistValue    = lerp(twistValue, 0, 0.10);
-    tunnelTwistOff = (int)(twistValue * 32);
+    // Beat only accelerates zoom (see isBeat branch above). Twist disabled —
+    // rotating the tunnel angle on every beat looked twitchy.
+    tunnelTwistOff = 0;
 
   }
 

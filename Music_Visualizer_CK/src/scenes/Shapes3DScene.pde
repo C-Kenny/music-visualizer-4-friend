@@ -33,7 +33,7 @@ class Shapes3DScene implements IScene {
   }
 
   void setFinWidth(float w) {
-    finWidthOverride = constrain(w, 2, max(16, width * 0.2));
+    finWidthOverride = constrain(w, 2, max(16, sceneBuffer.width * 0.2));
   }
 
   void adjustPlateScale(float delta) {
@@ -213,7 +213,7 @@ class Shapes3DScene implements IScene {
     int bladesFromStick = int(map(nx, -1, 1, 4, 12));
     setBlades(bladesFromStick);
 
-    float finW = map(ly, -1, 1, 8, min(width, height) * 0.08);
+    float finW = map(ly, -1, 1, 8, min(sceneBuffer.width, sceneBuffer.height) * 0.08);
     setFinWidth(finW);
 
     float plateS = map(lx, -1, 1, 0.8, 1.6);

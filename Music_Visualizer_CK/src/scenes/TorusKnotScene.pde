@@ -66,7 +66,7 @@ class TorusKnotScene implements IScene {
   // ── IScene lifecycle ──────────────────────────────────────────────────────
 
   void onEnter() {
-    buf = createGraphics(width, height, P3D);
+    buf = createGraphics(sceneBuffer.width, sceneBuffer.height, P3D);
     rebuildCurve();
   }
 
@@ -164,7 +164,10 @@ class TorusKnotScene implements IScene {
   // ── Draw ──────────────────────────────────────────────────────────────────
 
   void drawScene(PGraphics pg) {
-    if (buf == null) return;
+    if (buf == null || buf.width != pg.width || buf.height != pg.height) {
+      if (buf != null) buf.dispose();
+      buf = createGraphics(pg.width, pg.height, P3D);
+    }
 
     // Audio
     sBass  = lerp(sBass,  analyzer.bass,  0.08);

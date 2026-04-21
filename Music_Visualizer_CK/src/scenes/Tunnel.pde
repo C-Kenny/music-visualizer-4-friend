@@ -15,7 +15,11 @@ class Tunnel {
         texture[textureSize * yCoord + xCoord] = 0xff000000 | (greenColor<<16) | (greenColor<<8) | greenColor;
       }
     }
-    init(width, height);
+    // Do NOT pre-init the lookup table here with sketch width/height.
+    // OriginalScene draws into a square tunnelBuf (e.g. 1080×1080), which is
+    // completely different from the sketch canvas (e.g. 2560×1360).
+    // draw() lazily re-inits when pg dimensions differ from the cached table,
+    // so first-call init will use the correct buffer size automatically.
   }
 
   void init(int screenWidth, int screenHeight) {
