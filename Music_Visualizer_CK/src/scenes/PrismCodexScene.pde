@@ -4,6 +4,15 @@
 class PrismCodexScene implements IScene {
   float spin = 0.0;
   float beatGlow = 0.0;
+  float beatFlash = 0.0;       // sharp fast-decay flash for beams + center
+  float bassPulse = 0.0;       // smoothed bass for radius breathing
+  float spinKick = 0.0;        // brief spin boost on beat
+  float ringDirSign = 1.0;     // flips on hard beats for direction reversal
+  float hueShift = 0.0;        // walks over time + on high energy
+  float triggerHue = 0.0;      // LT contribution
+  float triggerDensity = 0.0;  // RT contribution → cross-link beams
+  float burstPhase = 0.0;      // radial burst expansion (0..1)
+  int beatCounter = 0;
   float latticeDrift = 0.0;
   float spinSpeed   = 0.0025; // controllable (default matches original)
   float driftSpeed  = 0.35;   // controllable latticeDrift increment
@@ -23,8 +32,14 @@ class PrismCodexScene implements IScene {
     float ry = map(c.ry, 0, height, -1, 1);
     driftSpeed = map(ry, -1, 1, 2.0, 0.05);
 
-    // A button → inject a manual glow flash
-    if (c.aJustPressed) beatGlow = 1.0;
+    // Triggers: LT shifts hue, RT adds beam cross-links
+    triggerHue     = lerp(triggerHue,     c.lt, 0.15);
+    triggerDensity = lerp(triggerDensity, c.rt, 0.15);
+
+    // A button → inject a manual glow + flash + burst
+    if (c.aJustPressed) { beatGlow = 1.0; beatFlash = 1.0; burstPhase = 1.0; }
+    // B button → flip ring rotation direction immediately
+    if (c.bJustPressed) ringDirSign = -ringDirSign;
   }
 
   String[] getCodeLines() {
@@ -50,9 +65,23 @@ class PrismCodexScene implements IScene {
   void drawScene(PGraphics pg) {
     if (analyzer.isBeat) {
       beatGlow = 1.0;
+      beatFlash = 1.0;
+      spinKick = 1.0;
+      beatCounter++;
+      // Every 4th beat: hard hit — flip rotation direction + radial burst
+      if (beatCounter % 4 == 0) {
+        ringDirSign = -ringDirSign;
+        burstPhase = 1.0;
+      }
     }
-    beatGlow *= 0.92;
-    spin += spinSpeed;
+    beatGlow  *= 0.92;
+    beatFlash *= 0.78;          // faster decay = sharper blink
+    spinKick  *= 0.90;
+    burstPhase *= 0.94;
+    bassPulse = lerp(bassPulse, analyzer.bass, 0.18);
+    hueShift += 0.4 + analyzer.high * 1.5 + triggerHue * 3.0;
+
+    spin += spinSpeed * (1.0 + spinKick * 4.0 + bassPulse * 0.8);
     latticeDrift += driftSpeed;
 
     float lowEnergy = getAverageBandEnergy(0.00, 0.18);
@@ -120,8 +149,9 @@ class PrismCodexScene implements IScene {
 
     for (int ring = 0; ring < 3; ring++) {
       float ringEnergy = energies[ring];
-      float radius = baseRadius * (ring + 1) * (1.0 + ringEnergy * 0.05 + beatGlow * 0.04);
-      float ringRotation = spin * (ring % 2 == 0 ? 1.0 : -1.35) + ring * PI / 7.0;
+      float radius = baseRadius * (ring + 1)
+        * (1.0 + ringEnergy * 0.05 + beatGlow * 0.04 + bassPulse * 0.18 + burstPhase * 0.25);
+      float ringRotation = spin * ringDirSign * (ring % 2 == 0 ? 1.0 : -1.35) + ring * PI / 7.0;
 
       pg.noFill();
       pg.stroke(80 + ring * 50, 120 + ring * 35, 220 + ring * 10, 85);
@@ -138,15 +168,25 @@ class PrismCodexScene implements IScene {
       }
     }
 
-    // beams between neighboring rings
+    // beams between neighboring rings — RT trigger and burst add cross-links
+    int extraLinks = (int)(triggerDensity * 3 + burstPhase * 2);
     for (int ring = 0; ring < 2; ring++) {
+      int nextLen = nodeX[ring + 1].length;
       for (int i = 0; i < nodeX[ring].length; i++) {
-        int nextA = i % nodeX[ring + 1].length;
-        int nextB = (i + 1) % nodeX[ring + 1].length;
-        drawBeam(pg, nodeX[ring][i], nodeY[ring][i], nodeX[ring + 1][nextA], nodeY[ring + 1][nextA],
-          energies[ring], energies[ring + 1], ring);
-        drawBeam(pg, nodeX[ring][i], nodeY[ring][i], nodeX[ring + 1][nextB], nodeY[ring + 1][nextB],
-          energies[ring], energies[ring + 1], ring);
+        for (int k = 0; k <= 1 + extraLinks; k++) {
+          int target = (i + k) % nextLen;
+          drawBeam(pg, nodeX[ring][i], nodeY[ring][i], nodeX[ring + 1][target], nodeY[ring + 1][target],
+            energies[ring], energies[ring + 1], ring);
+        }
+      }
+    }
+    // Burst: bright radial spokes from center to outer ring on every hard beat
+    if (burstPhase > 0.05) {
+      pg.stroke(255, 255, 255, 200 * burstPhase);
+      pg.strokeWeight(1.0 + burstPhase * 2.0);
+      int outer = nodeX.length - 1;
+      for (int i = 0; i < nodeX[outer].length; i++) {
+        pg.line(0, 0, nodeX[outer][i] * (0.4 + burstPhase * 0.6), nodeY[outer][i] * (0.4 + burstPhase * 0.6));
       }
     }
 
@@ -165,17 +205,21 @@ class PrismCodexScene implements IScene {
 
   void drawBeam(PGraphics pg, float x1, float y1, float x2, float y2, float e1, float e2, int ring) {
     float similarity = 1.0 - min(1.0, abs(e1 - e2) / 8.0);
-    float alpha = 35 + similarity * 90 + beatGlow * 28;
-    float weight = 0.8 + (e1 + e2) * 0.12;
-    pg.stroke(90 + ring * 45, 200 - ring * 30, 255, alpha);
+    float alpha = 35 + similarity * 90 + beatGlow * 28 + beatFlash * 110;
+    float weight = 0.8 + (e1 + e2) * 0.12 + beatFlash * 1.6;
+    pg.colorMode(HSB, 360, 100, 100, 255);
+    float hue = (200 + ring * 35 + hueShift * 0.6) % 360;
+    pg.stroke(hue, 70 - beatFlash * 40, 100, alpha);
     pg.strokeWeight(weight);
     pg.line(x1, y1, x2, y2);
+    pg.colorMode(RGB, 255);
   }
 
   void drawCentralPrism(PGraphics pg, float lowEnergy, float midEnergy, float highEnergy, float masterEnergy) {
-    float prismRadius = min(pg.width, pg.height) * (0.07 + lowEnergy * 0.003 + beatGlow * 0.012);
+    float prismRadius = min(pg.width, pg.height)
+      * (0.07 + lowEnergy * 0.003 + beatGlow * 0.012 + bassPulse * 0.045 + beatFlash * 0.025);
     float innerRadius = prismRadius * 0.52;
-    float prismRotation = -spin * 2.6;
+    float prismRotation = -spin * 2.6 * ringDirSign;
 
     for (int layer = 0; layer < 3; layer++) {
       float layerRadius = prismRadius + layer * 18 + highEnergy * (2 + layer);
