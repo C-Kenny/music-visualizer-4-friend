@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 # run.sh — Stages a flattened build for Processing and runs it.
+set -euo pipefail
+
+run_processing() {
+  if command -v snap >/dev/null 2>&1; then
+    snap run processing cli "$@"
+  elif [[ -x /snap/bin/processing ]]; then
+    /snap/bin/processing cli "$@"
+  elif command -v processing >/dev/null 2>&1; then
+    processing cli "$@"
+  else
+    echo "Processing CLI not found. Install Processing 4 CLI or make 'snap run processing cli' available." >&2
+    return 127
+  fi
+}
 
 # ── Stage Build ───────────────────────────────────────────────────────────────
 # Processing requires the folder name to match the main .pde filename.
@@ -22,6 +36,9 @@ ORIGIN_DIR="$(pwd)/Music_Visualizer_CK"
 ln -s "$ORIGIN_DIR/data" "$BUILD_DIR/data"
 ln -s "$ORIGIN_DIR/libraries" "$BUILD_DIR/libraries"
 
+# Also symlink media so skyboxes can load from ../../media/skyboxes
+ln -s "$(pwd)/media" "$BUILD_DIR/../media"
+
 # ── Runner Logic ──────────────────────────────────────────────────────────────
 # Create devmode flag
 touch "$BUILD_DIR/.devmode"
@@ -36,5 +53,10 @@ if [[ -f "Music_Visualizer_CK/.devscene" ]]; then
   ln -s "$ORIGIN_DIR/.devscene" "$BUILD_DIR/.devscene"
 fi
 
+# Link .smoketest if it exists
+if [[ -f "Music_Visualizer_CK/.smoketest" ]]; then
+  ln -s "$ORIGIN_DIR/.smoketest" "$BUILD_DIR/.smoketest"
+fi
+
 # Run using processing cli
-processing cli --sketch="$BUILD_DIR" --force --run "$@"
+run_processing --sketch="$BUILD_DIR" --force --run --vm-args="-Xmx1g" "$@"

@@ -191,7 +191,7 @@ class NeuralWeaveScene implements IScene {
       globalHue = (globalHue + random(28, 72)) % 360;
     }
     ripple *= 0.91;
-    rot += rotSpeed + mid * 0.00012 + high * 0.00004;
+    rot += analyzer.rotDir * (rotSpeed + mid * 0.00012 + high * 0.00004);
 
     bridgeTick++;
     if (growthMode > 0 && bridgeTick % 90 == 0) {
@@ -363,8 +363,8 @@ class NeuralWeaveScene implements IScene {
     metabolism = lerp(metabolism, c.lt, 0.14);
     techInject = lerp(techInject, c.rt, 0.14);
 
-    panX = lerp(panX, lx * min(width, height) * 0.22, 0.08);
-    panY = lerp(panY, ly * min(width, height) * 0.18, 0.08);
+    panX = lerp(panX, lx * min(sceneBuffer.width, sceneBuffer.height) * 0.22, 0.08);
+    panY = lerp(panY, ly * min(sceneBuffer.width, sceneBuffer.height) * 0.18, 0.08);
 
     if (abs(ry) < 0.14) {
       rotSpeed = lerp(rotSpeed, 0, 0.06);

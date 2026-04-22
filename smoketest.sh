@@ -3,6 +3,19 @@
 
 set -euo pipefail
 
+run_processing() {
+  if command -v snap >/dev/null 2>&1; then
+    snap run processing cli "$@"
+  elif [[ -x /snap/bin/processing ]]; then
+    /snap/bin/processing cli "$@"
+  elif command -v processing >/dev/null 2>&1; then
+    processing cli "$@"
+  else
+    echo "Processing CLI not found. Install Processing 4 CLI or make 'snap run processing cli' available." >&2
+    return 127
+  fi
+}
+
 # ── Stage Build ───────────────────────────────────────────────────────────────
 BUILD_ROOT=".build"
 SKETCH_NAME="Music_Visualizer_CK"
@@ -42,7 +55,15 @@ touch "$DEVMODE"
 echo "${BOLD}Running smoke test across refactored structure…${RESET}"
 echo
 
-processing cli --sketch="$BUILD_DIR" --force --run 2>&1 | \
+info_build=$(run_processing --sketch="$BUILD_DIR" --build 2>&1)
+if printf '%s' "$info_build" | grep -qi "error"; then
+  echo "${RED}${BOLD}ERROR: smoke test build failed before run.${RESET}"
+  printf '%s
+' "$info_build"
+  exit 1
+fi
+
+run_processing --sketch="$BUILD_DIR" --force --run 2>&1 | \
   grep --line-buffered -E '^\[SMOKE\]|^\[FAIL\]|╔|╠|╚|║|scenes=|checks=|failures=' || true
 
 # ── Read result ───────────────────────────────────────────────────────────────

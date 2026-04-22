@@ -1,7 +1,19 @@
 3d Ball Maze Puzzle inspired visualizer
 
 
-Fill up hour glass with sand then on MASSIVE BEAT DROP flip it over. 
+Fill up hour glass with sand then on MASSIVE BEAT DROP flip it over.
 (is it possible to pre-seek forward to scan for big drops, rather than finding it out in real time?)
 
 Sacred geometry
+
+Fractals:
+
+- ferns
+- Romanesco Broccoli
+- Lightning
+- Snowflakes
+- Tree Bark
+- Sierpinski Triangle
+- koch curve
+- Mandelbrot
+- Bifurcation and branching fractals

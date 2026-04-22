@@ -2,42 +2,49 @@ class Tunnel {
   PImage buffer;
   int[] lookUpTable;
   int[] texture;
+  final int RENDER_SCALE = 3;
 
   Tunnel() {
-    int texSize = 128;
-    texture = new int[texSize*texSize];
-    for (int j=0; j<texSize; j++) {
-      for (int i=0; i<texSize; i++) {
-        int r = (i ^ j);
-        int g = (((i>>6)&1)^((j>>6)&1))*255;
-        g = (g*5 + 3*r)>>3;
-        texture[texSize*j+i] = 0xff000000 | (g<<16) | (g<<8) | g;
+    int textureSize = 128;
+    texture = new int[textureSize*textureSize];
+    for (int yCoord = 0; yCoord < textureSize; yCoord++) {
+      for (int xCoord = 0; xCoord < textureSize; xCoord++) {
+        int redColor = (xCoord ^ yCoord);
+        int greenColor = (((xCoord>>6)&1)^((yCoord>>6)&1))*255;
+        greenColor = (greenColor * 5 + 3 * redColor) >> 3;
+        texture[textureSize * yCoord + xCoord] = 0xff000000 | (greenColor<<16) | (greenColor<<8) | greenColor;
       }
     }
-    init(width, height);
+    // Do NOT pre-init the lookup table here with sketch width/height.
+    // OriginalScene draws into a square tunnelBuf (e.g. 1080×1080), which is
+    // completely different from the sketch canvas (e.g. 2560×1360).
+    // draw() lazily re-inits when pg dimensions differ from the cached table,
+    // so first-call init will use the correct buffer size automatically.
   }
 
-  void init(int w, int h) {
-    lookUpTable = new int[w*h];
-    buffer = createImage(w, h, RGB);
+  void init(int screenWidth, int screenHeight) {
+    int renderWidth = screenWidth / RENDER_SCALE;
+    int renderHeight = screenHeight / RENDER_SCALE;
+    lookUpTable = new int[renderWidth * renderHeight];
+    buffer = createImage(renderWidth, renderHeight, RGB);
 
-    for (int j=h-1; j>0; j--) {
-      for (int i=w-1; i>0; i--) {
-        float x = -1.0f + (float)i*(2.0f/(float)w);
-        float y =  1.0f - (float)j*(2.0f/(float)h);
-        float r = sqrt(x*x+y*y);
-        float a = atan2(x, y);
+    for (int rowIdx = renderHeight - 1; rowIdx > 0; rowIdx--) {
+      for (int colIdx = renderWidth - 1; colIdx > 0; colIdx--) {
+        float xNorm = -1.0f + (float)colIdx * (2.0f / (float)renderWidth);
+        float yNorm =  1.0f - (float)rowIdx * (2.0f / (float)renderHeight);
+        float radius = sqrt(xNorm * xNorm + yNorm * yNorm);
+        float angle  = atan2(xNorm, yNorm);
 
-        float u = 1.0f/r;
-        float v = a*(1.0f/3.14159f);
-        float w2 = r*r;
-        if (w2>1.0f) w2=1.0f;
+        float distance = 1.0f / radius;
+        float texAngle = angle * (1.0f / 3.14159f);
+        float lightIntensity = radius * radius;
+        if (lightIntensity > 1.0f) lightIntensity = 1.0f;
 
-        int iu = (int)(u*255.0f);
-        int iv = (int)(v*255.0f);
-        int iw = (int)(w2*255.0f);
+        int finalDistance = (int)(distance * 255.0f);
+        int finalAngle = (int)(texAngle * 255.0f);
+        int finalIntensity = (int)(lightIntensity * 255.0f);
 
-        lookUpTable[w*j+i] = ((iw&255)<<16) | ((iv&255)<<8) | (iu&255);
+        lookUpTable[renderWidth * rowIdx + colIdx] = ((finalIntensity & 255) << 16) | ((finalAngle & 255) << 8) | (finalDistance & 255);
       }
     }
   }
@@ -49,29 +56,35 @@ class Tunnel {
   // twistOffset shifts the angle dimension of the texture independently of
   // the zoom — a value of ~32 produces a visible ~90° rotation twist.
   void draw(PGraphics pg, int tunnelZoomIncrement, int twistOffset, int xOffset, int squareSize) {
-    if (buffer == null || buffer.width != pg.width || buffer.height != pg.height) {
+    int renderWidth = pg.width / RENDER_SCALE;
+    int renderHeight = pg.height / RENDER_SCALE;
+    if (buffer == null || buffer.width != renderWidth || buffer.height != renderHeight) {
       init(pg.width, pg.height);
+      renderWidth = pg.width / RENDER_SCALE;
+      renderHeight = pg.height / RENDER_SCALE;
     }
     buffer.loadPixels();
-    int pgW = pg.width;
-    int pgH = pg.height;
-    int xEnd = min(xOffset + squareSize, pgW);
-    for (int row = 0; row < pgH; row++) {
-      for (int col = xOffset; col < xEnd; col++) {
-        int pgIdx  = row * pgW + col;
-        int luIdx  = row * buffer.width + col;
-        if (luIdx >= lookUpTable.length) continue;
-        int val = lookUpTable[luIdx];
-        int texel = texture[
-          ((val & 0x0000ffff) + ((config.logicalFrameCount + tunnelZoomIncrement) << 1) + (twistOffset << 8)) & ((128*128)-1)
+    
+    int scaledXOffset = xOffset / RENDER_SCALE;
+    int scaledSquareSize = squareSize / RENDER_SCALE;
+    int scanEndLimit = min(scaledXOffset + scaledSquareSize, renderWidth);
+    
+    for (int rowIndex = 0; rowIndex < renderHeight; rowIndex++) {
+      for (int columnIndex = scaledXOffset; columnIndex < scanEndLimit; columnIndex++) {
+        int pixelIndex  = rowIndex * renderWidth + columnIndex;
+        int lookupValue = lookUpTable[pixelIndex];
+        // Negate frame progression so texture flows outward from center —
+        // viewer feels like they're zooming INTO the tunnel rather than away.
+        int colorTexel = texture[
+          ((lookupValue & 0x0000ffff) - ((config.logicalFrameCount + tunnelZoomIncrement) << 1) + (twistOffset << 8)) & ((128*128)-1)
         ];
-        int alpha = (val >> 16) & 0xFF;
-        buffer.pixels[pgIdx] = (alpha << 24) | (texel & 0xFFFFFF);
+        int pixelAlpha = (lookupValue >> 16) & 0xFF;
+        buffer.pixels[pixelIndex] = (pixelAlpha << 24) | (colorTexel & 0xFFFFFF);
       }
     }
     buffer.updatePixels();
     // We expect the translated context to shift it if drawn within a translate. 
     // Tunnel is drawn before translation, so pg.image(buffer, 0, 0) is perfectly centered.
-    pg.image(buffer, 0, 0);
+    pg.image(buffer, scaledXOffset * RENDER_SCALE, 0, scaledSquareSize * RENDER_SCALE, pg.height);
   }
 }

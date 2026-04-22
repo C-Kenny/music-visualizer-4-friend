@@ -80,6 +80,7 @@ class RecursiveMandalaScene implements IScene {
   // ── Off-screen render + shader ─────────────────────────────────────────────
   PShader   glowShader;
   PGraphics glowBuf;
+  PShape    petalShape;
 
   RecursiveMandalaScene() {}
 
@@ -90,8 +91,18 @@ class RecursiveMandalaScene implements IScene {
     beatBoost = 0; manualRotDelta = 0;
     driftPhase = random(100); breathePhase = 0; driftX = 0; driftY = 0;
     glowShader = loadShader("mandala_glow.glsl");
-    glowBuf    = createGraphics(width, height, P3D);
+    glowBuf    = createGraphics(sceneBuffer.width / 2, sceneBuffer.height / 2, P3D);
+    glowBuf.smooth(4);
     glowBuf.beginDraw(); glowBuf.background(0); glowBuf.endDraw();
+    
+    petalShape = createShape();
+    petalShape.beginShape();
+    petalShape.vertex(0, 0);
+    // Draw a normalized petal (length 1, width 1)
+    petalShape.bezierVertex( 1, -0.38,  1, -0.78,  0, -1);
+    petalShape.bezierVertex(-1, -0.78, -1, -0.38,  0,  0);
+    petalShape.endShape(CLOSE);
+    petalShape.disableStyle();
   }
 
   void onExit() {}
@@ -99,8 +110,9 @@ class RecursiveMandalaScene implements IScene {
   // ── Main render ─────────────────────────────────────────────────────────────
 
   void drawScene(PGraphics pg) {
-    if (glowBuf == null || glowBuf.width != pg.width || glowBuf.height != pg.height) {
-      glowBuf = createGraphics(pg.width, pg.height, P3D);
+    if (glowBuf == null || glowBuf.width != pg.width/2 || glowBuf.height != pg.height/2) {
+      glowBuf = createGraphics(pg.width/2, pg.height/2, P3D);
+      glowBuf.smooth(4);
     }
     if (glowShader == null) glowShader = loadShader("mandala_glow.glsl");
 
@@ -127,8 +139,8 @@ class RecursiveMandalaScene implements IScene {
     driftPhase   += driftSpeed;
     breathePhase += 0.014;
 
-    float targetX = (noise(driftPhase, 0.0)   - 0.5) * 2.0 * driftAmp * pg.width;
-    float targetY = (noise(driftPhase, 100.0)  - 0.5) * 2.0 * driftAmp * pg.height;
+    float targetX = (noise(driftPhase, 0.0)   - 0.5) * 2.0 * driftAmp * glowBuf.width;
+    float targetY = (noise(driftPhase, 100.0)  - 0.5) * 2.0 * driftAmp * glowBuf.height;
     driftX = lerp(driftX, targetX, 0.012);
     driftY = lerp(driftY, targetY, 0.012);
     float breathe = 1.0 + sin(breathePhase) * 0.06; // ±6% slow scale breathe
@@ -165,7 +177,7 @@ class RecursiveMandalaScene implements IScene {
 
     pg.background(0);
     pg.shader(glowShader);
-    pg.image(glowBuf, 0, 0);
+    pg.image(glowBuf, 0, 0, pg.width, pg.height);
     pg.resetShader();
 
     // Beat flash
@@ -199,11 +211,11 @@ class RecursiveMandalaScene implements IScene {
     // Filled petal — low alpha; ADD mode makes overlaps glow naturally
     pg.noStroke();
     pg.fill(hue, sat, bri * 0.65, alpha * 0.35);
-    pg.beginShape();
-    pg.vertex(0, 0);
-    pg.bezierVertex( petalW, -len * 0.38,  petalW, -len * 0.78,  0, -len);
-    pg.bezierVertex(-petalW, -len * 0.78, -petalW, -len * 0.38,  0,    0);
-    pg.endShape(CLOSE);
+    
+    pg.pushMatrix();
+    pg.scale(petalW, len);
+    pg.shape(petalShape);
+    pg.popMatrix();
 
     // Central vein line
     pg.noFill();

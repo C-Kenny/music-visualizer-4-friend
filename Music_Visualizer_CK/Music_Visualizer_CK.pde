@@ -13,7 +13,10 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
-final int SCENE_COUNT = 44;
+SceneGuard     sceneGuard;
+KillSwitch     killSwitch;
+DisplayManager displayManager;
+final int SCENE_COUNT = 48;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -44,8 +47,34 @@ PeasyCam cam;
 void loadSongToVisualize() {
   logToStdout("Loading song to visualize");
   audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
-  config.SONG_PLAYING = true;
-  if (dropPredictor != null) dropPredictor.scan(config.SONG_TO_VISUALIZE);
+
+  // If first pick failed (corrupt file etc.), walk through songList trying
+  // each until one loads. Prevents a single bad WAV freezing the venue.
+  if (audio.player == null && config.songList != null && config.songList.size() > 1) {
+    int start = config.currentSongIndex;
+    for (int step = 1; step < config.songList.size(); step++) {
+      int idx = (start + step) % config.songList.size();
+      String candidate = config.songList.get(idx);
+      logToStdout("[Audio] Retrying with: " + candidate);
+      audio = new Audio(this, candidate, config.bandsPerOctave);
+      if (audio.player != null) {
+        config.currentSongIndex = idx;
+        config.SONG_TO_VISUALIZE = candidate;
+        config.SONG_NAME = getSongNameFromFilePath(candidate, config.OS_TYPE);
+        break;
+      }
+    }
+  }
+
+  config.SONG_PLAYING = (audio.player != null);
+  if (dropPredictor != null && audio.player != null) dropPredictor.scan(config.SONG_TO_VISUALIZE);
+
+  // Clean exit instead of letting downstream NPE-on-null-player freeze the
+  // window. Better the venue sees the terminal error than a black hung screen.
+  if (audio.player == null) {
+    System.err.println("[FATAL] Could not load any playable audio file. Exiting.");
+    exit();
+  }
 }
 
 void setupController() {
@@ -310,10 +339,13 @@ void settings() {
 }
 
 void setup() {
-  sceneBuffer = createGraphics(width, height, P3D);
+  config = new Config();
+  println("[DIAG] displayWidth=" + displayWidth + " displayHeight=" + displayHeight + " width=" + width + " height=" + height);
+  sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
+  sceneBuffer.smooth(4);
+  println("[DIAG] sceneBuffer=" + sceneBuffer.width + "x" + sceneBuffer.height);
   sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
   background(200);
-  config = new Config();
   analyzer = new AudioAnalyser();
   logToStdout("canvas spawned");
   initializeGlobals();
@@ -376,9 +408,17 @@ void setup() {
   scenes[41] = new DotMandalaScene();
   scenes[42] = new MerkabaStarScene();
   scenes[43] = new PentagonalVortexScene();
+  scenes[44] = new TunnelYantraScene();
+  scenes[45] = new VisualizerExplainerScene();
+  scenes[46] = new ChladniPlateScene();
+  scenes[47] = new StrangeAttractorScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
-  sceneSwitcher = new SceneSwitcher(SCENE_ORDER);
+  sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
+  sceneGuard     = new SceneGuard();
+  killSwitch     = new KillSwitch();
+  displayManager = new DisplayManager();
+  displayManager.initFromPrefs();
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
@@ -411,6 +451,28 @@ void setup() {
 void stop() {
   audio.stop();
   super.stop();
+}
+
+int sceneBufferRenderWidth() {
+  if (config != null && config.LOW_POWER_MODE) {
+    return max(1, width / config.LOW_POWER_SCALE);
+  }
+  if (config != null && config.STAGE_RENDER_CAP_HEIGHT > 0
+      && height > config.STAGE_RENDER_CAP_HEIGHT) {
+    return max(1, round(config.STAGE_RENDER_CAP_HEIGHT * (float) width / height));
+  }
+  return width;
+}
+
+int sceneBufferRenderHeight() {
+  if (config != null && config.LOW_POWER_MODE) {
+    return max(1, height / config.LOW_POWER_SCALE);
+  }
+  if (config != null && config.STAGE_RENDER_CAP_HEIGHT > 0
+      && height > config.STAGE_RENDER_CAP_HEIGHT) {
+    return config.STAGE_RENDER_CAP_HEIGHT;
+  }
+  return height;
 }
 
 void toggleHandDrawn(){
@@ -461,6 +523,25 @@ void keyPressed() {
     return;
   }
 
+  // Esc fires the emergency kill switch (fade-to-black). Q quits.
+  if (key == ESC) {
+    key = 0; // suppress Processing's default ESC→exit behaviour
+    killSwitch.toggle();
+    return;
+  }
+
+  // F11 toggles "fill current display" mode (borderless-style fullscreen).
+  if (keyCode == java.awt.event.KeyEvent.VK_F11) {
+    displayManager.toggleFullscreen();
+    return;
+  }
+
+  // Ctrl+1..9 moves window to that display (1-indexed in UI, 0-indexed internally).
+  if (keyEvent != null && keyEvent.isControlDown() && key >= '1' && key <= '9') {
+    displayManager.moveTo(key - '1');
+    return;
+  }
+
   // 1. Delegate to current scene first
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
     scenes[config.STATE].handleKey(key);
@@ -482,8 +563,7 @@ void keyPressed() {
   if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
   if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
   if (key == 'c' || key == 'C') controller.calibrate();
-  if (key == 'q' || key == 'Q' || key == ESC) {
-    key = 0; // suppress Processing's default ESC→exit behaviour
+  if (key == 'q' || key == 'Q') {
     audio.stop();
     exit();
   }
@@ -568,6 +648,7 @@ public void getUserInput() {
   // Update the flag each frame so scenes react as soon as the device appears.
   controller.read();
   config.USING_CONTROLLER = controller.isConnected();
+  killSwitch.pollController(controller);
   if (!config.USING_CONTROLLER) return;
 
   // 1. Delegate to active scene
@@ -576,22 +657,25 @@ public void getUserInput() {
   }
 
   // 2. Global Controller Shortcuts
-  if (controller.dpadUpJustPressed) {
-    config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
-    if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
-  }
-  if (controller.dpadLeftJustPressed) {
-    config.DRAW_PLASMA = !config.DRAW_PLASMA;
-    if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
-  }
-  if (controller.dpadRightJustPressed) {
-    config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
-    if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
-  }
-  if (controller.dpadDownJustPressed) {
-    config.DRAW_TUNNEL = false;
-    config.DRAW_POLAR_PLASMA = false;
-    config.DRAW_PLASMA = false;
+  // TunnelYantraScene owns the dpad for bg/fg cycling — skip global handlers.
+  if (config.STATE != SCENE_TUNNEL_YANTRA) {
+    if (controller.dpadUpJustPressed) {
+      config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
+      if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
+    }
+    if (controller.dpadLeftJustPressed) {
+      config.DRAW_PLASMA = !config.DRAW_PLASMA;
+      if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
+    }
+    if (controller.dpadRightJustPressed) {
+      config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
+      if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
+    }
+    if (controller.dpadDownJustPressed) {
+      config.DRAW_TUNNEL = false;
+      config.DRAW_POLAR_PLASMA = false;
+      config.DRAW_PLASMA = false;
+    }
   }
 
   if (!controller.chord(controller.lbButton, controller.rbButton)) {
@@ -646,7 +730,11 @@ final int[] SCENE_ORDER = {
   SCENE_COSMIC_LATTICE,
   SCENE_DOT_MANDALA,
   SCENE_MERKABA_STAR,
-  SCENE_PENTAGONAL_VORTEX
+  SCENE_PENTAGONAL_VORTEX,
+  SCENE_TUNNEL_YANTRA,
+  SCENE_CHLADNI_PLATE,
+  SCENE_STRANGE_ATTRACTOR,
+  SCENE_EXPLAINER
 };
 
 int _sceneOrderIndex(int state) {
@@ -656,8 +744,24 @@ int _sceneOrderIndex(int state) {
   return 0; // default to first if current scene not in list
 }
 
-int nextActiveScene() { return sceneSwitcher.nextScene(config.STATE); }
-int prevActiveScene() { return sceneSwitcher.prevScene(config.STATE); }
+int nextActiveScene() {
+  int n = sceneSwitcher.activeOrder.size();
+  int cur = config.STATE;
+  for (int i = 0; i < n; i++) {
+    cur = sceneSwitcher.nextScene(cur);
+    if (sceneGuard == null || !sceneGuard.isBlacklisted(cur)) return cur;
+  }
+  return sceneSwitcher.nextScene(config.STATE);
+}
+int prevActiveScene() {
+  int n = sceneSwitcher.activeOrder.size();
+  int cur = config.STATE;
+  for (int i = 0; i < n; i++) {
+    cur = sceneSwitcher.prevScene(cur);
+    if (sceneGuard == null || !sceneGuard.isBlacklisted(cur)) return cur;
+  }
+  return sceneSwitcher.prevScene(config.STATE);
+}
 
 // ── Scene crossfade ───────────────────────────────────────────────────────────
 // When switchScene() is called, we capture the current frame as a frozen
@@ -692,11 +796,29 @@ void switchScene(int newState) {
 // Execute a queued scene switch — captures snapshot and updates state.
 void commitPendingScene() {
   if (pendingScene < 0) return;
-  crossfadeSnapshot = sceneBuffer.get();  // last frame of outgoing scene
+  // Snapshot the upscaled main canvas, not the raw sceneBuffer, so the
+  // crossfade overlay matches window dimensions and doesn't leave an
+  // undersized square pasted in the corner during transition.
+  crossfadeSnapshot = get();
   crossfadeFrame    = 0;
   config.STATE      = pendingScene;
   pendingScene      = -1;
   pendingFrameCount = 0;
+}
+
+// Walks the active rotation forward from `from`, returning the first scene
+// that isn't blacklisted by SceneGuard. Falls back to `from` when every scene
+// in rotation is blacklisted (pathological — caller should render a card).
+int nextNonBlacklistedScene(int from) {
+  if (sceneSwitcher == null) return from;
+  int n = sceneSwitcher.activeOrder.size();
+  if (n == 0) return from;
+  int cur = from;
+  for (int i = 0; i < n; i++) {
+    cur = sceneSwitcher.nextScene(cur);
+    if (!sceneGuard.isBlacklisted(cur)) return cur;
+  }
+  return from;
 }
 
 // Direct switch called from SceneSwitcher — bypasses rotation guard
@@ -723,7 +845,8 @@ void draw() {
     analyzer.update(audio);
     smokeTestRunner.tick(sceneBuffer);
     blendMode(REPLACE);
-    image(sceneBuffer, 0, 0);
+    imageMode(CORNER);
+  image(sceneBuffer, 0, 0, width, height);
     return;
   }
   // ────────────────────────────────────────────────────────────────────────
@@ -777,28 +900,68 @@ void draw() {
     analyzer.update(audio);
     getUserInput();
 
-    // 3. Render Active Scene to Buffer
-    if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
-      if (sceneBuffer.width != width || sceneBuffer.height != height) {
-        sceneBuffer = createGraphics(width, height, P3D);
-        sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
-      }
-
-      sceneBuffer.beginDraw();
-      sceneBuffer.colorMode(PConstants.RGB, 255);
-      sceneBuffer.rectMode(PConstants.CORNER);
-      sceneBuffer.ellipseMode(PConstants.CENTER);
-      sceneBuffer.imageMode(PConstants.CORNER);
-      sceneBuffer.hint(PConstants.ENABLE_DEPTH_TEST);
-      
-      if (monoFont != null) sceneBuffer.textFont(monoFont);
-      sceneBuffer.pushMatrix();
-      scenes[config.STATE].drawScene(sceneBuffer);
-      sceneBuffer.popMatrix();
-      sceneBuffer.endDraw();
-      didRenderScene = true;
-    }
+    didRenderScene = true;
   } // End Fixed Timestep
+
+  // 3. Render Active Scene to Buffer — once per display frame (after all logic ticks)
+  if (didRenderScene && config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+    int targetW = sceneBufferRenderWidth();
+    int targetH = sceneBufferRenderHeight();
+    if (sceneBuffer.width != targetW || sceneBuffer.height != targetH) {
+      sceneBuffer = createGraphics(targetW, targetH, P3D);
+      sceneBuffer.smooth(4);
+      sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
+    }
+
+    sceneBuffer.beginDraw();
+    sceneBuffer.colorMode(PConstants.RGB, 255);
+    sceneBuffer.rectMode(PConstants.CORNER);
+    sceneBuffer.ellipseMode(PConstants.CENTER);
+    sceneBuffer.imageMode(PConstants.CORNER);
+    sceneBuffer.hint(PConstants.ENABLE_DEPTH_TEST);
+
+    if (monoFont != null) sceneBuffer.textFont(monoFont);
+
+    boolean sceneThrew = false;
+    int     skipTarget = -1;
+    try {
+      sceneBuffer.pushStyle();
+      sceneBuffer.pushMatrix();
+      try {
+        if (sceneGuard.isRecovering()) {
+          sceneGuard.drawRecoveryCard(sceneBuffer);
+          if (sceneGuard.tickRecovery()) {
+            if (sceneGuard.isBlacklisted(config.STATE)) {
+              skipTarget = nextNonBlacklistedScene(config.STATE);
+            }
+            sceneGuard.clearRecovery();
+          }
+        } else if (sceneGuard.isBlacklisted(config.STATE)) {
+          sceneBuffer.background(0);
+          skipTarget = nextNonBlacklistedScene(config.STATE);
+        } else {
+          scenes[config.STATE].drawScene(sceneBuffer);
+        }
+      } finally {
+        try { sceneBuffer.popMatrix(); } catch (Throwable ignored) {}
+        try { sceneBuffer.popStyle();  } catch (Throwable ignored) {}
+      }
+    } catch (Throwable t) {
+      sceneThrew = true;
+      sceneGuard.recordFailure(config.STATE, t);
+    }
+    try { sceneBuffer.endDraw(); } catch (Throwable ignored) {}
+
+    if (sceneThrew) {
+      // P3D renderer state may be corrupt mid-draw — recreate buffer fresh.
+      sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
+  sceneBuffer.smooth(4);
+      sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
+    }
+    if (skipTarget >= 0 && skipTarget != config.STATE) {
+      switchSceneDirect(skipTarget);
+    }
+  }
 
   // ── Beat-timed pending scene commit ─────────────────────────────────────
   // Fires once per rendered frame so pendingFrameCount tracks logical frames.
@@ -814,22 +977,24 @@ void draw() {
   if (config.BLOOM_ENABLED) {
     shader(bloomShader);
   }
-  image(sceneBuffer, 0, 0);
+  imageMode(CORNER);
+  image(sceneBuffer, 0, 0, width, height);
   if (config.BLOOM_ENABLED) {
     resetShader();
   }
-
   // 5. Global overlays (UI drawn at native res, over the buffer)
-  blendMode(BLEND); 
-  if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
+  blendMode(BLEND);
+  if (config.STATE >= 0 && config.STATE < SCENE_COUNT
+      && !sceneGuard.isBlacklisted(config.STATE) && !sceneGuard.isRecovering()) {
     if (config.SHOW_CODE) {
-      drawCodeOverlay(scenes[config.STATE].getCodeLines());
+      try { drawCodeOverlay(scenes[config.STATE].getCodeLines()); }
+      catch (Throwable ignored) {}
     }
     if (config.SHOW_CONTROLLER_GUIDE) {
-      ControllerLayout[] layout = scenes[config.STATE].getControllerLayout();
-      if (layout != null) {
-        drawControllerGuide(layout);
-      }
+      try {
+        ControllerLayout[] layout = scenes[config.STATE].getControllerLayout();
+        if (layout != null) drawControllerGuide(layout);
+      } catch (Throwable ignored) {}
     }
   }
 
@@ -850,7 +1015,9 @@ void draw() {
       float alpha = map(crossfadeFrame, 0, CROSSFADE_DURATION, 255, 0);
       blendMode(BLEND); 
       tint(255, alpha);
-      image(crossfadeSnapshot, 0, 0);
+      // Draw at window size; snapshot may be from a resized buffer, so explicit
+      // w/h prevents native-size pasting when dims don't match.
+      image(crossfadeSnapshot, 0, 0, width, height);
       noTint();
     }
   }
@@ -864,6 +1031,10 @@ void draw() {
     sceneSwitcher.update();
     sceneSwitcher.drawOverlay();
   }
+
+  // KillSwitch composites a black quad over EVERYTHING — must be the very last draw.
+  killSwitch.tick();
+  killSwitch.draw();
 }
 
 void drawMetadataOverlay() {

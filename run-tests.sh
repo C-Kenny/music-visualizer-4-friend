@@ -3,6 +3,18 @@
 # Usage: ./run-tests.sh
 set -euo pipefail
 
+run_processing() {
+  if command -v snap >/dev/null 2>&1; then
+    snap run processing cli "$@"
+  elif [[ -x /snap/bin/processing ]]; then
+    /snap/bin/processing cli "$@"
+  elif command -v processing >/dev/null 2>&1; then
+    processing cli "$@"
+  else
+    fail "Processing CLI not found. Install Processing 4 CLI or make 'snap run processing cli' available."
+  fi
+}
+
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 SKETCH_DIR="$REPO_ROOT/Music_Visualizer_CK"
 TESTS_DIR="$REPO_ROOT/tests"
@@ -19,15 +31,14 @@ info() { echo -e "${YELLOW}▸ $1${NC}"; }
 
 # ── 1. Compile smoke test via processing CLI ──────────────────────────────────
 info "Compile check: processing cli --build ..."
-if snap run processing cli --sketch="$SKETCH_DIR" --build 2>&1 | grep -qi "error"; then
+if run_processing --sketch="$SKETCH_DIR" --build 2>&1 | grep -qi "error"; then
   fail "Sketch failed to compile — fix errors before running tests"
 fi
 pass "Sketch compiles cleanly"
 
 # ── 2. Ensure Maven is available ──────────────────────────────────────────────
 if ! command -v mvn &>/dev/null; then
-  info "Maven not found. Installing via apt..."
-  sudo apt-get install -y maven
+  fail "Maven not found. Install Maven and rerun tests, e.g. 'sudo apt-get install -y maven' or use your OS package manager."
 fi
 
 # ── 3. Unit tests ─────────────────────────────────────────────────────────────

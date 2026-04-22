@@ -40,8 +40,11 @@ class ParticleFountainScene implements IScene {
   boolean longTrail = false;
 
   ParticleFountainScene() {
-    originX = width  / 2.0;
-    originY = height / 2.0;
+    // Initial origin = pg center. sceneBuffer is the canvas every scene draws
+    // into; using its dims keeps the spawn point centered when the scene
+    // buffer is smaller than the window (4K display + 1080p render cap).
+    originX = sceneBuffer.width  / 2.0;
+    originY = sceneBuffer.height / 2.0;
     for (int i = 0; i < MAX_PARTICLES; i++) pool.add(new Particle());
   }
 
@@ -197,7 +200,7 @@ class ParticleFountainScene implements IScene {
 
   void adjustGravity(float delta) { gravity = constrain(gravity + delta, -0.3, 0.8); }
   void adjustSpread(float delta) { emitSpread = constrain(emitSpread + delta, radians(5), TWO_PI); }
-  void nudgeOrigin(float dx, float dy) { originX = constrain(originX + dx, 0, width); originY = constrain(originY + dy, 0, height); }
+  void nudgeOrigin(float dx, float dy) { originX = constrain(originX + dx, 0, sceneBuffer.width); originY = constrain(originY + dy, 0, sceneBuffer.height); }
   void triggerBurst() { emitBurst(originX, originY, 30); }
   void triggerBurstAt(float bx, float by) { emitBurst(bx, by, 30); }
 

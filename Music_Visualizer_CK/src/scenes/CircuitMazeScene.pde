@@ -40,22 +40,33 @@ class CircuitMazeScene implements IScene {
   void updateLetterGrid(String text) {
     cols = max(12, text.length() * 6);
     letterMask = new boolean[cols][rows];
-    
-    PGraphics pg = createGraphics(cols, rows);
+
+    int scale = 10;
+    PGraphics pg = createGraphics(cols * scale, rows * scale);
     pg.beginDraw();
     pg.noSmooth();
     pg.background(0);
     pg.fill(255);
     pg.stroke(255);
-    pg.strokeWeight(1.2); // Fatten the letters
+    pg.strokeWeight(scale * 0.4);
     pg.textAlign(CENTER, CENTER);
-    pg.textFont(createFont("Arial Bold", 10)); // Force bold
-    pg.textSize(rows * 0.9); 
-    pg.text(text, cols/2.0, rows/2.0 - 0.6);
+    pg.textFont(createFont("Arial Bold", 10));
+    pg.textSize(rows * scale * 0.9);
+    pg.text(text, pg.width * 0.5, pg.height * 0.5);
     pg.loadPixels();
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
-        letterMask[x][y] = (brightness(pg.pixels[y * cols + x]) > 100);
+        int sampleX = x * scale + scale / 2;
+        int sampleY = y * scale + scale / 2;
+        int count = 0;
+        int checks = 0;
+        for (int sx = max(0, sampleX - 2); sx < min(pg.width, sampleX + 3); sx++) {
+          for (int sy = max(0, sampleY - 2); sy < min(pg.height, sampleY + 3); sy++) {
+            checks++;
+            if (brightness(pg.pixels[sy * pg.width + sx]) > 100) count++;
+          }
+        }
+        letterMask[x][y] = (count >= checks * 0.45);
       }
     }
     pg.endDraw();
@@ -92,7 +103,7 @@ class CircuitMazeScene implements IScene {
       for (int y = 0; y < rows; y++) {
         boolean letter = isLetterNode(x, y) && isLetterNode(x + 1, y);
         boolean exists = letter || (random(1) < 0.18);
-        boolean gateOpen = random(1) < openBias;
+        boolean gateOpen = letter ? true : random(1) < openBias;
         rightGates[x][y] = new CircuitGate(x, y, x + 1, y, exists, gateOpen);
       }
     }
@@ -101,7 +112,7 @@ class CircuitMazeScene implements IScene {
       for (int y = 0; y < rows - 1; y++) {
         boolean letter = isLetterNode(x, y) && isLetterNode(x, y + 1);
         boolean exists = letter || (random(1) < 0.12);
-        boolean gateOpen = random(1) < openBias;
+        boolean gateOpen = letter ? true : random(1) < openBias;
         downGates[x][y] = new CircuitGate(x, y, x, y + 1, exists, gateOpen);
       }
     }
@@ -201,7 +212,6 @@ class CircuitMazeScene implements IScene {
   }
 
   void drawBlockUnderlays(PGraphics pg, float originX, float originY, float stepX, float stepY) {
-    pg.noStroke();
     pg.rectMode(CORNER);
     float glowPulse = 0.5 + 0.5 * sin(frameCount * 0.1) + beatFlash * 0.5;
     
@@ -211,13 +221,17 @@ class CircuitMazeScene implements IScene {
           float px = originX + x * stepX;
           float py = originY + y * stepY;
           
-          // Outer block glow
-          pg.fill(30, 255, 100, 40 + glowPulse * 30);
-          pg.rect(px - 2, py - 2, stepX + 4, stepY + 4, 4);
+          pg.noStroke();
+          pg.fill(30, 255, 200, 90 + glowPulse * 40);
+          pg.rect(px - 3, py - 3, stepX + 6, stepY + 6, 6);
           
-          // Inner block core
-          pg.fill(35, 255, 200, 60 + beatFlash * 100);
-          pg.rect(px + 4, py + 4, stepX - 8, stepY - 8, 2);
+          pg.fill(30, 255, 250, 140 + beatFlash * 80);
+          pg.rect(px + 3, py + 3, stepX - 6, stepY - 6, 4);
+          
+          pg.stroke(180, 255, 255, 180);
+          pg.strokeWeight(2);
+          pg.noFill();
+          pg.rect(px - 1, py - 1, stepX + 2, stepY + 2, 4);
         }
       }
     }
@@ -246,10 +260,19 @@ class CircuitMazeScene implements IScene {
           pg.ellipse(px, py, 15 + lampGlow * 5.0, 15 + lampGlow * 5.0);
         }
         if (energised) {
-          if (isLetter) pg.fill(30, 255, 255, 220); // Golden Letter
-          else pg.fill(150, 255, 240, 160); // Dimmer Noise
-        } else { pg.fill(160, 80, 70, 140); }
-        pg.ellipse(px, py, r * 2, r * 2);
+          if (isLetter) pg.fill(30, 255, 240, 240); // Neon Letter
+          else pg.fill(150, 255, 240, 180); // Dimmer Wire
+        } else {
+          if (isLetter) pg.fill(30, 120, 120, 120);
+          else pg.fill(60, 80, 80, 110);
+        }
+        pg.ellipse(px, py, r * 2.2, r * 2.2);
+        if (isLetter) {
+          pg.stroke(0, 0, 0, 80);
+          pg.strokeWeight(1);
+          pg.ellipse(px, py, r * 2.8, r * 2.8);
+          pg.noStroke();
+        }
       }
     }
   }
@@ -265,11 +288,11 @@ class CircuitMazeScene implements IScene {
     boolean isLet = isLetterGate(g);
     float baseW = max(1.2, (2.0 + g.glow * 1.5) * (12.0/cols));
     if (isLet) {
-      pg.strokeWeight(baseW * 4.2); // Much Thicker
-      pg.stroke(30, 255, bright, min(255, alpha * 1.2)); // Golden
+      pg.strokeWeight(baseW * 5.0);
+      pg.stroke(30, 255, bright, min(255, alpha * 1.4));
     } else {
       pg.strokeWeight(baseW);
-      pg.stroke(150, 255, bright, alpha * 0.6); // Dimmer Cyan
+      pg.stroke(150, 255, bright, alpha * 0.6);
     }
     
     float gap = 12.0 * (1.0 - g.openVis) * (12.0/cols);

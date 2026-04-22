@@ -79,6 +79,24 @@ cd music-visualizer-4-friend
 ./watch.sh       # hot-reload dev mode (restarts on .pde file save)
 ```
 
+If your demo machine is CPU-only or low-end, use low-power rendering:
+
+```bash
+./run.sh --args --lowpower
+```
+
+Use `--lowpower-scale=3` or `--lowpower-scale=4` to reduce render resolution further.
+
+### How to Run Tests
+
+This repo includes a unit + compile check script.
+
+```bash
+./run-tests.sh
+```
+
+`./run-tests.sh` requires Maven installed on the host machine. If Maven is missing, the script will exit with a clear message instead of attempting an unattended install.
+
 **Dev overrides** (create inside `Music_Visualizer_CK/`, all gitignored):
 
 | File | Effect |
