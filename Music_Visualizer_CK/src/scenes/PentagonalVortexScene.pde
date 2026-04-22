@@ -82,7 +82,7 @@ class PentagonalVortexScene implements IScene {
 
   // ── IScene lifecycle ───────────────────────────────────────────────────────
   void onEnter() {
-    buf = createGraphics(width, height, P3D);
+    buf = createGraphics(sceneBuffer.width, sceneBuffer.height, P3D);
     tunnelOffset = 0; hueOffset = 0;
     rotation = 0; wavePhase = 2.0; waveAlpha = 0;
   }
@@ -178,7 +178,10 @@ class PentagonalVortexScene implements IScene {
 
   // ── 3D TUNNEL ─────────────────────────────────────────────────────────────
   void drawTunnel(PGraphics pg) {
-    if (buf == null) buf = createGraphics(width, height, P3D);
+    if (buf == null || buf.width != pg.width || buf.height != pg.height) {
+      if (buf != null) buf.dispose();
+      buf = createGraphics(pg.width, pg.height, P3D);
+    }
 
     // Scroll — constant speed, no audio speed changes
     tunnelSpeed   = lerp(tunnelSpeed, targetSpeed, 0.04);

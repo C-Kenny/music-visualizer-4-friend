@@ -20,6 +20,10 @@ class TableTennis3DScene extends TableTennisScene {
   float camAzim   =  0.15;
   float camElev   =  0.42;
   float camRadius = 950;
+  // Camera distance was calibrated for a ~1360-tall buffer. With the 1080p
+  // stage render cap the world shrinks, so camRadius must scale with buffer
+  // height to keep framing identical across resolutions.
+  final float CAM_RADIUS_BASELINE_H = 1360.0;
   float shake     =  0;
 
   // ── table dimensions ──────────────────────────────────────────────────────
@@ -97,7 +101,7 @@ class TableTennis3DScene extends TableTennisScene {
       return;
     }
 
-    float cx     = width / 2.0;
+    float cx     = sceneBuffer.width / 2.0;
     float backWallL = cx - ENV_HW;   // X position of left enclosure wall
     float backWallR = cx + ENV_HW;   // X position of right enclosure wall
 
@@ -158,6 +162,10 @@ class TableTennis3DScene extends TableTennisScene {
 
   void drawScene(PGraphics pg) {
     ensureResources(pg);
+    // Re-derive table layout from current buffer dims, same as the parent's
+    // drawScene does. Without this, tableY is frozen to constructor-time dims
+    // and the camera lookAt point drifts whenever the buffer is resized.
+    relayoutForBuffer(pg.width, pg.height);
     sceneTime += 1.0 / 60.0;
 
     float bass = 0, mid = 0;
@@ -189,8 +197,9 @@ class TableTennis3DScene extends TableTennisScene {
     innerBuf.beginDraw();
     innerBuf.background(10, 28, 10);
 
-    float radius = camRadius - powerFlash * 80;
-    float cx = width / 2.0;
+    float scale = pg.height / CAM_RADIUS_BASELINE_H;
+    float radius = (camRadius - powerFlash * 80) * scale;
+    float cx = pg.width / 2.0;
     float cy = tableY - 60;
     float cz = 0;
 
@@ -354,7 +363,7 @@ class TableTennis3DScene extends TableTennisScene {
   // ── environment floor ─────────────────────────────────────────────────────
 
   void drawEnvironmentFloor(PGraphics pg) {
-    float cx   = width / 2.0;
+    float cx   = pg.width / 2.0;
     float yBot = tableY + ENV_BOT_OFFSET;
 
     pg.pushStyle();
@@ -385,7 +394,7 @@ class TableTennis3DScene extends TableTennisScene {
   // ── environment walls (expanded + animated) ───────────────────────────────
 
   void drawEnvironmentWalls(PGraphics pg, float bass, float mid) {
-    float cx   = width / 2.0;
+    float cx   = pg.width / 2.0;
     float yTop = ENV_TOP;
     float yBot = tableY + ENV_BOT_OFFSET;
     float roomH = yBot - yTop;
@@ -529,8 +538,8 @@ class TableTennis3DScene extends TableTennisScene {
   void drawTable(PGraphics pg) {
     float th    = 18;
     float halfD = TABLE_DEPTH / 2.0;
-    float tw    = width * 0.88;
-    float tx    = width / 2.0;
+    float tw    = pg.width * 0.88;
+    float tx    = pg.width / 2.0;
 
     pg.pushStyle();
     pg.noStroke();

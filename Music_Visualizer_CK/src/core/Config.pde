@@ -102,6 +102,12 @@ class Config {
   boolean LOW_POWER_MODE;
   int LOW_POWER_SCALE;
 
+  // Stage render cap: when window is taller than this, sceneBuffer renders at
+  // this height (with aspect-matched width) and is upscaled to the window via
+  // a single image() blit. Keeps every scene calibrated for 1080p baseline
+  // while giving 4K stage projectors ~4x GPU headroom. Set to 0 to disable.
+  int STAGE_RENDER_CAP_HEIGHT;
+
   ArrayList<String> songList;
   int currentSongIndex;
 
@@ -202,6 +208,11 @@ class Config {
     LOW_POWER_MODE = false;
     LOW_POWER_SCALE = 2;
 
+    // Default disabled: stretch-blit from a smaller sceneBuffer to the main
+    // canvas produced asymmetric offsets on some drivers. Opt in with
+    // --render-cap=1080 once we've root-caused the stretch path.
+    STAGE_RENDER_CAP_HEIGHT = 0;
+
     logicalFrameCount = 0;
 
     songList = new ArrayList<String>();
@@ -218,6 +229,15 @@ class Config {
         if (arg.equals("--lowpower")) {
           LOW_POWER_MODE = true;
           BLOOM_ENABLED = false;
+        }
+        if (arg.equals("--no-render-cap")) {
+          STAGE_RENDER_CAP_HEIGHT = 0;
+        }
+        if (arg.startsWith("--render-cap=")) {
+          try {
+            STAGE_RENDER_CAP_HEIGHT = Integer.parseInt(arg.substring("--render-cap=".length()));
+            if (STAGE_RENDER_CAP_HEIGHT < 0) STAGE_RENDER_CAP_HEIGHT = 0;
+          } catch (Exception e) { /* keep default */ }
         }
         if (arg.startsWith("--lowpower-scale=")) {
           try {

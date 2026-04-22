@@ -12,8 +12,16 @@ class Audio {
 
   Audio(PApplet applet, String songToVisualize, int bandsPerOctave) {
     minim = new Minim(applet);
-    player = minim.loadFile(songToVisualize);
-    if (player == null) throw new RuntimeException("Minim could not load: " + songToVisualize);
+    try {
+      player = minim.loadFile(songToVisualize);
+    } catch (Throwable t) {
+      // Minim can throw on corrupt headers (mark/reset, IOException) before
+      // returning null. Catch broadly so a single bad file doesn't kill setup
+      // and leave the P3D window unresponsive — caller will retry next song.
+      System.err.println("[Audio] Minim threw loading " + songToVisualize + ": " + t.getMessage());
+      player = null;
+    }
+    if (player == null) return;  // caller checks audio.player == null and skips
     player.play();
     beat = new BeatDetect();
     fft = new FFT(player.bufferSize(), player.sampleRate());

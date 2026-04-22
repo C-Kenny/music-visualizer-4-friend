@@ -77,7 +77,7 @@ class KaleidoscopeScene implements IScene {
     rotation = 0; manualRot = 0;
     zoom = 0.65; beatFlash = 0;
     kaleidoShader = loadShader("kaleidoscope.glsl");
-    srcBuf = createGraphics(width / 2, height / 2, P3D);
+    srcBuf = createGraphics(sceneBuffer.width / 2, sceneBuffer.height / 2, P3D);
     srcBuf.beginDraw(); srcBuf.background(0); srcBuf.endDraw();
   }
 

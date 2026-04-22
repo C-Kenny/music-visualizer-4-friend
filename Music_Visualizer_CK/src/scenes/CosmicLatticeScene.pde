@@ -246,7 +246,7 @@ class CosmicLatticeScene implements IScene {
     // Radial distance from center in world space (pre-projection)
     float dxC = wx - centerX, dyC = wy - centerY;
     float distC = sqrt(dxC * dxC + dyC * dyC);
-    float maxD  = dist(0, 0, width * 0.5, height * 0.5) * 1.2;
+    float maxD  = dist(0, 0, sceneBuffer.width * 0.5, sceneBuffer.height * 0.5) * 1.2;
     float falloff = 1.0 - constrain(distC / maxD, 0, 1);
 
     // Beat shockwave: ring at pulseWave radius pushes node toward camera

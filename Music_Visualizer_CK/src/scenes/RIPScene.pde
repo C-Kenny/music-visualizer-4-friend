@@ -17,13 +17,13 @@ class RIPScene implements IScene {
     pg.fill(255, 100);
     pg.textAlign(CENTER, CENTER);
     pg.textSize(24 * uiScale());
-    pg.text("RIP Sam", width/2, height/2 - 20);
-    
+    pg.text("RIP Sam", pg.width/2, pg.height/2 - 20);
+
     pg.textSize(14 * uiScale());
     pg.fill(255, 60);
-    pg.text("Music Visualizer Tribute", width/2, height/2 + 20);
-    
-    drawSongNameOnScreen(pg, config.SONG_NAME, width / 2, height - 5);
+    pg.text("Music Visualizer Tribute", pg.width/2, pg.height/2 + 20);
+
+    drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2, pg.height - 5);
   }
 
   void applyController(Controller c) {}

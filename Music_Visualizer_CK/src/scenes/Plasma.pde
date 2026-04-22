@@ -27,10 +27,13 @@ class Plasma {
   }
 
   void draw(PGraphics pg, int plasmaSeed) {
-    // Half linear resolution (quarter pixel count) — 4× cheaper than full res.
-    // Drawn scaled up; P3D bilinear filtering keeps it smooth.
-    int bw = pg.width  / 2;
-    int bh = pg.height / 2;
+    // Fixed-size internal buffer — plasma inner loop is O(w*h) with per-pixel
+    // sqrt; scaling the buffer with pg tanked fps at stage resolution (900→15).
+    // 640×360 stretched via P3D bilinear stays smooth and keeps cost constant.
+    final int BMAX_W = 640, BMAX_H = 360;
+    float aspect = (float)pg.width / pg.height;
+    int bw = (aspect >= BMAX_W / (float)BMAX_H) ? BMAX_W : (int)(BMAX_H * aspect);
+    int bh = (aspect >= BMAX_W / (float)BMAX_H) ? (int)(BMAX_W / aspect) : BMAX_H;
     if (buffer == null || buffer.width != bw || buffer.height != bh) {
       buffer = createImage(bw, bh, RGB);
       cx1 = bw * 0.5;  cy1 = bh * 0.5;

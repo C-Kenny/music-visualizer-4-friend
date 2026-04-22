@@ -47,8 +47,34 @@ PeasyCam cam;
 void loadSongToVisualize() {
   logToStdout("Loading song to visualize");
   audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
-  config.SONG_PLAYING = true;
-  if (dropPredictor != null) dropPredictor.scan(config.SONG_TO_VISUALIZE);
+
+  // If first pick failed (corrupt file etc.), walk through songList trying
+  // each until one loads. Prevents a single bad WAV freezing the venue.
+  if (audio.player == null && config.songList != null && config.songList.size() > 1) {
+    int start = config.currentSongIndex;
+    for (int step = 1; step < config.songList.size(); step++) {
+      int idx = (start + step) % config.songList.size();
+      String candidate = config.songList.get(idx);
+      logToStdout("[Audio] Retrying with: " + candidate);
+      audio = new Audio(this, candidate, config.bandsPerOctave);
+      if (audio.player != null) {
+        config.currentSongIndex = idx;
+        config.SONG_TO_VISUALIZE = candidate;
+        config.SONG_NAME = getSongNameFromFilePath(candidate, config.OS_TYPE);
+        break;
+      }
+    }
+  }
+
+  config.SONG_PLAYING = (audio.player != null);
+  if (dropPredictor != null && audio.player != null) dropPredictor.scan(config.SONG_TO_VISUALIZE);
+
+  // Clean exit instead of letting downstream NPE-on-null-player freeze the
+  // window. Better the venue sees the terminal error than a black hung screen.
+  if (audio.player == null) {
+    System.err.println("[FATAL] Could not load any playable audio file. Exiting.");
+    exit();
+  }
 }
 
 void setupController() {
@@ -314,7 +340,10 @@ void settings() {
 
 void setup() {
   config = new Config();
+  println("[DIAG] displayWidth=" + displayWidth + " displayHeight=" + displayHeight + " width=" + width + " height=" + height);
   sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
+  sceneBuffer.smooth(4);
+  println("[DIAG] sceneBuffer=" + sceneBuffer.width + "x" + sceneBuffer.height);
   sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
   background(200);
   analyzer = new AudioAnalyser();
@@ -428,12 +457,20 @@ int sceneBufferRenderWidth() {
   if (config != null && config.LOW_POWER_MODE) {
     return max(1, width / config.LOW_POWER_SCALE);
   }
+  if (config != null && config.STAGE_RENDER_CAP_HEIGHT > 0
+      && height > config.STAGE_RENDER_CAP_HEIGHT) {
+    return max(1, round(config.STAGE_RENDER_CAP_HEIGHT * (float) width / height));
+  }
   return width;
 }
 
 int sceneBufferRenderHeight() {
   if (config != null && config.LOW_POWER_MODE) {
     return max(1, height / config.LOW_POWER_SCALE);
+  }
+  if (config != null && config.STAGE_RENDER_CAP_HEIGHT > 0
+      && height > config.STAGE_RENDER_CAP_HEIGHT) {
+    return config.STAGE_RENDER_CAP_HEIGHT;
   }
   return height;
 }
@@ -759,7 +796,10 @@ void switchScene(int newState) {
 // Execute a queued scene switch — captures snapshot and updates state.
 void commitPendingScene() {
   if (pendingScene < 0) return;
-  crossfadeSnapshot = sceneBuffer.get();  // last frame of outgoing scene
+  // Snapshot the upscaled main canvas, not the raw sceneBuffer, so the
+  // crossfade overlay matches window dimensions and doesn't leave an
+  // undersized square pasted in the corner during transition.
+  crossfadeSnapshot = get();
   crossfadeFrame    = 0;
   config.STATE      = pendingScene;
   pendingScene      = -1;
@@ -805,7 +845,8 @@ void draw() {
     analyzer.update(audio);
     smokeTestRunner.tick(sceneBuffer);
     blendMode(REPLACE);
-    image(sceneBuffer, 0, 0);
+    imageMode(CORNER);
+  image(sceneBuffer, 0, 0, width, height);
     return;
   }
   // ────────────────────────────────────────────────────────────────────────
@@ -868,6 +909,7 @@ void draw() {
     int targetH = sceneBufferRenderHeight();
     if (sceneBuffer.width != targetW || sceneBuffer.height != targetH) {
       sceneBuffer = createGraphics(targetW, targetH, P3D);
+      sceneBuffer.smooth(4);
       sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
     }
 
@@ -913,6 +955,7 @@ void draw() {
     if (sceneThrew) {
       // P3D renderer state may be corrupt mid-draw — recreate buffer fresh.
       sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
+  sceneBuffer.smooth(4);
       sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
     }
     if (skipTarget >= 0 && skipTarget != config.STATE) {
@@ -934,11 +977,11 @@ void draw() {
   if (config.BLOOM_ENABLED) {
     shader(bloomShader);
   }
-  image(sceneBuffer, 0, 0);
+  imageMode(CORNER);
+  image(sceneBuffer, 0, 0, width, height);
   if (config.BLOOM_ENABLED) {
     resetShader();
   }
-
   // 5. Global overlays (UI drawn at native res, over the buffer)
   blendMode(BLEND);
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT
@@ -972,7 +1015,9 @@ void draw() {
       float alpha = map(crossfadeFrame, 0, CROSSFADE_DURATION, 255, 0);
       blendMode(BLEND); 
       tint(255, alpha);
-      image(crossfadeSnapshot, 0, 0);
+      // Draw at window size; snapshot may be from a resized buffer, so explicit
+      // w/h prevents native-size pasting when dims don't match.
+      image(crossfadeSnapshot, 0, 0, width, height);
       noTint();
     }
   }

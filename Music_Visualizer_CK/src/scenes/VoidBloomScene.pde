@@ -83,8 +83,8 @@ class VoidBloomScene implements IScene {
     rippleAlpha  = 0;
     hueShift = 0;
     for (int i = 0; i < NUM_STARS; i++) {
-      sx[i]   = random(width);
-      sy[i]   = random(height);
+      sx[i]   = random(sceneBuffer.width);
+      sy[i]   = random(sceneBuffer.height);
       sBri[i] = random(40, 95);
       sSize[i]= random(0.6, 2.8);
     }
@@ -106,7 +106,7 @@ class VoidBloomScene implements IScene {
       hueShift     = (hueShift + 35) % 360;
       rippleRadius = 0;
       rippleAlpha  = 1.0;
-      spawnBurst(width / 2.0 + panX, height / 2.0 + panY, 25 + (int)(bassSmooth * 20));
+      spawnBurst(pg.width / 2.0 + panX, pg.height / 2.0 + panY, 25 + (int)(bassSmooth * 20));
     }
     beatFlash    *= 0.86;
     rippleRadius += 10 + bassSmooth * 18;
@@ -117,15 +117,15 @@ class VoidBloomScene implements IScene {
 
     // Continuous slow particle emission from a random petal tip
     if (config.logicalFrameCount % 2 == 0) {
-      float base2  = min(width, height) * 0.30 * zoom;
+      float base2  = min(pg.width, pg.height) * 0.30 * zoom;
       int   pIdx   = (int) random(numPetals);
       float pAngle = pIdx * TWO_PI / numPetals + globalRotation;
       int   bIdx   = constrain((int) map(pIdx, 0, numPetals, 0, 22), 0, analyzer.spectrum.length - 1);
       float amp    = lerp(0.25, 1.0, analyzer.spectrum[bIdx]);
       float tipR   = base2 * amp * 0.85;
       spawnParticle(
-        width / 2.0 + panX + cos(pAngle) * tipR,
-        height / 2.0 + panY + sin(pAngle) * tipR
+        pg.width / 2.0 + panX + cos(pAngle) * tipR,
+        pg.height / 2.0 + panY + sin(pAngle) * tipR
       );
     }
 
@@ -318,11 +318,14 @@ class VoidBloomScene implements IScene {
 
   // ── Controller ────────────────────────────────────────────────────────────────
   void applyController(Controller c) {
-    panX = constrain(panX + (c.lx - width  / 2.0) * 0.04, -width  * 0.4, width  * 0.4);
-    panY = constrain(panY + (c.ly - height / 2.0) * 0.04, -height * 0.4, height * 0.4);
+    // Pan is applied to pg-space coords, so clamp to sceneBuffer dims (not
+    // window dims) — otherwise on capped-resolution stages the pan can push
+    // the bloom off the visible buffer area.
+    panX = constrain(panX + (c.lx - width  / 2.0) * 0.04, -sceneBuffer.width  * 0.4, sceneBuffer.width  * 0.4);
+    panY = constrain(panY + (c.ly - height / 2.0) * 0.04, -sceneBuffer.height * 0.4, sceneBuffer.height * 0.4);
     float zd = map(c.ry, 0, height, -1, 1);
     zoom = constrain(zoom + zd * 0.025, 0.3, 3.5);
-    if (c.aJustPressed) spawnBurst(width / 2.0 + panX, height / 2.0 + panY, 30);
+    if (c.aJustPressed) spawnBurst(sceneBuffer.width / 2.0 + panX, sceneBuffer.height / 2.0 + panY, 30);
     if (c.bJustPressed) palette   = (palette + 1) % 4;
     if (c.yJustPressed) numPetals = (numPetals >= 16) ? 4 : numPetals + 2;
     if (c.xJustPressed) showStars = !showStars;
@@ -336,7 +339,7 @@ class VoidBloomScene implements IScene {
     if (k == 'z')              zoom      = constrain(zoom - 0.12, 0.3, 3.5);
     if (k == 'Z')              zoom      = constrain(zoom + 0.12, 0.3, 3.5);
     if (k == 's' || k == 'S') showStars = !showStars;
-    if (k == ' ')              spawnBurst(width / 2.0 + panX, height / 2.0 + panY, 30);
+    if (k == ' ')              spawnBurst(sceneBuffer.width / 2.0 + panX, sceneBuffer.height / 2.0 + panY, 30);
     if (k == 'r' || k == 'R') {
       zoom = 1.0; panX = 0; panY = 0; numPetals = 8; palette = 0;
     }

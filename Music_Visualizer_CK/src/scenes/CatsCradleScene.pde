@@ -4,27 +4,51 @@
 // Beat onsets pulse the anchor ring outward and spin it.
 
 class CatsCradleScene implements IScene {
-  int    numAnchors   = 8;     // points evenly spaced on the ring
-  int    subdivisions = 28;    // segments per string (more = smoother vibration)
-  float  phase        = 0;     // master phase for string oscillation
-  float  pulse        = 0;     // decaying beat-pulse value
-  float  rotation     = 0;     // slow rotation of the whole frame
-  float  rotationSpeed = 0.002; // controllable rotation speed (default matches original)
+  int    numAnchors   = 8;
+  int    subdivisions = 28;
+  float  phase        = 0;
+  float  pulse        = 0;
+  float  rotation     = 0;
+  float  rotationSpeed = 0.002;
+
+  // New state
+  int    rotDir       = 1;     // +1 / -1, flipped by bass drops or B
+  float  bassEnv      = 0;     // smoothed bass for breath + drop detection
+  float  bassPrev     = 0;
+  float  breathPhase  = 0;
+  int    paletteIdx   = 0;
+  boolean trailMode   = false; // trail fade vs hard clear (default: hard clear)
+  boolean glowOn      = false; // opt-in — additive glow can saturate on bright frames
+
+  // Palettes: {hueStart, hueEnd} sweeps across skip levels
+  final float[][] palettes = {
+    {270, 180},  // purple -> cyan (orig)
+    {  0,  60},  // red -> orange
+    {120, 200},  // green -> teal
+    {320,  30},  // magenta -> yellow (wraps)
+    { 40, 320}   // gold -> violet
+  };
+  final String[] paletteNames = {"Purple-Cyan","Fire","Forest","Sunset","Gold-Violet"};
+
+  // Glow shader (shared with RecursiveMandala)
+  PShader glowShader;
+  PGraphics glowBuf;
 
   CatsCradleScene() {}
 
   void applyController(Controller c) {
-    // L Stick ↕ → rotation speed (up = faster, down = slower)
     float ly = map(c.ly, 0, height, -1, 1);
     rotationSpeed = map(ly, -1, 1, 0.008, 0.0004);
 
-    // R Stick ↔ → numAnchors (4–14)
     float rx = map(c.rx, 0, width, -1, 1);
     int newAnchors = round(map(rx, -1, 1, 4, 14));
     numAnchors = constrain(newAnchors, 4, 14);
 
-    // A button → inject a manual beat pulse
     if (c.aJustPressed) pulse = 1.0;
+    if (c.bJustPressed) rotDir = -rotDir;
+    if (c.yJustPressed) paletteIdx = (paletteIdx + 1) % palettes.length;
+    if (c.xJustPressed) trailMode = !trailMode;
+    if (c.leftStickClickJustPressed) glowOn = !glowOn;
   }
 
   // --- code overlay -----------------------------------------------
@@ -52,13 +76,33 @@ class CatsCradleScene implements IScene {
   }
 
   void drawScene(PGraphics pg) {
-    pg.background(0);
+    // Lazy-load shader + glow buffer
+    if (glowShader == null) {
+      try { glowShader = loadShader("mandala_glow.glsl"); } catch (Exception e) { glowOn = false; }
+    }
+    if (glowOn && (glowBuf == null || glowBuf.width != pg.width/2 || glowBuf.height != pg.height/2)) {
+      glowBuf = createGraphics(pg.width/2, pg.height/2, P3D);
+      glowBuf.smooth(4);
+      glowBuf.beginDraw(); glowBuf.background(0); glowBuf.endDraw();
+    }
+
+    // Trail fade: low-alpha black rect instead of hard clear -> motion trails.
+    // Alpha scales with framerate — at 1000fps a low alpha never clears,
+    // trails accumulate to white. Target ~20% decay per logical frame @ 60hz.
+    if (trailMode) {
+      float fadeAlpha = constrain(90.0 * (60.0 / max(30.0, frameRate)), 12, 160);
+      pg.noStroke();
+      pg.fill(0, fadeAlpha);
+      pg.rect(0, 0, pg.width, pg.height);
+    } else {
+      pg.background(0);
+    }
 
     // --- audio sampling -------------------------------------------------
     float amplitude = 0;
     if (analyzer.isBeat) {
       pulse    = 1.0;
-      rotation += 0.08;      // spin jolt on beat
+      rotation += 0.08 * rotDir;
     }
     for (int i = 0; i < analyzer.spectrum.length; i++) {
       amplitude += analyzer.spectrum[i];
@@ -66,11 +110,21 @@ class CatsCradleScene implements IScene {
     amplitude /= analyzer.spectrum.length;
     pulse    *= 0.88;
     phase    += 0.04;
-    rotation += rotationSpeed;
+    rotation += rotationSpeed * rotDir;
+
+    // Bass envelope + drop-detection for auto flip
+    bassEnv = lerp(bassEnv, analyzer.bass, 0.12);
+    // Drop detected when bass was high and crashes: flip rotation direction.
+    if (bassPrev > 0.65 && analyzer.bass < 0.25) rotDir = -rotDir;
+    bassPrev = lerp(bassPrev, analyzer.bass, 0.25);
+
+    // Breath: slow sine + bass envelope modulate ring radius
+    breathPhase += 0.012;
+    float breath = 1.0 + sin(breathPhase) * 0.10 + bassEnv * 0.18;
 
     // --- layout ---------------------------------------------------------
-    float baseRadius = min(pg.width, pg.height) * 0.38;
-    float r = baseRadius * (1.0 + pulse * 0.08);
+    float baseRadius = min(pg.width, pg.height) * 0.34;
+    float r = baseRadius * breath * (1.0 + pulse * 0.08);
 
     float[] ax = new float[numAnchors];
     float[] ay = new float[numAnchors];
@@ -92,9 +146,10 @@ class CatsCradleScene implements IScene {
         int band = ((skip - 1) * numAnchors + i) % analyzer.spectrum.length;
         float bandAmp = analyzer.spectrum[band] * 3.0;
 
-        // colour: hue sweeps from purple → cyan as skip increases
+        // colour: hue sweeps across selected palette range
         pg.colorMode(HSB, 360, 255, 255, 255);
-        float hue   = map(skip, 1, numAnchors / 2.0, 270, 180);
+        float hueA = palettes[paletteIdx][0], hueB = palettes[paletteIdx][1];
+        float hue   = (map(skip, 1, numAnchors / 2.0, hueA, hueB) + 360) % 360;
         float alpha = map(skip, 1, numAnchors / 2.0, 220, 100);
         float weight = map(skip, 1, numAnchors / 2.0, 2.0, 0.8);
         pg.stroke((int)hue, 210, 255, (int)alpha);
@@ -116,11 +171,30 @@ class CatsCradleScene implements IScene {
       pg.ellipse(ax[i], ay[i], glow * 0.4, glow * 0.4);
     }
 
+    // Glow shader disabled — additive blending on large halos causes white-out
+    // The shader approach (8-tap ring sample + additive blend) compounds across the scene
+    // even with minimal parameters. Disable L3 glow button for now.
+    
+    // if (glowOn && glowShader != null && glowBuf != null) {
+    //   glowBuf.beginDraw();
+    //   glowBuf.background(0);
+    //   glowBuf.image(pg, 0, 0, glowBuf.width, glowBuf.height);
+    //   glowBuf.endDraw();
+    //   float gs = constrain(0.08 + analyzer.high * 0.08 + pulse * 0.05, 0, 0.25);
+    //   float gr = constrain(0.8 + analyzer.mid * 0.4 + pulse * 0.2, 0.8, 1.5);
+    //   glowShader.set("glowStrength", gs);
+    //   glowShader.set("glowRadius",   gr);
+    //   pg.shader(glowShader);
+    //   pg.image(glowBuf, 0, 0, pg.width, pg.height);
+    //   pg.resetShader();
+    // }
+
     drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
 
     sceneHUD(pg, "Cat's Cradle", new String[]{
-      "anchors: " + numAnchors + "  speed: " + nf(rotationSpeed, 1, 4),
-      "L \u2195 rotation speed   R \u2194 anchor count   A beat pulse"
+      "anchors: " + numAnchors + "  speed: " + nf(rotationSpeed, 1, 4) + "  dir: " + (rotDir>0?"CW":"CCW"),
+      "palette: " + paletteNames[paletteIdx] + "  trails: " + (trailMode?"ON":"OFF") + "  glow: " + (glowOn?"ON":"OFF"),
+      "L\u2195 speed  R\u2194 anchors  A pulse  B flip  Y palette  X trails  L3 glow"
     });
   }
 
@@ -161,13 +235,22 @@ class CatsCradleScene implements IScene {
 
   void onExit() {}
 
-  void handleKey(char k) {}
+  void handleKey(char k) {
+    if      (k == 'f' || k == 'F') rotDir = -rotDir;
+    else if (k == 'p' || k == 'P') paletteIdx = (paletteIdx + 1) % palettes.length;
+    else if (k == 't' || k == 'T') trailMode = !trailMode;
+    else if (k == 'g' || k == 'G') glowOn = !glowOn;
+  }
 
   ControllerLayout[] getControllerLayout() {
     return new ControllerLayout[] {
       new ControllerLayout("LStick ↕", "Rotation speed"),
       new ControllerLayout("RStick ↔", "Number of anchors (4–14)"),
-      new ControllerLayout("A Button", "Inject beat pulse")
+      new ControllerLayout("A Button", "Inject beat pulse"),
+      new ControllerLayout("B Button", "Flip rotation direction"),
+      new ControllerLayout("Y Button", "Cycle palette"),
+      new ControllerLayout("X Button", "Toggle trail fade"),
+      new ControllerLayout("L3",       "Toggle glow shader")
     };
   }
 }

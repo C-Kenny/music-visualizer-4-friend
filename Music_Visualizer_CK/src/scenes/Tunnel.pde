@@ -15,7 +15,11 @@ class Tunnel {
         texture[textureSize * yCoord + xCoord] = 0xff000000 | (greenColor<<16) | (greenColor<<8) | greenColor;
       }
     }
-    init(width, height);
+    // Do NOT pre-init the lookup table here with sketch width/height.
+    // OriginalScene draws into a square tunnelBuf (e.g. 1080×1080), which is
+    // completely different from the sketch canvas (e.g. 2560×1360).
+    // draw() lazily re-inits when pg dimensions differ from the cached table,
+    // so first-call init will use the correct buffer size automatically.
   }
 
   void init(int screenWidth, int screenHeight) {
@@ -69,8 +73,10 @@ class Tunnel {
       for (int columnIndex = scaledXOffset; columnIndex < scanEndLimit; columnIndex++) {
         int pixelIndex  = rowIndex * renderWidth + columnIndex;
         int lookupValue = lookUpTable[pixelIndex];
+        // Negate frame progression so texture flows outward from center —
+        // viewer feels like they're zooming INTO the tunnel rather than away.
         int colorTexel = texture[
-          ((lookupValue & 0x0000ffff) + ((config.logicalFrameCount + tunnelZoomIncrement) << 1) + (twistOffset << 8)) & ((128*128)-1)
+          ((lookupValue & 0x0000ffff) - ((config.logicalFrameCount + tunnelZoomIncrement) << 1) + (twistOffset << 8)) & ((128*128)-1)
         ];
         int pixelAlpha = (lookupValue >> 16) & 0xFF;
         buffer.pixels[pixelIndex] = (pixelAlpha << 24) | (colorTexel & 0xFFFFFF);
