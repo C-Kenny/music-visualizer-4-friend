@@ -67,6 +67,7 @@ class TorusKnotScene implements IScene {
 
   void onEnter() {
     buf = createGraphics(sceneBuffer.width, sceneBuffer.height, P3D);
+    buf.smooth(4);
     rebuildCurve();
   }
 
@@ -167,6 +168,7 @@ class TorusKnotScene implements IScene {
     if (buf == null || buf.width != pg.width || buf.height != pg.height) {
       if (buf != null) buf.dispose();
       buf = createGraphics(pg.width, pg.height, P3D);
+      buf.smooth(4);
     }
 
     // Audio
