@@ -139,6 +139,7 @@ class TableTennis3DScene extends TableTennisScene {
   void ensureResources(PGraphics pg) {
     if (innerBuf == null || innerBuf.width != pg.width || innerBuf.height != pg.height) {
       innerBuf = createGraphics(pg.width, pg.height, P3D);
+      innerBuf.smooth(4); // MSAA — removes jagged edges on net, table, paddles
     }
     if (acidShader     == null) acidShader     = loadShader("tt3d_acid.glsl");
     if (chromaticShader == null) chromaticShader = loadShader("tt3d_chromatic.glsl");

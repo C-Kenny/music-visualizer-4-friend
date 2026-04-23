@@ -215,6 +215,7 @@ class OriginalScene implements IScene {
       int sq = (int)s1Size;
       if (tunnelBuf == null || tunnelBuf.width != sq) {
         tunnelBuf = createGraphics(sq, sq, P2D);
+        tunnelBuf.smooth(4);
       }
       tunnelBuf.beginDraw();
       tunnel.draw(tunnelBuf, config.TUNNEL_ZOOM_INCREMENT, tunnelTwistOff, 0, sq);

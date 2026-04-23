@@ -51,6 +51,7 @@ class Original3DScene implements IScene {
 
   void onEnter() {
     buf = createGraphics(sceneBuffer.width, sceneBuffer.height, P3D);
+    buf.smooth(4);
     S = min(sceneBuffer.width, sceneBuffer.height) * 0.45;
     diamondDistCenter = S * 0.07;
   }
@@ -92,6 +93,7 @@ class Original3DScene implements IScene {
     if (buf == null || buf.width != pg.width || buf.height != pg.height) {
       if (buf != null) buf.dispose();
       buf = createGraphics(pg.width, pg.height, P3D);
+      buf.smooth(4);
     }
     S = min(buf.width, buf.height) * 0.45;
 
