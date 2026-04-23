@@ -41,6 +41,9 @@ class LissajousKnotScene implements IScene {
   float rotDir = 1.0;
   int lastDirChangeFrame = 0;
   
+  int displayMode = 3; // 0=Lissajous, 1=Torus, 2=Combined, 3=Combined+Interaction
+  boolean autoPan = true;
+  
   LissajousKnotScene() {
     rx = 300;
     ry = 300;
@@ -83,6 +86,7 @@ class LissajousKnotScene implements IScene {
     pg.translate(pg.width / 2, pg.height / 2, 0);
 
     // Camera Orbit 
+    if (autoPan) camRotY += 0.002;
     pg.rotateX(camRotX);
     pg.rotateY(camRotY);
     
@@ -116,10 +120,23 @@ class LissajousKnotScene implements IScene {
     hueShift = (hueShift + midIntensity * 2 + userHueOffset) % 360;
     
     pg.noFill();
-    pg.strokeWeight(2 + bassIntensity * 10);
+    pg.strokeWeight(6 + bassIntensity * 12);
     
-    pg.beginShape();
     int resolution = 600;
+    int p = max(2, round(A));
+    int q = max(2, round(B));
+    if (p == q) q++;
+    float torusScale = 120 * scale;
+
+    float[] lx = new float[resolution + 1];
+    float[] ly = new float[resolution + 1];
+    float[] lz = new float[resolution + 1];
+
+    float[] tx = new float[resolution + 1];
+    float[] ty = new float[resolution + 1];
+    float[] tz = new float[resolution + 1];
+
+    // Compute Lissajous and Torus points
     for (int i = 0; i <= resolution; i++) {
         float t = map(i, 0, resolution, 0, TWO_PI * 3);
         
@@ -127,28 +144,87 @@ class LissajousKnotScene implements IScene {
         float y = sin(B * t) * ry * scale;
         float z = cos(C * t) * rz * scale;
         
+        float phi = map(i, 0, resolution, 0, TWO_PI);
+        float rT = cos(q * phi) + 2.0;
+        float tX = rT * cos(p * phi) * torusScale;
+        float tY = rT * sin(p * phi) * torusScale;
+        float tZ = -sin(q * phi) * torusScale;
+
         // Audio-Reactive Physics: Bass shakes the knot vertices violently
         if (bassIntensity > 0.3) {
-            float jitter = pow((bassIntensity - 0.3), 1.5) * 45.0; // scales up rapidly on massive beats
-            x += random(-jitter, jitter);
-            y += random(-jitter, jitter);
-            z += random(-jitter, jitter);
+            float jitter = pow((bassIntensity - 0.3), 1.5) * 45.0; 
+            float jx = random(-jitter, jitter), jy = random(-jitter, jitter), jz = random(-jitter, jitter);
+            x += jx; y += jy; z += jz;
+            tX += jx; tY += jy; tZ += jz;
         }
         
-        pg.stroke(color((hueShift + i * 0.2) % 360, 200, 255));
-        pg.vertex(x, y, z);
+        lx[i] = x; ly[i] = y; lz[i] = z;
+        tx[i] = tX; ty[i] = tY; tz[i] = tZ;
     }
-    pg.endShape();
+
+    // Draw Lissajous Knot
+    if (displayMode == 0 || displayMode >= 2) {
+        // Outline
+        pg.strokeWeight(10 + bassIntensity * 12);
+        pg.beginShape();
+        for (int i = 0; i <= resolution; i++) {
+            pg.stroke(0, 150);
+            pg.vertex(lx[i], ly[i], lz[i]);
+        }
+        pg.endShape();
+        
+        // Inner
+        pg.strokeWeight(6 + bassIntensity * 12);
+        pg.beginShape();
+        for (int i = 0; i <= resolution; i++) {
+            pg.stroke(color((hueShift + i * 0.2) % 360, 200, 255));
+            pg.vertex(lx[i], ly[i], lz[i]);
+        }
+        pg.endShape();
+    }
+
+    // Draw Torus Knot
+    if (displayMode == 1 || displayMode >= 2) {
+        // Outline
+        pg.strokeWeight(8 + bassIntensity * 8);
+        pg.beginShape();
+        for (int i = 0; i <= resolution; i++) {
+            pg.stroke(0, 150);
+            pg.vertex(tx[i], ty[i], tz[i]);
+        }
+        pg.endShape();
+
+        // Inner
+        pg.strokeWeight(4 + bassIntensity * 8);
+        pg.beginShape();
+        for (int i = 0; i <= resolution; i++) {
+            pg.stroke(color((hueShift + 180 + i * 0.2) % 360, 200, 255));
+            pg.vertex(tx[i], ty[i], tz[i]);
+        }
+        pg.endShape();
+    }
+
+    // Interaction lines on high energy
+    if (displayMode == 3 && analyzer.high > 0.5) {
+        pg.strokeWeight(2);
+        pg.beginShape(LINES);
+        for (int i = 0; i < resolution; i += 5) {
+            pg.stroke(color((hueShift + 90 + i * 0.2) % 360, 180, 255, 120));
+            pg.vertex(lx[i], ly[i], lz[i]);
+            pg.vertex(tx[i], ty[i], tz[i]);
+        }
+        pg.endShape();
+    }
     
     // Glowing points on high energy
     if (analyzer.high > 0.6) {
       pg.strokeWeight(4);
       for (int i = 0; i < resolution; i += 20) {
-          float t = map(i, 0, resolution, 0, TWO_PI * 3);
-          float x = sin(A * t + delta) * rx * scale;
-          float y = sin(B * t) * ry * scale;
-          float z = cos(C * t) * rz * scale;
+          float x = lx[i];
+          float y = ly[i];
+          float z = lz[i];
           pg.point(x, y, z);
+          pg.point(tx[i], ty[i], tz[i]);
       }
     }
     pg.popMatrix();
@@ -183,6 +259,8 @@ class LissajousKnotScene implements IScene {
           targetB = floor(random(1, 8));
           targetC = floor(random(1, 5));
       }
+      if (c.bJustPressed) displayMode = (displayMode + 1) % 4;
+      if (c.yJustPressed) autoPan = !autoPan;
       if (c.xButton) userHueOffset += 5;
       if (c.dpadRightJustPressed) loadSkybox(skyboxIndex + 1);
       if (c.dpadLeftJustPressed) loadSkybox(skyboxIndex - 1);
@@ -195,6 +273,8 @@ class LissajousKnotScene implements IScene {
       targetB = floor(random(1, 8));
       targetC = floor(random(1, 5));
     }
+    if (k == 'm' || k == 'M') displayMode = (displayMode + 1) % 4;
+    if (k == 'y' || k == 'Y') autoPan = !autoPan;
     if (k == ']') loadSkybox(skyboxIndex + 1);
     if (k == '[') loadSkybox(skyboxIndex - 1);
     
@@ -217,6 +297,7 @@ class LissajousKnotScene implements IScene {
       "x = sin(A * t + delta) * rx;",
       "y = sin(B * t) * ry;",
       "z = cos(C * t) * rz;",
+      "Torus: r = cos(B * phi) + 2;",
       "A:" + nf(A, 1, 1) + " B:" + nf(B, 1, 1) + " C:" + nf(C, 1, 1) + " Skybox:" + SKYBOX_PATHS[skyboxIndex].split("_")[0]
     };
   }
@@ -227,7 +308,9 @@ class LissajousKnotScene implements IScene {
       new ControllerLayout("R-Stick ↔ ↕", "Orbit / Scale"),
       new ControllerLayout("LT / RT",     "Phase Shift (Delta)"),
       new ControllerLayout("A Button",    "Randomize Ratios"),
+      new ControllerLayout("B Button",    "Cycle View Mode"),
       new ControllerLayout("X Button",    "Color Cycle Spin"),
+      new ControllerLayout("Y Button",    "Toggle Auto-Pan"),
       new ControllerLayout("D-Pad ↔",     "Cycle Skybox")
     };
   }
