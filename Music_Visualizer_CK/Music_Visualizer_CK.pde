@@ -1200,6 +1200,29 @@ void drawCodeOverlay(String[] lines) {
   popStyle();
 }
 
+void drawAutoSwitcherBadge() {
+  String line = autoSwitcher.hudLine();
+  if (line == null) return;
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+  // Fixed width sized for longest possible line ("AUTO FAVS WEIGHTED cd 999s  ").
+  float tw    = textWidth("AUTO FAVS WEIGHTED cd 999s  ");
+  float boxH  = ts + 10;
+  float boxW  = tw + 16;
+  float pad   = 10 * uiScale();
+  float boxX  = width - pad - boxW;
+  float boxY  = height - pad - boxH;
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+  fill(0, 255, 120);
+  text(line, boxX + 8, boxY + 5);
+  popStyle();
+}
+
 void addFPSToTitleBar() {
   if (frameCount % 100 == 0) {
     surface.setTitle("Music Visualizer CK | fps: " + int(frameRate) + " | scene: " + config.STATE
