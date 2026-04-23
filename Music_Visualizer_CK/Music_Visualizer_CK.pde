@@ -13,6 +13,7 @@ Audio audio;
 Controller controller;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
+AutoSwitcher   autoSwitcher;
 SceneGuard     sceneGuard;
 KillSwitch     killSwitch;
 DisplayManager displayManager;
@@ -415,6 +416,7 @@ void setup() {
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
+  autoSwitcher   = new AutoSwitcher();
   sceneGuard     = new SceneGuard();
   killSwitch     = new KillSwitch();
   displayManager = new DisplayManager();
@@ -533,6 +535,19 @@ void keyPressed() {
   // F11 toggles "fill current display" mode (borderless-style fullscreen).
   if (keyCode == java.awt.event.KeyEvent.VK_F11) {
     displayManager.toggleFullscreen();
+    return;
+  }
+
+  // F9 toggle auto-switcher; Shift+F9 cycle mode
+  if (keyCode == java.awt.event.KeyEvent.VK_F9) {
+    boolean shift = (keyEvent != null && keyEvent.isShiftDown());
+    if (shift) {
+      autoSwitcher.cycleMode();
+      println("AUTO: mode -> " + autoSwitcher.MODE_LABELS[autoSwitcher.mode]);
+    } else {
+      autoSwitcher.toggleEnabled();
+      println("AUTO: " + (autoSwitcher.enabled ? "ON (" + autoSwitcher.MODE_LABELS[autoSwitcher.mode] + ")" : "OFF"));
+    }
     return;
   }
 
@@ -689,6 +704,16 @@ public void getUserInput() {
     }
   }
   
+  // L3 toggle auto-switch, R3 cycle mode
+  if (controller.leftStickClickJustPressed) {
+    autoSwitcher.toggleEnabled();
+    println("AUTO: " + (autoSwitcher.enabled ? "ON (" + autoSwitcher.MODE_LABELS[autoSwitcher.mode] + ")" : "OFF"));
+  }
+  if (controller.rightStickClickJustPressed) {
+    autoSwitcher.cycleMode();
+    println("AUTO: mode -> " + autoSwitcher.MODE_LABELS[autoSwitcher.mode]);
+  }
+
   if (controller.backJustPressed) {
     println("CONTROLLER: BACK pressed -> stopping");
     stopSong();
@@ -706,7 +731,6 @@ final int[] SCENE_ORDER = {
   SCENE_ORIGINAL,
   SCENE_MAZE_PUZZLE,
   SCENE_LISSAJOUS_KNOT,
-  SCENE_CATS_CRADLE,
   SCENE_TABLE_TENNIS,
   SCENE_TABLE_TENNIS_3D,
   SCENE_PRISM_CODEX,
@@ -899,6 +923,7 @@ void draw() {
     audio.beat.detect(audio.player.mix);
     analyzer.update(audio);
     getUserInput();
+    if (autoSwitcher != null) autoSwitcher.tick();
 
     didRenderScene = true;
   } // End Fixed Timestep
@@ -1025,6 +1050,8 @@ void draw() {
   if (config.SHOW_METADATA) {
     drawMetadataOverlay();
   }
+
+  if (autoSwitcher != null) drawAutoSwitcherBadge();
 
   // Scene switcher overlay — drawn last so it always floats on top
   if (sceneSwitcher.isOpen) {
