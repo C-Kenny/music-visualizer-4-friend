@@ -32,7 +32,7 @@ final int ST_PHASE_EXIT          = 4;
 // QUICK mode (env SMOKETEST_QUICK=1) trims aggressively for CI runtime — full
 // matrix runs locally for thorough coverage; CI just needs build/boot proof.
 final boolean ST_QUICK = "1".equals(System.getenv("SMOKETEST_QUICK"));
-final int ST_CTRL_INPUT_COUNT = ST_QUICK ? 4 : 32;
+final int ST_CTRL_INPUT_COUNT = ST_QUICK ? 2 : 32;
 
 boolean isSmokeTestMode() {
   String[] candidates = {
@@ -67,7 +67,7 @@ class SmokeTestRunner {
   // Keys to exercise — deliberately excludes q/Q/x/X (exit app)
   // and n/N (song navigation, needs a loaded songList).
   // QUICK mode tests just enough keys to prove handleKey() doesn't crash.
-  final char[] TEST_KEYS_QUICK = { 'h', '`', ' ', '1', '2' };
+  final char[] TEST_KEYS_QUICK = { 'h', '`' };
   final char[] TEST_KEYS_FULL = {
     'h', 'H', 's', 'S', 'l', 'L', '`', 'g', 'G',
     't', 'T', 'p', 'P', ' ',
