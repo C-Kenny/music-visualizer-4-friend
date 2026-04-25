@@ -83,6 +83,7 @@ class PentagonalVortexScene implements IScene {
   // ── IScene lifecycle ───────────────────────────────────────────────────────
   void onEnter() {
     buf = createGraphics(sceneBuffer.width, sceneBuffer.height, P3D);
+    buf.smooth(4);
     tunnelOffset = 0; hueOffset = 0;
     rotation = 0; wavePhase = 2.0; waveAlpha = 0;
   }
@@ -181,6 +182,7 @@ class PentagonalVortexScene implements IScene {
     if (buf == null || buf.width != pg.width || buf.height != pg.height) {
       if (buf != null) buf.dispose();
       buf = createGraphics(pg.width, pg.height, P3D);
+      buf.smooth(4);
     }
 
     // Scroll — constant speed, no audio speed changes
