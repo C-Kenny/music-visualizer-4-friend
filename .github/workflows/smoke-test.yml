@@ -47,8 +47,17 @@ jobs:
         run: bash scripts/ci-install-libs.sh
 
       # ── System deps ───────────────────────────────────────────────────────
-      - name: Install display + OpenGL
-        run: sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa
+      - name: Install display + OpenGL + audio
+        run: sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa pulseaudio
+
+      - name: Start dummy audio sink
+        # Minim/JavaSound throws on loadFile when no audio device exists.
+        # Spin up pulseaudio with a null sink so the format probe succeeds.
+        run: |
+          pulseaudio --start --exit-idle-time=-1 --daemonize=false &
+          sleep 2
+          pactl load-module module-null-sink sink_name=dummy || true
+          pactl list short sinks
 
       # ── Smoke test ────────────────────────────────────────────────────────
       - name: Run smoke test
