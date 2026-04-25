@@ -19,17 +19,20 @@ jobs:
         uses: actions/cache@v4
         id: cache-processing
         with:
-          path: ~/processing-4.5.2
-          key: processing-4.5.2-linux-x64
+          path: ~/Processing
+          key: processing-4.5.2-linux-x64-v2
 
       - name: Install Processing 4.5.2
         if: steps.cache-processing.outputs.cache-hit != 'true'
         run: |
-          # Processing 4.5.x ships portable .zip, not .tgz
+          # Processing 4.5.x ships portable .zip; top-level dir is "Processing/",
+          # launcher at Processing/bin/Processing. run.sh invokes lowercase
+          # "processing", so symlink to satisfy that.
           wget -q https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64-portable.zip
           unzip -q processing-4.5.2-linux-x64-portable.zip -d ~/
           rm processing-4.5.2-linux-x64-portable.zip
-          chmod +x ~/processing-4.5.2/processing
+          chmod +x ~/Processing/bin/Processing
+          ln -sf Processing ~/Processing/bin/processing
 
       # ── Libraries ─────────────────────────────────────────────────────────
       - name: Cache Processing libraries
@@ -51,7 +54,7 @@ jobs:
       - name: Run smoke test
         timeout-minutes: 8
         run: |
-          export PATH="$HOME/processing-4.5.2:$PATH"
+          export PATH="$HOME/Processing/bin:$PATH"
           touch Music_Visualizer_CK/.smoketest
           Xvfb :99 -screen 0 1920x1080x24 &
           sleep 2
