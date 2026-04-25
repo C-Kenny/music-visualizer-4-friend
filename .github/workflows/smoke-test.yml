@@ -25,9 +25,11 @@ jobs:
       - name: Install Processing 4.5.2
         if: steps.cache-processing.outputs.cache-hit != 'true'
         run: |
-          wget -q https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64.tgz
-          tar xzf processing-4.5.2-linux-x64.tgz -C ~/
-          rm processing-4.5.2-linux-x64.tgz
+          # Processing 4.5.x ships portable .zip, not .tgz
+          wget -q https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64-portable.zip
+          unzip -q processing-4.5.2-linux-x64-portable.zip -d ~/
+          rm processing-4.5.2-linux-x64-portable.zip
+          chmod +x ~/processing-4.5.2/processing
 
       # ── Libraries ─────────────────────────────────────────────────────────
       - name: Cache Processing libraries
