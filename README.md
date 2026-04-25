@@ -1,5 +1,8 @@
 # Music Visualizer for a Friend
 
+[![Smoke Test](https://github.com/C-Kenny/music-visualizer-4-friend/actions/workflows/smoke-test.yml/badge.svg?branch=master)](https://github.com/C-Kenny/music-visualizer-4-friend/actions/workflows/smoke-test.yml)
+[![Latest tag](https://img.shields.io/github/v/tag/C-Kenny/music-visualizer-4-friend?label=release&sort=semver)](https://github.com/C-Kenny/music-visualizer-4-friend/tags)
+
 ### What?
 
 Real-time audio-reactive music visualizer with 18 active scenes, built in [Processing 4](https://processing.org/). Controlled with an Xbox 360 / Xbox One controller. Visualizes audio via FFT, beat detection, and oscilloscope waveforms.
