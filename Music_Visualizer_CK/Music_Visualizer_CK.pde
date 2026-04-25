@@ -612,6 +612,19 @@ void keyPressed() {
     }
   }
 
+  // Keyboard equivalent of controller LB/RB. Use '<' / '>' as primary —
+  // ASCII keys can't be intercepted by the WM. PageUp/PageDown also work
+  // when available; we accept multiple keyCode aliases because Processing's
+  // NEWT backend uses 11/12 while AWT uses 33/34 (and X11 may map differently).
+  if (key == '<') switchScene(prevActiveScene());
+  if (key == '>') switchScene(nextActiveScene());
+  if (key == CODED) {
+    if (keyCode == 11 || keyCode == java.awt.event.KeyEvent.VK_PAGE_UP)
+      switchScene(prevActiveScene());
+    if (keyCode == 12 || keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN)
+      switchScene(nextActiveScene());
+  }
+
   // Global background toggles
   if (key == 't' || key == 'T') {
     config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
