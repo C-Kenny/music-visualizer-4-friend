@@ -56,11 +56,16 @@ jobs:
       - name: Start dummy audio sink
         # Minim/JavaSound throws on loadFile when no audio device exists.
         # Spin up pulseaudio with a null sink so the format probe succeeds.
+        # `--start` forks and daemonizes; don't combine with --daemonize=false or `&`.
         run: |
-          pulseaudio --start --exit-idle-time=-1 --daemonize=false &
-          sleep 2
+          pulseaudio --start --exit-idle-time=-1
+          # Wait until the daemon is actually accepting connections (up to 10s).
+          for i in $(seq 1 20); do
+            pactl info >/dev/null 2>&1 && break
+            sleep 0.5
+          done
           pactl load-module module-null-sink sink_name=dummy || true
-          pactl list short sinks
+          pactl list short sinks || true
 
       # ── Smoke test ────────────────────────────────────────────────────────
       - name: Run smoke test
