@@ -19,15 +19,20 @@ jobs:
         uses: actions/cache@v4
         id: cache-processing
         with:
-          path: ~/processing-4.5.2
-          key: processing-4.5.2-linux-x64
+          path: ~/Processing
+          key: processing-4.5.2-linux-x64-v2
 
       - name: Install Processing 4.5.2
         if: steps.cache-processing.outputs.cache-hit != 'true'
         run: |
-          wget -q https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64.tgz
-          tar xzf processing-4.5.2-linux-x64.tgz -C ~/
-          rm processing-4.5.2-linux-x64.tgz
+          # Processing 4.5.x ships portable .zip; top-level dir is "Processing/",
+          # launcher at Processing/bin/Processing. run.sh invokes lowercase
+          # "processing", so symlink to satisfy that.
+          wget -q https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64-portable.zip
+          unzip -q processing-4.5.2-linux-x64-portable.zip -d ~/
+          rm processing-4.5.2-linux-x64-portable.zip
+          chmod +x ~/Processing/bin/Processing
+          ln -sf Processing ~/Processing/bin/processing
 
       # ── Libraries ─────────────────────────────────────────────────────────
       - name: Cache Processing libraries
@@ -42,14 +47,23 @@ jobs:
         run: bash scripts/ci-install-libs.sh
 
       # ── System deps ───────────────────────────────────────────────────────
-      - name: Install display + OpenGL
-        run: sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa
+      - name: Install display + OpenGL + audio
+        run: sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa pulseaudio
+
+      - name: Start dummy audio sink
+        # Minim/JavaSound throws on loadFile when no audio device exists.
+        # Spin up pulseaudio with a null sink so the format probe succeeds.
+        run: |
+          pulseaudio --start --exit-idle-time=-1 --daemonize=false &
+          sleep 2
+          pactl load-module module-null-sink sink_name=dummy || true
+          pactl list short sinks
 
       # ── Smoke test ────────────────────────────────────────────────────────
       - name: Run smoke test
         timeout-minutes: 8
         run: |
-          export PATH="$HOME/processing-4.5.2:$PATH"
+          export PATH="$HOME/Processing/bin:$PATH"
           touch Music_Visualizer_CK/.smoketest
           Xvfb :99 -screen 0 1920x1080x24 &
           sleep 2
