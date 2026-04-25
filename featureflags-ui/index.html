@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Visualizer Flags</title>
+<style>
+  :root {
+    --green:    #00ff78;
+    --green-dim:#00b050;
+    --green-bg: rgba(0, 255, 120, 0.06);
+    --bg:       #000000;
+    --panel:    rgba(0, 20, 8, 0.85);
+    --border:   rgba(0, 255, 120, 0.35);
+    --err:      #ff4444;
+    --glow:     0 0 4px rgba(0,255,120,0.7), 0 0 12px rgba(0,255,120,0.25);
+  }
+
+  html, body { background:var(--bg); margin:0; min-height:100vh; }
+
+  .navbar {
+    display: flex; align-items: center;
+    background: var(--green); color: #000;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .navbar a {
+    color: #000; text-decoration: none;
+    padding: 10px 20px;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    font-size: 16px;
+    border-right: 1px solid rgba(0,0,0,0.3);
+    font-family: "Courier New", monospace;
+  }
+  .navbar a.active { background: #000; color: var(--green); text-shadow: var(--glow); }
+
+
+  body {
+    font: 20px/1.5 "Courier New", "Consolas", "Monaco", monospace;
+    color: var(--green);
+    padding: 24px 12px;
+    text-shadow: var(--glow);
+    /* Subtle CRT scanlines */
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0)   0px,
+      rgba(0,0,0,0)   2px,
+      rgba(0,255,120,0.04) 3px,
+      rgba(0,0,0,0)   4px
+    );
+  }
+
+  .frame {
+    max-width: 820px;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    padding: 0;
+    box-shadow: 0 0 20px rgba(0,255,120,0.15), inset 0 0 40px rgba(0,255,120,0.04);
+  }
+
+  .titlebar {
+    background: var(--green);
+    color: #000;
+    text-shadow: none;
+    padding: 8px 14px;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    display: flex;
+    justify-content: space-between;
+  }
+  .titlebar .dot { letter-spacing:0; }
+
+  .body { padding: 20px 24px 24px; }
+
+  h1 { font-size: 22px; margin: 0 0 10px; letter-spacing: 0.15em; }
+  .status { font-size: 14px; color: var(--green-dim); margin-bottom: 20px; opacity:0.85; }
+  .status.err { color: var(--err); text-shadow: 0 0 4px rgba(255,60,60,0.6); }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px dashed rgba(0,255,120,0.18);
+  }
+  .row:last-child { border-bottom: none; }
+  .label { flex: 1; padding-right: 16px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 18px; }
+  .control { flex: 0 0 280px; text-align: right; }
+
+  /* Checkboxes — boxed [X]/[ ] style */
+  input[type=checkbox] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 28px; height: 28px;
+    border: 1px solid var(--green);
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+    box-shadow: var(--glow);
+  }
+  input[type=checkbox]:checked::after {
+    content: "X";
+    position: absolute; inset: 0;
+    color: var(--green);
+    font-weight: bold;
+    font-size: 22px;
+    text-align: center;
+    line-height: 26px;
+    text-shadow: var(--glow);
+  }
+
+  /* Range slider — green track + handle */
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 200px; height: 6px;
+    background: rgba(0,255,120,0.2);
+    border: 1px solid var(--border);
+    vertical-align: middle;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 24px;
+    background: var(--green);
+    border: none;
+    box-shadow: var(--glow);
+    cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 24px;
+    background: var(--green);
+    border: none;
+    box-shadow: var(--glow);
+    cursor: pointer;
+  }
+
+  /* Select — square dropdown */
+  select {
+    background: var(--bg);
+    color: var(--green);
+    border: 1px solid var(--green);
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 16px;
+    text-shadow: var(--glow);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  select:focus, input:focus { outline: none; box-shadow: 0 0 6px rgba(0,255,120,0.7); }
+
+  .val {
+    display: inline-block;
+    min-width: 56px;
+    font-size: 18px;
+    text-align: right;
+    margin-left: 6px;
+    color: var(--green);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footer {
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--green-dim);
+    letter-spacing: 0.12em;
+    text-align: center;
+    opacity: 0.7;
+  }
+
+  /* Scene picker */
+  details.group {
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    background: rgba(0,255,120,0.03);
+  }
+  details.group > summary {
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 16px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--green);
+    list-style: none;
+    user-select: none;
+  }
+  details.group > summary::-webkit-details-marker { display:none; }
+  details.group > summary::before { content: "[+] "; }
+  details.group[open] > summary::before { content: "[-] "; }
+  .scene-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 6px;
+    padding: 10px 12px 12px;
+  }
+  .scene-btn {
+    background: var(--bg);
+    color: var(--green);
+    border: 1px solid var(--green);
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    text-shadow: var(--glow);
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .scene-btn:hover { background: var(--green-bg); }
+  .scene-btn.current {
+    background: var(--green);
+    color: #000;
+    text-shadow: none;
+    box-shadow: var(--glow);
+  }
+
+  /* Blinking cursor on status */
+  .status::after {
+    content: "_";
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/" class="active">FLAGS</a>
+  <a href="/controller.html">CONTROLLER</a>
+</nav>
+<div class="frame">
+  <div class="titlebar">
+    <span>VISUALIZER // FLAG CONTROL</span>
+    <span class="dot">[●]</span>
+  </div>
+  <div class="body">
+    <h1>&gt; CONFIG</h1>
+    <div class="status" id="status">connecting</div>
+    <div id="flags"></div>
+
+    <h1 style="margin-top:28px;">&gt; SCENES</h1>
+    <div id="scenes"></div>
+
+    <div class="footer" id="footer">SYS :: VENUE OPS PANEL</div>
+  </div>
+</div>
+
+<script>
+// Relative URL → works whether opened via file://, localhost, or LAN IP from phone.
+// When loaded from file://, fall back to localhost so dev still works.
+const HOST = location.protocol === "file:" ? "http://127.0.0.1:8080" : "";
+const ENDPOINT = HOST + "/featureflags";
+const SCENE_ENDPOINT = HOST + "/scene";
+const POLL_MS = 1500;
+let schema = [];
+let values = {};
+let dirty = new Set();   // keys user touched within debounce window
+let pollTimer = null;
+
+async function fetchFlags() {
+  const r = await fetch(ENDPOINT);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+async function postFlag(key, val) {
+  const r = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ [key]: val }),
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+function render() {
+  const root = document.getElementById("flags");
+  root.innerHTML = "";
+  for (const sp of schema) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = sp.label || sp.key;
+    const ctl = document.createElement("div");
+    ctl.className = "control";
+
+    if (sp.type === "bool") {
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = !!values[sp.key];
+      cb.onchange = async () => {
+        dirty.add(sp.key);
+        try { values = (await postFlag(sp.key, cb.checked)).values; }
+        catch (e) { setStatus("post failed: " + e.message, true); }
+        setTimeout(() => dirty.delete(sp.key), 800);
+      };
+      ctl.appendChild(cb);
+    } else if (sp.type === "enum") {
+      const sel = document.createElement("select");
+      for (const opt of sp.options) {
+        const o = document.createElement("option");
+        o.value = opt; o.textContent = opt;
+        if (values[sp.key] === opt) o.selected = true;
+        sel.appendChild(o);
+      }
+      sel.onchange = async () => {
+        dirty.add(sp.key);
+        try { values = (await postFlag(sp.key, sel.value)).values; }
+        catch (e) { setStatus("post failed: " + e.message, true); }
+        setTimeout(() => dirty.delete(sp.key), 800);
+      };
+      ctl.appendChild(sel);
+    } else if (sp.type === "float") {
+      const sl = document.createElement("input");
+      sl.type = "range"; sl.min = sp.min; sl.max = sp.max;
+      sl.step = (sp.max - sp.min) / 200;
+      sl.value = values[sp.key];
+      const v = document.createElement("span");
+      v.className = "val"; v.textContent = Number(sl.value).toFixed(1);
+      sl.oninput = () => { v.textContent = Number(sl.value).toFixed(1); dirty.add(sp.key); };
+      sl.onchange = async () => {
+        try { values = (await postFlag(sp.key, parseFloat(sl.value))).values; }
+        catch (e) { setStatus("post failed: " + e.message, true); }
+        setTimeout(() => dirty.delete(sp.key), 800);
+      };
+      ctl.appendChild(sl); ctl.appendChild(v);
+    }
+    row.appendChild(label); row.appendChild(ctl);
+    root.appendChild(row);
+  }
+}
+
+function setStatus(msg, isErr) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = "status" + (isErr ? " err" : "");
+}
+
+let sceneState = { groups: [], currentScene: -1 };
+let openGroups = new Set();  // remember which folders the user expanded
+
+async function fetchScenes() {
+  const r = await fetch(SCENE_ENDPOINT);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+async function postScene(id) {
+  const r = await fetch(SCENE_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+function renderScenes() {
+  const root = document.getElementById("scenes");
+  root.innerHTML = "";
+  for (const g of sceneState.groups) {
+    const det = document.createElement("details");
+    det.className = "group";
+    if (openGroups.has(g.name)) det.open = true;
+    det.ontoggle = () => det.open ? openGroups.add(g.name) : openGroups.delete(g.name);
+
+    const sum = document.createElement("summary");
+    sum.textContent = g.name + " (" + g.scenes.length + ")";
+    det.appendChild(sum);
+
+    const grid = document.createElement("div");
+    grid.className = "scene-grid";
+    for (const s of g.scenes) {
+      const btn = document.createElement("button");
+      btn.className = "scene-btn" + (s.id === sceneState.currentScene ? " current" : "");
+      btn.textContent = s.name;
+      btn.onclick = async () => {
+        try { sceneState = await postScene(s.id); renderScenes(); }
+        catch (e) { setStatus("scene switch failed: " + e.message, true); }
+      };
+      grid.appendChild(btn);
+    }
+    det.appendChild(grid);
+    root.appendChild(det);
+  }
+}
+
+async function poll() {
+  try {
+    const [data, scenes] = await Promise.all([fetchFlags(), fetchScenes()]);
+    schema = data.schema;
+    const merged = { ...data.values };
+    for (const k of dirty) if (k in values) merged[k] = values[k];
+    values = merged;
+    sceneState = scenes;
+    render();
+    renderScenes();
+    setStatus("connected · " + ENDPOINT);
+  } catch (e) {
+    setStatus("disconnected (" + e.message + ") — is the sketch running?", true);
+  }
+}
+
+document.getElementById("footer").textContent =
+  "SYS :: " + (location.host || "file://") + " // VENUE OPS PANEL";
+
+poll();
+pollTimer = setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
+

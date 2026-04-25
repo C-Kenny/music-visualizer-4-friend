@@ -15,6 +15,9 @@ Music_Visualizer_CK/.devscene.bak
 # Display selection persistence (per-machine)
 Music_Visualizer_CK/.display
 
+# Feature flag overrides (per-machine user prefs)
+Music_Visualizer_CK/featureflags.json
+
 # Smoke test (trigger + result are transient)
 Music_Visualizer_CK/.smoketest
 Music_Visualizer_CK/.smoketest_result
