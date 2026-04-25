@@ -50,8 +50,8 @@ jobs:
       - name: Install display + OpenGL + audio (cached)
         uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
-          packages: xvfb libgl1-mesa-dri libglu1-mesa pulseaudio
-          version: v1
+          packages: xvfb libgl1-mesa-dri libglu1-mesa pulseaudio gsettings-desktop-schemas
+          version: v2
 
       - name: Start dummy audio sink
         # Minim/JavaSound throws on loadFile when no audio device exists.
@@ -75,6 +75,8 @@ jobs:
           # prove every scene boots/draws/exits without throwing. Full input
           # matrix is exercised locally via the pre-push hook.
           SMOKETEST_QUICK: "1"
+          # Belt-and-braces: avoid GLib aborting on missing GSettings schemas.
+          GSETTINGS_BACKEND: "memory"
         run: |
           export PATH="$HOME/Processing/bin:$PATH"
           touch Music_Visualizer_CK/.smoketest
