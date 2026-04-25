@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Visualizer Controller</title>
+<style>
+  :root {
+    --green:    #00ff78;
+    --green-dim:#00b050;
+    --bg:       #000000;
+    --border:   rgba(0, 255, 120, 0.4);
+    --glow:     0 0 4px rgba(0,255,120,0.7), 0 0 12px rgba(0,255,120,0.25);
+  }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--green);
+    font: 14px/1.4 "Courier New", "Consolas", monospace;
+    text-shadow: var(--glow);
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+  }
+  .navbar {
+    display: flex; align-items: center; gap: 0;
+    background: var(--green); color: #000;
+    border-bottom: 1px solid var(--border);
+  }
+  .navbar a {
+    color: #000; text-decoration: none;
+    padding: 8px 16px;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    font-size: 13px;
+    border-right: 1px solid rgba(0,0,0,0.3);
+  }
+  .navbar a.active { background: #000; color: var(--green); text-shadow: var(--glow); }
+  .navbar .ws-url {
+    margin-left: auto; padding: 8px 12px;
+    font-size: 10px; color: rgba(0,0,0,0.7);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .header .status { color: var(--green-dim); font-size: 11px; }
+  .header .status.err { color: #ff4444; }
+  .header a { color: var(--green); text-decoration: none; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    padding: 8px;
+    height: calc(100vh - 76px);
+    box-sizing: border-box;
+  }
+
+  .pad {
+    position: relative;
+    border: 1px solid var(--border);
+    background: rgba(0, 255, 120, 0.04);
+    overflow: hidden;
+  }
+  .pad-label {
+    position: absolute; top: 6px; left: 8px;
+    font-size: 11px; color: var(--green-dim);
+    letter-spacing: 0.15em;
+    pointer-events: none;
+  }
+  .pad-coord {
+    position: absolute; bottom: 6px; right: 8px;
+    font-size: 11px; color: var(--green-dim);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  .crosshair-h, .crosshair-v {
+    position: absolute; background: rgba(0,255,120,0.1);
+    pointer-events: none;
+  }
+  .crosshair-h { left: 0; right: 0; top: 50%; height: 1px; }
+  .crosshair-v { top: 0; bottom: 0; left: 50%; width: 1px; }
+  .knob {
+    position: absolute;
+    width: 60px; height: 60px;
+    border: 2px solid var(--green);
+    border-radius: 50%;
+    background: rgba(0, 255, 120, 0.15);
+    box-shadow: var(--glow), inset 0 0 12px rgba(0,255,120,0.3);
+    transform: translate(-50%, -50%);
+    left: 50%; top: 50%;
+    pointer-events: none;
+    transition: transform 0.05s linear;
+  }
+
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 70px);
+    grid-template-rows: repeat(3, 70px);
+    gap: 6px;
+    align-self: center;
+    justify-self: center;
+  }
+  .btn {
+    border: 2px solid var(--green);
+    background: var(--bg);
+    color: var(--green);
+    font: bold 24px "Courier New", monospace;
+    text-shadow: var(--glow);
+    cursor: pointer;
+    border-radius: 50%;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active, .btn.held {
+    background: var(--green); color: #000; text-shadow: none;
+    box-shadow: var(--glow);
+  }
+  /* Xbox layout: Y top, X left, B right, A bottom */
+  #btnY { grid-column: 2; grid-row: 1; }
+  #btnX { grid-column: 1; grid-row: 2; }
+  #btnB { grid-column: 3; grid-row: 2; }
+  #btnA { grid-column: 2; grid-row: 3; }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/">FLAGS</a>
+  <a href="/controller.html" class="active">CONTROLLER</a>
+  <span class="ws-url" id="wsUrl"></span>
+</nav>
+<div class="header">
+  <span>VISUALIZER // CONTROLLER</span>
+  <span class="status" id="status">connecting…</span>
+</div>
+
+<div class="layout">
+  <div class="pad" id="padL">
+    <div class="pad-label">L STICK</div>
+    <div class="crosshair-h"></div>
+    <div class="crosshair-v"></div>
+    <div class="knob" id="knobL"></div>
+    <div class="pad-coord" id="coordL">0.00, 0.00</div>
+  </div>
+
+  <div class="buttons">
+    <button class="btn" id="btnY">Y</button>
+    <button class="btn" id="btnX">X</button>
+    <button class="btn" id="btnB">B</button>
+    <button class="btn" id="btnA">A</button>
+  </div>
+
+  <div class="pad" id="padR">
+    <div class="pad-label">R STICK</div>
+    <div class="crosshair-h"></div>
+    <div class="crosshair-v"></div>
+    <div class="knob" id="knobR"></div>
+    <div class="pad-coord" id="coordR">0.00, 0.00</div>
+  </div>
+</div>
+
+<script>
+const WS_URL = "ws://" + (location.host || "127.0.0.1:8081").replace(/:\d+$/, ":8081") + "/controller";
+const SEND_HZ = 60;
+const statusEl = document.getElementById("status");
+document.getElementById("wsUrl").textContent = WS_URL;
+
+// ---- Transport: WebSocket → falls back to HTTP POST after 2s ----
+let ws = null;
+let wsReady = false;
+let mode = "ws-connecting";  // "ws", "http"
+
+function connect() {
+  try { ws = new WebSocket(WS_URL); }
+  catch (e) { enableHttpFallback("WS construct failed"); return; }
+  const fallbackTimer = setTimeout(() => {
+    if (!wsReady) { try { ws.close(); } catch (e) {} enableHttpFallback("WS timeout — 8081 likely blocked"); }
+  }, 2000);
+  ws.onopen = () => {
+    clearTimeout(fallbackTimer);
+    wsReady = true; mode = "ws";
+    statusEl.textContent = "WS connected · " + WS_URL;
+    statusEl.className = "status";
+  };
+  ws.onclose = () => {
+    wsReady = false;
+    if (mode === "ws") { mode = "ws-connecting"; setTimeout(connect, 1000); }
+  };
+  ws.onerror = () => { wsReady = false; };
+}
+connect();
+
+function enableHttpFallback(reason) {
+  if (mode === "http") return;
+  mode = "http";
+  statusEl.textContent = "HTTP fallback · " + reason;
+  statusEl.className = "status";
+}
+
+let sendCount = 0;
+function send(obj) {
+  if (mode === "ws") {
+    if (wsReady && ws.readyState === 1) {
+      ws.send(JSON.stringify(obj));
+      sendCount++;
+      statusEl.textContent = "ws #" + sendCount + " · " + JSON.stringify(obj).slice(0, 40);
+    }
+    return;
+  }
+  if (mode === "http") {
+    const path = obj.type === "sticks" ? "/input/sticks" : "/input/button";
+    const body = obj.type === "sticks"
+      ? { lx:obj.lx, ly:obj.ly, rx:obj.rx, ry:obj.ry }
+      : { btn:obj.btn, action:obj.action };
+    fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).then(() => {
+      sendCount++;
+      statusEl.textContent = "http #" + sendCount + " · " + JSON.stringify(body).slice(0, 40);
+    }).catch(e => {
+      statusEl.textContent = "http err: " + e.message;
+      statusEl.className = "status err";
+    });
+  }
+}
+
+// ---- Sticks ----
+const stickState = { L: {x:0, y:0, active:false}, R: {x:0, y:0, active:false} };
+
+function setupPad(side, padEl, knobEl, coordEl) {
+  let pointerId = null;
+
+  function update(clientX, clientY) {
+    const r = padEl.getBoundingClientRect();
+    const cx = r.left + r.width  / 2;
+    const cy = r.top  + r.height / 2;
+    const radius = Math.min(r.width, r.height) / 2;
+    let dx = (clientX - cx) / radius;
+    let dy = (clientY - cy) / radius;
+    const mag = Math.hypot(dx, dy);
+    if (mag > 1) { dx /= mag; dy /= mag; }  // clamp to unit circle
+    stickState[side].x = dx;
+    stickState[side].y = dy;
+    knobEl.style.left = (50 + dx * 50) + "%";
+    knobEl.style.top  = (50 + dy * 50) + "%";
+    coordEl.textContent = dx.toFixed(2) + ", " + dy.toFixed(2);
+  }
+
+  function release() {
+    stickState[side].x = 0;
+    stickState[side].y = 0;
+    stickState[side].active = false;
+    knobEl.style.left = "50%";
+    knobEl.style.top  = "50%";
+    coordEl.textContent = "0.00, 0.00";
+    pointerId = null;
+  }
+
+  padEl.addEventListener("pointerdown", (e) => {
+    pointerId = e.pointerId;
+    padEl.setPointerCapture(pointerId);
+    stickState[side].active = true;
+    update(e.clientX, e.clientY);
+  });
+  padEl.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== pointerId) return;
+    update(e.clientX, e.clientY);
+  });
+  padEl.addEventListener("pointerup",     () => release());
+  padEl.addEventListener("pointercancel", () => release());
+  padEl.addEventListener("pointerleave",  (e) => { if (e.pointerId === pointerId) release(); });
+}
+
+setupPad("L", document.getElementById("padL"), document.getElementById("knobL"), document.getElementById("coordL"));
+setupPad("R", document.getElementById("padR"), document.getElementById("knobR"), document.getElementById("coordR"));
+
+// Stream sticks at SEND_HZ (only when one is active OR was just released — to push the centering frame).
+let lastSent = { lx:0, ly:0, rx:0, ry:0 };
+setInterval(() => {
+  const lx = stickState.L.x, ly = stickState.L.y;
+  const rx = stickState.R.x, ry = stickState.R.y;
+  const changed = lx !== lastSent.lx || ly !== lastSent.ly || rx !== lastSent.rx || ry !== lastSent.ry;
+  const anyActive = stickState.L.active || stickState.R.active;
+  if (changed || anyActive) {
+    send({ type: "sticks", lx, ly, rx, ry });
+    lastSent = { lx, ly, rx, ry };
+  }
+}, 1000 / SEND_HZ);
+
+// ---- Buttons ----
+function wireButton(id, name) {
+  const el = document.getElementById(id);
+  el.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    el.classList.add("held");
+    send({ type: "button", btn: name, action: "down" });
+  });
+  function up() {
+    el.classList.remove("held");
+    send({ type: "button", btn: name, action: "up" });
+  }
+  el.addEventListener("pointerup", up);
+  el.addEventListener("pointercancel", up);
+  el.addEventListener("pointerleave", up);
+}
+wireButton("btnA", "A");
+wireButton("btnB", "B");
+wireButton("btnX", "X");
+wireButton("btnY", "Y");
+</script>
+</body>
+</html>

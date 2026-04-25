@@ -11,6 +11,9 @@ import java.util.HashSet;
 Config config;
 Audio audio;
 Controller controller;
+FeatureFlagServer featureFlagServer;
+WebController webController;
+ControllerWebSocket controllerWS;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
 AutoSwitcher   autoSwitcher;
@@ -341,6 +344,11 @@ void settings() {
 
 void setup() {
   config = new Config();
+  featureFlagServer = new FeatureFlagServer();
+  featureFlagServer.start();
+  webController = new WebController();
+  controllerWS = new ControllerWebSocket(8081);
+  controllerWS.start();
   println("[DIAG] displayWidth=" + displayWidth + " displayHeight=" + displayHeight + " width=" + width + " height=" + height);
   sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
   sceneBuffer.smooth(4);
@@ -417,6 +425,7 @@ void setup() {
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
   autoSwitcher   = new AutoSwitcher();
+  featureFlagServer.loadFromDisk();  // after autoSwitcher so AUTO_SWITCH_MODE applies
   sceneGuard     = new SceneGuard();
   killSwitch     = new KillSwitch();
   displayManager = new DisplayManager();
@@ -662,7 +671,10 @@ public void getUserInput() {
   // Always read (handles hot-plug retry inside Controller.read()).
   // Update the flag each frame so scenes react as soon as the device appears.
   controller.read();
-  config.USING_CONTROLLER = controller.isConnected();
+  if (webController != null) webController.applyTo(controller);
+  // USING_CONTROLLER counts physical OR web-driven input as "connected" so
+  // scenes that gate behind it still receive web input from a phone.
+  config.USING_CONTROLLER = controller.isConnected() || webController.isActive();
   killSwitch.pollController(controller);
   if (!config.USING_CONTROLLER) return;
 
@@ -1052,6 +1064,7 @@ void draw() {
   }
 
   if (autoSwitcher != null) drawAutoSwitcherBadge();
+  drawWebControlBadge();
 
   // Scene switcher overlay — drawn last so it always floats on top
   if (sceneSwitcher.isOpen) {
@@ -1196,6 +1209,36 @@ void drawCodeOverlay(String[] lines) {
     else if (line.equals(""))        fill(0, 0, 0, 0);     // invisible spacer
     else                             fill(180, 255, 180);   // body → light green
     text(line, tx, ty + i * lineH);
+  }
+  popStyle();
+}
+
+// Bottom-left HUD: shows LAN URLs so the operator can grab them on a new wifi
+// without having to ssh / check the terminal.
+void drawWebControlBadge() {
+  if (featureFlagServer == null || featureFlagServer.lanUrls == null) return;
+  if (featureFlagServer.lanUrls.size() == 0) return;
+  pushStyle();
+  textFont(monoFont);
+  float ts = 14 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, BOTTOM);
+  float pad = 10 * uiScale();
+  float lineH = ts + 4;
+  int n = featureFlagServer.lanUrls.size();
+  float boxH = lineH * (n + 1) + 12;
+  float boxW = 0;
+  for (String u : featureFlagServer.lanUrls) boxW = max(boxW, textWidth(u));
+  boxW = max(boxW, textWidth("WEB CONTROL")) + 16;
+  float boxX = pad;
+  float boxY = height - pad;
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY - boxH, boxW, boxH, 4);
+  fill(0, 255, 120);
+  text("WEB CONTROL", boxX + 8, boxY - boxH + lineH);
+  for (int i = 0; i < n; i++) {
+    text(featureFlagServer.lanUrls.get(i), boxX + 8, boxY - boxH + lineH * (i + 2));
   }
   popStyle();
 }
