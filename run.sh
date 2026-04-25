@@ -3,7 +3,9 @@
 set -euo pipefail
 
 run_processing() {
-  if command -v snap >/dev/null 2>&1; then
+  # Prefer snap when the processing snap is actually installed (not just when
+  # `snap` is on PATH — many CI runners have snap but no processing snap).
+  if command -v snap >/dev/null 2>&1 && snap list processing >/dev/null 2>&1; then
     snap run processing cli "$@"
   elif [[ -x /snap/bin/processing ]]; then
     /snap/bin/processing cli "$@"
