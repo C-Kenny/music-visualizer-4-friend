@@ -61,7 +61,12 @@ jobs:
 
       # ── Smoke test ────────────────────────────────────────────────────────
       - name: Run smoke test
-        timeout-minutes: 8
+        timeout-minutes: 4
+        env:
+          # QUICK mode: ~10 frames per scene instead of ~97. CI just needs to
+          # prove every scene boots/draws/exits without throwing. Full input
+          # matrix is exercised locally via the pre-push hook.
+          SMOKETEST_QUICK: "1"
         run: |
           export PATH="$HOME/Processing/bin:$PATH"
           touch Music_Visualizer_CK/.smoketest
