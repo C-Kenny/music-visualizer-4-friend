@@ -18,7 +18,11 @@ cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT
 
 dl() {
-  local name="$1" url="$2" file="$TMP/$name.zip"
+  # Separate `local` declarations — combining them with `set -u` triggers
+  # "unbound variable" on newer bash when later args reference earlier ones.
+  local name="$1"
+  local url="$2"
+  local file="$TMP/$name.zip"
   echo "  → $name"
   wget -q --show-progress "$url" -O "$file"
   unzip -q "$file" -d "$LIBS"
