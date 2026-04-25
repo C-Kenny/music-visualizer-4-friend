@@ -195,6 +195,18 @@ void setSongToVisualize() {
       config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
       return;
     }
+    // Smoke-test fallback: bundled silent wav so headless CI never hits the
+    // JOptionPane dialog (which would block forever with no display input).
+    if (SMOKE_TEST_MODE) {
+      String fallback = sketchPath("data/smoke-test.wav");
+      if (new java.io.File(fallback).exists()) {
+        config.SONG_TO_VISUALIZE = fallback;
+        config.SONG_NAME = "smoke-test";
+        config.STATE = SCENE_ORIGINAL;
+        logToStdout("[SMOKE TEST] Using bundled silent wav: " + fallback);
+        return;
+      }
+    }
     logToStdout("No songs found in ~/Music, falling back to file picker");
     // fall through to dialog
   }
