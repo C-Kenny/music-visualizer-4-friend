@@ -35,6 +35,7 @@ cp Music_Visualizer_CK/src/scenes/*.pde "$BUILD_DIR/" 2>/dev/null || true
 ORIGIN_DIR="$(pwd)/Music_Visualizer_CK"
 ln -s "$ORIGIN_DIR/data" "$BUILD_DIR/data"
 ln -s "$ORIGIN_DIR/libraries" "$BUILD_DIR/libraries"
+[ -d "$ORIGIN_DIR/code" ] && ln -s "$ORIGIN_DIR/code" "$BUILD_DIR/code"
 
 # Also symlink media so skyboxes can load from ../../media/skyboxes
 ln -s "$(pwd)/media" "$BUILD_DIR/../media"
@@ -57,6 +58,10 @@ fi
 if [[ -f "Music_Visualizer_CK/.smoketest" ]]; then
   ln -s "$ORIGIN_DIR/.smoketest" "$BUILD_DIR/.smoketest"
 fi
+
+# Symlink featureflags.json so featureflag-server writes persist across runs (.build is wiped).
+touch "$ORIGIN_DIR/featureflags.json"
+ln -sf "$ORIGIN_DIR/featureflags.json" "$BUILD_DIR/featureflags.json"
 
 # Run using processing cli
 run_processing --sketch="$BUILD_DIR" --force --run --vm-args="-Xmx1g" "$@"
