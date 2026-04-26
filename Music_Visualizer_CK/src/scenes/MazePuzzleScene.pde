@@ -1,4 +1,7 @@
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Queue;
 
 enum MazeState { STATIONARY, MOVING, TURNING, JUMPING, FALLING }
 
@@ -18,7 +21,7 @@ class MazePuzzleScene implements IScene {
   // ── Level Logic ──────────────────────────────────────────────────────────
   HashSet<String> blocks;
   HashSet<String> spikes;
-  HashSet<String> goals;
+  ArrayList<int[]> goals;  // ordered list of [x,y,z] goal-floor positions
   final float BLOCK_SIZE = 100;
 
   int   currentLevel       = 0;
@@ -164,16 +167,25 @@ class MazePuzzleScene implements IScene {
 
   boolean autoMode = false;
   float autoThinkTimer = 0;
-  final float AUTO_THINK_FRAMES = 45; // how long it considers before moving
+  final float AUTO_THINK_FRAMES = 45; // legacy; unused with beat-lock
   final float AUTO_BEAT_MOVE_DELAY = 12; // frames between beat-triggered moves
+  final float AUTO_NO_BEAT_FALLBACK = 240; // 4 s without beat → step anyway
   int autoBeatCooldown = 0;
   boolean stickTurnLatched = false;
   boolean stickMoveLatched = false;
 
+  InputChord chord = new InputChord(3);  // ~50ms window @60fps
+
+  int idleFrames = 0;
+  final int IDLE_AUTO_FRAMES = 360;        // 6 s at 60 fps -> auto-enable
+  final int IDLE_COUNTDOWN_FRAMES = 300;   // last 5 s show countdown HUD
+  final float IDLE_RESET_STICK = 0.45;     // higher than camera-look threshold to ignore stick drift
+
   MazePuzzleScene() {
     blocks = new HashSet<String>();
     spikes = new HashSet<String>();
-    goals  = new HashSet<String>();
+    goals  = new ArrayList<int[]>();
+    chord.register("moveFwd", "jumpUp", "jumpFwd");
     setupLevel(0);
     resetPlayer();
   }
@@ -249,8 +261,11 @@ class MazePuzzleScene implements IScene {
   boolean hasBlock(int x, int y, int z) { return blocks.contains(x + "," + y + "," + z); }
   boolean hasSpike(int x, int y, int z) { return spikes.contains(x + "," + y + "," + z); }
 
-  void addGoal(int x, int y, int z)        { goals.add(x + "," + y + "," + z); }
-  boolean hasGoalAt(int x, int y, int z)   { return goals.contains(x + "," + y + "," + z); }
+  void addGoal(int x, int y, int z)        { goals.add(new int[]{x, y, z}); }
+  boolean hasGoalAt(int x, int y, int z)   {
+    for (int[] g : goals) if (g[0] == x && g[1] == y && g[2] == z) return true;
+    return false;
+  }
 
   void resetPlayer() {
     pos     = startPos.copy();
@@ -269,6 +284,10 @@ class MazePuzzleScene implements IScene {
     autoBeatCooldown = 0;
     stickTurnLatched = false;
     stickMoveLatched = false;
+    chord.clear();
+    idleFrames = 0;
+    autoPath.clear(); autoPathIdx = 0;
+    autoVisited.clear(); autoWaypoints = 0;
   }
 
   void onEnter() {
@@ -301,10 +320,7 @@ class MazePuzzleScene implements IScene {
       String[] p = key.split(",");
       drawBlock(pg, int(p[0]), int(p[1]), int(p[2]), true);
     }
-    for (String key : goals) {
-      String[] p = key.split(",");
-      drawGoalBlock(pg, int(p[0]), int(p[1]), int(p[2]));
-    }
+    for (int[] g : goals) drawGoalBlock(pg, g[0], g[1], g[2]);
     drawBall(pg);
 
     // ── 2D overlay ──────────────────────────────────────────────────────
@@ -324,6 +340,40 @@ class MazePuzzleScene implements IScene {
     pg.fill(autoMode ? color(100, 255, 150) : color(255, 200, 80));
     pg.text(autoMode ? "AUTO MODE" : "PLAYER MODE",
             12 * ts, 30 * ts);
+
+    // Idle countdown: top-center banner + progress bar.
+    int framesToAuto = IDLE_AUTO_FRAMES - idleFrames;
+    if (!autoMode && framesToAuto > 0 && framesToAuto <= IDLE_COUNTDOWN_FRAMES) {
+      int secs = (framesToAuto / 60) + 1;
+      float fillFrac = 1.0 - (float)framesToAuto / IDLE_COUNTDOWN_FRAMES;
+      float pulse01 = 0.5 + 0.5 * sin(frameCount * 0.25);
+      float bw = 360 * ts;
+      float bh = 56 * ts;
+      float bx = pg.width / 2.0 - bw / 2.0;
+      float by = 14 * ts;
+      // Backdrop
+      pg.noStroke();
+      pg.fill(0, 0, 0, 220);
+      pg.rect(bx, by, bw, bh, 8 * ts);
+      // Pulsing border
+      pg.noFill();
+      pg.stroke(100, 255, 150, (int)(140 + 115 * pulse01));
+      pg.strokeWeight(2 * ts);
+      pg.rect(bx, by, bw, bh, 8 * ts);
+      // Progress bar
+      pg.noStroke();
+      pg.fill(100, 255, 150, 200);
+      pg.rect(bx, by + bh - 4 * ts, bw * fillFrac, 4 * ts);
+      // Text
+      pg.fill(100, 255, 150);
+      pg.textAlign(CENTER, CENTER);
+      pg.textSize(20 * ts);
+      pg.text("AI TAKING OVER IN " + secs, bx + bw / 2, by + bh / 2 - 6 * ts);
+      pg.fill(255, 255, 255, 200);
+      pg.textSize(10 * ts);
+      pg.text("press any key or move the stick to cancel",
+              bx + bw / 2, by + bh / 2 + 14 * ts);
+    }
 
     if (autoMode && state == MazeState.STATIONARY && !levelComplete && autoThinkTimer > 0) {
       String dots = "";
@@ -436,7 +486,14 @@ class MazePuzzleScene implements IScene {
     if (state == MazeState.FALLING) {
       pos.add(PVector.mult(up, jumpVel));
       jumpVel -= GRAVITY_CONST;
-      if (pos.y < FALL_RESET_Y) resetPlayer();
+      // Reset when ball has fallen far along its current up-axis (works for any gravity direction).
+      if (PVector.dot(pos, up) < FALL_RESET_Y) resetPlayer();
+    }
+
+    idleFrames++;
+    if (!autoMode && idleFrames > IDLE_AUTO_FRAMES) {
+      autoMode = true;
+      autoThinkTimer = 0;
     }
 
     if (autoMode && state == MazeState.STATIONARY && !levelComplete) {
@@ -445,7 +502,8 @@ class MazePuzzleScene implements IScene {
       if (analyzer.isBeat && autoBeatCooldown == 0) {
         attemptAutoMove();
         autoBeatCooldown = (int)AUTO_BEAT_MOVE_DELAY;
-      } else if (autoThinkTimer >= AUTO_THINK_FRAMES) {
+      } else if (autoThinkTimer >= AUTO_NO_BEAT_FALLBACK) {
+        // safety net: if no beats detected for a long stretch, step anyway
         attemptAutoMove();
       }
     }
@@ -464,6 +522,7 @@ class MazePuzzleScene implements IScene {
     animTimer = 1.0; jumpY = 0;
     state = MazeState.STATIONARY;
     autoThinkTimer = 0;
+    autoVisited.add(round(pos.x)+","+round(pos.y)+","+round(pos.z));
     if (!hasBlock(round(pos.x - up.x), round(pos.y - up.y), round(pos.z - up.z))) {
       state = MazeState.FALLING; jumpVel = 0;
     }
@@ -597,16 +656,17 @@ class MazePuzzleScene implements IScene {
 
   void applyController(Controller c) {
     if (levelComplete) return;
+    float lx = map(c.lx, 0, width, -1, 1);
+    float ly = map(c.ly, 0, height, -1, 1);
+    float rx = map(c.rx, 0, width, -1, 1);
+    float ry = map(c.ry, 0, height, -1, 1);
+    boolean anyInput = c.aJustPressed || c.bJustPressed || c.xJustPressed || c.yJustPressed
+        || c.lbJustPressed || c.rbJustPressed || c.startJustPressed || c.backJustPressed
+        || abs(lx) > IDLE_RESET_STICK || abs(ly) > IDLE_RESET_STICK
+        || abs(rx) > IDLE_RESET_STICK || abs(ry) > IDLE_RESET_STICK;
+    if (anyInput) idleFrames = 0;
     if (autoMode) {
-      float lx = map(c.lx, 0, width, -1, 1);
-      float ly = map(c.ly, 0, height, -1, 1);
-      float rx = map(c.rx, 0, width, -1, 1);
-      float ry = map(c.ry, 0, height, -1, 1);
-      if (c.aJustPressed || c.bJustPressed || c.xJustPressed || c.yJustPressed || c.lbJustPressed || c.rbJustPressed || c.startJustPressed || c.backJustPressed
-          || abs(lx) > ANALOG_CAMERA_THRESHOLD || abs(ly) > ANALOG_CAMERA_THRESHOLD
-          || abs(rx) > ANALOG_CAMERA_THRESHOLD || abs(ry) > ANALOG_CAMERA_THRESHOLD) {
-        autoMode = false;
-      }
+      if (anyInput) autoMode = false;
       return;
     }
     if ((state != MazeState.STATIONARY && state != MazeState.TURNING) || transitionFrac < 1.0) return;
@@ -623,35 +683,43 @@ class MazePuzzleScene implements IScene {
     }
 
     if (abs(dx) < ANALOG_MOVE_THRESHOLD * 0.5) stickTurnLatched = false;
-    if (dy < ANALOG_MOVE_THRESHOLD * 0.5) stickMoveLatched = false;
+    if (abs(dy) < ANALOG_MOVE_THRESHOLD * 0.5) stickMoveLatched = false;
 
-    if (c.aJustPressed) {
-      tryJump(isForwardJumpHeld(dy));
-      return;
-    }
-
+    // Push edge events into chord buffer.
+    if (c.aJustPressed) chord.press("jumpUp");
     if (dy > ANALOG_MOVE_THRESHOLD && !stickMoveLatched) {
-      tryMove(MOVE_FORWARD);
-      stickMoveLatched = true;
-    } else if (dx > ANALOG_MOVE_THRESHOLD && !stickTurnLatched) {
-      tryTurn(TURN_RIGHT);
-      stickTurnLatched = true;
-    } else if (dx < -ANALOG_MOVE_THRESHOLD && !stickTurnLatched) {
-      tryTurn(TURN_LEFT);
-      stickTurnLatched = true;
+      chord.press("moveFwd"); stickMoveLatched = true;
+    } else if (dy < -ANALOG_MOVE_THRESHOLD && !stickMoveLatched) {
+      chord.press("moveBack"); stickMoveLatched = true;
     }
 
-    float ry = -map(c.ry, 0, height, -1, 1);
-    float rx = map(c.rx, 0, width, -1, 1);
-    if (abs(rx) > ANALOG_CAMERA_THRESHOLD || abs(ry) > ANALOG_CAMERA_THRESHOLD) {
+    // Turns fire immediate (no chord pairings).
+    if (dx > ANALOG_MOVE_THRESHOLD && !stickTurnLatched) {
+      tryTurn(TURN_RIGHT); stickTurnLatched = true;
+    } else if (dx < -ANALOG_MOVE_THRESHOLD && !stickTurnLatched) {
+      tryTurn(TURN_LEFT); stickTurnLatched = true;
+    }
+
+    // Resolve buffered intents (chord matches + expired singles).
+    for (String intent : chord.resolve()) {
+      if (intent.equals("jumpFwd"))      tryJump(true);
+      else if (intent.equals("jumpUp"))  tryJump(dy > ANALOG_FORWARD_JUMP_THRESHOLD);
+      else if (intent.equals("moveFwd"))  tryMove(MOVE_FORWARD);
+      else if (intent.equals("moveBack")) tryMove(MOVE_BACKWARD);
+      if (state != MazeState.STATIONARY) break;
+    }
+
+    float ryCam = -ry;
+    if (abs(rx) > ANALOG_CAMERA_THRESHOLD || abs(ryCam) > ANALOG_CAMERA_THRESHOLD) {
       camAngle += rx * CAMERA_ROTATION_SPEED;
-      camPitch = constrain(camPitch + ry * CAMERA_PITCH_SPEED, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+      camPitch = constrain(camPitch + ryCam * CAMERA_PITCH_SPEED, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
       camIdleFrames = 0;
     }
   }
 
   void handleKey(char k) {
     if (levelComplete) return;
+    idleFrames = 0;
     if ((state != MazeState.STATIONARY && state != MazeState.TURNING) || transitionFrac < 1.0) return;
 
     if (state == MazeState.TURNING) {
@@ -734,17 +802,180 @@ class MazePuzzleScene implements IScene {
     return up.cross(forward).mult(dir).normalize();
   }
 
+  // ── Auto-AI: BFS pathfinder ─────────────────────────────────────────────
+  ArrayList<Integer> autoPath = new ArrayList<Integer>();
+  int autoPathIdx = 0;
+  HashSet<String> autoVisited = new HashSet<String>();
+  int autoWaypoints = 0;
+  final int AUTO_MAX_WAYPOINTS = 5;  // wander this many tiles before heading to goal
+
   void attemptAutoMove() {
-    ArrayList<Integer> choices = getValidAutoMoves();
-    if (choices.size() == 0) return;
-    int bestIndex = chooseAutoMove(choices);
-    int move = choices.get(bestIndex);
+    if (autoPathIdx >= autoPath.size()) planAutoPath();
+    int move;
+    if (autoPathIdx < autoPath.size()) {
+      move = autoPath.get(autoPathIdx++);
+    } else {
+      // BFS failed — fall back to greedy
+      ArrayList<Integer> choices = getValidAutoMoves();
+      if (choices.size() == 0) return;
+      move = choices.get(chooseAutoMove(choices));
+    }
     if (move == 0) tryMove(MOVE_FORWARD);
     else if (move == 1) tryMove(MOVE_BACKWARD);
     else if (move == 2) tryTurn(TURN_RIGHT);
     else if (move == 3) tryTurn(TURN_LEFT);
     else if (move == 4) tryJump(true);
     autoThinkTimer = 0;
+  }
+
+  void planAutoPath() {
+    autoPath.clear(); autoPathIdx = 0;
+    // Track current cell as visited so explorer aims elsewhere
+    autoVisited.add(round(pos.x)+","+round(pos.y)+","+round(pos.z));
+
+    if (autoWaypoints < AUTO_MAX_WAYPOINTS) {
+      int[] target = pickExplorationTarget();
+      if (target != null) {
+        bfsPathTo(target);
+        if (!autoPath.isEmpty()) { autoWaypoints++; return; }
+      }
+    }
+    // Fall through: head to goal
+    bfsPathTo(null);  // null target = use goal test
+  }
+
+  // BFS from current state. If targetCell != null, goal is "standing on that cell".
+  // If null, goal is "standing on a goal block".
+  void bfsPathTo(int[] targetCell) {
+    int[] start = new int[]{
+      round(pos.x), round(pos.y), round(pos.z),
+      round(up.x),  round(up.y),  round(up.z),
+      round(forward.x), round(forward.y), round(forward.z)
+    };
+    String startKey = stateKey(start);
+    Queue<int[]> q = new LinkedList<int[]>();
+    HashMap<String, String> parentKey = new HashMap<String, String>();
+    HashMap<String, Integer> parentAct = new HashMap<String, Integer>();
+    q.add(start); parentKey.put(startKey, null);
+    String found = null;
+    int explored = 0;
+    while (!q.isEmpty() && explored < 6000) {
+      int[] s = q.poll(); explored++;
+      String k = stateKey(s);
+      if (isGoalState(s, targetCell)) { found = k; break; }
+      for (int a = 0; a < 5; a++) {
+        int[] ns = simulateAction(s, a);
+        if (ns == null) continue;
+        String nk = stateKey(ns);
+        if (parentKey.containsKey(nk)) continue;
+        parentKey.put(nk, k); parentAct.put(nk, a);
+        q.add(ns);
+      }
+    }
+    if (found == null) return;
+    ArrayList<Integer> rev = new ArrayList<Integer>();
+    String cur = found;
+    while (parentKey.get(cur) != null) {
+      rev.add(parentAct.get(cur));
+      cur = parentKey.get(cur);
+    }
+    for (int i = rev.size() - 1; i >= 0; i--) autoPath.add(rev.get(i));
+  }
+
+  boolean isGoalState(int[] s, int[] targetCell) {
+    if (targetCell == null) return hasGoalAt(s[0]-s[3], s[1]-s[4], s[2]-s[5]);
+    // standing on targetCell means pos == targetCell + up (i.e. floor below = targetCell)
+    return s[0]-s[3] == targetCell[0] && s[1]-s[4] == targetCell[1] && s[2]-s[5] == targetCell[2];
+  }
+
+  // Flood-fill via BFS to find every block reachable as a "stand-on floor".
+  // Returns one randomly chosen floor cell that hasn't been visited yet, or null.
+  int[] pickExplorationTarget() {
+    int[] start = new int[]{
+      round(pos.x), round(pos.y), round(pos.z),
+      round(up.x),  round(up.y),  round(up.z),
+      round(forward.x), round(forward.y), round(forward.z)
+    };
+    Queue<int[]> q = new LinkedList<int[]>();
+    HashSet<String> seen = new HashSet<String>();
+    ArrayList<int[]> floorCells = new ArrayList<int[]>();
+    q.add(start); seen.add(stateKey(start));
+    int explored = 0;
+    while (!q.isEmpty() && explored < 4000) {
+      int[] s = q.poll(); explored++;
+      int fx = s[0]-s[3], fy = s[1]-s[4], fz = s[2]-s[5];
+      String floorKey = fx+","+fy+","+fz;
+      if (!autoVisited.contains(floorKey)) {
+        // dedupe floor cells across multiple state entries
+        boolean dup = false;
+        for (int[] c : floorCells) if (c[0]==fx && c[1]==fy && c[2]==fz) { dup = true; break; }
+        if (!dup) floorCells.add(new int[]{fx, fy, fz});
+      }
+      for (int a = 0; a < 5; a++) {
+        int[] ns = simulateAction(s, a);
+        if (ns == null) continue;
+        String nk = stateKey(ns);
+        if (seen.contains(nk)) continue;
+        seen.add(nk); q.add(ns);
+      }
+    }
+    if (floorCells.isEmpty()) return null;
+    return floorCells.get((int)random(floorCells.size()));
+  }
+
+  String stateKey(int[] s) {
+    return s[0]+","+s[1]+","+s[2]+"|"+s[3]+","+s[4]+","+s[5]+"|"+s[6]+","+s[7]+","+s[8];
+  }
+
+  int[] simulateAction(int[] s, int a) {
+    int px=s[0],py=s[1],pz=s[2], ux=s[3],uy=s[4],uz=s[5], fx=s[6],fy=s[7],fz=s[8];
+    if (a == 0 || a == 1) {
+      int md = (a == 0) ? 1 : -1;
+      int dx = fx*md, dy = fy*md, dz = fz*md;
+      int tx = px+dx, ty = py+dy, tz = pz+dz;
+      int npx, npy, npz, nux, nuy, nuz, nfx, nfy, nfz;
+      if (hasBlock(tx-ux, ty-uy, tz-uz)) {
+        npx=tx; npy=ty; npz=tz;
+        nux=ux; nuy=uy; nuz=uz;
+        nfx=fx; nfy=fy; nfz=fz;
+      } else if (hasBlock(tx, ty, tz)) {
+        // wall: climb
+        npx=tx+dx; npy=ty+dy; npz=tz+dz;
+        nux=dx; nuy=dy; nuz=dz;
+        nfx=ux*md; nfy=uy*md; nfz=uz*md;
+      } else {
+        // edge roll
+        npx=px-ux+dx; npy=py-uy+dy; npz=pz-uz+dz;
+        nux=dx; nuy=dy; nuz=dz;
+        nfx=-ux*md; nfy=-uy*md; nfz=-uz*md;
+      }
+      if (hasSpike(npx,npy,npz)) return null;
+      if (!hasBlock(npx-nux, npy-nuy, npz-nuz)) return null;
+      return new int[]{npx,npy,npz, nux,nuy,nuz, nfx,nfy,nfz};
+    } else if (a == 2 || a == 3) {
+      int dir = (a == 2) ? 1 : -1;
+      int cfx=fx, cfy=fy, cfz=fz;
+      for (int i = 0; i < 4; i++) {
+        int rx = (uy*cfz - uz*cfy) * dir;
+        int ry = (uz*cfx - ux*cfz) * dir;
+        int rz = (ux*cfy - uy*cfx) * dir;
+        cfx=rx; cfy=ry; cfz=rz;
+        int[] cand = new int[]{px,py,pz, ux,uy,uz, cfx,cfy,cfz};
+        if (simulateAction(cand, 0) != null
+            || simulateAction(cand, 1) != null
+            || simulateAction(cand, 4) != null) {
+          return cand;
+        }
+      }
+      return null;
+    } else if (a == 4) {
+      int tx = px + fx*2, ty = py + fy*2, tz = pz + fz*2;
+      if (!hasBlock(tx-ux, ty-uy, tz-uz)) return null;
+      if (hasBlock(tx, ty, tz)) return null;
+      if (hasSpike(tx, ty, tz)) return null;
+      return new int[]{tx,ty,tz, ux,uy,uz, fx,fy,fz};
+    }
+    return null;
   }
 
   ArrayList<Integer> getValidAutoMoves() {
@@ -819,11 +1050,9 @@ class MazePuzzleScene implements IScene {
   }
 
   PVector getGoalPosition() {
-    for (String key : goals) {
-      String[] parts = key.split(",");
-      return new PVector(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
-    }
-    return null;
+    if (goals.isEmpty()) return null;
+    int[] g = goals.get(0);
+    return new PVector(g[0], g[1], g[2]);
   }
 
   void tryJump(boolean jumpForward) {

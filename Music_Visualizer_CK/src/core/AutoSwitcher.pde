@@ -127,26 +127,3 @@ class AutoSwitcher {
     return sb.toString();
   }
 }
-
-// HUD badge — restored alongside AutoSwitcher class (was missing from develop).
-void drawAutoSwitcherBadge() {
-  String line = autoSwitcher.hudLine();
-  if (line == null) return;
-  pushStyle();
-  textFont(monoFont);
-  float ts = 12 * uiScale();
-  textSize(ts);
-  textAlign(LEFT, TOP);
-  float tw    = textWidth("AUTO FAVS WEIGHTED cd 999s  ");
-  float boxH  = ts + 10;
-  float boxW  = tw + 16;
-  float pad   = 10 * uiScale();
-  float boxX  = width - pad - boxW;
-  float boxY  = height - pad - boxH;
-  noStroke();
-  fill(0, 180);
-  rect(boxX, boxY, boxW, boxH, 4);
-  fill(0, 255, 120);
-  text(line, boxX + 8, boxY + 5);
-  popStyle();
-}

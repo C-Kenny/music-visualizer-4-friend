@@ -28,8 +28,11 @@ final int ST_PHASE_CONTROLLER    = 2;
 final int ST_PHASE_KEYBOARD      = 3;
 final int ST_PHASE_EXIT          = 4;
 
-// Number of distinct controller test cases (must match applyControllerInput switch)
-final int ST_CTRL_INPUT_COUNT = 32;
+// Number of distinct controller test cases (must match applyControllerInput switch).
+// QUICK mode (env SMOKETEST_QUICK=1) trims aggressively for CI runtime — full
+// matrix runs locally for thorough coverage; CI just needs build/boot proof.
+final boolean ST_QUICK = "1".equals(System.getenv("SMOKETEST_QUICK"));
+final int ST_CTRL_INPUT_COUNT = ST_QUICK ? 2 : 32;
 
 boolean isSmokeTestMode() {
   String[] candidates = {
@@ -59,11 +62,13 @@ class SmokeTestRunner {
   int[] sceneFrameCount = new int[100];
 
   // Frames of plain drawScene() to run before exercising inputs
-  final int BASELINE_FRAMES = 5;
+  final int BASELINE_FRAMES = ST_QUICK ? 1 : 5;
 
   // Keys to exercise — deliberately excludes q/Q/x/X (exit app)
-  // and n/N (song navigation, needs a loaded songList)
-  final char[] TEST_KEYS = {
+  // and n/N (song navigation, needs a loaded songList).
+  // QUICK mode tests just enough keys to prove handleKey() doesn't crash.
+  final char[] TEST_KEYS_QUICK = { 'h', '`' };
+  final char[] TEST_KEYS_FULL = {
     'h', 'H', 's', 'S', 'l', 'L', '`', 'g', 'G',
     't', 'T', 'p', 'P', ' ',
     'a', 'A', 'b', 'B', 'c', 'C', 'd', 'D',
@@ -76,6 +81,7 @@ class SmokeTestRunner {
     // VisualizerExplainerScene: page nav
     ',', '.'
   };
+  final char[] TEST_KEYS = ST_QUICK ? TEST_KEYS_QUICK : TEST_KEYS_FULL;
 
   // ── Main tick — called once per draw() frame ──────────────────────────────
   void tick(PGraphics pg) {

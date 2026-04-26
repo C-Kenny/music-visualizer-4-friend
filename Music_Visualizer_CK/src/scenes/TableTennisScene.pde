@@ -55,8 +55,13 @@ class TableTennisScene implements IScene {
   boolean rallyStarted   = false; // true once the serve has landed on the opponent's side
 
   // serve state machine
-  boolean inServeDrop  = true;   // ball falling toward paddle before being hit
+  boolean inServeDrop  = true;   // ball aloft before being struck (legal toss-up)
   boolean serveBounced = false;  // ball has completed its server-side bounce
+
+  // Post-point pause — lets the viewer breathe before next serve.
+  // Set by awardPoint(); when it hits 0, serve() runs.
+  int pointPauseFrames = 0;
+  final int POINT_PAUSE_FRAMES = 150; // ~2.5s at 60fps
 
   // visual flash on point scored
   float pointFlash  = 0;
@@ -120,13 +125,15 @@ class TableTennisScene implements IScene {
     leftPaddleX  = leftHomeX;  rightPaddleX  = rightHomeX;
     leftTargetX  = leftHomeX;  rightTargetX  = rightHomeX;
 
-    // Ball drops from ~100px above the server's paddle (like a real toss).
-    // It falls under gravity; when it reaches paddle height it auto-fires.
+    // Legal serve: ball rests on server's open palm (just above paddle), then is
+    // tossed straight up. Falls under gravity; when it descends back to paddle
+    // height, the paddle auto-strikes. ITTF requires a visible vertical toss —
+    // no drop-serving.
     float paddleX = leftServes ? leftPaddleX : rightPaddleX;
     ballX  = paddleX;
-    ballY  = tableY - 220;   // above the paddle (which rests at tableY-120)
+    ballY  = tableY - 140;   // just above the paddle (which rests at tableY-120)
     ballVX = leftServes ? 0.01 : -0.01;  // tiny drift so dirSign is correct
-    ballVY = 0;
+    ballVY = -10;            // upward toss → apex ~180px above paddle at g=0.28
     spin   = random(-0.05, 0.05);
     trail.clear();
     impactFlash  = 0;
@@ -292,7 +299,23 @@ class TableTennisScene implements IScene {
   // ── physics ───────────────────────────────────────────────────────────────
 
   void updatePhysics() {
-    // ── Serve drop: ball falls under gravity until it reaches the paddle ──────
+    // ── Post-point pause ──────────────────────────────────────────────────────
+    // Let the ball coast freely (gravity + drag) for a couple seconds after a
+    // point is awarded, then call serve() to set up the next rally. No
+    // collisions or scoring during the pause.
+    if (pointPauseFrames > 0) {
+      pointPauseFrames--;
+      ballVY += gravity;
+      ballVX *= DRAG;
+      ballX  += ballVX;
+      ballY  += ballVY;
+      trail.add(new PVector(ballX, ballY));
+      if (trail.size() > MAX_TRAIL) trail.remove(0);
+      if (pointPauseFrames == 0) serve();
+      return;
+    }
+
+    // ── Serve toss: ball tossed upward, auto-struck as it descends ────────────
     if (inServeDrop) {
       ballVY += gravity;
       ballY  += ballVY;
@@ -319,14 +342,18 @@ class TableTennisScene implements IScene {
 
     // Net collision — block ball if it crosses the centre line below net height.
     // Skip during serve drop (ball is above the table, can't hit the net yet).
+    // Ball body overlaps net if ball-bottom > netTop AND ball-top < tableY.
+    // Previous code used ball-bottom for both checks, leaving a ~BALL_RADIUS gap
+    // of low-altitude balls that passed through the mesh.
     if (!inServeDrop) {
       float netX   = sceneBuffer.width / 2.0;
       float netTop = tableY - NET_H;
-      if (ballY + BALL_RADIUS > netTop && ballY + BALL_RADIUS < tableY) {
+      if (ballY + BALL_RADIUS > netTop && ballY - BALL_RADIUS < tableY) {
         boolean crossedNet = (prevBallX < netX) != (ballX < netX);
         if (crossedNet) {
           ballX  = prevBallX < netX ? netX - BALL_RADIUS - 1 : netX + BALL_RADIUS + 1;
           ballVX *= -0.4;
+          ballVY *= 0.3;
         }
       }
     }
@@ -338,9 +365,9 @@ class TableTennisScene implements IScene {
       ballVX *= 0.96;
       spin   *= 0.76;
       onTableBounce();
-      // onTableBounce may have awarded a point and called serve() — bail out
-      // to avoid the escape-check running on the freshly reset ball position.
-      if (inServeDrop) {
+      // onTableBounce may have awarded a point — bail out so the escape/paddle
+      // checks don't run on a ball whose rally just ended (prevents double-score).
+      if (inServeDrop || pointPauseFrames > 0) {
         trail.add(new PVector(ballX, ballY));
         if (trail.size() > MAX_TRAIL) trail.remove(0);
         return;
@@ -362,9 +389,9 @@ class TableTennisScene implements IScene {
     // Paddle collisions (receiver can't return during serve drop or serve bounce)
     if (!inServeDrop) {
       checkPaddleCollision(true,  leftPaddleX  + leftLungeX,  leftPaddleY);
-      if (inServeDrop) { trail.add(new PVector(ballX, ballY)); if (trail.size() > MAX_TRAIL) trail.remove(0); return; }
+      if (inServeDrop || pointPauseFrames > 0) { trail.add(new PVector(ballX, ballY)); if (trail.size() > MAX_TRAIL) trail.remove(0); return; }
       checkPaddleCollision(false, rightPaddleX - rightLungeX, rightPaddleY);
-      if (inServeDrop) { trail.add(new PVector(ballX, ballY)); if (trail.size() > MAX_TRAIL) trail.remove(0); return; }
+      if (inServeDrop || pointPauseFrames > 0) { trail.add(new PVector(ballX, ballY)); if (trail.size() > MAX_TRAIL) trail.remove(0); return; }
     }
 
     // Ball escaped past a paddle — virtual so 3D subclass can override
@@ -502,7 +529,7 @@ class TableTennisScene implements IScene {
     if (leftWins)  { leftGames++;  logGame(true);  resetGame(); return; }
     if (rightWins) { rightGames++; logGame(false); resetGame(); return; }
 
-    serve();
+    pointPauseFrames = POINT_PAUSE_FRAMES;
   }
 
   void resetGame() {
@@ -513,7 +540,7 @@ class TableTennisScene implements IScene {
     leftServes   = true;
     inServeDrop  = true;
     serveBounced = false;
-    serve();
+    pointPauseFrames = POINT_PAUSE_FRAMES;
   }
 
   // ── score logging ──────────────────────────────────────────────────────────

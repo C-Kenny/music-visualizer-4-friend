@@ -20,7 +20,7 @@ AutoSwitcher   autoSwitcher;
 SceneGuard     sceneGuard;
 KillSwitch     killSwitch;
 DisplayManager displayManager;
-final int SCENE_COUNT = 48;
+final int SCENE_COUNT = 49;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -433,6 +433,7 @@ void setup() {
   scenes[45] = new VisualizerExplainerScene();
   scenes[46] = new ChladniPlateScene();
   scenes[47] = new StrangeAttractorScene();
+  scenes[48] = new SacredFractalsScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
@@ -612,6 +613,19 @@ void keyPressed() {
     }
   }
 
+  // Keyboard equivalent of controller LB/RB. Use '<' / '>' as primary —
+  // ASCII keys can't be intercepted by the WM. PageUp/PageDown also work
+  // when available; we accept multiple keyCode aliases because Processing's
+  // NEWT backend uses 11/12 while AWT uses 33/34 (and X11 may map differently).
+  if (key == '<') switchScene(prevActiveScene());
+  if (key == '>') switchScene(nextActiveScene());
+  if (key == CODED) {
+    if (keyCode == 11 || keyCode == java.awt.event.KeyEvent.VK_PAGE_UP)
+      switchScene(prevActiveScene());
+    if (keyCode == 12 || keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN)
+      switchScene(nextActiveScene());
+  }
+
   // Global background toggles
   if (key == 't' || key == 'T') {
     config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
@@ -782,6 +796,7 @@ final int[] SCENE_ORDER = {
   SCENE_TUNNEL_YANTRA,
   SCENE_CHLADNI_PLATE,
   SCENE_STRANGE_ATTRACTOR,
+  SCENE_SACRED_FRACTALS,
   SCENE_EXPLAINER
 };
 
@@ -1252,6 +1267,29 @@ void drawWebControlBadge() {
   for (int i = 0; i < n; i++) {
     text(featureFlagServer.lanUrls.get(i), boxX + 8, boxY - boxH + lineH * (i + 2));
   }
+  popStyle();
+}
+
+void drawAutoSwitcherBadge() {
+  String line = autoSwitcher.hudLine();
+  if (line == null) return;
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+  // Fixed width sized for longest possible line ("AUTO FAVS WEIGHTED cd 999s  ").
+  float tw    = textWidth("AUTO FAVS WEIGHTED cd 999s  ");
+  float boxH  = ts + 10;
+  float boxW  = tw + 16;
+  float pad   = 10 * uiScale();
+  float boxX  = width - pad - boxW;
+  float boxY  = height - pad - boxH;
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+  fill(0, 255, 120);
+  text(line, boxX + 8, boxY + 5);
   popStyle();
 }
 

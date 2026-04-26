@@ -31,6 +31,7 @@ mkdir -p "$BUILD_DIR"
 cp Music_Visualizer_CK/*.pde "$BUILD_DIR/" 2>/dev/null || true
 cp Music_Visualizer_CK/src/core/*.pde "$BUILD_DIR/" 2>/dev/null || true
 cp Music_Visualizer_CK/src/scenes/*.pde "$BUILD_DIR/" 2>/dev/null || true
+cp Music_Visualizer_CK/src/fractals/*.pde "$BUILD_DIR/" 2>/dev/null || true
 
 # Symlink resources and libraries from the original repo
 # We use absolute paths or relative paths from the BUILD_DIR to the original repo

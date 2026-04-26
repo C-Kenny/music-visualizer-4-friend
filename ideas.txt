@@ -17,3 +17,4 @@ Fractals:
 - koch curve
 - Mandelbrot
 - Bifurcation and branching fractals
+- silhouette painting (https://youtu.be/ZGEWzc9G6Tc?si=PpEBLkl9wcwmwuvs)
