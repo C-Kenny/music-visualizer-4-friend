@@ -37,6 +37,12 @@ CLAUDE.original.md
 # Codex tooling marker
 .codex
 
+# Claude Code workspace (worktrees, agent state, settings)
+.claude/
+
+# Inspiration assets — local only, not for remote
+media/inspiration/
+
 # Runtime logs
 *.log
 

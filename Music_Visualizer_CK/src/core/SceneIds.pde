@@ -55,3 +55,4 @@ static final int SCENE_TUNNEL_YANTRA     = 44;
 static final int SCENE_EXPLAINER         = 45;
 static final int SCENE_CHLADNI_PLATE     = 46;
 static final int SCENE_STRANGE_ATTRACTOR = 47;
+static final int SCENE_SACRED_FRACTALS   = 48;

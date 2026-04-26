@@ -20,7 +20,7 @@ AutoSwitcher   autoSwitcher;
 SceneGuard     sceneGuard;
 KillSwitch     killSwitch;
 DisplayManager displayManager;
-final int SCENE_COUNT = 48;
+final int SCENE_COUNT = 49;
 int previousState = -1;
 
 AudioAnalyser analyzer;
@@ -433,6 +433,7 @@ void setup() {
   scenes[45] = new VisualizerExplainerScene();
   scenes[46] = new ChladniPlateScene();
   scenes[47] = new StrangeAttractorScene();
+  scenes[48] = new SacredFractalsScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
@@ -795,6 +796,7 @@ final int[] SCENE_ORDER = {
   SCENE_TUNNEL_YANTRA,
   SCENE_CHLADNI_PLATE,
   SCENE_STRANGE_ATTRACTOR,
+  SCENE_SACRED_FRACTALS,
   SCENE_EXPLAINER
 };
 
