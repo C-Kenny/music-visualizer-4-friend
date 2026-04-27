@@ -9,7 +9,8 @@ import java.nio.charset.StandardCharsets;
 class FeatureFlagServer {
   com.sun.net.httpserver.HttpServer server;
   String jsonPath;
-  int port = 8080;
+  int port   = 8080;   // chosen at start() — may walk forward if 8080 taken
+  int wsPort = 8081;   // set by main after ControllerWebSocket binds; injected into controller.html
 
   // Schema entry. type: "bool" | "float" | "enum"
   class FeatureFlagSpec {
@@ -21,6 +22,7 @@ class FeatureFlagServer {
 
   ArrayList<FeatureFlagSpec> schema;
   ArrayList<String> lanUrls = new ArrayList<String>();  // populated at start; used by HUD
+  String startError = "";  // non-empty if HTTP bind failed; surfaced on the HUD
 
   FeatureFlagServer() {
     jsonPath = sketchPath("featureflags.json");
@@ -130,7 +132,39 @@ class FeatureFlagServer {
 
   // ------- HTTP -------
 
+  // Walks forward from `start` until it finds a free TCP port (or returns -1 after `span` tries).
+  // Used for both the HTTP panel and the WS controller so a leftover JVM doesn't lock us out.
+  int findFreePort(int startPort, int span) {
+    for (int i = 0; i < span; i++) {
+      int p = startPort + i;
+      java.net.ServerSocket s = null;
+      try {
+        s = new java.net.ServerSocket();
+        s.setReuseAddress(true);
+        s.bind(new InetSocketAddress("0.0.0.0", p));
+        return p;
+      } catch (IOException e) {
+        // try next
+      } finally {
+        if (s != null) try { s.close(); } catch (IOException e) {}
+      }
+    }
+    return -1;
+  }
+
   void start() {
+    // Pick a free HTTP port up-front so a stale instance on 8080 doesn't blank the panel.
+    int chosen = findFreePort(port, 10);
+    if (chosen < 0) {
+      startError = "no free port in " + port + ".." + (port + 9);
+      println("[FEATUREFLAGS] " + startError);
+      printLanAddresses();
+      return;
+    }
+    if (chosen != port) println("[FEATUREFLAGS] port " + port + " busy → using " + chosen);
+    port = chosen;
+    // Enumerate IPs (uses chosen port) so the HUD shows the correct URLs.
+    printLanAddresses();
     try {
       // Bind 0.0.0.0 so phones/tablets on the same LAN can reach the panel.
       server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
@@ -138,12 +172,26 @@ class FeatureFlagServer {
       server.createContext("/scene", new SceneHandler());
       server.createContext("/input/sticks", new SticksHandler());
       server.createContext("/input/button", new ButtonHandler());
+      server.createContext("/input/trigger",new TriggerHandler());
+      server.createContext("/input/hello",  new HelloHandler());
+      server.createContext("/admin/clients", new AdminClientsHandler());
+      server.createContext("/admin/kick",    new AdminKickHandler());
+      server.createContext("/admin/ban",     new AdminBanHandler());
+      server.createContext("/admin/unban",   new AdminUnbanHandler());
+      server.createContext("/admin/role",    new AdminRoleHandler());
+      server.createContext("/admin/lockdown",new AdminLockdownHandler());
+      server.createContext("/admin/auth",    new AdminAuthHandler());
+      server.createContext("/admin/logout",  new AdminLogoutHandler());
+      server.createContext("/admin/pins",        new AdminPinsListHandler());
+      server.createContext("/admin/pins/mint",   new AdminPinsMintHandler());
+      server.createContext("/admin/pins/revoke", new AdminPinsRevokeHandler());
       server.createContext("/", new UiHandler());
       server.setExecutor(null);
       server.start();
+      getAdminToken();   // surface or generate token at start
       println("[FEATUREFLAGS] server listening on port " + port + " (all interfaces)");
-      printLanAddresses();
     } catch (IOException e) {
+      startError = e.getMessage();
       println("[FEATUREFLAGS] server start failed: " + e.getMessage());
     }
   }
@@ -289,12 +337,268 @@ class FeatureFlagServer {
   }
 
   // HTTP fallback for the controller UI when WebSocket is blocked (corp wifi etc).
-  // Same shape as ControllerWebSocket: forwards to webController.
+  // Client identity comes from the X-Client-Id header (browser-generated UUID).
+  // /input/hello captures handshake metadata up-front.
   abstract class InputHandlerBase implements com.sun.net.httpserver.HttpHandler {
     public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
       ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
       ex.getResponseHeaders().set("Access-Control-Allow-Methods", "POST,OPTIONS");
+      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type,X-Client-Id");
+      String m = ex.getRequestMethod();
+      if (m.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
+      if (!m.equals("POST"))   { ex.sendResponseHeaders(405, -1); ex.close(); return; }
+      try {
+        String cid = ex.getRequestHeaders().getFirst("X-Client-Id");
+        String ip = ex.getRemoteAddress().getAddress().getHostAddress();
+        ClientInfo info = clientRegistry.touchHttp(cid, ip);
+        if (info == null) { ex.sendResponseHeaders(403, -1); ex.close(); return; }
+        if (!info.pinVerified) { ex.sendResponseHeaders(401, -1); ex.close(); return; }
+        if (!clientRegistry.allow(info)) { ex.sendResponseHeaders(429, -1); ex.close(); return; }
+        java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+        byte[] chunk = new byte[1024]; int n;
+        while ((n = ex.getRequestBody().read(chunk)) > 0) buf.write(chunk, 0, n);
+        JSONObject o = parseJSONObject(new String(buf.toByteArray(), StandardCharsets.UTF_8));
+        if (o == null) throw new RuntimeException("invalid JSON");
+        process(info, o);
+        ex.sendResponseHeaders(204, -1); ex.close();
+      } catch (Exception e) {
+        byte[] body = ("{\"error\":\"" + e.getMessage() + "\"}").getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(400, body.length);
+        OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      }
+    }
+    abstract void process(ClientInfo info, JSONObject o);
+  }
+
+  class SticksHandler extends InputHandlerBase {
+    void process(ClientInfo info, JSONObject o) {
+      webController.setSticks(info.clientId,
+        o.getFloat("lx", 0), o.getFloat("ly", 0),
+        o.getFloat("rx", 0), o.getFloat("ry", 0));
+    }
+  }
+  class ButtonHandler extends InputHandlerBase {
+    void process(ClientInfo info, JSONObject o) {
+      webController.setButton(info.clientId, o.getString("btn", ""), o.getString("action", ""));
+    }
+  }
+  class TriggerHandler extends InputHandlerBase {
+    void process(ClientInfo info, JSONObject o) {
+      webController.setTrigger(info.clientId, o.getString("which", ""), o.getFloat("value", 0));
+    }
+  }
+  // HelloHandler differs from sticks/button: PIN must be validated BEFORE we
+  // accept the client's metadata, so we don't share InputHandlerBase here.
+  class HelloHandler implements com.sun.net.httpserver.HttpHandler {
+    public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
+      ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+      ex.getResponseHeaders().set("Access-Control-Allow-Methods", "POST,OPTIONS");
+      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type,X-Client-Id");
+      String m = ex.getRequestMethod();
+      if (m.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
+      if (!m.equals("POST"))   { ex.sendResponseHeaders(405, -1); ex.close(); return; }
+      try {
+        String cid = ex.getRequestHeaders().getFirst("X-Client-Id");
+        String ip = ex.getRemoteAddress().getAddress().getHostAddress();
+        java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+        byte[] chunk = new byte[1024]; int n;
+        while ((n = ex.getRequestBody().read(chunk)) > 0) buf.write(chunk, 0, n);
+        JSONObject o = parseJSONObject(new String(buf.toByteArray(), StandardCharsets.UTF_8));
+        if (o == null) throw new RuntimeException("invalid JSON");
+        String pinResult = pinManager.validate(o.getString("pin", ""), ip, cid);
+        if (!pinResult.startsWith("ok-")) {
+          byte[] body = ("{\"error\":\"" + pinResult + "\"}").getBytes(StandardCharsets.UTF_8);
+          ex.sendResponseHeaders(403, body.length);
+          OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+          return;
+        }
+        String role = pinResult.startsWith("ok-named:") ? pinResult.substring("ok-named:".length()) : "guest";
+        ClientInfo info = clientRegistry.touchHttp(cid, ip);
+        if (info == null) { ex.sendResponseHeaders(403, -1); ex.close(); return; }
+        info.pinVerified = true;
+        info.role = role;
+        info.nickname = o.getString("nickname", info.nickname);
+        info.ua       = o.getString("ua",       info.ua);
+        info.platform = o.getString("platform", info.platform);
+        info.model    = o.getString("model",    info.model);
+        info.dpr      = o.getFloat("dpr",       info.dpr);
+        JSONArray scr = o.getJSONArray("screen");
+        if (scr != null && scr.size() == 2) { info.screenW = scr.getInt(0); info.screenH = scr.getInt(1); }
+        ex.sendResponseHeaders(204, -1); ex.close();
+      } catch (Exception e) {
+        byte[] body = ("{\"error\":\"" + e.getMessage() + "\"}").getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(400, body.length);
+        OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      }
+    }
+  }
+
+  // ---------- Admin ----------
+
+  // Token: read .devadmintoken from sketch dir; create with random value if missing.
+  String adminToken;
+  String getAdminToken() {
+    if (adminToken != null) return adminToken;
+    java.io.File f = new java.io.File(sketchPath(".devadmintoken"));
+    try {
+      if (f.exists()) {
+        adminToken = new String(java.nio.file.Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8).trim();
+      } else {
+        adminToken = java.util.UUID.randomUUID().toString().replace("-", "");
+        java.nio.file.Files.write(f.toPath(), adminToken.getBytes(StandardCharsets.UTF_8));
+        println("[ADMIN] generated new token at " + f.getPath());
+      }
+      println("[ADMIN] token: " + adminToken);
+    } catch (Exception e) {
+      println("[ADMIN] token init failed: " + e.getMessage());
+      adminToken = "";
+    }
+    return adminToken;
+  }
+
+  boolean isLocalhost(com.sun.net.httpserver.HttpExchange ex) {
+    String h = ex.getRemoteAddress().getAddress().getHostAddress();
+    return h.equals("127.0.0.1") || h.equals("0:0:0:0:0:0:0:1") || h.equals("::1");
+  }
+
+  boolean adminAuthed(com.sun.net.httpserver.HttpExchange ex) {
+    if (isLocalhost(ex)) return true;
+    String hdr = ex.getRequestHeaders().getFirst("X-Admin-Token");
+    if (hdr != null && hdr.equals(getAdminToken())) return true;
+    String cookie = ex.getRequestHeaders().getFirst("Cookie");
+    return cookie != null && cookie.contains("vis_admin=" + getAdminToken());
+  }
+
+  abstract class AdminHandlerBase implements com.sun.net.httpserver.HttpHandler {
+    public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
+      ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+      ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type,X-Admin-Token");
+      ex.getResponseHeaders().set("Content-Type", "application/json");
+      String m = ex.getRequestMethod();
+      if (m.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
+      if (!adminAuthed(ex))     { ex.sendResponseHeaders(401, -1); ex.close(); return; }
+      try {
+        String body = handleAdmin(ex);
+        byte[] out = body.getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(200, out.length);
+        OutputStream os = ex.getResponseBody(); os.write(out); os.close();
+      } catch (Exception e) {
+        byte[] out = ("{\"error\":\"" + e.getMessage() + "\"}").getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(400, out.length);
+        OutputStream os = ex.getResponseBody(); os.write(out); os.close();
+      }
+    }
+    abstract String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception;
+
+    JSONObject readJsonBody(com.sun.net.httpserver.HttpExchange ex) throws IOException {
+      java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+      byte[] chunk = new byte[1024]; int n;
+      while ((n = ex.getRequestBody().read(chunk)) > 0) buf.write(chunk, 0, n);
+      return parseJSONObject(new String(buf.toByteArray(), StandardCharsets.UTF_8));
+    }
+  }
+
+  class AdminClientsHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) {
+      return clientRegistry.snapshot().toString();
+    }
+  }
+  class AdminKickHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      JSONObject o = readJsonBody(ex);
+      clientRegistry.kick(o.getString("clientId", ""));
+      return "{\"ok\":true}";
+    }
+  }
+  class AdminBanHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      JSONObject o = readJsonBody(ex);
+      clientRegistry.ban(o.getString("clientId", ""));
+      return "{\"ok\":true}";
+    }
+  }
+  class AdminUnbanHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      JSONObject o = readJsonBody(ex);
+      clientRegistry.unban(o.getString("clientId", null), o.getString("ip", null));
+      return "{\"ok\":true}";
+    }
+  }
+  class AdminLockdownHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      String m = ex.getRequestMethod();
+      if (m.equals("GET")) {
+        return "{\"enabled\":" + clientRegistry.lockdownMode + "}";
+      }
+      JSONObject o = readJsonBody(ex);
+      clientRegistry.lockdownMode = o.getBoolean("enabled", false);
+      println("[REG] lockdown " + (clientRegistry.lockdownMode ? "ON" : "OFF"));
+      return "{\"enabled\":" + clientRegistry.lockdownMode + "}";
+    }
+  }
+  class AdminRoleHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      JSONObject o = readJsonBody(ex);
+      clientRegistry.setRole(o.getString("clientId", ""), o.getString("role", "primary"));
+      return "{\"ok\":true}";
+    }
+  }
+  class AdminPinsListHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) {
+      return pinManager.snapshot().toString();
+    }
+  }
+  class AdminPinsMintHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      JSONObject o = readJsonBody(ex);
+      NamedPin np = pinManager.mint(o.getString("label", "guest"), o.getString("role", "primary"));
+      JSONObject r = new JSONObject();
+      r.setString("pin", np.fullPin());
+      r.setString("role", np.role);
+      return r.toString();
+    }
+  }
+  class AdminPinsRevokeHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      JSONObject o = readJsonBody(ex);
+      pinManager.revoke(o.getString("pin", ""));
+      return "{\"ok\":true}";
+    }
+  }
+
+  // Gate /admin.html: only localhost OR a valid auth cookie gets through.
+  // The cookie is planted by POST /admin/auth — we deliberately do NOT accept
+  // ?token=XXX in the URL, since query strings leak via screenshots, browser
+  // history, referrer headers, and shoulder-surfing.
+  boolean adminPageAllowed(com.sun.net.httpserver.HttpExchange ex) {
+    if (isLocalhost(ex)) return true;
+    String cookie = ex.getRequestHeaders().getFirst("Cookie");
+    if (cookie != null && cookie.contains("vis_admin=" + getAdminToken())) return true;
+    return false;
+  }
+
+  // POST /admin/logout — clears the auth cookie. HttpOnly means JS can't drop it,
+  // so the server has to overwrite with Max-Age=0.
+  class AdminLogoutHandler implements com.sun.net.httpserver.HttpHandler {
+    public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
+      ex.getResponseHeaders().add("Set-Cookie", "vis_admin=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
+      ex.getResponseHeaders().set("Content-Type", "application/json");
+      byte[] body = "{\"ok\":true}".getBytes(StandardCharsets.UTF_8);
+      ex.sendResponseHeaders(200, body.length);
+      OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+    }
+  }
+
+  // POST /admin/auth { token: "..." } — validates and plants the cookie.
+  // No GET (cookie via URL would defeat the point). Constant-time compare
+  // so a quick brute-force loop can't easily distinguish prefix matches.
+  class AdminAuthHandler implements com.sun.net.httpserver.HttpHandler {
+    public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
+      ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+      ex.getResponseHeaders().set("Access-Control-Allow-Methods", "POST,OPTIONS");
       ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
+      ex.getResponseHeaders().set("Content-Type", "application/json");
       String m = ex.getRequestMethod();
       if (m.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
       if (!m.equals("POST"))   { ex.sendResponseHeaders(405, -1); ex.close(); return; }
@@ -303,28 +607,19 @@ class FeatureFlagServer {
         byte[] chunk = new byte[1024]; int n;
         while ((n = ex.getRequestBody().read(chunk)) > 0) buf.write(chunk, 0, n);
         JSONObject o = parseJSONObject(new String(buf.toByteArray(), StandardCharsets.UTF_8));
-        if (o == null) throw new RuntimeException("invalid JSON");
-        process(o);
-        ex.sendResponseHeaders(204, -1); ex.close();
-      } catch (Exception e) {
-        byte[] body = ("{\"error\":\"" + e.getMessage() + "\"}").getBytes(StandardCharsets.UTF_8);
-        ex.sendResponseHeaders(400, body.length);
+        String submitted = (o == null) ? "" : o.getString("token", "");
+        String expected  = getAdminToken();
+        boolean ok = submitted != null && expected != null && submitted.length() == expected.length()
+                  && java.security.MessageDigest.isEqual(submitted.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
+        if (!ok) { ex.sendResponseHeaders(401, -1); ex.close(); return; }
+        ex.getResponseHeaders().add("Set-Cookie",
+          "vis_admin=" + expected + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400");
+        byte[] body = "{\"ok\":true}".getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(200, body.length);
         OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      } catch (Exception e) {
+        ex.sendResponseHeaders(400, -1); ex.close();
       }
-    }
-    abstract void process(JSONObject o);
-  }
-
-  class SticksHandler extends InputHandlerBase {
-    void process(JSONObject o) {
-      webController.setSticks(
-        o.getFloat("lx", 0), o.getFloat("ly", 0),
-        o.getFloat("rx", 0), o.getFloat("ry", 0));
-    }
-  }
-  class ButtonHandler extends InputHandlerBase {
-    void process(JSONObject o) {
-      webController.setButton(o.getString("btn", ""), o.getString("action", ""));
     }
   }
 
@@ -334,6 +629,19 @@ class FeatureFlagServer {
     public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
       String path = ex.getRequestURI().getPath();
       if (path.equals("/")) path = "/index.html";
+      if (path.equals("/admin.html") && !adminPageAllowed(ex)) {
+        // Redirect to a login form. Trade-off: this advertises that an admin page
+        // exists, but the previous 404 forced operators to paste the token into
+        // the URL — which leaks via screenshots / browser history. The login form
+        // POSTs the token so it never appears in any URL.
+        ex.getResponseHeaders().set("Location", "/admin-login.html");
+        ex.sendResponseHeaders(302, -1); ex.close(); return;
+      }
+      // For an authorised admin pageview, plant the token cookie so admin/* fetches succeed.
+      if (path.equals("/admin.html") && adminPageAllowed(ex)) {
+        ex.getResponseHeaders().add("Set-Cookie",
+          "vis_admin=" + getAdminToken() + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400");
+      }
       java.io.File root = new java.io.File(sketchPath("../../featureflags-ui")).getCanonicalFile();
       java.io.File f = new java.io.File(root, path).getCanonicalFile();
       if (!f.getPath().startsWith(root.getPath()) || !f.exists() || f.isDirectory()) {
@@ -346,6 +654,12 @@ class FeatureFlagServer {
       else if (p.endsWith(".js"))  ct = "application/javascript";
       ex.getResponseHeaders().set("Content-Type", ct);
       byte[] body = java.nio.file.Files.readAllBytes(f.toPath());
+      // Substitute the live WS port into HTML so the page reaches the right socket
+      // even if 8081 was busy at startup and we walked forward.
+      if (ct.startsWith("text/html")) {
+        String s = new String(body, StandardCharsets.UTF_8).replace("__WS_PORT__", String.valueOf(wsPort));
+        body = s.getBytes(StandardCharsets.UTF_8);
+      }
       ex.sendResponseHeaders(200, body.length);
       OutputStream os = ex.getResponseBody(); os.write(body); os.close();
     }

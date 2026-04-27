@@ -89,13 +89,14 @@ class TableTennis3DScene extends TableTennisScene {
   // exits through the back wall.
   void checkEscape() {
     if (!outOfBounds) {
-      if (ballX < leftHomeX - 80) {
-        outOfBounds   = true;
-        outLeftScored = false;  // right scores (ball went off left)
-        outBounceCount = 0;
-      } else if (ballX > rightHomeX + 80) {
-        outOfBounds   = true;
-        outLeftScored = true;   // left scores (ball went off right)
+      int escapedSide = 0;
+      if (ballX < leftHomeX - 80)        escapedSide = -1;
+      else if (ballX > rightHomeX + 80)  escapedSide = 1;
+      if (escapedSide != 0) {
+        outOfBounds    = true;
+        // Determine winner now (uses lastBounceSide before further bounces),
+        // then defer the actual score until the 2-bounce / wall-exit trigger.
+        outLeftScored  = escapeWinnerLeft(escapedSide);
         outBounceCount = 0;
       }
       return;

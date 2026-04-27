@@ -31,6 +31,7 @@ mkdir -p "$BUILD_DIR"
 cp Music_Visualizer_CK/*.pde "$BUILD_DIR/" 2>/dev/null || true
 cp Music_Visualizer_CK/src/core/*.pde "$BUILD_DIR/" 2>/dev/null || true
 cp Music_Visualizer_CK/src/scenes/*.pde "$BUILD_DIR/" 2>/dev/null || true
+cp Music_Visualizer_CK/src/scenes/games/*.pde "$BUILD_DIR/" 2>/dev/null || true
 cp Music_Visualizer_CK/src/fractals/*.pde "$BUILD_DIR/" 2>/dev/null || true
 
 # Symlink resources and libraries from the original repo
@@ -65,6 +66,11 @@ fi
 # Symlink featureflags.json so featureflag-server writes persist across runs (.build is wiped).
 touch "$ORIGIN_DIR/featureflags.json"
 ln -sf "$ORIGIN_DIR/featureflags.json" "$BUILD_DIR/featureflags.json"
+
+# Same trick for .devadmintoken — otherwise the admin token regenerates every
+# launch and prior ?token= URLs / cookies all break.
+[ -f "$ORIGIN_DIR/.devadmintoken" ] || touch "$ORIGIN_DIR/.devadmintoken"
+ln -sf "$ORIGIN_DIR/.devadmintoken" "$BUILD_DIR/.devadmintoken"
 
 # Run using processing cli
 run_processing --sketch="$BUILD_DIR" --force --run --vm-args="-Xmx1g" "$@"

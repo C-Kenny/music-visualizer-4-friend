@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
 <title>Visualizer Controller</title>
 <style>
   :root {
@@ -16,12 +16,18 @@
     margin: 0; padding: 0;
     background: var(--bg);
     color: var(--green);
-    font: 14px/1.4 "Courier New", "Consolas", monospace;
+    font: 12px/1.4 "Courier New", "Consolas", monospace;
     text-shadow: var(--glow);
     height: 100%;
     overflow: hidden;
-    touch-action: none;
     -webkit-user-select: none; user-select: none;
+  }
+  /* Interactive controls swallow gestures so single-finger drag drives them.
+     Body is left as default so pinch-zoom + 2-finger pan still work. */
+  .pad, .btn, .dbtn, .shoulder, .menubtn { touch-action: none; }
+  body {
+    display: flex;
+    flex-direction: column;
   }
   .navbar {
     display: flex; align-items: center; gap: 0;
@@ -30,54 +36,93 @@
   }
   .navbar a {
     color: #000; text-decoration: none;
-    padding: 8px 16px;
+    padding: 6px 12px;
     font-weight: bold;
     letter-spacing: 0.15em;
-    font-size: 13px;
+    font-size: 11px;
     border-right: 1px solid rgba(0,0,0,0.3);
   }
   .navbar a.active { background: #000; color: var(--green); text-shadow: var(--glow); }
-  .navbar .ws-url {
-    margin-left: auto; padding: 8px 12px;
+  .navbar .status {
+    margin-left: auto; padding: 6px 10px;
     font-size: 10px; color: rgba(0,0,0,0.7);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 6px 12px;
-    border-bottom: 1px solid var(--border);
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  .header .status { color: var(--green-dim); font-size: 11px; }
-  .header .status.err { color: #ff4444; }
-  .header a { color: var(--green); text-decoration: none; }
+  .navbar .status.err { color: #c00; }
 
+  /* Top bumper/trigger strip */
+  .topbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .shoulder {
+    border: 2px solid var(--green);
+    background: var(--bg);
+    color: var(--green);
+    font: bold 14px "Courier New", monospace;
+    text-shadow: var(--glow);
+    padding: 8px 0;
+    text-align: center;
+    border-radius: 6px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .shoulder:active, .shoulder.held {
+    background: var(--green); color: #000; text-shadow: none;
+    box-shadow: var(--glow);
+  }
+
+  /* Main grid — reflows by orientation. Regions: lstick, rstick, dpad, face, menu. */
   .layout {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 8px;
-    padding: 8px;
-    height: calc(100vh - 76px);
+    gap: 6px;
+    padding: 6px;
+    flex: 1 1 auto;
+    min-height: 0;
     box-sizing: border-box;
+
+    /* Portrait default: dpad/menu/face on top row, sticks fill bottom 2 rows */
+    grid-template-areas:
+      "dpad   menu    face"
+      "lstick lstick  rstick"
+      "lstick lstick  rstick";
+    grid-template-columns: 1fr 0.55fr 1fr;
+    grid-template-rows: minmax(110px, 0.9fr) 1fr 1fr;
+  }
+  /* Landscape (phones rotated, desktops): single row, sticks on outer edges */
+  @media (orientation: landscape) {
+    .layout {
+      grid-template-areas: "lstick dpad menu face rstick";
+      grid-template-columns: 1.4fr 1fr 0.45fr 1fr 1.4fr;
+      grid-template-rows: 1fr;
+    }
   }
 
+  .region-lstick { grid-area: lstick; }
+  .region-rstick { grid-area: rstick; }
+  .region-dpad   { grid-area: dpad; }
+  .region-face   { grid-area: face; }
+  .region-menu   { grid-area: menu; }
+
+  /* Stick pads */
   .pad {
     position: relative;
     border: 1px solid var(--border);
     background: rgba(0, 255, 120, 0.04);
     overflow: hidden;
+    border-radius: 6px;
   }
   .pad-label {
-    position: absolute; top: 6px; left: 8px;
-    font-size: 11px; color: var(--green-dim);
+    position: absolute; top: 4px; left: 6px;
+    font-size: 10px; color: var(--green-dim);
     letter-spacing: 0.15em;
     pointer-events: none;
   }
   .pad-coord {
-    position: absolute; bottom: 6px; right: 8px;
-    font-size: 11px; color: var(--green-dim);
+    position: absolute; bottom: 4px; right: 6px;
+    font-size: 10px; color: var(--green-dim);
     font-variant-numeric: tabular-nums;
     pointer-events: none;
   }
@@ -89,7 +134,7 @@
   .crosshair-v { top: 0; bottom: 0; left: 50%; width: 1px; }
   .knob {
     position: absolute;
-    width: 60px; height: 60px;
+    width: 50px; height: 50px;
     border: 2px solid var(--green);
     border-radius: 50%;
     background: rgba(0, 255, 120, 0.15);
@@ -100,49 +145,124 @@
     transition: transform 0.05s linear;
   }
 
-  .buttons {
+  /* Face buttons (ABXY) — fills its grid region */
+  .face {
+    position: relative;
     display: grid;
-    grid-template-columns: repeat(3, 70px);
-    grid-template-rows: repeat(3, 70px);
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
     gap: 6px;
-    align-self: center;
-    justify-self: center;
+    padding: 8px;
+    border: 1px solid var(--border);
+    background: rgba(0, 255, 120, 0.04);
+    border-radius: 6px;
+    min-height: 0; min-width: 0;
   }
   .btn {
     border: 2px solid var(--green);
     background: var(--bg);
     color: var(--green);
-    font: bold 24px "Courier New", monospace;
+    font: bold 20px "Courier New", monospace;
     text-shadow: var(--glow);
     cursor: pointer;
     border-radius: 50%;
-    user-select: none;
     -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; min-height: 0;
+    padding: 0;
   }
   .btn:active, .btn.held {
     background: var(--green); color: #000; text-shadow: none;
     box-shadow: var(--glow);
   }
-  /* Xbox layout: Y top, X left, B right, A bottom */
+  /* Xbox face: Y top, X left, B right, A bottom */
   #btnY { grid-column: 2; grid-row: 1; }
   #btnX { grid-column: 1; grid-row: 2; }
   #btnB { grid-column: 3; grid-row: 2; }
   #btnA { grid-column: 2; grid-row: 3; }
+
+  /* D-pad — fills its grid region */
+  .dpad {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    background: rgba(0, 255, 120, 0.04);
+    border-radius: 6px;
+    min-height: 0; min-width: 0;
+  }
+  .dbtn {
+    border: 2px solid var(--green);
+    background: var(--bg);
+    color: var(--green);
+    font: bold 18px "Courier New", monospace;
+    text-shadow: var(--glow);
+    cursor: pointer;
+    border-radius: 6px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; min-height: 0;
+    padding: 0;
+  }
+  .dbtn:active, .dbtn.held {
+    background: var(--green); color: #000; text-shadow: none;
+    box-shadow: var(--glow);
+  }
+  #dUp    { grid-column: 2; grid-row: 1; }
+  #dLeft  { grid-column: 1; grid-row: 2; }
+  #dRight { grid-column: 3; grid-row: 2; }
+  #dDown  { grid-column: 2; grid-row: 3; }
+
+  /* Center menu buttons (BACK/START) */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    min-height: 0; min-width: 0;
+  }
+  @media (orientation: landscape) {
+    .menu { flex-direction: column; }
+  }
+  .menubtn {
+    border: 2px solid var(--green);
+    background: var(--bg);
+    color: var(--green);
+    font: bold 10px "Courier New", monospace;
+    text-shadow: var(--glow);
+    padding: 6px 10px;
+    border-radius: 12px;
+    -webkit-tap-highlight-color: transparent;
+    letter-spacing: 0.15em;
+  }
+  .menubtn:active, .menubtn.held {
+    background: var(--green); color: #000; text-shadow: none;
+    box-shadow: var(--glow);
+  }
 </style>
 </head>
 <body>
 <nav class="navbar">
   <a href="/">FLAGS</a>
   <a href="/controller.html" class="active">CONTROLLER</a>
-  <span class="ws-url" id="wsUrl"></span>
-</nav>
-<div class="header">
-  <span>VISUALIZER // CONTROLLER</span>
   <span class="status" id="status">connecting…</span>
+</nav>
+
+<div class="topbar">
+  <div class="shoulder" id="btnLT">LT</div>
+  <div class="shoulder" id="btnLB">LB</div>
+  <div class="shoulder" id="btnRB">RB</div>
+  <div class="shoulder" id="btnRT">RT</div>
 </div>
 
 <div class="layout">
-  <div class="pad" id="padL">
+  <div class="pad region-lstick" id="padL">
     <div class="pad-label">L STICK</div>
     <div class="crosshair-h"></div>
     <div class="crosshair-v"></div>
@@ -150,14 +270,26 @@
     <div class="pad-coord" id="coordL">0.00, 0.00</div>
   </div>
 
-  <div class="buttons">
+  <div class="dpad region-dpad">
+    <div class="dbtn" id="dUp">▲</div>
+    <div class="dbtn" id="dLeft">◀</div>
+    <div class="dbtn" id="dRight">▶</div>
+    <div class="dbtn" id="dDown">▼</div>
+  </div>
+
+  <div class="menu region-menu">
+    <div class="menubtn" id="btnBack">BACK</div>
+    <div class="menubtn" id="btnStart">START</div>
+  </div>
+
+  <div class="face region-face">
     <button class="btn" id="btnY">Y</button>
     <button class="btn" id="btnX">X</button>
     <button class="btn" id="btnB">B</button>
     <button class="btn" id="btnA">A</button>
   </div>
 
-  <div class="pad" id="padR">
+  <div class="pad region-rstick" id="padR">
     <div class="pad-label">R STICK</div>
     <div class="crosshair-h"></div>
     <div class="crosshair-v"></div>
@@ -167,70 +299,152 @@
 </div>
 
 <script>
-const WS_URL = "ws://" + (location.host || "127.0.0.1:8081").replace(/:\d+$/, ":8081") + "/controller";
+// Server substitutes __WS_PORT__ at request time; falls back to 8081 if served as static file.
+const WS_PORT = ("__WS_PORT__".match(/^\d+$/) ? "__WS_PORT__" : "8081");
+const WS_URL = "ws://" + (location.hostname || "127.0.0.1") + ":" + WS_PORT + "/controller";
 const SEND_HZ = 60;
 const statusEl = document.getElementById("status");
-document.getElementById("wsUrl").textContent = WS_URL;
+
+// ---- Identity: persistent clientId + nickname (localStorage) ----
+function uuid() {
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "id-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+let clientId = localStorage.getItem("vis.clientId");
+if (!clientId) { clientId = uuid(); localStorage.setItem("vis.clientId", clientId); }
+let nickname = localStorage.getItem("vis.nickname") || "";
+if (!nickname) {
+  nickname = (prompt("Nickname for the visualizer (shown to admin):") || "").trim().slice(0, 24);
+  if (!nickname) nickname = "phone-" + clientId.slice(0, 4);
+  localStorage.setItem("vis.nickname", nickname);
+}
+
+function readQuery(name) {
+  const m = location.search.match(new RegExp("[?&]" + name + "=([^&]+)"));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+let pin = readQuery("pin") || localStorage.getItem("vis.pin") || "";
+if (!pin) {
+  pin = (prompt("Venue PIN (or your personal PIN like alice-XYZ123):") || "").trim();
+}
+if (pin) localStorage.setItem("vis.pin", pin);
+
+function clearPinAndReprompt(reason) {
+  localStorage.removeItem("vis.pin");
+  alert("PIN rejected (" + reason + "). Page will reload.");
+  location.href = location.pathname;
+}
+
+async function buildHello() {
+  let model = "";
+  try {
+    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+      const h = await navigator.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
+      model = h.model || "";
+    }
+  } catch (e) {}
+  return {
+    type: "hello",
+    clientId, nickname, pin,
+    ua: navigator.userAgent || "",
+    platform: navigator.platform || "",
+    model,
+    screen: [window.innerWidth, window.innerHeight],
+    dpr: window.devicePixelRatio || 1,
+  };
+}
 
 // ---- Transport: WebSocket → falls back to HTTP POST after 2s ----
 let ws = null;
 let wsReady = false;
-let mode = "ws-connecting";  // "ws", "http"
+let mode = "ws-connecting";
+let helloSent = false;
 
 function connect() {
+  helloSent = false;
   try { ws = new WebSocket(WS_URL); }
   catch (e) { enableHttpFallback("WS construct failed"); return; }
   const fallbackTimer = setTimeout(() => {
     if (!wsReady) { try { ws.close(); } catch (e) {} enableHttpFallback("WS timeout — 8081 likely blocked"); }
   }, 2000);
-  ws.onopen = () => {
+  ws.onopen = async () => {
     clearTimeout(fallbackTimer);
     wsReady = true; mode = "ws";
-    statusEl.textContent = "WS connected · " + WS_URL;
+    const hello = await buildHello();
+    try { ws.send(JSON.stringify(hello)); helloSent = true; } catch (e) {}
+    statusEl.textContent = "WS · " + nickname + " · " + clientId.slice(0, 8);
     statusEl.className = "status";
   };
+  ws.onmessage = (ev) => {
+    try {
+      const m = JSON.parse(ev.data);
+      if (m.type === "hello-rejected") clearPinAndReprompt(m.reason || "rejected");
+    } catch (e) {}
+  };
   ws.onclose = () => {
-    wsReady = false;
+    wsReady = false; helloSent = false;
     if (mode === "ws") { mode = "ws-connecting"; setTimeout(connect, 1000); }
   };
   ws.onerror = () => { wsReady = false; };
 }
 connect();
 
-function enableHttpFallback(reason) {
+async function enableHttpFallback(reason) {
   if (mode === "http") return;
   mode = "http";
-  statusEl.textContent = "HTTP fallback · " + reason;
+  statusEl.textContent = "HTTP · " + reason;
+  const hello = await buildHello();
+  try {
+    const r = await fetch("/input/hello", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Client-Id": clientId },
+      body: JSON.stringify(hello),
+    });
+    if (r.status === 403 || r.status === 401) {
+      const j = await r.json().catch(() => ({}));
+      clearPinAndReprompt(j.error || ("status " + r.status));
+      return;
+    } else if (!r.ok) {
+      statusEl.textContent = "hello " + r.status + " @ " + location.host;
+      statusEl.className = "status err";
+      return;
+    }
+  } catch (e) {
+    statusEl.textContent = "hello fail: " + e.message + " @ " + location.host;
+    statusEl.className = "status err";
+    return;
+  }
+  statusEl.textContent = "HTTP · " + nickname + " · " + clientId.slice(0, 8);
   statusEl.className = "status";
 }
 
 let sendCount = 0;
 function send(obj) {
   if (mode === "ws") {
-    if (wsReady && ws.readyState === 1) {
+    if (wsReady && helloSent && ws.readyState === 1) {
       ws.send(JSON.stringify(obj));
       sendCount++;
-      statusEl.textContent = "ws #" + sendCount + " · " + JSON.stringify(obj).slice(0, 40);
     }
     return;
   }
   if (mode === "http") {
-    const path = obj.type === "sticks" ? "/input/sticks" : "/input/button";
-    const body = obj.type === "sticks"
-      ? { lx:obj.lx, ly:obj.ly, rx:obj.rx, ry:obj.ry }
-      : { btn:obj.btn, action:obj.action };
+    let path = "/input/button";
+    let body = obj;
+    if (obj.type === "sticks")  { path = "/input/sticks";  body = { lx:obj.lx, ly:obj.ly, rx:obj.rx, ry:obj.ry }; }
+    if (obj.type === "trigger") { path = "/input/trigger"; body = { which:obj.which, value:obj.value }; }
+    if (obj.type === "button")  { path = "/input/button";  body = { btn:obj.btn, action:obj.action }; }
     fetch(path, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Client-Id": clientId },
       body: JSON.stringify(body),
-      keepalive: true,
-    }).then(() => {
-      sendCount++;
-      statusEl.textContent = "http #" + sendCount + " · " + JSON.stringify(body).slice(0, 40);
-    }).catch(e => {
-      statusEl.textContent = "http err: " + e.message;
-      statusEl.className = "status err";
-    });
+    }).then(r => {
+      if (r.status === 401 || r.status === 403) {
+        clearPinAndReprompt("server says " + r.status + " — PIN likely changed (visualizer restart?)");
+      } else if (!r.ok) {
+        statusEl.textContent = path + " → " + r.status; statusEl.className = "status err";
+      } else { sendCount++; }
+    })
+      .catch(e => { statusEl.textContent = path + " err: " + e.message; statusEl.className = "status err"; });
   }
 }
 
@@ -248,7 +462,7 @@ function setupPad(side, padEl, knobEl, coordEl) {
     let dx = (clientX - cx) / radius;
     let dy = (clientY - cy) / radius;
     const mag = Math.hypot(dx, dy);
-    if (mag > 1) { dx /= mag; dy /= mag; }  // clamp to unit circle
+    if (mag > 1) { dx /= mag; dy /= mag; }
     stickState[side].x = dx;
     stickState[side].y = dy;
     knobEl.style.left = (50 + dx * 50) + "%";
@@ -284,7 +498,6 @@ function setupPad(side, padEl, knobEl, coordEl) {
 setupPad("L", document.getElementById("padL"), document.getElementById("knobL"), document.getElementById("coordL"));
 setupPad("R", document.getElementById("padR"), document.getElementById("knobR"), document.getElementById("coordR"));
 
-// Stream sticks at SEND_HZ (only when one is active OR was just released — to push the centering frame).
 let lastSent = { lx:0, ly:0, rx:0, ry:0 };
 setInterval(() => {
   const lx = stickState.L.x, ly = stickState.L.y;
@@ -313,10 +526,41 @@ function wireButton(id, name) {
   el.addEventListener("pointercancel", up);
   el.addEventListener("pointerleave", up);
 }
+// Face
 wireButton("btnA", "A");
 wireButton("btnB", "B");
 wireButton("btnX", "X");
 wireButton("btnY", "Y");
+// Bumpers
+wireButton("btnLB", "LB");
+wireButton("btnRB", "RB");
+// D-pad
+wireButton("dUp",    "DUP");
+wireButton("dDown",  "DDOWN");
+wireButton("dLeft",  "DLEFT");
+wireButton("dRight", "DRIGHT");
+// Menu
+wireButton("btnBack",  "BACK");
+wireButton("btnStart", "START");
+
+// ---- Triggers (digital: 0 / 1) ----
+function wireTrigger(id, which) {
+  const el = document.getElementById(id);
+  el.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    el.classList.add("held");
+    send({ type: "trigger", which, value: 1 });
+  });
+  function up() {
+    el.classList.remove("held");
+    send({ type: "trigger", which, value: 0 });
+  }
+  el.addEventListener("pointerup", up);
+  el.addEventListener("pointercancel", up);
+  el.addEventListener("pointerleave", up);
+}
+wireTrigger("btnLT", "L");
+wireTrigger("btnRT", "R");
 </script>
 </body>
 </html>
