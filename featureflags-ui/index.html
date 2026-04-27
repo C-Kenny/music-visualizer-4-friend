@@ -275,7 +275,25 @@ async function postFlag(key, val) {
   return r.json();
 }
 
+// Build DOM only when the schema shape changes; otherwise sync values in place.
+// Tearing down the DOM on every poll closed open <select>s mid-click and
+// disrupted slider drags.
+let flagsBuiltSig = "";
+let flagControls = {};   // key -> { input, valEl?, type }
+
+function schemaSig() {
+  return schema.map(s => s.key + ":" + s.type + ":" + (s.options ? s.options.join(",") : "")).join("|");
+}
+
 function render() {
+  const sig = schemaSig();
+  if (sig !== flagsBuiltSig) buildFlags();
+  syncFlagValues();
+}
+
+function buildFlags() {
+  flagsBuiltSig = schemaSig();
+  flagControls = {};
   const root = document.getElementById("flags");
   root.innerHTML = "";
   for (const sp of schema) {
@@ -297,6 +315,7 @@ function render() {
         setTimeout(() => dirty.delete(sp.key), 800);
       };
       ctl.appendChild(cb);
+      flagControls[sp.key] = { input: cb, type: "bool" };
     } else if (sp.type === "enum") {
       const sel = document.createElement("select");
       for (const opt of sp.options) {
@@ -312,6 +331,7 @@ function render() {
         setTimeout(() => dirty.delete(sp.key), 800);
       };
       ctl.appendChild(sel);
+      flagControls[sp.key] = { input: sel, type: "enum" };
     } else if (sp.type === "float") {
       const sl = document.createElement("input");
       sl.type = "range"; sl.min = sp.min; sl.max = sp.max;
@@ -326,9 +346,26 @@ function render() {
         setTimeout(() => dirty.delete(sp.key), 800);
       };
       ctl.appendChild(sl); ctl.appendChild(v);
+      flagControls[sp.key] = { input: sl, valEl: v, type: "float" };
     }
     row.appendChild(label); row.appendChild(ctl);
     root.appendChild(row);
+  }
+}
+
+function syncFlagValues() {
+  for (const sp of schema) {
+    const c = flagControls[sp.key];
+    if (!c) continue;
+    if (dirty.has(sp.key)) continue;
+    if (document.activeElement === c.input) continue;  // user is interacting
+    const v = values[sp.key];
+    if (c.type === "bool")  { if (c.input.checked !== !!v) c.input.checked = !!v; }
+    else if (c.type === "enum")  { if (c.input.value !== v) c.input.value = v; }
+    else if (c.type === "float") {
+      if (parseFloat(c.input.value) !== v) c.input.value = v;
+      c.valEl.textContent = Number(v).toFixed(1);
+    }
   }
 }
 

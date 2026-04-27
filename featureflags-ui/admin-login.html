@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Login</title>
+<style>
+  :root {
+    --green: #00ff78; --green-dim: #7affb0; --bg: #000000;
+    --border: rgba(0, 255, 120, 0.4);
+    --glow: 0 0 4px rgba(0,255,120,0.7), 0 0 12px rgba(0,255,120,0.25);
+    --red: #ff4444;
+  }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--green);
+    font: 14px/1.4 "Courier New", "Consolas", monospace; text-shadow: var(--glow);
+    height: 100%; display: flex; align-items: center; justify-content: center; }
+  .card { border: 1px solid var(--border); padding: 24px; min-width: 320px; }
+  h1 { letter-spacing: 0.3em; font-size: 16px; margin: 0 0 16px; }
+  label { display: block; font-size: 11px; color: var(--green-dim); letter-spacing: 0.15em; margin-bottom: 6px; }
+  input[type=password] {
+    background: #000; color: var(--green); border: 1px solid var(--border);
+    padding: 8px; font: 13px "Courier New", monospace; text-shadow: var(--glow);
+    width: 100%; box-sizing: border-box; letter-spacing: 0.1em;
+  }
+  button {
+    margin-top: 12px; background: #000; color: var(--green); border: 1px solid var(--green);
+    padding: 8px 16px; font: 13px "Courier New", monospace; text-shadow: var(--glow);
+    cursor: pointer; letter-spacing: 0.15em;
+  }
+  button:hover { background: var(--green); color: #000; text-shadow: none; }
+  .err { color: var(--red); font-size: 12px; margin-top: 8px; min-height: 16px; }
+  .hint { color: var(--green-dim); font-size: 11px; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>&gt; ADMIN</h1>
+  <form id="f" autocomplete="off">
+    <label for="t">ADMIN TOKEN</label>
+    <input id="t" type="password" autofocus>
+    <button type="submit">UNLOCK</button>
+    <div id="err" class="err"></div>
+  </form>
+  <div class="hint">token printed at sketch startup &middot; stored in <code>.devadmintoken</code></div>
+</div>
+<script>
+const f = document.getElementById("f");
+const errEl = document.getElementById("err");
+f.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errEl.textContent = "";
+  const token = document.getElementById("t").value.trim();
+  if (!token) { errEl.textContent = "token required"; return; }
+  try {
+    const r = await fetch("/admin/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (r.status === 200) { location.href = "/admin.html"; return; }
+    if (r.status === 401) { errEl.textContent = "rejected"; return; }
+    errEl.textContent = "error " + r.status;
+  } catch (e) {
+    errEl.textContent = "network: " + e.message;
+  }
+});
+</script>
+</body>
+</html>

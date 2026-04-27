@@ -14,6 +14,8 @@ Controller controller;
 FeatureFlagServer featureFlagServer;
 WebController webController;
 ControllerWebSocket controllerWS;
+ClientRegistry clientRegistry;
+PinManager pinManager;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
 AutoSwitcher   autoSwitcher;
@@ -356,11 +358,19 @@ void settings() {
 
 void setup() {
   config = new Config();
+  pinManager = new PinManager();
+  clientRegistry = new ClientRegistry();
   featureFlagServer = new FeatureFlagServer();
   featureFlagServer.start();
   webController = new WebController();
-  controllerWS = new ControllerWebSocket(8081);
+  // Pick a free WS port too (default 8081) and tell the FF server so it can
+  // inject it into controller.html. Otherwise a stale JVM holding 8081 silently
+  // breaks the phone connection.
+  int wsPort = featureFlagServer.findFreePort(8081, 10);
+  if (wsPort < 0) wsPort = 8081;  // fall back; .start() will log the bind failure
+  controllerWS = new ControllerWebSocket(wsPort);
   controllerWS.start();
+  featureFlagServer.wsPort = wsPort;
   println("[DIAG] displayWidth=" + displayWidth + " displayHeight=" + displayHeight + " width=" + width + " height=" + height);
   sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
   sceneBuffer.smooth(4);
@@ -1240,11 +1250,13 @@ void drawCodeOverlay(String[] lines) {
   popStyle();
 }
 
-// Bottom-left HUD: shows LAN URLs so the operator can grab them on a new wifi
-// without having to ssh / check the terminal.
+// Bottom-left HUD: shows LAN URLs and the venue PIN so the operator can read
+// them out / let people scan instead of ssh'ing to check the terminal.
 void drawWebControlBadge() {
-  if (featureFlagServer == null || featureFlagServer.lanUrls == null) return;
-  if (featureFlagServer.lanUrls.size() == 0) return;
+  if (featureFlagServer == null) return;
+  boolean haveUrls = featureFlagServer.lanUrls != null && featureFlagServer.lanUrls.size() > 0;
+  boolean haveErr  = featureFlagServer.startError != null && featureFlagServer.startError.length() > 0;
+  if (!haveUrls && !haveErr) return;
   pushStyle();
   textFont(monoFont);
   float ts = 14 * uiScale();
@@ -1252,11 +1264,17 @@ void drawWebControlBadge() {
   textAlign(LEFT, BOTTOM);
   float pad = 10 * uiScale();
   float lineH = ts + 4;
-  int n = featureFlagServer.lanUrls.size();
-  float boxH = lineH * (n + 1) + 12;
+  String pinLine = pinManager == null ? "" : ("PIN  " + pinManager.masterPin);
+  String errLine = haveErr ? ("SERVER FAIL: " + featureFlagServer.startError) : "";
+  int urlCount = haveUrls ? featureFlagServer.lanUrls.size() : 0;
+  int extraLines = (pinLine.length() > 0 ? 1 : 0) + (haveErr ? 1 : 0);
+  float boxH = lineH * (urlCount + 1 + extraLines) + 12;
   float boxW = 0;
-  for (String u : featureFlagServer.lanUrls) boxW = max(boxW, textWidth(u));
-  boxW = max(boxW, textWidth("WEB CONTROL")) + 16;
+  if (haveUrls) for (String u : featureFlagServer.lanUrls) boxW = max(boxW, textWidth(u));
+  boxW = max(boxW, textWidth("WEB CONTROL"));
+  if (pinLine.length() > 0) boxW = max(boxW, textWidth(pinLine));
+  if (haveErr) boxW = max(boxW, textWidth(errLine));
+  boxW += 16;
   float boxX = pad;
   float boxY = height - pad;
   noStroke();
@@ -1264,8 +1282,16 @@ void drawWebControlBadge() {
   rect(boxX, boxY - boxH, boxW, boxH, 4);
   fill(0, 255, 120);
   text("WEB CONTROL", boxX + 8, boxY - boxH + lineH);
-  for (int i = 0; i < n; i++) {
-    text(featureFlagServer.lanUrls.get(i), boxX + 8, boxY - boxH + lineH * (i + 2));
+  int row = 2;
+  for (int i = 0; i < urlCount; i++) {
+    text(featureFlagServer.lanUrls.get(i), boxX + 8, boxY - boxH + lineH * row++);
+  }
+  if (pinLine.length() > 0) {
+    text(pinLine, boxX + 8, boxY - boxH + lineH * row++);
+  }
+  if (haveErr) {
+    fill(255, 80, 80);
+    text(errLine, boxX + 8, boxY - boxH + lineH * row);
   }
   popStyle();
 }

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizer Admin</title>
+<style>
+  :root {
+    --green: #00ff78; --green-dim: #7affb0; --bg: #000000;
+    --border: rgba(0, 255, 120, 0.4);
+    --glow: 0 0 4px rgba(0,255,120,0.7), 0 0 12px rgba(0,255,120,0.25);
+    --red: #ff4444;
+  }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--green);
+    font: 13px/1.4 "Courier New", "Consolas", monospace; text-shadow: var(--glow); }
+  .navbar { display:flex; background:var(--green); color:#000; border-bottom:1px solid var(--border); }
+  .navbar a { color:#000; text-decoration:none; padding:8px 16px; font-weight:bold;
+    letter-spacing:0.15em; font-size:13px; border-right:1px solid rgba(0,0,0,0.3); }
+  .navbar a.active { background:#000; color:var(--green); text-shadow:var(--glow); }
+  .wrap { padding: 12px; }
+  h2 { letter-spacing:0.2em; font-size:14px; margin: 16px 0 8px; }
+  .tokenbox { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+  .tokenbox input { background:#000; color:var(--green); border:1px solid var(--border);
+    padding:6px 8px; font: 12px "Courier New", monospace; min-width: 320px; text-shadow:var(--glow); }
+  table { width:100%; border-collapse: collapse; }
+  th, td { border:1px solid var(--border); padding:6px 8px; text-align:left; vertical-align: top; }
+  th { color:var(--green-dim); font-weight: normal; letter-spacing: 0.1em; text-transform: uppercase; font-size:11px; }
+  .small { color:var(--green-dim); font-size:11px; }
+  .row.disconnected td { opacity: 0.5; }
+  button, select { background:#000; color:var(--green); border:1px solid var(--green);
+    padding:4px 8px; font:12px "Courier New", monospace; text-shadow:var(--glow); cursor:pointer; }
+  button:hover { background:var(--green); color:#000; text-shadow:none; }
+  button.danger { color:var(--red); border-color:var(--red); text-shadow: 0 0 4px rgba(255,68,68,0.7); }
+  button.danger:hover { background:var(--red); color:#000; text-shadow:none; }
+  .actions { display:flex; gap:4px; flex-wrap: wrap; }
+  .err { color: var(--red); }
+  .banlist { display:flex; flex-wrap:wrap; gap:6px; }
+  .banpill { border:1px solid var(--border); padding: 3px 6px; display:inline-flex; gap:6px; align-items:center; }
+</style>
+<script src="/qrcode.min.js"></script>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/">FLAGS</a>
+  <a href="/controller.html">CONTROLLER</a>
+  <a href="/admin.html" class="active">ADMIN</a>
+</nav>
+<div class="wrap">
+  <div class="tokenbox">
+    <span class="small">SESSION: cookie auth · 24h</span>
+    <button id="logoutBtn" class="danger">LOG OUT</button>
+    <span id="status" class="small"></span>
+    <input id="token" type="hidden">
+  </div>
+
+  <h2>VENUE ACCESS</h2>
+  <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
+    <div>
+      <div class="small">MASTER PIN (rotates each launch)</div>
+      <div id="masterPin" style="font-size: 32px; letter-spacing: 0.3em; padding: 8px 0;">—</div>
+      <div class="small" id="venueUrl"></div>
+    </div>
+    <div>
+      <div class="small">SCAN TO CONNECT</div>
+      <img id="venueQr" alt="venue QR" style="border:1px solid var(--border); padding:4px; background:#fff; width:180px; height:180px;">
+      <div class="small">offline — rendered locally via qrcode-generator</div>
+    </div>
+  </div>
+
+  <h2>LOCKDOWN</h2>
+  <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+    <button id="lockdownBtn">—</button>
+    <span id="lockdownState" class="small">checking…</span>
+  </div>
+
+  <h2>NAMED PINS</h2>
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+    <input id="mintLabel" placeholder="label (e.g. alice)" style="background:#000; color:var(--green); border:1px solid var(--border); padding:6px 8px; font:12px 'Courier New', monospace; text-shadow:var(--glow);">
+    <select id="mintRole">
+      <option value="primary">primary</option>
+      <option value="co1">co1</option>
+      <option value="co2">co2</option>
+      <option value="admin">admin</option>
+      <option value="spectator">spectator</option>
+    </select>
+    <button id="mintBtn">MINT</button>
+    <span id="mintResult" class="small"></span>
+  </div>
+  <table id="pins">
+    <thead><tr>
+      <th>PIN</th><th>LABEL</th><th>ROLE</th><th>BOUND CLIENT</th><th>LAST USED</th><th>ACTIONS</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>CONNECTED CLIENTS</h2>
+  <table id="clients">
+    <thead><tr>
+      <th>NICK</th><th>ID</th><th>IP</th><th>DEVICE</th><th>SCREEN</th>
+      <th>ROLE</th><th>MSGS</th><th>IDLE</th><th>STATE</th><th>ACTIONS</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>BANNED</h2>
+  <div class="banlist" id="banlist"></div>
+</div>
+
+<script>
+const ROLES = ["primary", "co1", "co2", "spectator", "admin"];
+const tokenEl = document.getElementById("token");
+const statusEl = document.getElementById("status");
+// Auth is via the vis_admin cookie set by /admin/auth — token lives only in the
+// HttpOnly cookie, never in JS or URLs. Clear any leftover localStorage from old builds.
+localStorage.removeItem("vis.adminToken");
+document.getElementById("logoutBtn").onclick = async () => {
+  // HttpOnly cookie can't be cleared from JS — server endpoint overwrites it.
+  try { await fetch("/admin/logout", { method: "POST" }); } catch (e) {}
+  location.href = "/admin-login.html";
+};
+
+function authHeaders(extra) {
+  const h = { "Content-Type": "application/json" };
+  const t = tokenEl.value.trim();
+  if (t) h["X-Admin-Token"] = t;
+  return Object.assign(h, extra || {});
+}
+
+async function refresh() {
+  try {
+    const [rc, rp, rl] = await Promise.all([
+      fetch("/admin/clients",  { headers: authHeaders() }),
+      fetch("/admin/pins",     { headers: authHeaders() }),
+      fetch("/admin/lockdown", { headers: authHeaders() }),
+    ]);
+    if (rc.status === 401 || rp.status === 401) {
+      statusEl.textContent = "401 — token wrong / not localhost"; statusEl.className = "small err"; return;
+    }
+    const data = await rc.json();
+    const pins = await rp.json();
+    const lock = await rl.json();
+    statusEl.textContent = "ok · " + new Date().toLocaleTimeString();
+    statusEl.className = "small";
+    renderClients(data.clients || []);
+    renderBans(data.bannedIds || [], data.bannedIps || []);
+    renderPins(pins);
+    renderLockdown(lock.enabled);
+  } catch (e) {
+    statusEl.textContent = "err: " + e.message;
+    statusEl.className = "small err";
+  }
+}
+
+function renderLockdown(enabled) {
+  const btn = document.getElementById("lockdownBtn");
+  const lbl = document.getElementById("lockdownState");
+  if (enabled) {
+    btn.textContent = "DISABLE LOCKDOWN";
+    btn.className = "";
+    lbl.textContent = "ON — all new external connections blocked";
+    lbl.className = "small err";
+  } else {
+    btn.textContent = "ENABLE LOCKDOWN";
+    btn.className = "danger";
+    lbl.textContent = "off — connections allowed";
+    lbl.className = "small";
+  }
+  btn.onclick = async () => {
+    const next = !enabled;
+    if (next && !confirm("Block all new external phone/HTTP connections?")) return;
+    try {
+      await fetch("/admin/lockdown", { method:"POST", headers: authHeaders(), body: JSON.stringify({ enabled: next }) });
+    } catch (e) { statusEl.textContent = "err: " + e.message; }
+    refresh();
+  };
+}
+
+function renderPins(p) {
+  document.getElementById("masterPin").textContent = p.master || "—";
+  const url = location.origin + "/controller.html?pin=" + encodeURIComponent(p.master || "");
+  document.getElementById("venueUrl").textContent = url;
+  try {
+    const q = qrcode(0, "M");   // type auto, error-correction M
+    q.addData(url);
+    q.make();
+    document.getElementById("venueQr").src = q.createDataURL(6, 4);
+  } catch (e) {
+    document.getElementById("venueQr").alt = "QR err: " + e.message;
+  }
+  const tb = document.querySelector("#pins tbody");
+  tb.innerHTML = "";
+  for (const np of (p.named || [])) {
+    const tr = document.createElement("tr");
+    const lastUsed = np.lastUsedMs ? new Date(np.lastUsedMs).toLocaleString() : "—";
+    tr.innerHTML = `
+      <td><code>${escape(np.pin)}</code></td>
+      <td>${escape(np.label)}</td>
+      <td>${escape(np.role)}</td>
+      <td class="small">${escape((np.boundClientId || "—").slice(0,12))}</td>
+      <td class="small">${escape(lastUsed)}</td>
+      <td><button class="danger" data-pin="${escape(np.pin)}">REVOKE</button></td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll("button.danger").forEach(b => b.onclick = () => {
+    if (confirm("Revoke " + b.dataset.pin + "?")) action("/admin/pins/revoke", { pin: b.dataset.pin });
+  });
+}
+
+document.getElementById("mintBtn").onclick = async () => {
+  const label = document.getElementById("mintLabel").value.trim();
+  const role  = document.getElementById("mintRole").value;
+  if (!label) { document.getElementById("mintResult").textContent = "label required"; return; }
+  try {
+    const r = await fetch("/admin/pins/mint", { method:"POST", headers: authHeaders(),
+      body: JSON.stringify({ label, role }) });
+    const j = await r.json();
+    document.getElementById("mintResult").textContent = "minted: " + j.pin + " (" + j.role + ")";
+    document.getElementById("mintLabel").value = "";
+    refresh();
+  } catch (e) { document.getElementById("mintResult").textContent = "err: " + e.message; }
+};
+
+function fmtIdle(ms) { return ms < 1000 ? ms + "ms" : (ms/1000).toFixed(1) + "s"; }
+
+function renderClients(list) {
+  const tb = document.querySelector("#clients tbody");
+  tb.innerHTML = "";
+  for (const c of list) {
+    const tr = document.createElement("tr");
+    tr.className = "row" + (c.connected ? "" : " disconnected");
+    const dev = [c.model || c.platform, c.ua].filter(Boolean).join(" · ").slice(0, 80);
+    const roleSel = ROLES.map(r => `<option value="${r}"${r===c.role?" selected":""}>${r}</option>`).join("");
+    tr.innerHTML = `
+      <td>${escape(c.nickname)}</td>
+      <td class="small">${escape(c.clientId.slice(0,12))}</td>
+      <td>${escape(c.ip)}</td>
+      <td class="small">${escape(dev)}</td>
+      <td class="small">${c.screenW}×${c.screenH}@${(+c.dpr).toFixed(1)}x</td>
+      <td><select data-id="${escape(c.clientId)}" class="role">${roleSel}</select></td>
+      <td>${c.msgCount}</td>
+      <td>${fmtIdle(c.idleMs)}</td>
+      <td>${c.connected ? "live" : "gone"}</td>
+      <td><div class="actions">
+        <button data-id="${escape(c.clientId)}" class="kick">KICK</button>
+        <button data-id="${escape(c.clientId)}" class="ban danger">BAN</button>
+      </div></td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll("button.kick").forEach(b => b.onclick = () => action("/admin/kick", { clientId: b.dataset.id }));
+  tb.querySelectorAll("button.ban").forEach(b => b.onclick = () => {
+    if (confirm("Ban " + b.dataset.id + "?")) action("/admin/ban", { clientId: b.dataset.id });
+  });
+  tb.querySelectorAll("select.role").forEach(s => s.onchange = () =>
+    action("/admin/role", { clientId: s.dataset.id, role: s.value }));
+}
+
+function renderBans(ids, ips) {
+  const root = document.getElementById("banlist");
+  root.innerHTML = "";
+  const mk = (label, val, payload) => {
+    const div = document.createElement("div");
+    div.className = "banpill";
+    div.innerHTML = `<span>${label}: ${escape(val)}</span> <button>×</button>`;
+    div.querySelector("button").onclick = () => action("/admin/unban", payload);
+    return div;
+  };
+  ids.forEach(id  => root.appendChild(mk("id", id,  { clientId: id })));
+  ips.forEach(ip  => root.appendChild(mk("ip", ip,  { ip })));
+  if (!ids.length && !ips.length) root.innerHTML = "<span class='small'>none</span>";
+}
+
+async function action(url, body) {
+  try {
+    const r = await fetch(url, { method:"POST", headers: authHeaders(), body: JSON.stringify(body) });
+    if (!r.ok) statusEl.textContent = url + " → " + r.status;
+  } catch (e) { statusEl.textContent = "err: " + e.message; }
+  refresh();
+}
+
+function escape(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, m => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); }
+
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>
