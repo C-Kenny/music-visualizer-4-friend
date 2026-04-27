@@ -66,7 +66,7 @@ Scenes cycle with **LB / RB** on controller, or **number keys 1–9** (by positi
 
 ### How to Run (Dev Build)
 
-Requires [processing-java](https://github.com/processing/processing/wiki/Command-Line) on your PATH:
+Requires [processing-java](https://github.com/processing/processing4/wiki/Command-Line) on your PATH:
 
 ```bash
 which processing-java
