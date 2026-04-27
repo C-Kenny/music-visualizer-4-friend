@@ -18,6 +18,11 @@ Music_Visualizer_CK/.display
 # Feature flag overrides (per-machine user prefs)
 Music_Visualizer_CK/featureflags.json
 
+# Admin token (per-machine secret) + ban list
+Music_Visualizer_CK/.devadmintoken
+Music_Visualizer_CK/bans.json
+Music_Visualizer_CK/pins.json
+
 # Smoke test (trigger + result are transient)
 Music_Visualizer_CK/.smoketest
 Music_Visualizer_CK/.smoketest_result
