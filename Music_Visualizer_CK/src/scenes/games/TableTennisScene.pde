@@ -129,12 +129,26 @@ class TableTennisScene implements IScene {
     // tossed straight up. Falls under gravity; when it descends back to paddle
     // height, the paddle auto-strikes. ITTF requires a visible vertical toss —
     // no drop-serving.
-    float paddleX = leftServes ? leftPaddleX : rightPaddleX;
+    // Dynamic serve: jitter the server's stance + toss so each rally opens
+    // differently (different angle, height, and starting X within server's half).
+    float netX     = sceneBuffer.width / 2.0;
+    int   sideSign = leftServes ? -1 : 1;            // -1 = server stands left of net
+    // Stance can roam most of the server's half, but stays >=180px from the net
+    // so the toss-and-bounce still lands on server's side even with the steepest
+    // lean toward the net (ballVX up to ~1.2 over ~80 frames ≈ 100px of drift).
+    float minX = sideSign < 0 ? leftHomeX - 60 : netX + 180;
+    float maxX = sideSign < 0 ? netX - 180     : rightHomeX + 60;
+    float paddleX = random(minX, maxX);
+    if (leftServes) { leftPaddleX  = paddleX; leftTargetX  = paddleX; }
+    else            { rightPaddleX = paddleX; rightTargetX = paddleX; }
     ballX  = paddleX;
-    ballY  = tableY - 140;   // just above the paddle (which rests at tableY-120)
-    ballVX = leftServes ? 0.01 : -0.01;  // tiny drift so dirSign is correct
-    ballVY = -10;            // upward toss → apex ~180px above paddle at g=0.28
-    spin   = random(-0.05, 0.05);
+    ballY  = tableY - 140 + random(-15, 15);   // toss starts a bit higher/lower
+    // Toss leans slightly TOWARD the net so the bounce-then-arc actually reaches
+    // the opponent's side. -sideSign points net-ward (left server → +X drift).
+    ballVX = -sideSign * random(0.3, 1.2);
+    ballVY = random(-14, -8);  // toss height varies → apex 130..280px
+    spin   = random(-0.12, 0.12);
+    spin   = random(-0.12, 0.12);
     trail.clear();
     impactFlash  = 0;
     inServeDrop  = true;
@@ -402,9 +416,24 @@ class TableTennisScene implements IScene {
   }
 
   // Overridable escape check. Default: immediate point at paddle bounds.
+  // Real ping-pong rule: ball must LAND on opponent's side. If it sails past
+  // the paddle without bouncing on that side, the hitter loses the point.
   void checkEscape() {
-    if (ballX < leftHomeX - 80)  awardPoint(false);   // right wins
-    else if (ballX > rightHomeX + 80) awardPoint(true);  // left wins
+    int escapedSide = 0;
+    if (ballX < leftHomeX - 80)        escapedSide = -1;
+    else if (ballX > rightHomeX + 80)  escapedSide = 1;
+    else return;
+    awardPoint(escapeWinnerLeft(escapedSide));
+  }
+
+  // True if LEFT wins the point given the ball escaped off `escapedSide`
+  // (-1 = past left paddle, +1 = past right paddle). If the ball had bounced
+  // on the escape side since the last paddle hit, that side missed the return
+  // → opposite side scores. If not, the hitter put it out → escape side scores.
+  boolean escapeWinnerLeft(int escapedSide) {
+    boolean landedOnEscapeSide = (lastBounceSide == escapedSide);
+    if (landedOnEscapeSide) return escapedSide == 1;   // receiver missed → opposite wins
+    return escapedSide == -1;                           // hitter out → escape side wins
   }
 
   void onTableBounce() {
