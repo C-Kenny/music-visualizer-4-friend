@@ -51,7 +51,14 @@ jobs:
         uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: xvfb libgl1-mesa-dri libglu1-mesa pulseaudio gsettings-desktop-schemas
-          version: v2
+          version: v3
+
+      # cache-apt-pkgs-action restores .deb file contents but skips post-install
+      # triggers, so gschemas.compiled is never produced. Without it any GSettings
+      # lookup (e.g. org.gnome.system.proxy via JDK ProxySelector) hits a fatal
+      # GLib-GIO-ERROR and the JVM SIGTRAPs. Compile schemas explicitly.
+      - name: Compile GSettings schemas
+        run: sudo glib-compile-schemas /usr/share/glib-2.0/schemas/
 
       - name: Start dummy audio sink
         # Minim/JavaSound throws on loadFile when no audio device exists.
