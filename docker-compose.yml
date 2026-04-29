@@ -1,0 +1,47 @@
+# docker-compose.yml — three profiles for different deploy scenarios.
+#
+# Pick one:
+#   docker compose --profile vnc   up    # remote view at vnc://localhost:5900
+#   docker compose --profile host  up    # native window via host X11 (Linux)
+#   docker compose --profile smoke up    # one-shot smoke test, exits with status
+
+services:
+  vis-vnc:
+    profiles: ["vnc"]
+    build: .
+    environment:
+      MV_MODE: vnc
+      MV_RES: 1920x1080x24
+    ports:
+      - "5900:5900"   # VNC
+      - "8080:8080"   # feature flag / phone controller HTTP
+      - "8081:8081"   # WebSocket
+    volumes:
+      - ./Music_Visualizer_CK:/app/Music_Visualizer_CK
+      # mount your music dir read-only if you want non-bundled songs
+      # - ${HOME}/Music:/root/Music:ro
+
+  vis-host:
+    profiles: ["host"]
+    build: .
+    environment:
+      MV_MODE: host
+      DISPLAY: ${DISPLAY}
+      # share host pulse — needs `pactl load-module module-native-protocol-unix` on host
+      PULSE_SERVER: unix:/run/user/1000/pulse/native
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${XAUTHORITY:-${HOME}/.Xauthority}:/root/.Xauthority:ro
+      - /run/user/1000/pulse:/run/user/1000/pulse
+      - ./Music_Visualizer_CK:/app/Music_Visualizer_CK
+    devices:
+      - /dev/dri:/dev/dri          # GPU for OpenGL
+      - /dev/input:/dev/input      # Xbox controller
+    network_mode: host             # phone controller LAN reachability
+
+  vis-smoke:
+    profiles: ["smoke"]
+    build: .
+    environment:
+      MV_MODE: smoke
+      SMOKETEST_QUICK: "1"

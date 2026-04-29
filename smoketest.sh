@@ -33,6 +33,7 @@ cp Music_Visualizer_CK/src/fractals/*.pde "$BUILD_DIR/" 2>/dev/null || true
 ORIGIN_DIR="$(pwd)/Music_Visualizer_CK"
 ln -s "$ORIGIN_DIR/data" "$BUILD_DIR/data"
 ln -s "$ORIGIN_DIR/libraries" "$BUILD_DIR/libraries"
+[ -d "$ORIGIN_DIR/code" ] && ln -s "$ORIGIN_DIR/code" "$BUILD_DIR/code"
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 TRIGGER="$BUILD_DIR/.smoketest"
@@ -57,16 +58,13 @@ touch "$DEVMODE"
 echo "${BOLD}Running smoke test across refactored structure…${RESET}"
 echo
 
-info_build=$(run_processing --sketch="$BUILD_DIR" --build 2>&1)
-if printf '%s' "$info_build" | grep -qi "error"; then
-  echo "${RED}${BOLD}ERROR: smoke test build failed before run.${RESET}"
-  printf '%s
-' "$info_build"
-  exit 1
-fi
+# Skip standalone --build validation: it doesn't see contributed libraries
+# (java_websocket lives in the user sketchbook), but --run resolves them.
+# Compile errors will still surface in the --run output below.
 
-run_processing --sketch="$BUILD_DIR" --force --run 2>&1 | \
-  grep --line-buffered -E '^\[SMOKE\]|^\[FAIL\]|╔|╠|╚|║|scenes=|checks=|failures=' || true
+FULL_LOG="$BUILD_DIR/.smoketest_full.log"
+run_processing --sketch="$BUILD_DIR" --force --run 2>&1 | tee "$FULL_LOG" | \
+  grep --line-buffered -E '^\[SMOKE\]|^\[FAIL\]|^\[AUDIOTEST\]|╔|╠|╚|║|scenes=|checks=|failures=' || true
 
 # ── Read result ───────────────────────────────────────────────────────────────
 echo

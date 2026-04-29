@@ -25,7 +25,7 @@ class FeatureFlagServer {
   String startError = "";  // non-empty if HTTP bind failed; surfaced on the HUD
 
   FeatureFlagServer() {
-    jsonPath = sketchPath("featureflags.json");
+    jsonPath = userDataPath("featureflags.json");
     schema = buildSchema();
   }
 
@@ -439,7 +439,7 @@ class FeatureFlagServer {
   String adminToken;
   String getAdminToken() {
     if (adminToken != null) return adminToken;
-    java.io.File f = new java.io.File(sketchPath(".devadmintoken"));
+    java.io.File f = new java.io.File(userDataPath(".devadmintoken"));
     try {
       if (f.exists()) {
         adminToken = new String(java.nio.file.Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8).trim();
@@ -642,7 +642,7 @@ class FeatureFlagServer {
         ex.getResponseHeaders().add("Set-Cookie",
           "vis_admin=" + getAdminToken() + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400");
       }
-      java.io.File root = new java.io.File(sketchPath("../../featureflags-ui")).getCanonicalFile();
+      java.io.File root = new java.io.File(resourcePath("featureflags-ui")).getCanonicalFile();
       java.io.File f = new java.io.File(root, path).getCanonicalFile();
       if (!f.getPath().startsWith(root.getPath()) || !f.exists() || f.isDirectory()) {
         ex.sendResponseHeaders(404, -1); ex.close(); return;

@@ -44,7 +44,7 @@ class PinManager {
   java.security.SecureRandom rng = new java.security.SecureRandom();
 
   PinManager() {
-    pinsPath = sketchPath("pins.json");
+    pinsPath = userDataPath("pins.json");
     masterPin = randomPin();
     println("[PIN] master PIN this session: " + masterPin);
     loadNamed();

@@ -298,7 +298,7 @@ class GravityStringsScene implements IScene {
   void drawSkyboxBg(PGraphics pg) {
     if (skybox == null) {
       skybox = new Skybox();
-      skybox.load(sketchPath("../../media/skyboxes/" + SKYBOXES[skyboxIdx]));
+      skybox.load(resourcePath("media/skyboxes/" + SKYBOXES[skyboxIdx]));
     }
     pg.background(0);
     camRotY += 0.0008 + analyzer.bass * 0.002;
