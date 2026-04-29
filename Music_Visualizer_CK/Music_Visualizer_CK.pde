@@ -1282,6 +1282,16 @@ void drawWebControlBadge() {
   rect(boxX, boxY - boxH, boxW, boxH, 4);
   fill(0, 255, 120);
   text("WEB CONTROL", boxX + 8, boxY - boxH + lineH);
+  if (clientRegistry != null && clientRegistry.lockdownMode) {
+    String pill = "LOCKDOWN";
+    float pillW = textWidth(pill) + 10;
+    float pillX = boxX + 8 + textWidth("WEB CONTROL") + 8;
+    float pillY = boxY - boxH + 4;
+    fill(180, 30, 30);
+    rect(pillX, pillY, pillW, lineH, 3);
+    fill(255);
+    text(pill, pillX + 5, pillY + lineH - 3);
+  }
   int row = 2;
   for (int i = 0; i < urlCount; i++) {
     text(featureFlagServer.lanUrls.get(i), boxX + 8, boxY - boxH + lineH * row++);

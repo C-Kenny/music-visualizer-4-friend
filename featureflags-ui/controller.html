@@ -329,7 +329,12 @@ if (!pin) {
 }
 if (pin) localStorage.setItem("vis.pin", pin);
 
+// Cancelled-on-auth-loss timers — populated below. Without this, the 60Hz
+// stick send keeps firing fetches between the alert() and the reload, hammering
+// the server with rejected requests and racing the localStorage clear.
+let stickSendTimer = null;
 function clearPinAndReprompt(reason) {
+  if (stickSendTimer) { clearInterval(stickSendTimer); stickSendTimer = null; }
   localStorage.removeItem("vis.pin");
   alert("PIN rejected (" + reason + "). Page will reload.");
   location.href = location.pathname;
@@ -499,7 +504,7 @@ setupPad("L", document.getElementById("padL"), document.getElementById("knobL"),
 setupPad("R", document.getElementById("padR"), document.getElementById("knobR"), document.getElementById("coordR"));
 
 let lastSent = { lx:0, ly:0, rx:0, ry:0 };
-setInterval(() => {
+stickSendTimer = setInterval(() => {
   const lx = stickState.L.x, ly = stickState.L.y;
   const rx = stickState.R.x, ry = stickState.R.y;
   const changed = lx !== lastSent.lx || ly !== lastSent.ly || rx !== lastSent.rx || ry !== lastSent.ry;

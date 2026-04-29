@@ -222,36 +222,72 @@ document.getElementById("mintBtn").onclick = async () => {
 
 function fmtIdle(ms) { return ms < 1000 ? ms + "ms" : (ms/1000).toFixed(1) + "s"; }
 
+// Build-once / sync-values pattern (mirrors flags dropdown fix in index.html).
+// Tearing down the tbody every 1.5s closed the per-client role <select> mid-click.
+// Only rebuild when the client *set* changes; otherwise update text/values in
+// place and skip any <select> the user is currently focused on.
+let clientsRowSig = "";
+let clientRows = {};   // clientId -> { tr, nick, id, ip, dev, screen, role, msgs, idle, status }
+
 function renderClients(list) {
   const tb = document.querySelector("#clients tbody");
-  tb.innerHTML = "";
-  for (const c of list) {
-    const tr = document.createElement("tr");
-    tr.className = "row" + (c.connected ? "" : " disconnected");
-    const dev = [c.model || c.platform, c.ua].filter(Boolean).join(" · ").slice(0, 80);
-    const roleSel = ROLES.map(r => `<option value="${r}"${r===c.role?" selected":""}>${r}</option>`).join("");
-    tr.innerHTML = `
-      <td>${escape(c.nickname)}</td>
-      <td class="small">${escape(c.clientId.slice(0,12))}</td>
-      <td>${escape(c.ip)}</td>
-      <td class="small">${escape(dev)}</td>
-      <td class="small">${c.screenW}×${c.screenH}@${(+c.dpr).toFixed(1)}x</td>
-      <td><select data-id="${escape(c.clientId)}" class="role">${roleSel}</select></td>
-      <td>${c.msgCount}</td>
-      <td>${fmtIdle(c.idleMs)}</td>
-      <td>${c.connected ? "live" : "gone"}</td>
-      <td><div class="actions">
-        <button data-id="${escape(c.clientId)}" class="kick">KICK</button>
-        <button data-id="${escape(c.clientId)}" class="ban danger">BAN</button>
-      </div></td>`;
-    tb.appendChild(tr);
+  const sig = list.map(c => c.clientId).sort().join("|");
+  if (sig !== clientsRowSig) {
+    clientsRowSig = sig;
+    clientRows = {};
+    tb.innerHTML = "";
+    for (const c of list) {
+      const tr = document.createElement("tr");
+      const roleSel = ROLES.map(r => `<option value="${r}">${r}</option>`).join("");
+      tr.innerHTML = `
+        <td class="cell-nick"></td>
+        <td class="small cell-id"></td>
+        <td class="cell-ip"></td>
+        <td class="small cell-dev"></td>
+        <td class="small cell-screen"></td>
+        <td><select data-id="${escape(c.clientId)}" class="role">${roleSel}</select></td>
+        <td class="cell-msgs"></td>
+        <td class="cell-idle"></td>
+        <td class="cell-status"></td>
+        <td><div class="actions">
+          <button data-id="${escape(c.clientId)}" class="kick">KICK</button>
+          <button data-id="${escape(c.clientId)}" class="ban danger">BAN</button>
+        </div></td>`;
+      tb.appendChild(tr);
+      const sel = tr.querySelector("select.role");
+      sel.onchange = () => action("/admin/role", { clientId: c.clientId, role: sel.value });
+      tr.querySelector("button.kick").onclick = () => action("/admin/kick", { clientId: c.clientId });
+      tr.querySelector("button.ban").onclick = () => {
+        if (confirm("Ban " + c.clientId + "?")) action("/admin/ban", { clientId: c.clientId });
+      };
+      clientRows[c.clientId] = {
+        tr,
+        nick: tr.querySelector(".cell-nick"),
+        id:   tr.querySelector(".cell-id"),
+        ip:   tr.querySelector(".cell-ip"),
+        dev:  tr.querySelector(".cell-dev"),
+        screen: tr.querySelector(".cell-screen"),
+        role: sel,
+        msgs: tr.querySelector(".cell-msgs"),
+        idle: tr.querySelector(".cell-idle"),
+        status: tr.querySelector(".cell-status"),
+      };
+    }
   }
-  tb.querySelectorAll("button.kick").forEach(b => b.onclick = () => action("/admin/kick", { clientId: b.dataset.id }));
-  tb.querySelectorAll("button.ban").forEach(b => b.onclick = () => {
-    if (confirm("Ban " + b.dataset.id + "?")) action("/admin/ban", { clientId: b.dataset.id });
-  });
-  tb.querySelectorAll("select.role").forEach(s => s.onchange = () =>
-    action("/admin/role", { clientId: s.dataset.id, role: s.value }));
+  for (const c of list) {
+    const r = clientRows[c.clientId];
+    if (!r) continue;
+    r.tr.className = "row" + (c.connected ? "" : " disconnected");
+    r.nick.textContent = c.nickname || "";
+    r.id.textContent = (c.clientId || "").slice(0, 12);
+    r.ip.textContent = c.ip || "";
+    r.dev.textContent = [c.model || c.platform, c.ua].filter(Boolean).join(" · ").slice(0, 80);
+    r.screen.textContent = `${c.screenW}×${c.screenH}@${(+c.dpr).toFixed(1)}x`;
+    if (document.activeElement !== r.role && r.role.value !== c.role) r.role.value = c.role;
+    r.msgs.textContent = c.msgCount;
+    r.idle.textContent = fmtIdle(c.idleMs);
+    r.status.textContent = c.connected ? "live" : "gone";
+  }
 }
 
 function renderBans(ids, ips) {
