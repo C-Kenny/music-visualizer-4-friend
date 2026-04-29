@@ -72,7 +72,7 @@ class DisplayManager {
   }
 
   void savePref() {
-    saveStrings(PREFS_FILE, new String[]{
+    saveStrings(userDataPath(PREFS_FILE), new String[]{
       "display="    + lastDisplay,
       "fullscreen=" + (fullscreen ? "1" : "0")
     });
@@ -80,7 +80,7 @@ class DisplayManager {
 
   void loadPref() {
     try {
-      String[] lines = loadStrings(PREFS_FILE);
+      String[] lines = loadStrings(userDataPath(PREFS_FILE));
       if (lines == null) return;
       for (String raw : lines) {
         String line = raw.trim();

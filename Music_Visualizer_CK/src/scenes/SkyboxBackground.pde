@@ -20,7 +20,7 @@ class SkyboxBackground implements IBackground {
   void drawBackground(PGraphics pg) {
     // Load on first use so setup() doesn't block loading 150 PNGs at once
     if (!skybox.loaded) {
-      skybox.load(sketchPath("../../media/skyboxes/" + dirName));
+      skybox.load(resourcePath("media/skyboxes/" + dirName));
     }
 
     pg.background(0);

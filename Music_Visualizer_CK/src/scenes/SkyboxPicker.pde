@@ -17,7 +17,7 @@
 // ── Top-level helper — scan media/skyboxes/ for valid cubemap directories ────
 // Returns sorted array of directory names that contain px.png.
 String[] discoverSkyboxNames() {
-  String root = sketchPath("../../media/skyboxes/");
+  String root = resourcePath("media/skyboxes/");
   java.io.File dir = new java.io.File(root);
   java.io.File[] entries = dir.listFiles();
   if (entries == null) {
@@ -87,6 +87,6 @@ class SkyboxPicker {
     idx = newIdx;
     if (idx == 0) { box = null; return; }
     box = new Skybox();
-    box.load(sketchPath("../../media/skyboxes/" + NAMES[idx]));
+    box.load(resourcePath("media/skyboxes/" + NAMES[idx]));
   }
 }

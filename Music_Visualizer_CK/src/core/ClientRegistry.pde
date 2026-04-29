@@ -51,7 +51,7 @@ class ClientRegistry {
   String bansPath;
 
   ClientRegistry() {
-    bansPath = sketchPath("bans.json");
+    bansPath = userDataPath("bans.json");
     loadBans();
   }
 

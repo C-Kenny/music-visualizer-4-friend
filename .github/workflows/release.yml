@@ -1,0 +1,183 @@
+name: Release Build
+
+on:
+  push:
+    # Project has used both `vX.Y.Z` (early tags) and bare `X.Y.Z` (2.3+)
+    # via git-flow's default tag prefix being empty. Match both so a hotfix
+    # like `2.4.1` triggers a release build.
+    tags: ['v*', '[0-9]*']
+  workflow_dispatch:   # manual trigger from Actions tab
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: amd64
+            artifact: linux-amd64
+            archive: tar.gz
+          - os: windows-latest
+            platform: windows
+            arch: amd64
+            artifact: windows-amd64
+            archive: zip
+          - os: macos-13          # Intel
+            platform: macos
+            arch: x86_64
+            artifact: macos-x86_64
+            archive: zip
+          - os: macos-latest      # Apple Silicon
+            platform: macos
+            arch: aarch64
+            artifact: macos-aarch64
+            archive: zip
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Processing 4.5.2 ──────────────────────────────────────────────────
+      # Processing 4.5.x ships a single launcher binary "Processing" that
+      # dispatches to subcommands: `Processing cli --sketch=... --variant=X --export`.
+      # There's no separate processing-java in 4.5.x. We export PROCESSING_BIN
+      # for later steps to call.
+      - name: Install Processing (Linux)
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          wget -q https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64-portable.zip -O p.zip
+          unzip -q p.zip -d "$HOME"
+          chmod +x "$HOME/Processing/bin/Processing"
+          echo "PROCESSING_BIN=$HOME/Processing/bin/Processing" >> $GITHUB_ENV
+
+      - name: Install Processing (Windows)
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          curl -sL https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-windows-x64-portable.zip -o p.zip
+          unzip -q p.zip -d "$HOME"
+          echo "PROCESSING_BIN=$HOME/Processing/Processing.exe" >> $GITHUB_ENV
+
+      - name: Install Processing (macOS)
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          if [ "${{ matrix.arch }}" = "aarch64" ]; then
+            URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-macos-aarch64.zip
+          else
+            URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-macos-x86_64.zip
+          fi
+          curl -sL "$URL" -o p.zip
+          unzip -q p.zip -d "$HOME"
+          # macOS app bundle launcher
+          echo "PROCESSING_BIN=$HOME/Processing.app/Contents/MacOS/Processing" >> $GITHUB_ENV
+
+      # ── Libraries (same bundled zips CI uses for smoke) ──────────────────
+      - name: Install Processing libraries
+        shell: bash
+        run: |
+          export SKETCHBOOK_LIBS="$HOME/sketchbook/libraries"
+          mkdir -p "$SKETCHBOOK_LIBS"
+          for z in Music_Visualizer_CK/libraries/*.zip; do
+            unzip -qo "$z" -d "$SKETCHBOOK_LIBS"
+          done
+
+      # ── Stage flat sketch dir (same shape as run.sh) ─────────────────────
+      - name: Stage sketch
+        shell: bash
+        run: |
+          BUILD=.build/Music_Visualizer_CK
+          rm -rf .build && mkdir -p "$BUILD"
+          cp Music_Visualizer_CK/*.pde "$BUILD/" 2>/dev/null || true
+          cp Music_Visualizer_CK/src/core/*.pde "$BUILD/" 2>/dev/null || true
+          cp Music_Visualizer_CK/src/scenes/*.pde "$BUILD/" 2>/dev/null || true
+          cp Music_Visualizer_CK/src/scenes/games/*.pde "$BUILD/" 2>/dev/null || true
+          cp Music_Visualizer_CK/src/fractals/*.pde "$BUILD/" 2>/dev/null || true
+          cp -r Music_Visualizer_CK/data "$BUILD/data"
+          cp -r Music_Visualizer_CK/libraries "$BUILD/libraries"
+          [ -d Music_Visualizer_CK/code ] && cp -r Music_Visualizer_CK/code "$BUILD/code"
+          # Strip dev-only runtime state that may have been committed by accident
+          # (crash logs, admin tokens, scene prefs) — packaged builds start clean.
+          rm -f "$BUILD/data/crash_log.txt" "$BUILD/data/crash_log.txt.old"
+          rm -f "$BUILD"/.devadmintoken "$BUILD"/featureflags.json "$BUILD"/pins.json "$BUILD"/bans.json
+          rm -f "$BUILD"/.scene_prefs "$BUILD"/.display "$BUILD"/scores.txt "$BUILD"/data/scores.txt
+          # Bundle external resources INSIDE data/ so Processing's exporter
+          # carries them into the per-OS app bundle. resourcePath() in
+          # UserPaths.pde will find them at sketchPath("data/<x>") at runtime.
+          # Only copy *used* media — full media/ is ~2.7GB (raw downloads,
+          # zips, AI sample pack) but only ~25MB of cubemap dirs + the h3
+          # emblem are referenced at runtime.
+          mkdir -p "$BUILD/data/media/skyboxes"
+          [ -f media/h3_emblem.jpg ] && cp media/h3_emblem.jpg "$BUILD/data/media/h3_emblem.jpg"
+          for d in media/skyboxes/*/; do
+            if [ -f "$d/px.png" ]; then
+              cp -r "$d" "$BUILD/data/media/skyboxes/"
+            fi
+          done
+          [ -d featureflags-ui ] && cp -r featureflags-ui "$BUILD/data/featureflags-ui"
+          # Keep the legacy dev-layout symlink so sketchPath("../../media/...")
+          # also resolves during the staging phase (used as a 4th-priority
+          # fallback in resourcePath()).
+          [ -d media ] && ln -sf "$PWD/media" "$BUILD/../media"
+
+      # ── Export application ────────────────────────────────────────────────
+      # Processing 4.5.2 CLI form: `Processing cli ... --variant=<plat-arch> --export`.
+      # The `--platform` flag was removed in 4.0; --variant takes the combined
+      # name (e.g. linux-amd64, windows-amd64, macos-x86_64, macos-aarch64).
+      - name: Export application
+        shell: bash
+        run: |
+          "$PROCESSING_BIN" cli \
+            --sketch="$PWD/.build/Music_Visualizer_CK" \
+            --output="$PWD/.export/Music_Visualizer_CK" \
+            --variant=${{ matrix.platform }}-${{ matrix.arch }} \
+            --force \
+            --export
+
+      # ── Package ──────────────────────────────────────────────────────────
+      - name: Archive (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          cd .export
+          tar czf "../MusicVisualizer-${{ matrix.artifact }}.tar.gz" Music_Visualizer_CK
+
+      - name: Archive (zip)
+        if: matrix.archive == 'zip'
+        shell: bash
+        run: |
+          cd .export
+          7z a "../MusicVisualizer-${{ matrix.artifact }}.zip" Music_Visualizer_CK >/dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MusicVisualizer-${{ matrix.artifact }}
+          path: MusicVisualizer-${{ matrix.artifact }}.*
+
+      # ── Debian package (Linux only) ──────────────────────────────────────
+      - name: Build .deb
+        if: matrix.platform == 'linux' && matrix.arch == 'amd64'
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.0-$(date +%Y%m%d)-$(git rev-parse --short HEAD)"
+          bash scripts/build-deb.sh .export/Music_Visualizer_CK "$VERSION"
+
+      - name: Upload .deb artifact
+        if: matrix.platform == 'linux' && matrix.arch == 'amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicVisualizer-deb
+          path: dist/*.deb
+
+      # ── Attach to GitHub Release on tag push ─────────────────────────────
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            MusicVisualizer-${{ matrix.artifact }}.*
+            dist/*.deb

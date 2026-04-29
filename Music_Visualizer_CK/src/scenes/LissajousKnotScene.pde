@@ -60,7 +60,7 @@ class LissajousKnotScene implements IScene {
   void loadSkybox(int idx) {
     skyboxIndex = ((idx % SKYBOX_PATHS.length) + SKYBOX_PATHS.length) % SKYBOX_PATHS.length;
     skybox = new Skybox();
-    skybox.load(sketchPath("../../media/skyboxes/" + SKYBOX_PATHS[skyboxIndex]));
+    skybox.load(resourcePath("media/skyboxes/" + SKYBOX_PATHS[skyboxIndex]));
   }
 
   void onEnter() {

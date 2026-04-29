@@ -576,8 +576,9 @@ class TableTennisScene implements IScene {
 
   void openScoreLog() {
     try {
-      // Append to scores.txt in the project root (one level above the sketch)
-      java.io.File f = new java.io.File(sketchPath("../scores.txt"));
+      // Append to scores.txt in the user data dir (works whether installed
+      // under /opt or running from the repo).
+      java.io.File f = new java.io.File(userDataPath("scores.txt"));
       scoreLog = new java.io.PrintWriter(new java.io.FileOutputStream(f, true));
       String ts = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                       .format(new java.util.Date());

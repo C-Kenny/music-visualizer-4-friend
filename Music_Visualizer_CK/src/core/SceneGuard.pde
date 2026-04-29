@@ -104,7 +104,7 @@ class SceneGuard {
 
   void logException(int sceneIdx, Throwable t) {
     try {
-      String logPath = dataPath("crash_log.txt");
+      String logPath = userDataPath("crash_log.txt");
       java.io.File f = new java.io.File(logPath);
       if (f.exists() && f.length() > LOG_MAX_BYTES) {
         f.renameTo(new java.io.File(logPath + ".old"));

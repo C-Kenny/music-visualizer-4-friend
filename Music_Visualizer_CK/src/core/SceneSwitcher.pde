@@ -367,12 +367,12 @@ class SceneSwitcher {
       first = false;
     }
     sb.append("\n");
-    saveStrings(PREFS_FILE, new String[]{ sb.toString() });
+    saveStrings(userDataPath(PREFS_FILE), new String[]{ sb.toString() });
   }
 
   void loadPrefs() {
     try {
-      String[] lines = loadStrings(PREFS_FILE);
+      String[] lines = loadStrings(userDataPath(PREFS_FILE));
       if (lines == null) return;
       // Combine — saveStrings might split our newlines
       String raw = join(lines, "\n");
