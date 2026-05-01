@@ -373,7 +373,7 @@ class Original3DScene implements IScene {
   // ══════════════════════════════════════════════════════════════════════════
 
   void draw3DWaveform() {
-    int wBufSz = audio.player.bufferSize();
+    int wBufSz = audio.bufferSize();
     float helixR = 140;   // radius of helix
     float helixH = S * 0.8;  // total height
     int step = max(1, wBufSz / 300);
@@ -396,7 +396,7 @@ class Original3DScene implements IScene {
       float yPos = lerp(-helixH * 0.5, helixH * 0.5, t);
 
       // Audio amplitude modulates the helix radius
-      float amp = audio.player.right.get(i) * config.WAVE_MULTIPLIER * 0.5;
+      float amp = audio.rightSample(i) * config.WAVE_MULTIPLIER * 0.5;
       float r = helixR + amp;
 
       float x = cos(angle) * r;

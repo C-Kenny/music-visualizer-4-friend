@@ -94,7 +94,7 @@ class OscilloscopeScene implements IScene {
   // --- draw -------------------------------------------------------
 
   void drawScene(PGraphics pg) {
-    int bufSize = audio.player.bufferSize();
+    int bufSize = audio.bufferSize();
 
     float cx = pg.width  / 2.0;
     float cy = pg.height / 2.0;
@@ -160,8 +160,8 @@ class OscilloscopeScene implements IScene {
 
     pg.beginShape();
     for (int i = 0; i < bufSize; i++) {
-      float x = cx + audio.player.left.get(i)  * xRange;
-      float y = cy + audio.player.right.get(i) * yRange;
+      float x = cx + audio.leftSample(i)  * xRange;
+      float y = cy + audio.rightSample(i) * yRange;
       pg.vertex(x, y);
     }
     pg.endShape();

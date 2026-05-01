@@ -129,7 +129,7 @@ class VisualizerExplainerScene implements IScene {
     pg.line(pad, mid, W - pad, mid);
 
     // ── Waveform ─────────────────────────────────────────────────────────
-    int total = audio.player != null ? audio.player.left.size() : 0;
+    int total = audio.player != null ? audio.bufferSize() : 0;
     if (total > 2) {
       int useN = min(512, total);
       float waveW = W - pad * 2;
@@ -142,7 +142,7 @@ class VisualizerExplainerScene implements IScene {
       pg.beginShape();
       for (int i = 0; i < useN; i++) {
         float x = pad + waveW * i / (useN - 1);
-        float s = audio.player.left.get(i);
+        float s = audio.leftSample(i);
         pg.vertex(x, waveY - s * amp);
       }
       pg.endShape();

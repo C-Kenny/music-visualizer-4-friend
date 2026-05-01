@@ -111,7 +111,7 @@ class HeartGridScene implements IScene {
     pg.stroke(255);
     pg.strokeWeight(1.0);
     pg.noFill();
-    int bSize = audio.player.bufferSize();
+    int bSize = audio.bufferSize();
     pg.pushMatrix();
       pg.translate(focusX, focusY);
       pg.scale(zoom);
@@ -120,7 +120,7 @@ class HeartGridScene implements IScene {
       pg.beginShape();
       for (int i = 0; i < bSize; i+=8) {
         float x = map(i, 0, bSize, 0, pg.width);
-        float y = audio.player.left.get(i) * 150;
+        float y = audio.leftSample(i) * 150;
         pg.vertex(x, y);
       }
       pg.endShape();

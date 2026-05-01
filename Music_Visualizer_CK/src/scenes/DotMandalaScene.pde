@@ -241,7 +241,7 @@ class DotMandalaScene implements IScene, IForeground {
   }
 
   void drawWaveformRing(PGraphics pg, float r, float ts) {
-    int total = audio.player.left.size();
+    int total = audio.bufferSize();
     if (total < 2) return;
     int useN  = min(256, total);
     int step  = max(1, total / useN);
@@ -263,7 +263,7 @@ class DotMandalaScene implements IScene, IForeground {
 
     pg.beginShape();
     for (int i = 0; i < useN; i++) {
-      float amp   = audio.player.left.get(i * step);
+      float amp   = audio.leftSample(i * step);
       float angle = TWO_PI * i / useN;
       float rad   = r + amp * r * 0.22 * (1.0 + sHigh * 0.5);
       pg.vertex(cos(angle) * rad, sin(angle) * rad);
