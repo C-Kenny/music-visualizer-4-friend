@@ -50,6 +50,8 @@ media/inspiration/
 
 # Runtime logs
 *.log
+Music_Visualizer_CK/data/crash_log.txt
+Music_Visualizer_CK/scores.txt
 
 # Maven test artifacts
 tests/target/maven-status/
