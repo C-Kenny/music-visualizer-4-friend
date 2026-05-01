@@ -90,6 +90,11 @@ class Config {
 
   boolean USING_CONTROLLER;
 
+  // Audio input mode: "FILE" (default) or "DEVICE" (real-time capture)
+  String AUDIO_INPUT_MODE = "FILE";
+  int SELECTED_AUDIO_DEVICE_INDEX = 0;
+  AudioDeviceSelector audioDeviceSelector;
+
   boolean LOGGING_ENABLED;
 
   boolean RAINBOW_FINS;

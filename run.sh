@@ -2,6 +2,11 @@
 # run.sh — Stages a flattened build for Processing and runs it.
 set -euo pipefail
 
+# Kill any lingering sketch processes so two visualizers don't fight over the
+# audio device / controller. Quiet — most runs have nothing to kill.
+pkill -f "Music_Visualizer_CK Music_Visualizer_CK" 2>/dev/null || true
+pkill -f "Processing cli --sketch=.build/Music_Visualizer_CK" 2>/dev/null || true
+
 run_processing() {
   # Prefer snap when the processing snap is actually installed (not just when
   # `snap` is on PATH — many CI runners have snap but no processing snap).
@@ -63,14 +68,20 @@ if [[ -f "Music_Visualizer_CK/.smoketest" ]]; then
   ln -s "$ORIGIN_DIR/.smoketest" "$BUILD_DIR/.smoketest"
 fi
 
-# Symlink featureflags.json so featureflag-server writes persist across runs (.build is wiped).
+# Persist runtime state across runs (.build is wiped each launch). UserPaths.pde
+# routes featureflags.json / pins.json / bans.json / .devadmintoken / crash_log
+# / prefs through userDataPath() — point it at the source dir in dev mode so
+# state lives with the project and `git status` still surfaces drift.
+export MV_USER_DATA_DIR="$ORIGIN_DIR"
 touch "$ORIGIN_DIR/featureflags.json"
-ln -sf "$ORIGIN_DIR/featureflags.json" "$BUILD_DIR/featureflags.json"
-
-# Same trick for .devadmintoken — otherwise the admin token regenerates every
-# launch and prior ?token= URLs / cookies all break.
 [ -f "$ORIGIN_DIR/.devadmintoken" ] || touch "$ORIGIN_DIR/.devadmintoken"
-ln -sf "$ORIGIN_DIR/.devadmintoken" "$BUILD_DIR/.devadmintoken"
+
+# `./run.sh device` => start in DEVICE input mode, skip file picker
+if [[ "${1:-}" == "device" ]]; then
+  export MV_AUDIO_MODE=DEVICE
+  shift
+  echo "[run.sh] Starting in DEVICE audio mode (env MV_AUDIO_MODE=DEVICE)"
+fi
 
 # Run using processing cli
 run_processing --sketch="$BUILD_DIR" --force --run --vm-args="-Xmx1g" "$@"
