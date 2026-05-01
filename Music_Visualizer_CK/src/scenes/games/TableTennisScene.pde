@@ -37,7 +37,7 @@ class TableTennisScene implements IScene {
 
   // ── table ─────────────────────────────────────────────────────────────────
   float tableY;
-  final float NET_H = 55;
+  float NET_H = 55;
 
   // ── scoring / game state ──────────────────────────────────────────────────
   int leftPoints  = 0;   // points in current game
