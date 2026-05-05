@@ -90,14 +90,16 @@ class PostFXStack {
    * May return src itself (CPU-only or no effects) or a temp GLSL buffer.
    */
   PGraphics process(PGraphics src) {
+    boolean calm = config.HEADACHE_FREE_MODE;
+
     // Update all enabled effects' audio-reactive state this frame
     for (IPostFX fx : effects) {
-      if (fx.isEnabled()) fx.onUpdate();
+      if (fx.isEnabled() && !suppressedInCalm(fx, calm)) fx.onUpdate();
     }
 
     // 1. CPU pass — modifies src pixels in-place
     for (IPostFX fx : effects) {
-      if (fx.isEnabled() && fx.isCPUEffect()) {
+      if (fx.isEnabled() && fx.isCPUEffect() && !suppressedInCalm(fx, calm)) {
         fx.applyCPU(src);
       }
     }
@@ -110,6 +112,7 @@ class PostFXStack {
 
     for (IPostFX fx : effects) {
       if (!fx.isEnabled() || fx.isCPUEffect()) continue;
+      if (suppressedInCalm(fx, calm)) continue;
 
       PGraphics dst = usingPing ? pingBuf : pongBuf;
       fx.applyGLSL(current, dst);
@@ -121,6 +124,14 @@ class PostFXStack {
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  // Glitch / VHS / chromatic aberration spike visual intensity — skip when
+  // the user wants a calm session. Bloom and Vignette are softening and stay on.
+  private boolean suppressedInCalm(IPostFX fx, boolean calm) {
+    if (!calm) return false;
+    String l = fx.label();
+    return l.equals("Glitch") || l.equals("VHS") || l.equals("ChromAb");
+  }
 
   private void ensureBuffers(int w, int h) {
     if (pingBuf == null || pingBuf.width != w || pingBuf.height != h) {

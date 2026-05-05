@@ -84,6 +84,7 @@ class Config {
   float GLOBAL_REDNESS;
 
   boolean EPILEPSY_MODE_ON;
+  boolean HEADACHE_FREE_MODE;
 
   boolean SONG_PLAYING;
   String SONG_NAME;
@@ -196,6 +197,7 @@ class Config {
     GLOBAL_REDNESS = 0.0;
 
     EPILEPSY_MODE_ON = false;
+    HEADACHE_FREE_MODE = false;
 
     SONG_PLAYING = false;
     SONG_NAME = "";
@@ -257,4 +259,9 @@ class Config {
       }
     }
   }
+
+  // Soothing-mode multiplier. 1.0 = full intensity, lower = calmer.
+  // Use to scale flash alpha, strobe amplitude, particle counts, beat-driven jolts.
+  float calmFactor() { return HEADACHE_FREE_MODE ? 0.35 : 1.0; }
+  boolean calm() { return HEADACHE_FREE_MODE; }
 }
