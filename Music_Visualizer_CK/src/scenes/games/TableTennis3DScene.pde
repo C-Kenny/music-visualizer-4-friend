@@ -410,6 +410,28 @@ class TableTennis3DScene extends TableTennisScene {
     outOfBounds    = false;
     outBounceCount = 0;
     super.serve();
+
+    // ITTF: toss must originate behind the server's end line, ball entirely
+    // beyond the back edge. 2D parent picks X anywhere in the server's half
+    // (often over the table). Re-place behind the end line and spread Z across
+    // the back edge so the toss reads as a real serve.
+    float backOffset = random(40, 140);
+    float paddleX = leftServes ? (leftHomeX - backOffset) : (rightHomeX + backOffset);
+
+    ballX = paddleX;
+    if (leftServes) { leftPaddleX  = paddleX; leftTargetX  = paddleX; }
+    else            { rightPaddleX = paddleX; rightTargetX = paddleX; }
+
+    // Spread the toss across the table's back edge in Z.
+    float zMax = TABLE_DEPTH / 2.0 - BALL_RADIUS * 2;
+    ballZ  = random(-zMax * 0.85, zMax * 0.85);
+    ballVZ = 0;
+
+    // Re-aim the toss back toward the server's half so the bounce still lands
+    // on their side after starting further from the net.
+    float netX = sceneBuffer.width / 2.0;
+    float toNetSign = (netX > paddleX) ? 1 : -1;
+    ballVX = toNetSign * random(0.6, 1.6);
   }
 
   void cyclePlayer() {
