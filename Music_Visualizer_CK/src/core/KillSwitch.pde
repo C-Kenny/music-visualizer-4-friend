@@ -23,7 +23,11 @@ class KillSwitch {
   void pollController(Controller c) {
     if (c == null || !c.isConnected()) { prevChord = false; return; }
     boolean chordNow = c.chord(c.backButton, c.startButton);
-    if (chordNow && !prevChord) toggle();
+    if (chordNow) {
+      c.backWasChorded  = true;
+      c.startWasChorded = true;
+      if (!prevChord) toggle();
+    }
     prevChord = chordNow;
   }
 

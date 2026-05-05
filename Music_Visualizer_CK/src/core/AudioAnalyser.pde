@@ -69,7 +69,12 @@ class AudioAnalyser {
     high = hCount > 0 ? hSum / hCount : 0;
 
     // Master amplitude
-    master = (audio.player.left.level() + audio.player.right.level()) / 2.0;
+    AudioBuffer L = audio.left();
+    AudioBuffer R = audio.right();
+    float lv = L != null ? L.level() : 0;
+    float rv = R != null ? R.level() : 0;
+    master = (lv + rv) / 2.0;
+    if (audio.isDeviceInput()) master *= audio.deviceInputGain;
 
     // ── Rotation direction flip ───────────────────────────────────────────
     // Same pattern as HourglassScene: pre-scanned major drop + bass sanity +

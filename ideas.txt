@@ -1,3 +1,6 @@
+Use audio device output instead of direct .mp3 that way can dynamically get YT/spotify/foobar etc
+
+
 3d Ball Maze Puzzle inspired visualizer
 
 

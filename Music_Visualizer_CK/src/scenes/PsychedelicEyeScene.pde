@@ -76,7 +76,7 @@ class PsychedelicEyeScene implements IScene {
     sBass = lerp(sBass, analyzer.bass, 0.10);
     sMid  = lerp(sMid,  analyzer.mid,  0.10);
     sHigh = lerp(sHigh, analyzer.high, 0.10);
-    if (audio.beat.isOnset()) { sBeat = 1.0; beatFlash = 1.0; }
+    if (audio.beat.isOnset()) { sBeat = 1.0; beatFlash = config.calmFactor(); }
     sBeat     = lerp(sBeat, 0, 0.06);
     beatFlash = lerp(beatFlash, 0, 0.04);
 

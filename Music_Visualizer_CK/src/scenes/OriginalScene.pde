@@ -289,7 +289,7 @@ class OriginalScene implements IScene {
       float r_line = (config.logicalFrameCount % 255) / 10.0;
       float g_line = (config.logicalFrameCount % 255) - 75;
       float b_line = (config.logicalFrameCount % 255);
-      int wBufSz = audio.player.bufferSize();
+      int wBufSz = audio.bufferSize();
       pg.pushStyle();
         pg.strokeWeight(4);
         pg.strokeCap(ROUND);
@@ -297,8 +297,8 @@ class OriginalScene implements IScene {
         for (int i = 0; i < wBufSz - 1; i++) {
           float x1 = map(i,   0, wBufSz, 0, s1Size);
           float x2 = map(i+1, 0, wBufSz, 0, s1Size);
-          pg.line(x1, s1Size/2.0 + audio.player.right.get(i)   * config.WAVE_MULTIPLIER,
-                  x2, s1Size/2.0 + audio.player.right.get(i+1) * config.WAVE_MULTIPLIER);
+          pg.line(x1, s1Size/2.0 + audio.rightSample(i)   * config.WAVE_MULTIPLIER,
+                  x2, s1Size/2.0 + audio.rightSample(i+1) * config.WAVE_MULTIPLIER);
         }
       pg.popStyle();
     }

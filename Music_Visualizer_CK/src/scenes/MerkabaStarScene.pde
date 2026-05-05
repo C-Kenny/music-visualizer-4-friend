@@ -156,7 +156,7 @@ class MerkabaStarScene implements IScene {
     sBass = lerp(sBass, analyzer.bass, 0.07);
     sMid  = lerp(sMid,  analyzer.mid,  0.07);
     sHigh = lerp(sHigh, analyzer.high, 0.07);
-    if (audio.beat.isOnset()) { sBeat = 1.0; beatExpand = 1.0; }
+    if (audio.beat.isOnset()) { sBeat = 1.0; beatExpand = config.calmFactor(); }
     sBeat      = lerp(sBeat,      0, 0.07);
     beatExpand = lerp(beatExpand, 0, 0.11);
 

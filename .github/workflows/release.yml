@@ -162,8 +162,13 @@ jobs:
         if: matrix.platform == 'linux' && matrix.arch == 'amd64'
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.0-$(date +%Y%m%d)-$(git rev-parse --short HEAD)"
+          # Tag push (v2.4.2 or 2.4.2) → use the tag as the version.
+          # Anything else (workflow_dispatch, branch push) → date+sha fallback.
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="0.0.0-$(date +%Y%m%d)-$(git rev-parse --short HEAD)"
+          fi
           bash scripts/build-deb.sh .export/Music_Visualizer_CK "$VERSION"
 
       - name: Upload .deb artifact

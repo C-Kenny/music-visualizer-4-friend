@@ -23,6 +23,16 @@ Music_Visualizer_CK/.devadmintoken
 Music_Visualizer_CK/bans.json
 Music_Visualizer_CK/pins.json
 
+# Synthetic demo input toggle
+Music_Visualizer_CK/.devdemo
+
+# JVM crash dumps
+Music_Visualizer_CK/crash_log.txt
+Music_Visualizer_CK/hs_err_pid*.log
+
+# Captured preview videos (regenerate via capture.sh; gifs tracked)
+media/previews/*.mp4
+
 # Smoke test (trigger + result are transient)
 Music_Visualizer_CK/.smoketest
 Music_Visualizer_CK/.smoketest_result
@@ -50,6 +60,8 @@ media/inspiration/
 
 # Runtime logs
 *.log
+Music_Visualizer_CK/data/crash_log.txt
+Music_Visualizer_CK/scores.txt
 
 # Maven test artifacts
 tests/target/maven-status/

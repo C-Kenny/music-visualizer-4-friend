@@ -19,7 +19,7 @@ class TableTennis3DScene extends TableTennisScene {
   // ── orbit camera ──────────────────────────────────────────────────────────
   float camAzim   =  0.15;
   float camElev   =  0.42;
-  float camRadius = 950;
+  float camRadius = 1400;
   // Camera distance was calibrated for a ~1360-tall buffer. With the 1080p
   // stage render cap the world shrinks, so camRadius must scale with buffer
   // height to keep framing identical across resolutions.
@@ -27,7 +27,7 @@ class TableTennis3DScene extends TableTennisScene {
   float shake     =  0;
 
   // ── table dimensions ──────────────────────────────────────────────────────
-  final float TABLE_DEPTH = 680;
+  float TABLE_DEPTH = 680;
   final float PADDLE_D    = 18;
   final float PADDLE_Z    = 130;
 
@@ -59,6 +59,20 @@ class TableTennis3DScene extends TableTennisScene {
   PGraphics innerBuf;      // 3D scene renders here; post-process blits to pg
   float   sceneTime = 0;   // seconds, accumulated
 
+  // ── projection ────────────────────────────────────────────────────────────
+  PGraphics tableTexture;
+  int[] PROJECTABLE_SCENES = { 
+    SCENE_KALEIDOSCOPE, SCENE_CYBER_GRID, SCENE_AURORA_RIBBONS, SCENE_FRACTAL,
+    SCENE_VOID_BLOOM, SCENE_SACRED_GEOMETRY, SCENE_ROSE_CURVE, SCENE_SRI_YANTRA,
+    SCENE_PSYCHEDELIC_EYE, SCENE_DOT_MANDALA, SCENE_CHLADNI_PLATE, SCENE_STRANGE_ATTRACTOR,
+    SCENE_SACRED_FRACTALS, SCENE_TUNNEL_YANTRA, SCENE_PENTAGONAL_VORTEX, SCENE_MERKABA_STAR,
+    SCENE_COSMIC_LATTICE, SCENE_NET_OF_BEING, SCENE_TORUS_KNOT, SCENE_RECURSIVE_MANDALA,
+    SCENE_DEEP_SPACE, SCENE_WORM, SCENE_SHADER, SCENE_PRISM_CODEX, SCENE_HEART_GRID,
+    SCENE_GRAVITY_STRINGS, SCENE_NEURAL_WEAVE, SCENE_SHOAL_LUMINA, SCENE_ANTIGRAVITY,
+    SCENE_THEY_DONT_KNOW
+  };
+  int projectedSceneIdx = -1;
+
   // ── player control ────────────────────────────────────────────────────────
   // 0=AI both  1=human left (red)  2=human right (blue)
   int   playerSide    = 0;
@@ -70,10 +84,25 @@ class TableTennis3DScene extends TableTennisScene {
   final float ENV_HW         = 2800;   // half-width  (X)  was 1400
   final float ENV_HD         = 1400;   // half-depth  (Z)  was 600
   final float ENV_TOP        = -900;   // ceiling Y        was -400
-  final float ENV_BOT_OFFSET =  320;   // floor offset below tableY
+  float ENV_BOT_OFFSET =  320;   // floor offset below tableY
 
   TableTennis3DScene() {
     super();
+  }
+
+  void relayoutForBuffer(int w, int h) {
+    super.relayoutForBuffer(w, h);
+    float tw = w * 0.88;
+    TABLE_DEPTH = tw * (1.525 / 2.74);
+    NET_H = tw * (0.1525 / 2.74);
+    ENV_BOT_OFFSET = tw * (0.76 / 2.74);
+    
+    // Update player home positions so they stand exactly at the table edges
+    float cx = w / 2.0;
+    leftHomeX = cx - tw / 2.0;
+    rightHomeX = cx + tw / 2.0;
+    
+    floorY = tableY + ENV_BOT_OFFSET; 
   }
 
   void onEnter() {
@@ -81,6 +110,16 @@ class TableTennis3DScene extends TableTennisScene {
     playerTargetY = tableY - 120;
     playerTargetZ = 0;
     floorY = tableY + ENV_BOT_OFFSET;
+    if (projectedSceneIdx != -1) {
+      scenes[PROJECTABLE_SCENES[projectedSceneIdx]].onEnter();
+    }
+  }
+
+  void onExit() {
+    super.onExit();
+    if (projectedSceneIdx != -1) {
+      scenes[PROJECTABLE_SCENES[projectedSceneIdx]].onExit();
+    }
   }
 
   // ── 2-bounce escape rule ──────────────────────────────────────────────────
@@ -142,6 +181,10 @@ class TableTennis3DScene extends TableTennisScene {
       innerBuf = createGraphics(pg.width, pg.height, P3D);
       innerBuf.smooth(4); // MSAA — removes jagged edges on net, table, paddles
     }
+    if (tableTexture == null) {
+      tableTexture = createGraphics(1024, 1024, P3D);
+      tableTexture.smooth(2);
+    }
     if (acidShader     == null) acidShader     = loadShader("tt3d_acid.glsl");
     if (chromaticShader == null) chromaticShader = loadShader("tt3d_chromatic.glsl");
     if (neonShader     == null) neonShader     = loadShader("tt3d_neon.glsl");
@@ -164,6 +207,20 @@ class TableTennis3DScene extends TableTennisScene {
 
   void drawScene(PGraphics pg) {
     ensureResources(pg);
+    
+    if (projectedSceneIdx != -1) {
+      isProjecting = true;
+      tableTexture.beginDraw();
+      tableTexture.pushStyle();
+      tableTexture.pushMatrix();
+      tableTexture.background(0);
+      scenes[PROJECTABLE_SCENES[projectedSceneIdx]].drawScene(tableTexture);
+      tableTexture.popMatrix();
+      tableTexture.popStyle();
+      tableTexture.endDraw();
+      isProjecting = false;
+    }
+
     // Re-derive table layout from current buffer dims, same as the parent's
     // drawScene does. Without this, tableY is frozen to constructor-time dims
     // and the camera lookAt point drifts whenever the buffer is resized.
@@ -353,6 +410,28 @@ class TableTennis3DScene extends TableTennisScene {
     outOfBounds    = false;
     outBounceCount = 0;
     super.serve();
+
+    // ITTF: toss must originate behind the server's end line, ball entirely
+    // beyond the back edge. 2D parent picks X anywhere in the server's half
+    // (often over the table). Re-place behind the end line and spread Z across
+    // the back edge so the toss reads as a real serve.
+    float backOffset = random(40, 140);
+    float paddleX = leftServes ? (leftHomeX - backOffset) : (rightHomeX + backOffset);
+
+    ballX = paddleX;
+    if (leftServes) { leftPaddleX  = paddleX; leftTargetX  = paddleX; }
+    else            { rightPaddleX = paddleX; rightTargetX = paddleX; }
+
+    // Spread the toss across the table's back edge in Z.
+    float zMax = TABLE_DEPTH / 2.0 - BALL_RADIUS * 2;
+    ballZ  = random(-zMax * 0.85, zMax * 0.85);
+    ballVZ = 0;
+
+    // Re-aim the toss back toward the server's half so the bounce still lands
+    // on their side after starting further from the net.
+    float netX = sceneBuffer.width / 2.0;
+    float toNetSign = (netX > paddleX) ? 1 : -1;
+    ballVX = toNetSign * random(0.6, 1.6);
   }
 
   void cyclePlayer() {
@@ -408,6 +487,7 @@ class TableTennis3DScene extends TableTennisScene {
     pg.pushStyle();
     pg.noStroke();
     pg.noLights();
+    pg.hint(DISABLE_DEPTH_MASK);
 
     // ── Base semi-transparent walls ───────────────────────────────────────────
     pg.blendMode(ADD);
@@ -529,6 +609,7 @@ class TableTennis3DScene extends TableTennisScene {
     pg.line(xL, yBot, zF,  xL, yBot, zN);
     pg.line(xR, yBot, zF,  xR, yBot, zN);
 
+    pg.hint(ENABLE_DEPTH_MASK);
     pg.noStroke();
     pg.blendMode(BLEND);
     pg.lights();
@@ -580,12 +661,35 @@ class TableTennis3DScene extends TableTennisScene {
     pg.translate(tx, tableY - 1, halfD);
     pg.box(tw, 3, 3);
     pg.popMatrix();
-    pg.fill(255, 255, 255, 255);
+    
+    // Center line (divides the table lengthwise)
     pg.pushMatrix();
-    pg.translate(tx, tableY - 2, 0);
-    pg.box(4, 4, TABLE_DEPTH);
+    pg.translate(tx, tableY - 1, 0);
+    pg.box(tw, 3, 3);
     pg.popMatrix();
-    pg.lights();
+
+    if (projectedSceneIdx != -1) {
+      pg.pushStyle();
+      pg.noStroke();
+      pg.noLights();
+      float yTop = tableY - 1.0; // Place it 1px ABOVE the table (Y grows downwards)
+      pg.pushMatrix();
+      pg.translate(tx, yTop, 0);
+      pg.rotateX(HALF_PI); // Lay flat on the table
+      pg.imageMode(CENTER);
+      pg.noTint(); // Don't let previous fill colors tint the texture
+      pg.image(tableTexture, 0, 0, tw, TABLE_DEPTH);
+      pg.popMatrix();
+      pg.popStyle();
+      pg.lights();
+    } else {
+      pg.fill(255, 255, 255, 255);
+      pg.pushMatrix();
+      pg.translate(tx, tableY - 2, 0);
+      pg.box(4, 4, TABLE_DEPTH);
+      pg.popMatrix();
+      pg.lights();
+    }
 
     pg.fill(230, 230, 230, 220);
     pg.pushMatrix();
@@ -630,6 +734,7 @@ class TableTennis3DScene extends TableTennisScene {
       float hue = powerReady ? 45 : 200;
       pg.noLights();
       pg.blendMode(ADD);
+      pg.hint(DISABLE_DEPTH_MASK);
       for (int ring = 3; ring >= 1; ring--) {
         float sp = ring * 14 * beatGlow;
         pg.fill((int)hue, 220, 255, (int)(beatGlow * 55 / ring));
@@ -639,6 +744,7 @@ class TableTennis3DScene extends TableTennisScene {
         pg.sphere(faceR + sp);
         pg.popMatrix();
       }
+      pg.hint(ENABLE_DEPTH_MASK);
       pg.blendMode(BLEND);
       pg.colorMode(RGB, 255);
       pg.lights();
@@ -647,19 +753,23 @@ class TableTennis3DScene extends TableTennisScene {
     if (powerFlash > 0.05) {
       pg.noLights();
       pg.blendMode(ADD);
+      pg.hint(DISABLE_DEPTH_MASK);
       pg.fill(255, 200, 50, (int)(powerFlash * 70));
       float burstR = powerFlash * 80;
       pg.pushMatrix(); pg.translate(lx, leftPaddleY,  lpz); pg.sphere(burstR); pg.popMatrix();
       pg.pushMatrix(); pg.translate(rx, rightPaddleY, rpz); pg.sphere(burstR); pg.popMatrix();
+      pg.hint(ENABLE_DEPTH_MASK);
       pg.blendMode(BLEND);
       pg.lights();
     }
 
     if (impactFlash > 0.05) {
       pg.noLights();
+      pg.hint(DISABLE_DEPTH_MASK);
       pg.fill(255, 255, 255, (int)(impactFlash * 90));
       pg.pushMatrix(); pg.translate(lx, leftPaddleY,  lpz); pg.scale(PADDLE_D * 0.5 / faceR, 1.0, 1.0); pg.sphere(faceR + 14); pg.popMatrix();
       pg.pushMatrix(); pg.translate(rx, rightPaddleY, rpz); pg.scale(PADDLE_D * 0.5 / faceR, 1.0, 1.0); pg.sphere(faceR + 14); pg.popMatrix();
+      pg.hint(ENABLE_DEPTH_MASK);
       pg.lights();
     }
 
@@ -705,12 +815,14 @@ class TableTennis3DScene extends TableTennisScene {
       pg.noLights();
       pg.blendMode(BLEND);
       pg.noStroke();
+      pg.hint(DISABLE_DEPTH_MASK);
       pg.fill(0, 0, 0, (int)(shadowFade * 110));
       pg.pushMatrix();
       pg.translate(ballX, tableY - 1, ballZ);
       pg.rotateX(HALF_PI);
       pg.ellipse(0, 0, shadowR * 2, shadowR * 2);
       pg.popMatrix();
+      pg.hint(ENABLE_DEPTH_MASK);
       pg.lights();
     }
 
@@ -721,11 +833,13 @@ class TableTennis3DScene extends TableTennisScene {
     if (gf > 0.05) {
       pg.noLights();
       pg.blendMode(ADD);
+      pg.hint(DISABLE_DEPTH_MASK);
       pg.fill((int)ballHue, 200, 255, (int)(gf * 75));
       pg.pushMatrix();
       pg.translate(ballX, ballY, ballZ);
       pg.sphere(BALL_RADIUS * 4.5 * gf);
       pg.popMatrix();
+      pg.hint(ENABLE_DEPTH_MASK);
       pg.blendMode(BLEND);
       pg.lights();
     }
@@ -793,11 +907,33 @@ class TableTennis3DScene extends TableTennisScene {
     // D-pad L/R → cycle shader style
     if (c.dpadLeftJustPressed)  cycleShader(-1);
     if (c.dpadRightJustPressed) cycleShader( 1);
+    if (c.dpadUpJustPressed)    cycleProjectedScene();
+    if (c.dpadDownJustPressed)  disableProjectedScene();
+  }
+
+  void cycleProjectedScene() {
+    if (projectedSceneIdx != -1) {
+      scenes[PROJECTABLE_SCENES[projectedSceneIdx]].onExit();
+    }
+    projectedSceneIdx++;
+    if (projectedSceneIdx >= PROJECTABLE_SCENES.length) {
+      projectedSceneIdx = -1;
+    } else {
+      scenes[PROJECTABLE_SCENES[projectedSceneIdx]].onEnter();
+    }
+  }
+
+  void disableProjectedScene() {
+    if (projectedSceneIdx != -1) {
+      scenes[PROJECTABLE_SCENES[projectedSceneIdx]].onExit();
+      projectedSceneIdx = -1;
+    }
   }
 
   // a/d → orbit  |  w/e → tilt  |  z/x → zoom
   // f → cycle FX shader  |  v → cycle player control
   // i/k → paddle up/down (player mode)  |  j/m → paddle Z depth (player mode)
+  // u → cycle projected scene  |  o → disable projection
   void handleKey(char k) {
     if      (k == 'a' || k == 'A') camAzim -= 0.12;
     else if (k == 'd' || k == 'D') camAzim += 0.12;
@@ -807,6 +943,8 @@ class TableTennis3DScene extends TableTennisScene {
     else if (k == 'x' || k == 'X') camRadius = constrain(camRadius + 80, 350, 2200);
     else if (k == 'f' || k == 'F') cycleShader(1);
     else if (k == 'v' || k == 'V') cyclePlayer();
+    else if (k == 'u' || k == 'U') cycleProjectedScene();
+    else if (k == 'o' || k == 'O') disableProjectedScene();
     else super.handleKey(k);
   }
 

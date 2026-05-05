@@ -85,3 +85,44 @@ operators. A `.deb` package collapses this to a single command.
 - Don't depend on Snap-only paths in the codebase (today `run.sh` already
   falls back gracefully — keep that pattern).
 - Don't break the no-build-step `./run.sh` dev loop until Phase 1 is solid.
+
+---
+
+## Phone Controller + Admin Backlog (post-2.4.0)
+
+Small follow-ups identified at the close of the 2.4.0 release. Grouped by
+effort/payoff so the next session can grab the top of the list and ship.
+
+### Low-effort, high-impact
+- **Admin role-select flicker** — same DOM-rebuild bug the flags dropdown had.
+  `renderClients()` does `tb.innerHTML = ""` every 1.5s, so the per-client role
+  `<select>` closes mid-click. Apply the build-once / sync-values pattern from
+  `index.html` to `admin.html`.
+- **Cancel input poll on auth loss** — `controller.html`'s send loop keeps
+  firing 60Hz fetches between when the cookie/PIN goes invalid and when the
+  page reloads. `clearPinAndReprompt()` should `clearInterval(pollTimer)` (and
+  the stick send interval) before the alert.
+- **Lockdown HUD badge on the visualizer** — when `clientRegistry.lockdownMode`
+  is true, draw a red `LOCKDOWN` pill next to the existing WEB CONTROL badge so
+  the operator sees it at a glance from the stage.
+
+### Small features
+- **Lockdown timed-release** — `/admin/lockdown` accepts an optional `ttlMs`;
+  background timer flips it back off. Useful for "block during set, auto-open
+  for the encore."
+- **Kick cooldown countdown in admin** — clients table shows "kicked, 4m left"
+  per `tempBanIds`/`tempBanIps` so the operator doesn't re-kick by mistake.
+- **PIN rotation button** — admin-side `/admin/pins/rotate-master` to mint a
+  fresh master PIN without restarting the sketch.
+- **Score reset hotkey in TableTennis** — currently the rally counter never
+  resets; expose `R` (or an admin scene action) to zero scores + serve order.
+
+### Hygiene
+- **gitignore `Music_Visualizer_CK/data/crash_log.txt`** — runtime byproduct
+  that shows up dirty after every session.
+- **WS reconnect backoff in `controller.html`** — currently retries every 1s
+  forever after a drop. Cap at ~5s after N attempts to stop hammering a downed
+  visualizer.
+- **Admin auth attempt rate-limit** — `/admin/auth` accepts unlimited token
+  guesses. Add a 5-fail/min lockout per remote IP (mirror what `PinManager`
+  already does for PINs).

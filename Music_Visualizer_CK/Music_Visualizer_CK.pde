@@ -18,18 +18,21 @@ ClientRegistry clientRegistry;
 PinManager pinManager;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
+AudioSourceSwitcher audioSwitcher;
 AutoSwitcher   autoSwitcher;
-SceneGuard     sceneGuard;
-KillSwitch     killSwitch;
-DisplayManager displayManager;
-final int SCENE_COUNT = 49;
+SceneGuard       sceneGuard;
+KillSwitch       killSwitch;
+DisplayManager   displayManager;
+DemoInputDriver  demoInput;
+final int SCENE_COUNT = 50;
 int previousState = -1;
+boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
 
 AudioAnalyser analyzer;
 DropPredictor dropPredictor;
 PFont monoFont;
 PGraphics sceneBuffer;
-PShader bloomShader;
+PostFXStack postFX;
 
 
 // UI scale: 1.0 at 1080p, grows proportionally for higher resolutions.
@@ -51,35 +54,59 @@ String[]modeNames;
 PeasyCam cam;
 
 void loadSongToVisualize() {
-  logToStdout("Loading song to visualize");
-  audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
+  logToStdout("Loading audio source (mode: " + config.AUDIO_INPUT_MODE + ")");
+  
+  if (config.AUDIO_INPUT_MODE.equals("DEVICE")) {
+    // DEVICE INPUT MODE — auto-pick `default` entry on first entry so user
+    // doesn't have to F1/F2 cycle past suspended USB mics.
+    if (config.SELECTED_AUDIO_DEVICE_INDEX == 0) pickPreferredAudioDevice();
+    audio = new Audio(this, "", config.bandsPerOctave, true, config.SELECTED_AUDIO_DEVICE_INDEX);
+    config.SONG_PLAYING = (audio.audioInput != null);
+    config.SONG_NAME = "Live Audio: " + config.audioDeviceSelector.getSelectedDeviceName();
+    
+    if (audio.audioInput == null) {
+      System.err.println("[FATAL] Could not initialize audio device input. Exiting.");
+      exit();
+    }
+    
+    // Note: DropPredictor cannot scan live audio (it's real-time, not seekable)
+    logToStdout("[Audio] Running in DEVICE mode — DropPredictor disabled (look-ahead not possible)");
+    
+  } else {
+    // FILE INPUT MODE (original behavior)
+    audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
 
-  // If first pick failed (corrupt file etc.), walk through songList trying
-  // each until one loads. Prevents a single bad WAV freezing the venue.
-  if (audio.player == null && config.songList != null && config.songList.size() > 1) {
-    int start = config.currentSongIndex;
-    for (int step = 1; step < config.songList.size(); step++) {
-      int idx = (start + step) % config.songList.size();
-      String candidate = config.songList.get(idx);
-      logToStdout("[Audio] Retrying with: " + candidate);
-      audio = new Audio(this, candidate, config.bandsPerOctave);
-      if (audio.player != null) {
-        config.currentSongIndex = idx;
-        config.SONG_TO_VISUALIZE = candidate;
-        config.SONG_NAME = getSongNameFromFilePath(candidate, config.OS_TYPE);
-        break;
+    // If first pick failed (corrupt file etc.), walk through songList trying
+    // each until one loads. Prevents a single bad WAV freezing the venue.
+    if (audio.player == null && config.songList != null && config.songList.size() > 1) {
+      int start = config.currentSongIndex;
+      for (int step = 1; step < config.songList.size(); step++) {
+        int idx = (start + step) % config.songList.size();
+        String candidate = config.songList.get(idx);
+        logToStdout("[Audio] Retrying with: " + candidate);
+        audio = new Audio(this, candidate, config.bandsPerOctave);
+        if (audio.player != null) {
+          config.currentSongIndex = idx;
+          config.SONG_TO_VISUALIZE = candidate;
+          config.SONG_NAME = getSongNameFromFilePath(candidate, config.OS_TYPE);
+          break;
+        }
       }
     }
-  }
 
-  config.SONG_PLAYING = (audio.player != null);
-  if (dropPredictor != null && audio.player != null) dropPredictor.scan(config.SONG_TO_VISUALIZE);
+    config.SONG_PLAYING = (audio.player != null);
+    
+    // Only scan for drops in file mode (can't look ahead in live audio)
+    if (dropPredictor != null && audio.player != null) {
+      dropPredictor.scan(config.SONG_TO_VISUALIZE);
+    }
 
-  // Clean exit instead of letting downstream NPE-on-null-player freeze the
-  // window. Better the venue sees the terminal error than a black hung screen.
-  if (audio.player == null) {
-    System.err.println("[FATAL] Could not load any playable audio file. Exiting.");
-    exit();
+    // Clean exit instead of letting downstream NPE-on-null-player freeze the
+    // window. Better the venue sees the terminal error than a black hung screen.
+    if (audio.player == null) {
+      System.err.println("[FATAL] Could not load any playable audio file. Exiting.");
+      exit();
+    }
   }
 }
 
@@ -91,6 +118,71 @@ void setupController() {
     controller.debugPrintControls();
   }
   logToStdout("USING CONTROLLER? " + config.USING_CONTROLLER);
+  
+  // Initialize audio device selector
+  healPulseDefaultSource();
+  initializeAudioDeviceSelector();
+}
+
+// Heal Pulse routing if a previous crash left default-source on a monitor.
+// That state can interfere with playback latency / focus on some systems.
+void healPulseDefaultSource() {
+  if (config.OS_TYPE == null || !config.OS_TYPE.toLowerCase().contains("linux")) return;
+  try {
+    Process get = new ProcessBuilder("sh", "-c", "pactl get-default-source").redirectErrorStream(true).start();
+    java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(get.getInputStream()));
+    String cur = r.readLine();
+    get.waitFor();
+    if (cur == null || !cur.endsWith(".monitor")) return;
+    Process list = new ProcessBuilder("sh", "-c", "pactl list short sources").redirectErrorStream(true).start();
+    java.io.BufferedReader rl = new java.io.BufferedReader(new java.io.InputStreamReader(list.getInputStream()));
+    String line, fix = null;
+    while ((line = rl.readLine()) != null) {
+      String[] parts = line.split("\\s+");
+      if (parts.length >= 2 && !parts[1].endsWith(".monitor")) { fix = parts[1]; break; }
+    }
+    list.waitFor();
+    if (fix != null) {
+      new ProcessBuilder("sh", "-c", "pactl set-default-source " + fix).start().waitFor();
+      println("[Audio] Healed Pulse default source: " + cur + " -> " + fix);
+    }
+  } catch (Exception ignored) {}
+}
+
+void initializeAudioDeviceSelector() {
+  config.audioDeviceSelector = new AudioDeviceSelector();
+  config.audioDeviceSelector.refresh();
+
+  if (config.audioDeviceSelector.getDeviceCount() > 0) {
+    logToStdout("[Audio] Audio device selector initialized with " + config.audioDeviceSelector.getDeviceCount() + " devices");
+  }
+}
+
+boolean hasDevAudioFlag() {
+  String[] candidates = {
+    sketchPath() + "/.devaudio",
+    sketchPath() + "/../.devaudio",
+    System.getProperty("user.dir") + "/.devaudio"
+  };
+  for (String path : candidates) {
+    if (new java.io.File(path).exists()) return true;
+  }
+  return false;
+}
+
+// Snap selector to the first device whose name starts with "default" (Pulse/
+// PipeWire-routable on Linux, "Primary Sound Capture Driver" on Windows).
+// Falls through silently if no match — caller can still F1/F2.
+void pickPreferredAudioDevice() {
+  if (config.audioDeviceSelector == null) return;
+  for (int i = 0; i < config.audioDeviceSelector.getDeviceCount(); i++) {
+    String n = config.audioDeviceSelector.deviceNames.get(i);
+    if (n != null && n.toLowerCase().startsWith("default")) {
+      config.audioDeviceSelector.selectDevice(i);
+      config.SELECTED_AUDIO_DEVICE_INDEX = i;
+      return;
+    }
+  }
 }
 
 void initializeGlobals() {
@@ -171,6 +263,16 @@ void setSongToVisualize() {
   logToStdout("sketchPath() = " + sketchPath());
   logToStdout("user.dir     = " + System.getProperty("user.dir"));
 
+  // Env-var or .devaudio override: skip dialog, start in DEVICE mode.
+  String envMode = System.getenv("MV_AUDIO_MODE");
+  if ("DEVICE".equalsIgnoreCase(envMode) || hasDevAudioFlag()) {
+    config.AUDIO_INPUT_MODE = "DEVICE";
+    config.STATE = SCENE_ORIGINAL;
+    config.SONG_NAME = "Live Audio (pending device)";
+    logToStdout("[Audio] Startup mode forced to DEVICE via env/flag");
+    return;
+  }
+
   // Dev / smoke-test shortcuts — skip the dialog
   if (isDevMode() || SMOKE_TEST_MODE) {
     try {
@@ -213,17 +315,26 @@ void setSongToVisualize() {
     // fall through to dialog
   }
 
-  // Show a startup dialog: Random Song vs Browse
+  // Show a startup dialog: Random Song vs Browse vs Live Audio
   int choice = javax.swing.JOptionPane.showOptionDialog(
     null,
-    "How would you like to load a song?",
+    "How would you like to source audio?",
     "Music Visualizer",
     javax.swing.JOptionPane.DEFAULT_OPTION,
     javax.swing.JOptionPane.QUESTION_MESSAGE,
     null,
-    new String[]{ "Random Song", "Browse..." },
+    new String[]{ "Random Song", "Browse...", "Live Audio Device" },
     "Random Song"
   );
+
+  if (choice == 2) {
+    // Live audio device — no mp3 will be loaded.
+    config.AUDIO_INPUT_MODE = "DEVICE";
+    config.STATE = SCENE_ORIGINAL;
+    config.SONG_NAME = "Live Audio (pending device)";
+    logToStdout("[Audio] User selected DEVICE mode at startup");
+    return;
+  }
 
   if (choice == 0) {
     // Random song from ~/Music
@@ -391,7 +502,15 @@ void setup() {
   surface.setTitle(config.TITLE_BAR);
   setupController();
   loadSongToVisualize();
-  bloomShader = loadShader("bloom.glsl");
+  // ── PostFX stack ────────────────────────────────────────────────────────
+  postFX = new PostFXStack();
+  postFX.add(new BloomFX());               // G → cycle: index 0
+  postFX.add(new ChromaticAberrationFX()); // G → cycle: index 1
+  postFX.add(new ScanlinesFX());           // G → cycle: index 2
+  postFX.add(new VignetteFX());            // G → cycle: index 3
+  postFX.add(new PixelSortFX());           // G → cycle: index 4
+  // Honour --fancy flag: start with bloom on
+  if (config.BLOOM_ENABLED) postFX.setActive(0);
 
   // Initialize scene registry (0-18)
   scenes = new IScene[SCENE_COUNT];
@@ -444,20 +563,24 @@ void setup() {
   scenes[46] = new ChladniPlateScene();
   scenes[47] = new StrangeAttractorScene();
   scenes[48] = new SacredFractalsScene();
+  scenes[49] = new TheyDontKnowScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
+  audioSwitcher  = new AudioSourceSwitcher();
   autoSwitcher   = new AutoSwitcher();
   featureFlagServer.loadFromDisk();  // after autoSwitcher so AUTO_SWITCH_MODE applies
   sceneGuard     = new SceneGuard();
   killSwitch     = new KillSwitch();
   displayManager = new DisplayManager();
+  demoInput      = new DemoInputDriver();
   displayManager.initFromPrefs();
 
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
     smokeTestRunner = new SmokeTestRunner();
     println("[SMOKE TEST] Runner initialised — starting on next draw()");
+    runAudioModeTests(smokeTestRunner);
   }
 
   monoFont = createFont("Monospaced", 15, true);
@@ -537,6 +660,25 @@ void startSong(){
   config.SONG_PLAYING = true;
 }
 
+void toggleAudioInputMode() {
+  if (config.AUDIO_INPUT_MODE.equals("FILE")) {
+    config.AUDIO_INPUT_MODE = "DEVICE";
+    pickPreferredAudioDevice();
+    println("[Audio] Switched to DEVICE input mode. Use F1/F2 to select device.");
+    if (config.OS_TYPE != null && config.OS_TYPE.toLowerCase().contains("linux")) {
+      println("[Audio] LINUX TIP: to capture YT/Spotify, run `./loopback.sh on` then pick `default`. `./loopback.sh off` to restore mic.");
+    }
+  } else {
+    config.AUDIO_INPUT_MODE = "FILE";
+    println("[Audio] Switched to FILE input mode. Press 'o' to select a song file.");
+  }
+  
+  // Stop current audio and reload with new mode
+  if (audio != null) audio.stop();
+  loadSongToVisualize();
+  println("[Audio] Input mode: " + config.AUDIO_INPUT_MODE + " | Song: " + config.SONG_NAME);
+}
+
 void mousePressed() {
   scenes[config.STATE].handleKey(' '); // reuse handleKey for simple click-bursts if scene desires
 }
@@ -550,6 +692,23 @@ void mouseWheel(MouseEvent event) {
 void keyPressed() {
   // Tab always toggles scene switcher (checked before anything else)
   if (key == TAB) { sceneSwitcher.toggle(); return; }
+
+  // +/- nudge DEVICE input gain manually; ` 0 ` (zero) re-enables AGC.
+  if (audio != null && audio.isDeviceInput()) {
+    if (key == '+' || key == '=') { audio.nudgeDeviceGain(1.5f); return; }
+    if (key == '-' || key == '_') { audio.nudgeDeviceGain(1.0f / 1.5f); return; }
+  }
+
+  // ' (apostrophe) toggles audio source switcher. F-keys are unreliable —
+  // many WMs (GNOME/KDE) grab F10/F11 for menu/fullscreen before the sketch.
+  if (audioSwitcher != null && key == '\'') {
+    audioSwitcher.toggle();
+    return;
+  }
+  if (audioSwitcher != null && audioSwitcher.isOpen) {
+    audioSwitcher.handleKey(key, keyCode);
+    return;
+  }
 
   // While switcher is open, route ALL keys to it and suppress everything else
   if (sceneSwitcher.isOpen) {
@@ -583,7 +742,7 @@ void keyPressed() {
     return;
   }
 
-  // Ctrl+1..9 moves window to that display (1-indexed in UI, 0-indexed internally).
+// Ctrl+1..9 moves window to that display (1-indexed in UI, 0-indexed internally).
   if (keyEvent != null && keyEvent.isControlDown() && key >= '1' && key <= '9') {
     displayManager.moveTo(key - '1');
     return;
@@ -608,7 +767,9 @@ void keyPressed() {
   if (key == 'm' || key == 'M') config.SHOW_METADATA = !config.SHOW_METADATA;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
   if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
-  if (key == 'g' || key == 'G') config.BLOOM_ENABLED = !config.BLOOM_ENABLED;
+  // G cycles PostFX stack (enable next effect); Shift+G disables all
+  if (key == 'g') { if (postFX != null) postFX.cycleNext(); }
+  if (key == 'G') { if (postFX != null) postFX.disableAll(); }
   if (key == 'c' || key == 'C') controller.calibrate();
   if (key == 'q' || key == 'Q') {
     audio.stop();
@@ -708,9 +869,11 @@ public void getUserInput() {
   // Update the flag each frame so scenes react as soon as the device appears.
   controller.read();
   if (webController != null) webController.applyTo(controller);
-  // USING_CONTROLLER counts physical OR web-driven input as "connected" so
-  // scenes that gate behind it still receive web input from a phone.
-  config.USING_CONTROLLER = controller.isConnected() || webController.isActive();
+  if (demoInput != null) demoInput.applyTo(controller);
+  // USING_CONTROLLER counts physical OR web-driven OR demo-synthetic input as
+  // "connected" so scenes that gate behind it still receive input.
+  config.USING_CONTROLLER = controller.isConnected() || webController.isActive()
+                            || (demoInput != null && demoInput.isActive());
   killSwitch.pollController(controller);
   if (!config.USING_CONTROLLER) return;
 
@@ -720,54 +883,73 @@ public void getUserInput() {
   }
 
   // 2. Global Controller Shortcuts
-  // TunnelYantraScene owns the dpad for bg/fg cycling — skip global handlers.
+  // D-Pad Toggles (Backgrounds): Fired on Release to allow D-pad chords if needed.
   if (config.STATE != SCENE_TUNNEL_YANTRA) {
-    if (controller.dpadUpJustPressed) {
+    if (controller.dpadUpJustReleased && !controller.dUpWasChorded) {
       config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
       if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
     }
-    if (controller.dpadLeftJustPressed) {
+    if (controller.dpadLeftJustReleased && !controller.dLeftWasChorded) {
       config.DRAW_PLASMA = !config.DRAW_PLASMA;
       if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
     }
-    if (controller.dpadRightJustPressed) {
+    if (controller.dpadRightJustReleased && !controller.dRightWasChorded) {
       config.DRAW_POLAR_PLASMA = !config.DRAW_POLAR_PLASMA;
       if (config.DRAW_POLAR_PLASMA) enableOneBackgroundAndDisableOthers("polar_plasma");
     }
-    if (controller.dpadDownJustPressed) {
+    if (controller.dpadDownJustReleased && !controller.dDownWasChorded) {
       config.DRAW_TUNNEL = false;
       config.DRAW_POLAR_PLASMA = false;
       config.DRAW_PLASMA = false;
     }
   }
 
+  // Scene Switching: Fired on RELEASE. If LB was used as a modifier (chorded),
+  // then lbWasChorded will be true and no scene switch will occur.
   if (!controller.chord(controller.lbButton, controller.rbButton)) {
-    if (controller.lbJustPressed) {
-      println("CONTROLLER: LB pressed -> switching prev");
+    if (controller.lbJustReleased && !controller.lbWasChorded) {
+      println("CONTROLLER: LB released -> switching prev");
       switchScene(prevActiveScene());
     }
-    if (controller.rbJustPressed) {
-      println("CONTROLLER: RB pressed -> switching next");
+    if (controller.rbJustReleased && !controller.rbWasChorded) {
+      println("CONTROLLER: RB released -> switching next");
       switchScene(nextActiveScene());
     }
   }
   
-  // L3 toggle auto-switch, R3 cycle mode
-  if (controller.leftStickClickJustPressed) {
+  // L3 toggle auto-switch, R3 cycle mode (on Release)
+  if (controller.leftStickClickJustReleased && !controller.l3WasChorded) {
     autoSwitcher.toggleEnabled();
     println("AUTO: " + (autoSwitcher.enabled ? "ON (" + autoSwitcher.MODE_LABELS[autoSwitcher.mode] + ")" : "OFF"));
   }
-  if (controller.rightStickClickJustPressed) {
+  if (controller.rightStickClickJustReleased && !controller.r3WasChorded) {
     autoSwitcher.cycleMode();
     println("AUTO: mode -> " + autoSwitcher.MODE_LABELS[autoSwitcher.mode]);
   }
 
-  if (controller.backJustPressed) {
-    println("CONTROLLER: BACK pressed -> stopping");
+  // PostFX chords: LB held + Y = cycle, LB held + X = clear.
+  // LB is the modifier. Pressing Y/X marks LB as 'chorded', preventing scene switch on release.
+  if (postFX != null) {
+    if (controller.lbButton) {
+      if (controller.yJustPressed) {
+        postFX.cycleNext();
+        controller.lbWasChorded = true;
+        println("PostFX: " + (postFX.anyEnabled() ? postFX.getActiveBadge() : "OFF"));
+      }
+      if (controller.xJustPressed) {
+        postFX.disableAll();
+        controller.lbWasChorded = true;
+        println("PostFX: OFF");
+      }
+    }
+  }
+
+  if (controller.backJustReleased && !controller.backWasChorded) {
+    println("CONTROLLER: BACK released -> stopping");
     stopSong();
   }
-  if (controller.startJustPressed) {
-    println("CONTROLLER: START pressed -> starting");
+  if (controller.startJustReleased && !controller.startWasChorded) {
+    println("CONTROLLER: START released -> starting");
     startSong();
   }
 }
@@ -779,7 +961,7 @@ final int[] SCENE_ORDER = {
   SCENE_ORIGINAL,
   SCENE_MAZE_PUZZLE,
   SCENE_LISSAJOUS_KNOT,
-  SCENE_TABLE_TENNIS,
+  // SCENE_TABLE_TENNIS,
   SCENE_TABLE_TENNIS_3D,
   SCENE_PRISM_CODEX,
   SCENE_GRAVITY_STRINGS,
@@ -807,7 +989,8 @@ final int[] SCENE_ORDER = {
   SCENE_CHLADNI_PLATE,
   SCENE_STRANGE_ATTRACTOR,
   SCENE_SACRED_FRACTALS,
-  SCENE_EXPLAINER
+  SCENE_EXPLAINER,
+  SCENE_THEY_DONT_KNOW
 };
 
 int _sceneOrderIndex(int state) {
@@ -963,13 +1146,14 @@ void draw() {
     // 2. Continuous Logic Updates
     if (frameCount % 480 == 0) logToStdout("Draw state=" + config.STATE);
 
-    if (config.SONG_PLAYING && !audio.player.isPlaying()
+    // Auto-advance to next track only in FILE mode. DEVICE input never "ends".
+    if (config.SONG_PLAYING && !audio.isDeviceInput() && !audio.isPlaying()
         && config.songList.size() > 0) {
       shuffleSong();
     }
 
     audio.forward();
-    audio.beat.detect(audio.player.mix);
+    audio.detectBeat();
     analyzer.update(audio);
     getUserInput();
     if (autoSwitcher != null) autoSwitcher.tick();
@@ -1048,17 +1232,40 @@ void draw() {
 
   // 4. Post-Processing & Final Output (Runs Unlocked at >144FPS)
   blendMode(REPLACE); // Massive Performance improvement for laptops
-  if (config.BLOOM_ENABLED) {
-    shader(bloomShader);
-  }
   imageMode(CORNER);
-  image(sceneBuffer, 0, 0, width, height);
-  if (config.BLOOM_ENABLED) {
-    resetShader();
+  // Run enabled PostFX (CPU in-place, then GLSL ping-pong). Returns the
+  // final buffer to blit — may be sceneBuffer itself or a temp FX buffer.
+  PGraphics toDisplay = postFX.process(sceneBuffer);
+  image(toDisplay, 0, 0, width, height);
+
+  // Headache-free wash: dim brightness + soft warm tint to round off harshness.
+  // Applied in window space so it covers anything in the scene chain. HUD/overlays
+  // draw on top unaffected so controls stay readable.
+  if (config.HEADACHE_FREE_MODE) {
+    blendMode(BLEND);
+    noStroke();
+    fill(20, 14, 30, 110);
+    rect(0, 0, width, height);
+    fill(255, 200, 160, 18);
+    rect(0, 0, width, height);
   }
   // 5. Global overlays (UI drawn at native res, over the buffer)
   blendMode(BLEND);
-  if (config.STATE >= 0 && config.STATE < SCENE_COUNT
+
+  // Demo capture mode hides every HUD/badge so the recorded gif is pure scene.
+  boolean hideHuds = (demoInput != null && demoInput.isActive());
+
+  // HUD Badges (Bottom-Right Stack)
+  if (!hideHuds) {
+    float nextHudY = height - 10 * uiScale();
+    nextHudY = drawAudioSourceBadge(nextHudY);
+    if (autoSwitcher != null) nextHudY = drawAutoSwitcherBadge(nextHudY);
+    if (postFX != null && postFX.anyEnabled()) nextHudY = drawPostFXBadge(nextHudY);
+
+    drawWebControlBadge(); // Bottom-Left (doesn't stack)
+  }
+
+  if (!hideHuds && config.STATE >= 0 && config.STATE < SCENE_COUNT
       && !sceneGuard.isBlacklisted(config.STATE) && !sceneGuard.isRecovering()) {
     if (config.SHOW_CODE) {
       try { drawCodeOverlay(scenes[config.STATE].getCodeLines()); }
@@ -1078,7 +1285,7 @@ void draw() {
   if (crossfadeSnapshot != null) {
     if (didRenderScene) {
       crossfadeFrame++;
-      if (audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
+      if (!config.HEADACHE_FREE_MODE && audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
         crossfadeFrame = CROSSFADE_DURATION;
       }
     }
@@ -1096,12 +1303,14 @@ void draw() {
     }
   }
 
-  if (config.SHOW_METADATA) {
+  if (config.SHOW_METADATA && !hideHuds) {
     drawMetadataOverlay();
   }
 
-  if (autoSwitcher != null) drawAutoSwitcherBadge();
-  drawWebControlBadge();
+  if (audioSwitcher != null && audioSwitcher.isOpen) {
+    audioSwitcher.update();
+    audioSwitcher.drawOverlay();
+  }
 
   // Scene switcher overlay — drawn last so it always floats on top
   if (sceneSwitcher.isOpen) {
@@ -1164,6 +1373,8 @@ void drawMetadataOverlay() {
 // title : scene name (first row, bright green)
 // lines : info/control rows (dim green)
 void sceneHUD(PGraphics pg, String title, String[] lines) {
+  if (isProjecting) return;
+  if (demoInput != null && demoInput.isActive()) return;
   pg.pushStyle();
   float ts = 11 * uiScale(), lh = ts * 1.35, mg = 6 * uiScale();
   float boxW = 390 * uiScale();
@@ -1282,6 +1493,16 @@ void drawWebControlBadge() {
   rect(boxX, boxY - boxH, boxW, boxH, 4);
   fill(0, 255, 120);
   text("WEB CONTROL", boxX + 8, boxY - boxH + lineH);
+  if (clientRegistry != null && clientRegistry.lockdownMode) {
+    String pill = "LOCKDOWN";
+    float pillW = textWidth(pill) + 10;
+    float pillX = boxX + 8 + textWidth("WEB CONTROL") + 8;
+    float pillY = boxY - boxH + 4;
+    fill(180, 30, 30);
+    rect(pillX, pillY, pillW, lineH, 3);
+    fill(255);
+    text(pill, pillX + 5, pillY + lineH - 3);
+  }
   int row = 2;
   for (int i = 0; i < urlCount; i++) {
     text(featureFlagServer.lanUrls.get(i), boxX + 8, boxY - boxH + lineH * row++);
@@ -1296,9 +1517,77 @@ void drawWebControlBadge() {
   popStyle();
 }
 
-void drawAutoSwitcherBadge() {
+// Top-right HUD: current audio mode + source. RMS bar shows live signal so
+// silence (black-screen scenes) can't be confused with a broken mic.
+float drawAudioSourceBadge(float startY) {
+  if (audio == null) return startY;
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String mode = audio.isDeviceInput() ? "DEVICE" : "FILE";
+  String src;
+  if (audio.isDeviceInput()) {
+    src = config.audioDeviceSelector != null ? config.audioDeviceSelector.getSelectedDeviceName() : "default";
+  } else {
+    src = config.SONG_NAME != null ? config.SONG_NAME : "—";
+  }
+  String l1 = "AUDIO  " + mode;
+  if (audio.isDeviceInput()) {
+    l1 += "  ×" + nf(audio.deviceInputGain, 0, 1) + (audio.manualGainLock ? " (manual)" : " (auto)");
+  }
+  String l2 = src;
+  String l3 = audio.isDeviceInput() ? "'  source    +/-  gain" : "'  open source picker";
+
+  float pad = 8 * uiScale();
+  float lineH = ts + 4;
+  // Cap source name so an absurdly long monitor name doesn't blow the box width.
+  float maxBoxW = 360 * uiScale();
+  while (l2.length() > 4 && textWidth(l2) + pad * 2 > maxBoxW) l2 = l2.substring(0, l2.length() - 1);
+  if (!l2.equals(src)) l2 = l2 + "…";
+  float boxW = min(maxBoxW, max(max(textWidth(l1), textWidth(l2)), textWidth(l3)) + pad * 2);
+  float boxH = lineH * 4 + pad;
+  // Bottom-right; metadata HUD sits top-right, WEB CONTROL sits bottom-left.
+  float boxX = width - boxW - 10 * uiScale();
+  float boxY = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(audio.isDeviceInput() ? color(255, 200, 80) : color(0, 255, 120));
+  text(l1, boxX + pad, boxY + pad);
+  fill(180, 255, 180);
+  text(l2, boxX + pad, boxY + pad + lineH);
+  fill(120, 200, 120);
+  text(l3, boxX + pad, boxY + pad + lineH * 2);
+
+  // Live RMS bar — pulled from FFT band energies (no extra audio touch needed).
+  float rms = 0;
+  if (audio.fft != null) {
+    int n = audio.fft.avgSize();
+    for (int i = 0; i < n; i++) rms += audio.fft.getAvg(i);
+    rms = n > 0 ? rms / n : 0;
+  }
+  float barW = boxW - pad * 2;
+  float barH = 4 * uiScale();
+  float barX = boxX + pad;
+  float barY = boxY + pad + lineH * 3 + 2;
+  fill(40);
+  rect(barX, barY, barW, barH, 2);
+  float fill01 = constrain(rms / 5.0, 0, 1);
+  fill(fill01 > 0.02 ? color(0, 255, 120) : color(120, 90, 90));
+  rect(barX, barY, barW * fill01, barH, 2);
+
+  popStyle();
+  return boxY - 10 * uiScale(); // Return Y position for next badge above
+}
+
+float drawAutoSwitcherBadge(float startY) {
   String line = autoSwitcher.hudLine();
-  if (line == null) return;
+  if (line == null) return startY;
   pushStyle();
   textFont(monoFont);
   float ts = 12 * uiScale();
@@ -1310,13 +1599,53 @@ void drawAutoSwitcherBadge() {
   float boxW  = tw + 16;
   float pad   = 10 * uiScale();
   float boxX  = width - pad - boxW;
-  float boxY  = height - pad - boxH;
+  float boxY  = startY - boxH;
   noStroke();
   fill(0, 180);
   rect(boxX, boxY, boxW, boxH, 4);
   fill(0, 255, 120);
   text(line, boxX + 8, boxY + 5);
   popStyle();
+  return boxY - 6 * uiScale();
+}
+
+// ── PostFX HUD badge ─────────────────────────────────────────────────────────
+// Bottom-right, stacked ABOVE the AutoSwitcher badge.
+// Shows active FX names; hidden when no effects are enabled.
+// Keyboard: g=cycle next, G=clear all. Controller: LB+RB+Y=cycle, LB+RB+X=clear.
+float drawPostFXBadge(float startY) {
+  String badge = postFX.getActiveBadge();
+  if (badge.length() == 0) return startY;
+
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[FX]  g=next  G=clear  |  LB+RB+Y=next  LB+RB+X=clear";
+  String line2 = badge;
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(180, 130, 255);   // purple label row
+  text(line1, boxX + pad, boxY + pad);
+  fill(230, 200, 255);   // lighter purple — active effects
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
 }
 
 void addFPSToTitleBar() {
@@ -1337,6 +1666,9 @@ float pulseValBetweenRange(float currentVal, float minVal, float maxVal) {
 }
 
 void drawSongNameOnScreen(PGraphics pg, String song_name, float nameLocationX, float nameLocationY) {
+  if (isProjecting) return;
+  if (demoInput != null && demoInput.isActive()) return;
+  pg.pushStyle();
   pg.textSize(24 * uiScale());
   pg.textAlign(CENTER);
   pg.fill(0);

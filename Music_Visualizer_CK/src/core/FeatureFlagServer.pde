@@ -34,6 +34,7 @@ class FeatureFlagServer {
     s.add(new FeatureFlagSpec("BLOOM_ENABLED",         "bool", "Bloom (post-FX glow)"));
     s.add(new FeatureFlagSpec("SHOW_METADATA",         "bool", "Show song metadata"));
     s.add(new FeatureFlagSpec("EPILEPSY_MODE_ON",      "bool", "Epilepsy mode (intense flash)"));
+    s.add(new FeatureFlagSpec("HEADACHE_FREE_MODE",    "bool", "Headache-free mode (calm/soothing)"));
     s.add(new FeatureFlagSpec("RAINBOW_FINS",          "bool", "Rainbow fins"));
     s.add(new FeatureFlagSpec("APPEAR_HAND_DRAWN",     "bool", "Hand-drawn aesthetic"));
     s.add(new FeatureFlagSpec("BACKGROUND_ENABLED",    "bool", "Scene background"));
@@ -84,6 +85,7 @@ class FeatureFlagServer {
     o.setBoolean("BLOOM_ENABLED",         config.BLOOM_ENABLED);
     o.setBoolean("SHOW_METADATA",         config.SHOW_METADATA);
     o.setBoolean("EPILEPSY_MODE_ON",      config.EPILEPSY_MODE_ON);
+    o.setBoolean("HEADACHE_FREE_MODE",    config.HEADACHE_FREE_MODE);
     o.setBoolean("RAINBOW_FINS",          config.RAINBOW_FINS);
     o.setBoolean("APPEAR_HAND_DRAWN",     config.APPEAR_HAND_DRAWN);
     o.setBoolean("BACKGROUND_ENABLED",    config.BACKGROUND_ENABLED);
@@ -108,6 +110,7 @@ class FeatureFlagServer {
     if (key.equals("BLOOM_ENABLED"))              config.BLOOM_ENABLED         = v;
     else if (key.equals("SHOW_METADATA"))         config.SHOW_METADATA         = v;
     else if (key.equals("EPILEPSY_MODE_ON"))      config.EPILEPSY_MODE_ON      = v;
+    else if (key.equals("HEADACHE_FREE_MODE"))    config.HEADACHE_FREE_MODE    = v;
     else if (key.equals("RAINBOW_FINS"))          config.RAINBOW_FINS          = v;
     else if (key.equals("APPEAR_HAND_DRAWN"))     config.APPEAR_HAND_DRAWN     = v;
     else if (key.equals("BACKGROUND_ENABLED"))    config.BACKGROUND_ENABLED    = v;
