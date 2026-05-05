@@ -20,9 +20,10 @@ IScene[] scenes;
 SceneSwitcher sceneSwitcher;
 AudioSourceSwitcher audioSwitcher;
 AutoSwitcher   autoSwitcher;
-SceneGuard     sceneGuard;
-KillSwitch     killSwitch;
-DisplayManager displayManager;
+SceneGuard       sceneGuard;
+KillSwitch       killSwitch;
+DisplayManager   displayManager;
+DemoInputDriver  demoInput;
 final int SCENE_COUNT = 50;
 int previousState = -1;
 boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
@@ -572,6 +573,7 @@ void setup() {
   sceneGuard     = new SceneGuard();
   killSwitch     = new KillSwitch();
   displayManager = new DisplayManager();
+  demoInput      = new DemoInputDriver();
   displayManager.initFromPrefs();
 
   // Initialise smoke test runner after all scenes exist
@@ -867,9 +869,11 @@ public void getUserInput() {
   // Update the flag each frame so scenes react as soon as the device appears.
   controller.read();
   if (webController != null) webController.applyTo(controller);
-  // USING_CONTROLLER counts physical OR web-driven input as "connected" so
-  // scenes that gate behind it still receive web input from a phone.
-  config.USING_CONTROLLER = controller.isConnected() || webController.isActive();
+  if (demoInput != null) demoInput.applyTo(controller);
+  // USING_CONTROLLER counts physical OR web-driven OR demo-synthetic input as
+  // "connected" so scenes that gate behind it still receive input.
+  config.USING_CONTROLLER = controller.isConnected() || webController.isActive()
+                            || (demoInput != null && demoInput.isActive());
   killSwitch.pollController(controller);
   if (!config.USING_CONTROLLER) return;
 
@@ -1233,18 +1237,35 @@ void draw() {
   // final buffer to blit — may be sceneBuffer itself or a temp FX buffer.
   PGraphics toDisplay = postFX.process(sceneBuffer);
   image(toDisplay, 0, 0, width, height);
+
+  // Headache-free wash: dim brightness + soft warm tint to round off harshness.
+  // Applied in window space so it covers anything in the scene chain. HUD/overlays
+  // draw on top unaffected so controls stay readable.
+  if (config.HEADACHE_FREE_MODE) {
+    blendMode(BLEND);
+    noStroke();
+    fill(20, 14, 30, 110);
+    rect(0, 0, width, height);
+    fill(255, 200, 160, 18);
+    rect(0, 0, width, height);
+  }
   // 5. Global overlays (UI drawn at native res, over the buffer)
   blendMode(BLEND);
-  
+
+  // Demo capture mode hides every HUD/badge so the recorded gif is pure scene.
+  boolean hideHuds = (demoInput != null && demoInput.isActive());
+
   // HUD Badges (Bottom-Right Stack)
-  float nextHudY = height - 10 * uiScale();
-  nextHudY = drawAudioSourceBadge(nextHudY);
-  if (autoSwitcher != null) nextHudY = drawAutoSwitcherBadge(nextHudY);
-  if (postFX != null && postFX.anyEnabled()) nextHudY = drawPostFXBadge(nextHudY);
+  if (!hideHuds) {
+    float nextHudY = height - 10 * uiScale();
+    nextHudY = drawAudioSourceBadge(nextHudY);
+    if (autoSwitcher != null) nextHudY = drawAutoSwitcherBadge(nextHudY);
+    if (postFX != null && postFX.anyEnabled()) nextHudY = drawPostFXBadge(nextHudY);
 
-  drawWebControlBadge(); // Bottom-Left (doesn't stack)
+    drawWebControlBadge(); // Bottom-Left (doesn't stack)
+  }
 
-  if (config.STATE >= 0 && config.STATE < SCENE_COUNT
+  if (!hideHuds && config.STATE >= 0 && config.STATE < SCENE_COUNT
       && !sceneGuard.isBlacklisted(config.STATE) && !sceneGuard.isRecovering()) {
     if (config.SHOW_CODE) {
       try { drawCodeOverlay(scenes[config.STATE].getCodeLines()); }
@@ -1264,7 +1285,7 @@ void draw() {
   if (crossfadeSnapshot != null) {
     if (didRenderScene) {
       crossfadeFrame++;
-      if (audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
+      if (!config.HEADACHE_FREE_MODE && audio.beat.isOnset() && crossfadeFrame > CROSSFADE_DURATION / 2) {
         crossfadeFrame = CROSSFADE_DURATION;
       }
     }
@@ -1282,7 +1303,7 @@ void draw() {
     }
   }
 
-  if (config.SHOW_METADATA) {
+  if (config.SHOW_METADATA && !hideHuds) {
     drawMetadataOverlay();
   }
 
@@ -1353,6 +1374,7 @@ void drawMetadataOverlay() {
 // lines : info/control rows (dim green)
 void sceneHUD(PGraphics pg, String title, String[] lines) {
   if (isProjecting) return;
+  if (demoInput != null && demoInput.isActive()) return;
   pg.pushStyle();
   float ts = 11 * uiScale(), lh = ts * 1.35, mg = 6 * uiScale();
   float boxW = 390 * uiScale();
@@ -1645,6 +1667,7 @@ float pulseValBetweenRange(float currentVal, float minVal, float maxVal) {
 
 void drawSongNameOnScreen(PGraphics pg, String song_name, float nameLocationX, float nameLocationY) {
   if (isProjecting) return;
+  if (demoInput != null && demoInput.isActive()) return;
   pg.pushStyle();
   pg.textSize(24 * uiScale());
   pg.textAlign(CENTER);

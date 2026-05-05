@@ -68,6 +68,13 @@ if [[ -f "Music_Visualizer_CK/.smoketest" ]]; then
   ln -s "$ORIGIN_DIR/.smoketest" "$BUILD_DIR/.smoketest"
 fi
 
+# Link .devdemo if it exists (synthetic controller for capture.sh).
+# Env-var path (MV_DEMO_MODE=1) doesn't survive snap confinement, so the
+# capture script touches a flag file instead.
+if [[ -f "Music_Visualizer_CK/.devdemo" ]]; then
+  ln -s "$ORIGIN_DIR/.devdemo" "$BUILD_DIR/.devdemo"
+fi
+
 # Persist runtime state across runs (.build is wiped each launch). UserPaths.pde
 # routes featureflags.json / pins.json / bans.json / .devadmintoken / crash_log
 # / prefs through userDataPath() — point it at the source dir in dev mode so
