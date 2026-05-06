@@ -29,6 +29,7 @@ Setlist          setlist;
 TextOverlay      textOverlay;
 Recorder         recorder;
 MidiBridge       midiBridge;
+HelpOverlay      helpOverlay;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
 final int SCENE_COUNT = 50;
@@ -589,6 +590,7 @@ void setup() {
   textOverlay    = new TextOverlay();
   recorder       = new Recorder();
   midiBridge     = new MidiBridge();
+  helpOverlay    = new HelpOverlay();
   displayManager = new DisplayManager();
   demoInput      = new DemoInputDriver();
   displayManager.initFromPrefs();
@@ -854,6 +856,9 @@ void keyPressed() {
     if (keyCode == 12 || keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN)
       switchScene(nextActiveScene());
   }
+
+  // ? toggles stage hotkey help overlay
+  if (key == '?') { if (helpOverlay != null) helpOverlay.toggle(); return; }
 
   // Setlist: ] advance, [ back, } toggle auto, { reload from disk
   if (key == ']') { if (setlist != null) setlist.advance(); return; }
@@ -1427,6 +1432,9 @@ void draw() {
     sceneSwitcher.update();
     sceneSwitcher.drawOverlay();
   }
+
+  // Stage hotkey help (?) — sits above HUDs but below kill switch fade.
+  if (helpOverlay != null) helpOverlay.draw(width, height, monoFont);
 
   // KillSwitch composites a black quad over EVERYTHING — must be the very last draw.
   killSwitch.tick();
