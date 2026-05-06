@@ -38,7 +38,14 @@ class AudioAnalyser {
     // The main sketch should have called audio.forward() and
     // audio.beat.detect() before calling this.
 
-    isBeat = audio.beat.isOnset();
+    // When TempoLock is locked, the metronome grid is authoritative — onsets
+    // are ignored to keep visual sync stable on tracks where Minim's onset
+    // detector drifts (four-on-the-floor, dense kicks).
+    if (tempoLock != null && tempoLock.isLocked()) {
+      isBeat = tempoLock.gridBeatThisFrame();
+    } else {
+      isBeat = audio.beat.isOnset();
+    }
 
     // Accumulate normalised averages from the Audio class.
     // Audio.normalisedAvg() already handles peak tracking for us.

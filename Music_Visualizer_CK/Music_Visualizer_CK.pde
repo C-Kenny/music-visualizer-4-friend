@@ -21,7 +21,13 @@ SceneSwitcher sceneSwitcher;
 AudioSourceSwitcher audioSwitcher;
 AutoSwitcher   autoSwitcher;
 SceneGuard       sceneGuard;
+FrameWatchdog    frameWatchdog;
 KillSwitch       killSwitch;
+StrobeSafety     strobeSafety;
+TempoLock        tempoLock;
+Setlist          setlist;
+TextOverlay      textOverlay;
+Recorder         recorder;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
 final int SCENE_COUNT = 50;
@@ -571,7 +577,16 @@ void setup() {
   autoSwitcher   = new AutoSwitcher();
   featureFlagServer.loadFromDisk();  // after autoSwitcher so AUTO_SWITCH_MODE applies
   sceneGuard     = new SceneGuard();
+  frameWatchdog  = new FrameWatchdog();
+  if (!SMOKE_TEST_MODE) frameWatchdog.start();
   killSwitch     = new KillSwitch();
+  strobeSafety   = new StrobeSafety();
+  strobeSafety.loadPref();
+  tempoLock      = new TempoLock();
+  setlist        = new Setlist();
+  setlist.load();
+  textOverlay    = new TextOverlay();
+  recorder       = new Recorder();
   displayManager = new DisplayManager();
   demoInput      = new DemoInputDriver();
   displayManager.initFromPrefs();
@@ -606,6 +621,8 @@ void setup() {
 }
 
 void stop() {
+  if (recorder != null && recorder.running) recorder.stop();
+  if (frameWatchdog != null) frameWatchdog.stop();
   audio.stop();
   super.stop();
 }
@@ -724,8 +741,40 @@ void keyPressed() {
   }
 
   // F11 toggles "fill current display" mode (borderless-style fullscreen).
+  // Auto-enables strobe safety on the way into fullscreen (venue assumption);
+  // leaves it untouched when leaving fullscreen so manual overrides stick.
   if (keyCode == java.awt.event.KeyEvent.VK_F11) {
+    boolean wasFullscreen = displayManager.fullscreen;
     displayManager.toggleFullscreen();
+    if (!wasFullscreen && displayManager.fullscreen && strobeSafety != null && !strobeSafety.enabled) {
+      strobeSafety.setEnabled(true);
+      println("[STROBE] auto-enabled with fullscreen");
+    }
+    return;
+  }
+
+  // F5 toggles mp4 recording (downscaled, ffmpeg-piped).
+  if (keyCode == java.awt.event.KeyEvent.VK_F5) {
+    if (recorder != null) recorder.toggle();
+    return;
+  }
+
+  // F3 toggles live text overlay (DJ name / track title); Shift+F3 cycles layout.
+  if (keyCode == java.awt.event.KeyEvent.VK_F3) {
+    if (textOverlay != null) {
+      boolean shift = (keyEvent != null && keyEvent.isShiftDown());
+      if (shift) textOverlay.cycleLayout();
+      else       textOverlay.toggle();
+    }
+    return;
+  }
+
+  // F12 toggles strobe safety cap (photosensitive-seizure protection).
+  if (keyCode == java.awt.event.KeyEvent.VK_F12) {
+    if (strobeSafety != null) {
+      strobeSafety.toggle();
+      println("[STROBE] " + (strobeSafety.enabled ? "ON" : "OFF"));
+    }
     return;
   }
 
@@ -795,6 +844,20 @@ void keyPressed() {
       switchScene(prevActiveScene());
     if (keyCode == 12 || keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN)
       switchScene(nextActiveScene());
+  }
+
+  // Setlist: ] advance, [ back, } toggle auto, { reload from disk
+  if (key == ']') { if (setlist != null) setlist.advance(); return; }
+  if (key == '[') { if (setlist != null) setlist.back();    return; }
+  if (key == '}') { if (setlist != null) setlist.toggleAuto(); return; }
+  if (key == '{') { if (setlist != null) setlist.load();      return; }
+
+  // Tap tempo: `\` = tap (4 taps to lock), `|` (Shift+\) = clear lock
+  if (key == '\\') {
+    if (tempoLock != null) tempoLock.tap();
+  }
+  if (key == '|') {
+    if (tempoLock != null) tempoLock.clear();
   }
 
   // Global background toggles
@@ -1093,6 +1156,7 @@ long lastLogicalFrame = 0;
 float accumulator = 0;
 
 void draw() {
+  if (frameWatchdog != null) frameWatchdog.tick(config.STATE);
   // ── Smoke test fast-path ─────────────────────────────────────────────────
   if (SMOKE_TEST_MODE) {
     // Keep audio ticking so FFT data is valid (scenes read it in drawScene)
@@ -1108,6 +1172,22 @@ void draw() {
   // ────────────────────────────────────────────────────────────────────────
   if (frameCount % 60 == 0) println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
   saveDevPreview();
+
+  if (setlist != null) setlist.tick();
+
+  // ── Frame-stall recovery ─────────────────────────────────────────────────
+  // Watchdog flagged a >2s render gap. Charge the failure to the scene that
+  // was on screen when the stall began; SceneGuard will blacklist it after
+  // repeated offenses. Force-switch to a non-blacklisted scene now.
+  if (frameWatchdog != null && frameWatchdog.consumeStall()) {
+    int suspect = frameWatchdog.stallSceneId;
+    if (suspect >= 0 && suspect < SCENE_COUNT) {
+      sceneGuard.recordFailure(suspect,
+        new RuntimeException("frame stall " + frameWatchdog.stallDurationMs + "ms"));
+      int safe = nextNonBlacklistedScene(suspect);
+      if (safe != suspect) switchSceneDirect(safe);
+    }
+  }
   
   // 1. Scene Lifecycle Management
   if (config.STATE != previousState) {
@@ -1238,6 +1318,17 @@ void draw() {
   PGraphics toDisplay = postFX.process(sceneBuffer);
   image(toDisplay, 0, 0, width, height);
 
+  // Strobe safety cap — measures luma jumps + flash rate on the final
+  // composite, blends prior frame back over to flatten unsafe spikes.
+  if (strobeSafety != null) {
+    strobeSafety.maybeDampen(toDisplay, width, height);
+    strobeSafety.snapshot(toDisplay);
+  }
+
+  // mp4 capture — pipes the post-FX composite to ffmpeg via worker thread.
+  // Excludes HUDs and text overlay (they sit on top of the window blit).
+  if (recorder != null) recorder.tick(toDisplay);
+
   // Headache-free wash: dim brightness + soft warm tint to round off harshness.
   // Applied in window space so it covers anything in the scene chain. HUD/overlays
   // draw on top unaffected so controls stay readable.
@@ -1252,6 +1343,10 @@ void draw() {
   // 5. Global overlays (UI drawn at native res, over the buffer)
   blendMode(BLEND);
 
+  // Live text overlay (DJ name / track title). Drawn before HUD so HUD reads
+  // on top, hidden in demo capture and when no text file is present.
+  if (textOverlay != null) textOverlay.draw(width, height, monoFont);
+
   // Demo capture mode hides every HUD/badge so the recorded gif is pure scene.
   boolean hideHuds = (demoInput != null && demoInput.isActive());
 
@@ -1261,6 +1356,10 @@ void draw() {
     nextHudY = drawAudioSourceBadge(nextHudY);
     if (autoSwitcher != null) nextHudY = drawAutoSwitcherBadge(nextHudY);
     if (postFX != null && postFX.anyEnabled()) nextHudY = drawPostFXBadge(nextHudY);
+    if (strobeSafety != null && strobeSafety.enabled) nextHudY = drawStrobeSafetyBadge(nextHudY);
+    if (tempoLock != null && (tempoLock.isLocked() || tempoLock.taps.size() > 0)) nextHudY = drawTempoLockBadge(nextHudY);
+    if (setlist != null && setlist.isActive()) nextHudY = drawSetlistBadge(nextHudY);
+    if (recorder != null && recorder.running)  nextHudY = drawRecorderBadge(nextHudY);
 
     drawWebControlBadge(); // Bottom-Left (doesn't stack)
   }
@@ -1613,6 +1712,145 @@ float drawAutoSwitcherBadge(float startY) {
 // Bottom-right, stacked ABOVE the AutoSwitcher badge.
 // Shows active FX names; hidden when no effects are enabled.
 // Keyboard: g=cycle next, G=clear all. Controller: LB+RB+Y=cycle, LB+RB+X=clear.
+float drawRecorderBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[REC]  F5=stop";
+  String line2 = recorder.statusLabel();
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  // Pulsing red dot
+  float pulse = 0.6 + 0.4 * sin(millis() * 0.005);
+  fill(255 * pulse, 50, 50);
+  ellipse(boxX + pad + 5, boxY + pad + ts * 0.5, 8, 8);
+
+  fill(255, 200, 200);
+  text(line1, boxX + pad + 16, boxY + pad);
+  fill(255, 240, 240);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawSetlistBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[SETLIST " + (setlist.cursor + 1) + "/" + setlist.size()
+               + (setlist.autoAdvance ? " AUTO" : "") + "]  ]=next [=back }=auto {=reload";
+  String line2 = "now: "  + setlist.nowLabel();
+  String line3 = "next: " + setlist.nextLabel();
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(max(textWidth(line1), textWidth(line2)), textWidth(line3)) + pad * 2;
+  float boxH     = lineH * 3 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(255, 200, 120);
+  text(line1, boxX + pad, boxY + pad);
+  fill(220, 240, 200);
+  text(line2, boxX + pad, boxY + pad + lineH);
+  fill(160, 200, 160);
+  text(line3, boxX + pad, boxY + pad + lineH * 2);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawTempoLockBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[TEMPO]  \\=tap  |=clear";
+  String line2 = tempoLock.statusLabel();
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(140, 220, 255);
+  text(line1, boxX + pad, boxY + pad);
+  if (tempoLock.isLocked()) fill(120, 255, 160); else fill(255, 220, 120);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawStrobeSafetyBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[STROBE-SAFE]  F12=toggle";
+  String line2 = strobeSafety.lastDampAlpha > 0.02
+                 ? "dampening: " + nf(strobeSafety.lastDampAlpha, 1, 2)
+                 : "ok";
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(255, 180, 80);
+  text(line1, boxX + pad, boxY + pad);
+  if (strobeSafety.lastDampAlpha > 0.02) fill(255, 100, 100); else fill(120, 220, 140);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
 float drawPostFXBadge(float startY) {
   String badge = postFX.getActiveBadge();
   if (badge.length() == 0) return startY;
