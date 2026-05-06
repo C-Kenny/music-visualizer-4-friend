@@ -78,7 +78,8 @@ class Recorder {
     try {
       ProcessBuilder pb = new ProcessBuilder(cmd);
       pb.redirectErrorStream(true);
-      pb.redirectOutput(java.io.File.createTempFile("ffmpeg-rec-", ".log"));
+      // Log next to the mp4 so a broken capture is easy to diagnose.
+      pb.redirectOutput(new java.io.File(outPath + ".log"));
       proc = pb.start();
       pipe = proc.getOutputStream();
     } catch (Exception e) {
