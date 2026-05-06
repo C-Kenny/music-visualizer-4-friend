@@ -28,6 +28,7 @@ TempoLock        tempoLock;
 Setlist          setlist;
 TextOverlay      textOverlay;
 Recorder         recorder;
+MidiBridge       midiBridge;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
 final int SCENE_COUNT = 50;
@@ -587,6 +588,7 @@ void setup() {
   setlist.load();
   textOverlay    = new TextOverlay();
   recorder       = new Recorder();
+  midiBridge     = new MidiBridge();
   displayManager = new DisplayManager();
   demoInput      = new DemoInputDriver();
   displayManager.initFromPrefs();
@@ -622,6 +624,7 @@ void setup() {
 
 void stop() {
   if (recorder != null && recorder.running) recorder.stop();
+  if (midiBridge != null && midiBridge.enabled) midiBridge.stop();
   if (frameWatchdog != null) frameWatchdog.stop();
   audio.stop();
   super.stop();
@@ -750,6 +753,12 @@ void keyPressed() {
       strobeSafety.setEnabled(true);
       println("[STROBE] auto-enabled with fullscreen");
     }
+    return;
+  }
+
+  // F4 toggles MIDI bridge (auto-scans inputs on enable).
+  if (keyCode == java.awt.event.KeyEvent.VK_F4) {
+    if (midiBridge != null) midiBridge.toggle();
     return;
   }
 
@@ -1174,6 +1183,7 @@ void draw() {
   saveDevPreview();
 
   if (setlist != null) setlist.tick();
+  if (midiBridge != null) midiBridge.drainPending();
 
   // ── Frame-stall recovery ─────────────────────────────────────────────────
   // Watchdog flagged a >2s render gap. Charge the failure to the scene that
@@ -1360,6 +1370,7 @@ void draw() {
     if (tempoLock != null && (tempoLock.isLocked() || tempoLock.taps.size() > 0)) nextHudY = drawTempoLockBadge(nextHudY);
     if (setlist != null && setlist.isActive()) nextHudY = drawSetlistBadge(nextHudY);
     if (recorder != null && recorder.running)  nextHudY = drawRecorderBadge(nextHudY);
+    if (midiBridge != null && midiBridge.enabled) nextHudY = drawMidiBadge(nextHudY);
 
     drawWebControlBadge(); // Bottom-Left (doesn't stack)
   }
@@ -1712,6 +1723,38 @@ float drawAutoSwitcherBadge(float startY) {
 // Bottom-right, stacked ABOVE the AutoSwitcher badge.
 // Shows active FX names; hidden when no effects are enabled.
 // Keyboard: g=cycle next, G=clear all. Controller: LB+RB+Y=cycle, LB+RB+X=clear.
+float drawMidiBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[MIDI] F4=toggle";
+  String line2 = midiBridge.openDevices.size() + " device(s) — pad note 36+ -> scene order";
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(160, 220, 255);
+  text(line1, boxX + pad, boxY + pad);
+  fill(200, 240, 255);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
 float drawRecorderBadge(float startY) {
   pushStyle();
   textFont(monoFont);
