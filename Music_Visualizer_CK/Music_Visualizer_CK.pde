@@ -1376,6 +1376,10 @@ void draw() {
     if (setlist != null && setlist.isActive()) nextHudY = drawSetlistBadge(nextHudY);
     if (recorder != null && recorder.running)  nextHudY = drawRecorderBadge(nextHudY);
     if (midiBridge != null && midiBridge.enabled) nextHudY = drawMidiBadge(nextHudY);
+    if (sceneGuard != null) {
+      ArrayList<String> bl = sceneGuard.blacklistedNames();
+      if (!bl.isEmpty()) nextHudY = drawBlacklistBadge(nextHudY, bl);
+    }
 
     drawWebControlBadge(); // Bottom-Left (doesn't stack)
   }
@@ -1731,6 +1735,43 @@ float drawAutoSwitcherBadge(float startY) {
 // Bottom-right, stacked ABOVE the AutoSwitcher badge.
 // Shows active FX names; hidden when no effects are enabled.
 // Keyboard: g=cycle next, G=clear all. Controller: LB+RB+Y=cycle, LB+RB+X=clear.
+float drawBlacklistBadge(float startY, ArrayList<String> names) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[GUARD] " + names.size() + " scene(s) disabled this session";
+  String joined = "";
+  for (int i = 0; i < names.size(); i++) {
+    if (i > 0) joined += ", ";
+    joined += names.get(i);
+  }
+  String line2 = joined;
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(255, 120, 100);
+  text(line1, boxX + pad, boxY + pad);
+  fill(255, 200, 200);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
 float drawMidiBadge(float startY) {
   pushStyle();
   textFont(monoFont);

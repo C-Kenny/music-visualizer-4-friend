@@ -97,6 +97,15 @@ class SceneGuard {
     }
   }
 
+  // Returns the list of currently-blacklisted scene class names. Empty if none.
+  ArrayList<String> blacklistedNames() {
+    ArrayList<String> out = new ArrayList<String>();
+    for (int i = 0; i < SCENE_COUNT; i++) {
+      if (blacklisted[i]) out.add(sceneName(i));
+    }
+    return out;
+  }
+
   String sceneName(int idx) {
     if (idx < 0 || idx >= SCENE_COUNT || scenes[idx] == null) return "scene " + idx;
     return scenes[idx].getClass().getSimpleName();
