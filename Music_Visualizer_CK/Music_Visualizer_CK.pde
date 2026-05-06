@@ -758,6 +758,16 @@ void keyPressed() {
     return;
   }
 
+  // Ctrl+Enter: "showtime" macro — flip everything safety-relevant on at once.
+  // Idempotent: re-pressing is safe. Pairs with Esc kill switch for emergencies.
+  if (keyCode == java.awt.event.KeyEvent.VK_ENTER
+      && keyEvent != null && keyEvent.isControlDown()) {
+    if (displayManager != null && !displayManager.fullscreen) displayManager.toggleFullscreen();
+    if (strobeSafety != null && !strobeSafety.enabled)        strobeSafety.setEnabled(true);
+    println("[SHOWTIME] fullscreen + strobe safety enabled");
+    return;
+  }
+
   // F4 toggles MIDI bridge (auto-scans inputs on enable).
   if (keyCode == java.awt.event.KeyEvent.VK_F4) {
     if (midiBridge != null) midiBridge.toggle();

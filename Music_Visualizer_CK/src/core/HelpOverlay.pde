@@ -13,6 +13,7 @@ class HelpOverlay {
   // Two-column layout: section title rows have empty key half.
   String[] lines = {
     "STAGE\t",
+    "Ctrl+Enter\tshowtime — fullscreen + strobe safety on",
     "F11\ttoggle fullscreen on current display",
     "Ctrl+1..9\tmove window to display N",
     "Esc\temergency fade-to-black (kill switch)",
