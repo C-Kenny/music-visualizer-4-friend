@@ -44,6 +44,7 @@ class FrameWatchdog {
             stallSceneId    = lastSceneId;
             System.err.println("[WATCHDOG] frame stall " + gap
                                + "ms in scene " + stallSceneId);
+            logRenderStack(gap);
           }
         }
       }
@@ -61,6 +62,36 @@ class FrameWatchdog {
   void tick(int sceneId) {
     lastTickMs  = System.currentTimeMillis();
     lastSceneId = sceneId;
+  }
+
+  // Walk every live thread, find the Processing animation thread, and dump
+  // its stack to crash_log.txt. The animation thread is what's actually stuck
+  // — knowing where helps diagnose whether it's a scene loop, a blocking I/O
+  // call, or something deeper in the render pipeline.
+  void logRenderStack(long gap) {
+    try {
+      Thread render = null;
+      for (Thread t : Thread.getAllStackTraces().keySet()) {
+        String name = t.getName();
+        if (name.contains("Animation") || name.contains("AWT-EventQueue")) {
+          render = t;
+          if (name.contains("Animation")) break;
+        }
+      }
+      if (render == null) return;
+      java.io.FileWriter  fw = new java.io.FileWriter(userDataPath("crash_log.txt"), true);
+      java.io.PrintWriter pw = new java.io.PrintWriter(fw);
+      pw.println("=== " + new java.util.Date()
+               + "  WATCHDOG stall " + gap + "ms"
+               + "  scene=" + lastSceneId
+               + "  thread=" + render.getName() + " ===");
+      for (StackTraceElement e : render.getStackTrace()) {
+        pw.println("    at " + e);
+      }
+      pw.println();
+      pw.close();
+      fw.close();
+    } catch (Throwable ignored) {}
   }
 
   // One-shot: returns true exactly once after a stall is reported.
