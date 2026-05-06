@@ -1905,6 +1905,17 @@ float drawTempoLockBadge(float startY) {
   if (tempoLock.isLocked()) fill(120, 255, 160); else fill(255, 220, 120);
   text(line2, boxX + pad, boxY + pad + lineH);
 
+  // Metronome pulse — visible verification that locked BPM matches the track.
+  if (tempoLock.isLocked() && tempoLock.beatPeriodMs > 0) {
+    long elapsed = System.currentTimeMillis() - tempoLock.lockEpochMs;
+    float phase  = (elapsed % tempoLock.beatPeriodMs) / (float) tempoLock.beatPeriodMs;
+    float pulse  = 1.0 - constrain(phase * 4, 0, 1);
+    float r      = 6 * uiScale() * (1 + pulse);
+    fill(120, 255, 160, 200);
+    noStroke();
+    ellipse(boxX + boxW - pad - 8 * uiScale(), boxY + pad + ts * 0.5, r, r);
+  }
+
   popStyle();
   return boxY - 6 * uiScale();
 }
