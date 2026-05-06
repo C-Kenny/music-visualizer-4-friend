@@ -42,6 +42,9 @@ class Setlist {
     cursor = -1;
 
     String path = userDataPath(FILE_NAME);
+    java.io.File f = new java.io.File(path);
+    if (!f.exists()) writeSampleFile(path);
+
     String[] lines = null;
     try { lines = loadStrings(path); } catch (Exception ignored) {}
     if (lines == null) {
@@ -74,6 +77,23 @@ class Setlist {
       entries.add(new Entry(sceneId, body, duration));
     }
     println("[SETLIST] loaded " + entries.size() + " entries from " + path);
+  }
+
+  // Drop a commented template so a fresh install has something to edit.
+  void writeSampleFile(String path) {
+    try {
+      saveStrings(path, new String[]{
+        "# Setlist template",
+        "# One scene per line: numeric id (0..49) or scene class name.",
+        "# Optional `@duration <seconds>` enables auto-advance when toggled (}).",
+        "# Lines starting with # are ignored. Edit and reload with {.",
+        "#",
+        "# 45             @duration 60",
+        "# RoseCurveScene @duration 90",
+        "# 46"
+      });
+      println("[SETLIST] wrote template to " + path);
+    } catch (Exception ignored) {}
   }
 
   int resolveScene(String token) {
