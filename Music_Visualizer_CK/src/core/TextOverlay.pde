@@ -20,7 +20,9 @@ class TextOverlay {
   static final String FILE_NAME = "text_overlay.txt";
   static final int LAYOUT_BOTTOM_CENTER = 0;
   static final int LAYOUT_TOP_LEFT      = 1;
-  static final int LAYOUT_COUNT         = 2;
+  static final int LAYOUT_TICKER        = 2;
+  static final int LAYOUT_COUNT         = 3;
+  static final float TICKER_PX_PER_SEC  = 90;
 
   boolean visible      = false;
   int     layout       = LAYOUT_BOTTOM_CENTER;
@@ -92,6 +94,29 @@ class TextOverlay {
         text(subtitle, winW / 2 + 2, baseY + subSize + 8 + 2);
         fill(220);
         text(subtitle, winW / 2, baseY + subSize + 8);
+      }
+    } else if (layout == LAYOUT_TICKER) {
+      // Endless scroll: title + " — " + subtitle, repeating with a wide gap.
+      String msg = title;
+      if (subtitle.length() > 0) msg += "   —   " + subtitle;
+      if (msg.length() == 0) { popStyle(); return; }
+      String repeated = msg + "          ";
+      textSize(subSize * 1.2);
+      float msgW = textWidth(repeated);
+      if (msgW < 1) { popStyle(); return; }
+
+      float bandH = subSize * 1.2 + pad;
+      float bandY = winH - bandH;
+      noStroke();
+      fill(0, 200);
+      rect(0, bandY, winW, bandH);
+
+      float offset = (millis() / 1000.0 * TICKER_PX_PER_SEC) % msgW;
+      textAlign(LEFT, CENTER);
+      fill(255);
+      // Draw enough copies to cover the whole window width as the ticker scrolls.
+      for (float x = -offset; x < winW; x += msgW) {
+        text(repeated, x, bandY + bandH / 2);
       }
     } else { // TOP_LEFT
       textAlign(LEFT, TOP);
