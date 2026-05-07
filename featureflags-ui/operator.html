@@ -101,7 +101,7 @@
   </div>
   <div class="footer">
     <span id="status">connecting…</span>
-    · poll 2 Hz · <a href="/operator" style="color:var(--green-dim)">raw json</a>
+    · poll 2 Hz · <a href="/operator.json" style="color:var(--green-dim)">raw json</a>
   </div>
   <div class="err" id="err"></div>
 </div>
@@ -156,7 +156,7 @@
 
   async function tick(){
     try {
-      const r = await fetch('/operator', { cache: 'no-store' });
+      const r = await fetch('/operator.json', { cache: 'no-store' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const j = await r.json();
       consecutiveFails = 0;

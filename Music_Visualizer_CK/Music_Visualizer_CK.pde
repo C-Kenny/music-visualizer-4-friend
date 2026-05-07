@@ -806,9 +806,9 @@ void keyPressed() {
     return;
   }
 
-  // Stream toggle: F6 OR `~` (tilde) — F6 gets eaten by some WMs (GNOME).
-  // `~` is shift+backtick. If both fail, use the operator dashboard button.
-  if (keyCode == java.awt.event.KeyEvent.VK_F6 || key == '~') {
+  // Stream toggle: F6 OR F7 — F6 gets eaten by some WMs (GNOME).
+  // If both fail, use the operator dashboard button (no auth needed on localhost).
+  if (keyCode == java.awt.event.KeyEvent.VK_F6 || keyCode == java.awt.event.KeyEvent.VK_F7) {
     println("[STREAM] toggle hotkey pressed (key=" + key + " code=" + keyCode + ")");
     if (streamer != null) streamer.toggle();
     else                  println("[STREAM] streamer is null!");

@@ -188,7 +188,7 @@ class FeatureFlagServer {
       server.createContext("/admin/pins",        new AdminPinsListHandler());
       server.createContext("/admin/pins/mint",   new AdminPinsMintHandler());
       server.createContext("/admin/pins/revoke", new AdminPinsRevokeHandler());
-      server.createContext("/operator", new OperatorHandler());
+      server.createContext("/operator.json", new OperatorHandler());
       server.createContext("/admin/stream/toggle", new AdminStreamToggleHandler());
       server.createContext("/", new UiHandler());
       server.setExecutor(null);
