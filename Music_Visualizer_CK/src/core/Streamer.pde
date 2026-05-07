@@ -155,8 +155,13 @@ class Streamer {
       return true;
     }
     try {
+      // Run with cwd = dir containing the binary, so mediamtx finds its
+      // sibling mediamtx.yml (install-stream.sh drops both there).
+      java.io.File binFile = new java.io.File(mediamtxPath);
+      java.io.File cwd = binFile.getParentFile() != null ? binFile.getParentFile()
+                                                         : new java.io.File(userDataPath(""));
       ProcessBuilder pb = new ProcessBuilder(mediamtxPath);
-      pb.directory(new java.io.File(userDataPath("")));
+      pb.directory(cwd);
       pb.redirectError(new java.io.File(userDataPath("mediamtx.log")));
       pb.redirectOutput(new java.io.File(userDataPath("mediamtx.log")));
       mediamtx = pb.start();
@@ -198,10 +203,16 @@ class Streamer {
     }
   }
 
-  // Check (1) user data dir, (2) repo root, (3) PATH.
+  // Check (1) user data dir, (2) real XDG dir (run.sh overrides MV_USER_DATA_DIR),
+  // (3) repo root, (4) PATH.
   String locateMediaMTX() {
+    String home = System.getProperty("user.home");
+    String xdg  = System.getenv("XDG_CONFIG_HOME");
+    String xdgDir = (xdg != null && xdg.length() > 0 ? xdg : home + "/.config") + "/music-visualizer";
+
     String[] candidates = {
       userDataPath("mediamtx"),
+      xdgDir + "/mediamtx",
       sketchPath("../mediamtx"),
       sketchPath("../../mediamtx")
     };
@@ -209,7 +220,6 @@ class Streamer {
       java.io.File f = new java.io.File(c);
       if (f.exists() && f.canExecute()) return c;
     }
-    // PATH fallback
     String pathEnv = System.getenv("PATH");
     if (pathEnv != null) {
       for (String dir : pathEnv.split(java.io.File.pathSeparator)) {
