@@ -895,6 +895,20 @@ class TableTennisScene implements IScene {
     else if (k == ']') adjustMagnus(0.005);
     else if (k == ',') adjustSpeed(-0.1);
     else if (k == '.') adjustSpeed(0.1);
+    else if (k == 'r' || k == 'R') {
+      // Score reset: zero points, games, rally, restart serve order. The match
+      // never naturally resets — operators wanted a single key to wipe the
+      // scoreboard between sets without restarting the sketch.
+      leftPoints = rightPoints = 0;
+      leftGames  = rightGames  = 0;
+      totalPoints = 0;
+      rallyCount = 0;
+      leftServes = true;
+      inServeDrop = true;
+      serveBounced = false;
+      pointPauseFrames = POINT_PAUSE_FRAMES;
+      println("[TENNIS] match reset");
+    }
   }
 
   ControllerLayout[] getControllerLayout() {
