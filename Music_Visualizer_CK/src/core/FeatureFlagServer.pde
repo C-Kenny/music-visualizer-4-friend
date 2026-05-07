@@ -463,6 +463,15 @@ class FeatureFlagServer {
     }
   }
 
+  String sceneNameOrFallback(int id) {
+    if (id < 0 || id >= SCENE_COUNT) return "Scene " + id;
+    if (sceneSwitcher != null && sceneSwitcher.SCENE_NAMES != null) {
+      String nm = sceneSwitcher.SCENE_NAMES[id];
+      if (nm != null && nm.length() > 0) return nm;
+    }
+    return "Scene " + id;
+  }
+
   String buildOperatorPayload() {
     JSONObject root = new JSONObject();
     root.setLong("nowMs", System.currentTimeMillis());
@@ -472,9 +481,7 @@ class FeatureFlagServer {
     JSONObject scene = new JSONObject();
     int curId = config.STATE;
     scene.setInt("id", curId);
-    scene.setString("name",
-      (sceneSwitcher != null && curId >= 0 && curId < SCENE_COUNT)
-        ? sceneSwitcher.SCENE_NAMES[curId] : "?");
+    scene.setString("name", sceneNameOrFallback(curId));
     scene.setInt("orderIndex", _sceneOrderIndex(curId));
     scene.setInt("orderCount", SCENE_ORDER.length);
     scene.setString("song", config.SONG_NAME == null ? "" : config.SONG_NAME);
@@ -524,8 +531,7 @@ class FeatureFlagServer {
         if (sceneGuard.isBlacklisted(i)) {
           JSONObject e = new JSONObject();
           e.setInt("id", i);
-          e.setString("name",
-            (sceneSwitcher != null) ? sceneSwitcher.SCENE_NAMES[i] : ("Scene " + i));
+          e.setString("name", sceneNameOrFallback(i));
           bl.append(e);
         }
       }
