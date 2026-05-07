@@ -189,6 +189,7 @@ class FeatureFlagServer {
       server.createContext("/admin/pins/mint",   new AdminPinsMintHandler());
       server.createContext("/admin/pins/revoke", new AdminPinsRevokeHandler());
       server.createContext("/operator", new OperatorHandler());
+      server.createContext("/admin/stream/toggle", new AdminStreamToggleHandler());
       server.createContext("/", new UiHandler());
       server.setExecutor(null);
       server.start();
@@ -670,6 +671,18 @@ class FeatureFlagServer {
       byte[] chunk = new byte[1024]; int n;
       while ((n = ex.getRequestBody().read(chunk)) > 0) buf.write(chunk, 0, n);
       return parseJSONObject(new String(buf.toByteArray(), StandardCharsets.UTF_8));
+    }
+  }
+
+  // POST /admin/stream/toggle → admin-only. Cookie auth (vis_admin) or
+  // X-Admin-Token header. Localhost bypasses auth (operator at the laptop).
+  class AdminStreamToggleHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      if (!"POST".equals(ex.getRequestMethod())) throw new RuntimeException("POST required");
+      if (streamer == null) throw new RuntimeException("streamer not initialized");
+      streamer.toggle();
+      return "{\"running\":" + streamer.running
+           + ",\"error\":\"" + (streamer.lastError == null ? "" : streamer.lastError.replace("\"", "\\\"")) + "\"}";
     }
   }
 

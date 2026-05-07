@@ -792,7 +792,9 @@ void keyPressed() {
 
   // F6 toggles LAN streaming via MediaMTX (WebRTC + HLS, audio included).
   if (keyCode == java.awt.event.KeyEvent.VK_F6) {
+    println("[STREAM] F6 pressed");
     if (streamer != null) streamer.toggle();
+    else                  println("[STREAM] streamer is null!");
     return;
   }
 

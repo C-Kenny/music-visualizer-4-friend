@@ -75,6 +75,15 @@
       <div class="row"><span class="small" id="audio-level">level —</span></div>
     </div>
     <div class="card">
+      <div class="label">LAN stream (TV / phone)</div>
+      <div class="row">
+        <span id="stream-pill" class="pill">OFF</span>
+        <button id="stream-toggle" style="background:#000; color:var(--green); border:1px solid var(--green); padding:6px 14px; font:13px Courier New,monospace; cursor:pointer; letter-spacing:0.1em;">START STREAM</button>
+      </div>
+      <div class="row"><span class="small" id="stream-meta">F6 in sketch, or click button</span></div>
+      <div class="row"><a href="/stream.html" target="_blank" class="small" style="color: var(--green-dim);">/stream.html →</a></div>
+    </div>
+    <div class="card">
       <div class="label">Stage state</div>
       <div class="row"><span>Strobe safety</span><span id="strobe" class="pill warn">?</span></div>
       <div class="row"><span>Recorder</span><span id="rec" class="pill">?</span></div>
@@ -174,6 +183,27 @@
       $('audio-meter').style.background = lvl > 0.85 ? 'var(--red)' : (lvl > 0.6 ? 'var(--amber)' : 'var(--green)');
       $('audio-level').textContent = 'level ' + (a.levelRms || 0).toFixed(3) + (a.playing ? '' : '  · paused');
 
+      // Stream
+      const sm = j.stream || {};
+      const sp = $('stream-pill');
+      const btn = $('stream-toggle');
+      if (sm.running) {
+        sp.textContent = 'LIVE';
+        sp.className = 'pill ok';
+        btn.textContent = 'STOP STREAM';
+        const elapsed = sm.startMs ? Math.floor((Date.now() - sm.startMs) / 1000) : 0;
+        const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
+        const ss = String(elapsed%60).padStart(2,'0');
+        $('stream-meta').textContent = mm + ':' + ss + '  pushed: ' + (sm.framesPushed||0)
+          + (sm.framesDropped ? ('  dropped: ' + sm.framesDropped) : '')
+          + (sm.audioSource ? ('  audio: ' + sm.audioSource) : '');
+      } else {
+        sp.textContent = sm.error ? 'ERR' : 'OFF';
+        sp.className = 'pill ' + (sm.error ? 'danger' : '');
+        btn.textContent = 'START STREAM';
+        $('stream-meta').textContent = sm.error || 'F6 in sketch, or click button';
+      }
+
       renderStrobe(!!(j.strobe && j.strobe.safety));
       renderRec(j.recorder || {});
       renderSetlist(j.setlist);
@@ -188,6 +218,28 @@
       $('status').textContent = lastOk ? ('stale · last ok ' + Math.round((Date.now() - lastOk)/1000) + 's ago') : 'no data';
     }
   }
+  document.getElementById('stream-toggle').addEventListener('click', async () => {
+    const btn = document.getElementById('stream-toggle');
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const r = await fetch('/admin/stream/toggle', { method: 'POST', credentials: 'include' });
+      if (r.status === 401) {
+        if (confirm('Admin login required to start/stop streaming. Go to login page?')) {
+          location.href = '/admin-login.html?next=/operator.html';
+        }
+        return;
+      }
+      const j = await r.json();
+      if (j.error) alert('stream error: ' + j.error);
+    } catch (e) {
+      alert('toggle failed: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      tick();
+    }
+  });
+
   tick();
   setInterval(tick, 500);
 })();
