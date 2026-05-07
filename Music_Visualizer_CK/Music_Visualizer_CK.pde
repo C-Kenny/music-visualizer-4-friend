@@ -32,7 +32,7 @@ MidiBridge       midiBridge;
 HelpOverlay      helpOverlay;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
-final int SCENE_COUNT = 50;
+final int SCENE_COUNT = 51;
 int previousState = -1;
 boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
 
@@ -578,6 +578,7 @@ void setup() {
   scenes[47] = new StrangeAttractorScene();
   scenes[48] = new SacredFractalsScene();
   scenes[49] = new TheyDontKnowScene();
+  scenes[50] = new LiveCodeScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
@@ -1083,7 +1084,8 @@ final int[] SCENE_ORDER = {
   SCENE_STRANGE_ATTRACTOR,
   SCENE_SACRED_FRACTALS,
   SCENE_EXPLAINER,
-  SCENE_THEY_DONT_KNOW
+  SCENE_THEY_DONT_KNOW,
+  SCENE_LIVE_CODE
 };
 
 int _sceneOrderIndex(int state) {
