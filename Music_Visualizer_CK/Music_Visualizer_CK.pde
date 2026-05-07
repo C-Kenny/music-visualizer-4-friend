@@ -204,6 +204,7 @@ void initializeGlobals() {
   logToStdout("initializeGlobals");
 
   config = new Config();
+  config.VERBOSE_LOG = isDevVerbose();
   dropPredictor = new DropPredictor();
 
   ellipseMode(CENTER);
@@ -246,10 +247,24 @@ boolean isDevMode() {
     System.getProperty("user.home") + "/.devmode"
   };
   for (String path : candidates) {
-    java.io.File f = new java.io.File(path);
-    logToStdout("devmode check: " + f.getAbsolutePath() + " → " + f.exists());
-    if (f.exists()) return true;
+    if (new java.io.File(path).exists()) {
+      logToStdout("devmode active: " + path);
+      return true;
+    }
   }
+  return false;
+}
+
+// Verbose stdout heartbeat (SCENE/CONTROLLER/FPS once per second).
+// Off by default — drop a `.devverbose` file in the sketch dir to re-enable
+// for debugging. HUD + /operator already show this info live.
+boolean isDevVerbose() {
+  String[] candidates = {
+    sketchPath() + "/.devverbose",
+    sketchPath() + "/../.devverbose",
+    System.getProperty("user.dir") + "/.devverbose"
+  };
+  for (String path : candidates) if (new java.io.File(path).exists()) return true;
   return false;
 }
 
@@ -484,6 +499,7 @@ void settings() {
 
 void setup() {
   config = new Config();
+  config.VERBOSE_LOG = isDevVerbose();
   pinManager = new PinManager();
   clientRegistry = new ClientRegistry();
   featureFlagServer = new FeatureFlagServer();
@@ -1013,11 +1029,11 @@ public void getUserInput() {
   // then lbWasChorded will be true and no scene switch will occur.
   if (!controller.chord(controller.lbButton, controller.rbButton)) {
     if (controller.lbJustReleased && !controller.lbWasChorded) {
-      println("CONTROLLER: LB released -> switching prev");
+      if (config.VERBOSE_LOG) println("CONTROLLER: LB released -> switching prev");
       switchScene(prevActiveScene());
     }
     if (controller.rbJustReleased && !controller.rbWasChorded) {
-      println("CONTROLLER: RB released -> switching next");
+      if (config.VERBOSE_LOG) println("CONTROLLER: RB released -> switching next");
       switchScene(nextActiveScene());
     }
   }
@@ -1050,11 +1066,11 @@ public void getUserInput() {
   }
 
   if (controller.backJustReleased && !controller.backWasChorded) {
-    println("CONTROLLER: BACK released -> stopping");
+    if (config.VERBOSE_LOG) println("CONTROLLER: BACK released -> stopping");
     stopSong();
   }
   if (controller.startJustReleased && !controller.startWasChorded) {
-    println("CONTROLLER: START released -> starting");
+    if (config.VERBOSE_LOG) println("CONTROLLER: START released -> starting");
     startSong();
   }
 }
@@ -1213,7 +1229,11 @@ void draw() {
     return;
   }
   // ────────────────────────────────────────────────────────────────────────
-  if (frameCount % 60 == 0) println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
+  // Per-second SCENE/CONTROLLER/FPS heartbeat removed — same info is in the HUD
+  // and on /operator. Set .devverbose in the sketch dir to re-enable.
+  if (config.VERBOSE_LOG && frameCount % 60 == 0) {
+    println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
+  }
   saveDevPreview();
 
   if (setlist != null) setlist.tick();
