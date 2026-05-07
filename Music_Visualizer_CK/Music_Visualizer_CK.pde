@@ -28,6 +28,7 @@ TempoLock        tempoLock;
 Setlist          setlist;
 TextOverlay      textOverlay;
 Recorder         recorder;
+Streamer         streamer;
 MidiBridge       midiBridge;
 HelpOverlay      helpOverlay;
 DisplayManager   displayManager;
@@ -596,6 +597,7 @@ void setup() {
   setlist.load();
   textOverlay    = new TextOverlay();
   recorder       = new Recorder();
+  streamer       = new Streamer();
   midiBridge     = new MidiBridge();
   helpOverlay    = new HelpOverlay();
   displayManager = new DisplayManager();
@@ -633,6 +635,7 @@ void setup() {
 
 void stop() {
   if (recorder != null && recorder.running) recorder.stop();
+  if (streamer != null && streamer.running) streamer.stop();
   if (midiBridge != null && midiBridge.enabled) midiBridge.stop();
   if (frameWatchdog != null) frameWatchdog.stop();
   audio.stop();
@@ -784,6 +787,12 @@ void keyPressed() {
   // F5 toggles mp4 recording (downscaled, ffmpeg-piped).
   if (keyCode == java.awt.event.KeyEvent.VK_F5) {
     if (recorder != null) recorder.toggle();
+    return;
+  }
+
+  // F6 toggles LAN streaming via MediaMTX (WebRTC + HLS, audio included).
+  if (keyCode == java.awt.event.KeyEvent.VK_F6) {
+    if (streamer != null) streamer.toggle();
     return;
   }
 
@@ -1361,6 +1370,7 @@ void draw() {
   // mp4 capture — pipes the post-FX composite to ffmpeg via worker thread.
   // Excludes HUDs and text overlay (they sit on top of the window blit).
   if (recorder != null) recorder.tick(toDisplay);
+  if (streamer != null) streamer.tick(toDisplay);
 
   // Headache-free wash: dim brightness + soft warm tint to round off harshness.
   // Applied in window space so it covers anything in the scene chain. HUD/overlays

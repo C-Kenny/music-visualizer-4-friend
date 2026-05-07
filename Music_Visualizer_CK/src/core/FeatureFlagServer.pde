@@ -581,6 +581,20 @@ class FeatureFlagServer {
     }
     root.setJSONObject("audio", au);
 
+    // Streamer (LAN streaming via MediaMTX)
+    JSONObject st = new JSONObject();
+    if (streamer != null) {
+      st.setBoolean("running", streamer.running);
+      st.setInt("framesPushed", streamer.framesPushed);
+      st.setInt("framesDropped", streamer.framesDropped);
+      st.setLong("startMs", streamer.startMs);
+      st.setString("audioSource", streamer.audioSource == null ? "" : streamer.audioSource);
+      st.setString("error", streamer.lastError == null ? "" : streamer.lastError);
+    } else {
+      st.setBoolean("running", false);
+    }
+    root.setJSONObject("stream", st);
+
     // Phone clients (count only — admin dashboard has full list)
     JSONObject clients = new JSONObject();
     if (clientRegistry != null) {
