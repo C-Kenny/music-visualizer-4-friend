@@ -114,36 +114,44 @@ class Streamer {
     java.util.List<String> args = new java.util.ArrayList<String>();
     args.add("ffmpeg");
     args.add("-loglevel"); args.add("warning");
-    // Video in: rawvideo from sketch
+    // Video in: rawvideo from sketch. Use wallclock timestamps so jittery
+    // sketch frame pacing doesn't desync against the audio capture.
+    args.add("-thread_queue_size"); args.add("2048");
+    args.add("-fflags"); args.add("+genpts+nobuffer");
+    args.add("-use_wallclock_as_timestamps"); args.add("1");
     args.add("-f"); args.add("rawvideo");
     args.add("-pix_fmt"); args.add("argb");
     args.add("-s"); args.add(w + "x" + h);
     args.add("-r"); args.add("" + TARGET_FPS);
     args.add("-i"); args.add("-");
-    // Audio in: pulse sink monitor (system audio output capture)
+    // Audio in: pulse sink monitor (system audio output capture).
     if (!audioSource.isEmpty()) {
       args.add("-f"); args.add("pulse");
-      args.add("-thread_queue_size"); args.add("1024");
+      args.add("-thread_queue_size"); args.add("4096");
+      args.add("-fragment_size"); args.add("960");   // ~5ms @ 48kHz/stereo/s16
       args.add("-i"); args.add(audioSource);
     }
-    // Encode: tuned for ultra-low latency
+    // Encode: smooth low-latency. Lower bitrate + CFR + smaller GOP =
+    // fewer WiFi-drop stalls and faster recovery. Pad audio if late.
+    args.add("-vsync"); args.add("cfr");
     args.add("-c:v"); args.add("libx264");
     args.add("-preset"); args.add("ultrafast");
     args.add("-tune"); args.add("zerolatency");
     args.add("-pix_fmt"); args.add("yuv420p");
-    args.add("-g"); args.add("" + (TARGET_FPS));    // 1s GOP for low LL-HLS lag
-    args.add("-keyint_min"); args.add("" + TARGET_FPS);
-    args.add("-x264-params"); args.add("scenecut=0:nal-hrd=cbr");
-    args.add("-b:v"); args.add("3500k");
-    args.add("-maxrate"); args.add("3500k");
-    args.add("-bufsize"); args.add("3500k");
+    args.add("-g"); args.add("" + (TARGET_FPS / 2));    // 0.5s GOP — fast recovery
+    args.add("-keyint_min"); args.add("" + (TARGET_FPS / 2));
+    args.add("-x264-params"); args.add("scenecut=0:nal-hrd=cbr:bframes=0:rc-lookahead=0:sync-lookahead=0:sliced-threads=1");
+    args.add("-b:v"); args.add("2000k");
+    args.add("-maxrate"); args.add("2000k");
+    args.add("-bufsize"); args.add("1000k");           // half a second of buffer
     if (!audioSource.isEmpty()) {
-      // libopus required for WebRTC playback — AAC works for HLS but is
-      // dropped by browsers' WebRTC stack. Opus covers both.
       args.add("-c:a"); args.add("libopus");
-      args.add("-b:a"); args.add("128k");
+      args.add("-b:a"); args.add("96k");                // 96k opus is transparent
       args.add("-ac"); args.add("2");
       args.add("-ar"); args.add("48000");
+      args.add("-application"); args.add("lowdelay");
+      args.add("-frame_duration"); args.add("20");
+      args.add("-af"); args.add("aresample=async=1:first_pts=0");
     }
     args.add("-f"); args.add("rtsp");
     args.add("-rtsp_transport"); args.add("tcp");
