@@ -93,36 +93,28 @@ operators. A `.deb` package collapses this to a single command.
 Small follow-ups identified at the close of the 2.4.0 release. Grouped by
 effort/payoff so the next session can grab the top of the list and ship.
 
-### Low-effort, high-impact
-- **Admin role-select flicker** — same DOM-rebuild bug the flags dropdown had.
-  `renderClients()` does `tb.innerHTML = ""` every 1.5s, so the per-client role
-  `<select>` closes mid-click. Apply the build-once / sync-values pattern from
-  `index.html` to `admin.html`.
-- **Cancel input poll on auth loss** — `controller.html`'s send loop keeps
-  firing 60Hz fetches between when the cookie/PIN goes invalid and when the
-  page reloads. `clearPinAndReprompt()` should `clearInterval(pollTimer)` (and
-  the stick send interval) before the alert.
-- **Lockdown HUD badge on the visualizer** — when `clientRegistry.lockdownMode`
-  is true, draw a red `LOCKDOWN` pill next to the existing WEB CONTROL badge so
-  the operator sees it at a glance from the stage.
+### Shipped post-2.4.0
+- ~~Admin role-select flicker~~ — 96c10e5
+- ~~Cancel input poll on auth loss~~ — 96c10e5
+- ~~Lockdown HUD badge on the visualizer~~ — 96c10e5
+- ~~Lockdown timed-release~~ — 19c9c6e (5/15/30/60min presets + countdown)
+- ~~Kick cooldown countdown in admin~~ — fca0ba0 (status col + banlist row)
+- ~~PIN rotation button~~ — fca0ba0 + 91ab6ad
+- ~~Score reset hotkey in TableTennis~~ — bf86a27 (R/r resets match)
+- ~~gitignore `crash_log.txt`~~ — already present
+- ~~WS reconnect backoff in `controller.html`~~ — 043d25e (800ms→5s exp)
+- ~~Admin auth attempt rate-limit~~ — ac4e752 (5 wrong → 60s per-IP)
+- ~~WebRTC start-time hang~~ — 4b35a09 (gates on first ontrack, 5s timeout → HLS)
 
-### Small features
-- **Lockdown timed-release** — `/admin/lockdown` accepts an optional `ttlMs`;
-  background timer flips it back off. Useful for "block during set, auto-open
-  for the encore."
-- **Kick cooldown countdown in admin** — clients table shows "kicked, 4m left"
-  per `tempBanIds`/`tempBanIps` so the operator doesn't re-kick by mistake.
-- **PIN rotation button** — admin-side `/admin/pins/rotate-master` to mint a
-  fresh master PIN without restarting the sketch.
-- **Score reset hotkey in TableTennis** — currently the rally counter never
-  resets; expose `R` (or an admin scene action) to zero scores + serve order.
+### Still open
 
-### Hygiene
-- **gitignore `Music_Visualizer_CK/data/crash_log.txt`** — runtime byproduct
-  that shows up dirty after every session.
-- **WS reconnect backoff in `controller.html`** — currently retries every 1s
-  forever after a drop. Cap at ~5s after N attempts to stop hammering a downed
-  visualizer.
-- **Admin auth attempt rate-limit** — `/admin/auth` accepts unlimited token
-  guesses. Add a 5-fail/min lockout per remote IP (mirror what `PinManager`
-  already does for PINs).
+- **Skybox vendoring for .deb** — only `studio_09` ships because
+  `media/skyboxes/` is gitignored. Vendor a CC0 set or build placeholder
+  cubemaps so installed users see *something* in skybox scenes.
+- **Out-of-bounds enclosure (TableTennis 2-bounce rule)** — currently a
+  point fires the moment the ball passes the table edge. Real rule: ball
+  is live until it bounces twice on the floor or hits the back wall.
+  `bounceCount` int per ball, score gate on `>= 2` floor bounces or
+  far-Z exit.
+- **TriggerEngine: more scene wiring** — engine + bass→tunnel zoom in
+  OriginalScene already shipped. Other scenes could opt-in.
