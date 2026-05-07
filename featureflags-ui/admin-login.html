@@ -63,6 +63,7 @@ f.addEventListener("submit", async (e) => {
       return;
     }
     if (r.status === 401) { errEl.textContent = "rejected"; return; }
+    if (r.status === 429) { errEl.textContent = "too many attempts — locked out 60s"; return; }
     errEl.textContent = "error " + r.status;
   } catch (e) {
     errEl.textContent = "network: " + e.message;

@@ -188,6 +188,7 @@ class FeatureFlagServer {
       server.createContext("/admin/pins",        new AdminPinsListHandler());
       server.createContext("/admin/pins/mint",   new AdminPinsMintHandler());
       server.createContext("/admin/pins/revoke", new AdminPinsRevokeHandler());
+      server.createContext("/admin/pins/rotate-master", new AdminPinsRotateMasterHandler());
       server.createContext("/operator.json", new OperatorHandler());
       server.createContext("/admin/stream/toggle", new AdminStreamToggleHandler());
       server.createContext("/", new UiHandler());
@@ -650,6 +651,40 @@ class FeatureFlagServer {
     return h.equals("127.0.0.1") || h.equals("0:0:0:0:0:0:0:1") || h.equals("::1");
   }
 
+  // Per-IP brute-force lockout for /admin/auth. Mirrors PinManager.
+  // 5 wrong tokens → 60s lockout. Localhost (laptop operator) is exempt.
+  class AdminAttemptState { int wrong = 0; long lockUntilMs = 0; }
+  final int  ADMIN_MAX_WRONG  = 5;
+  final long ADMIN_LOCKOUT_MS = 60_000L;
+  ConcurrentHashMap<String, AdminAttemptState> adminAttempts =
+    new ConcurrentHashMap<String, AdminAttemptState>();
+
+  AdminAttemptState adminAttemptState(String ip) {
+    AdminAttemptState st = adminAttempts.get(ip);
+    if (st == null) { st = new AdminAttemptState(); adminAttempts.put(ip, st); }
+    return st;
+  }
+  boolean adminLockedOut(String ip) {
+    AdminAttemptState st = adminAttempts.get(ip);
+    if (st == null) return false;
+    synchronized (st) { return st.lockUntilMs > System.currentTimeMillis(); }
+  }
+  void bumpAdminWrong(String ip) {
+    AdminAttemptState st = adminAttemptState(ip);
+    long now = System.currentTimeMillis();
+    synchronized (st) {
+      st.wrong++;
+      if (st.wrong >= ADMIN_MAX_WRONG) {
+        st.lockUntilMs = now + ADMIN_LOCKOUT_MS;
+        println("[ADMIN] IP " + ip + " locked out for " + (ADMIN_LOCKOUT_MS/1000) + "s");
+      }
+    }
+  }
+  void resetAdminAttempts(String ip) {
+    AdminAttemptState st = adminAttempts.get(ip);
+    if (st != null) synchronized (st) { st.wrong = 0; st.lockUntilMs = 0; }
+  }
+
   boolean adminAuthed(com.sun.net.httpserver.HttpExchange ex) {
     if (isLocalhost(ex)) return true;
     String hdr = ex.getRequestHeaders().getFirst("X-Admin-Token");
@@ -726,16 +761,46 @@ class FeatureFlagServer {
       return "{\"ok\":true}";
     }
   }
+  // Optional auto-release timer. Set when admin posts {enabled:true, ttlMs:N}.
+  // Cancelled on any subsequent /admin/lockdown POST.
+  java.util.concurrent.ScheduledExecutorService lockdownTimer;
+  java.util.concurrent.ScheduledFuture lockdownTimerFuture;
+  volatile long lockdownExpiresAtMs = 0;
+
   class AdminLockdownHandler extends AdminHandlerBase {
     String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
       String m = ex.getRequestMethod();
       if (m.equals("GET")) {
-        return "{\"enabled\":" + clientRegistry.lockdownMode + "}";
+        long remain = lockdownExpiresAtMs > 0 ? Math.max(0, lockdownExpiresAtMs - System.currentTimeMillis()) : 0;
+        return "{\"enabled\":" + clientRegistry.lockdownMode + ",\"remainMs\":" + remain + "}";
       }
       JSONObject o = readJsonBody(ex);
-      clientRegistry.lockdownMode = o.getBoolean("enabled", false);
-      println("[REG] lockdown " + (clientRegistry.lockdownMode ? "ON" : "OFF"));
-      return "{\"enabled\":" + clientRegistry.lockdownMode + "}";
+      boolean enable = o.getBoolean("enabled", false);
+      long ttlMs = 0;
+      try { ttlMs = o.getLong("ttlMs", 0L); } catch (Exception ignore) {}
+      // Always cancel any pending auto-release first.
+      if (lockdownTimerFuture != null) { lockdownTimerFuture.cancel(false); lockdownTimerFuture = null; }
+      lockdownExpiresAtMs = 0;
+      clientRegistry.lockdownMode = enable;
+      if (enable && ttlMs > 0) {
+        if (lockdownTimer == null) {
+          lockdownTimer = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(new java.util.concurrent.ThreadFactory() {
+            public Thread newThread(Runnable r) { Thread t = new Thread(r, "lockdown-timer"); t.setDaemon(true); return t; }
+          });
+        }
+        lockdownExpiresAtMs = System.currentTimeMillis() + ttlMs;
+        final long ttl = ttlMs;
+        lockdownTimerFuture = lockdownTimer.schedule(new Runnable() {
+          public void run() {
+            clientRegistry.lockdownMode = false;
+            lockdownExpiresAtMs = 0;
+            println("[REG] lockdown auto-released after " + (ttl/1000) + "s");
+          }
+        }, ttlMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+      }
+      println("[REG] lockdown " + (clientRegistry.lockdownMode ? "ON" : "OFF") + (ttlMs > 0 ? (" (ttl " + (ttlMs/1000) + "s)") : ""));
+      long remain = lockdownExpiresAtMs > 0 ? Math.max(0, lockdownExpiresAtMs - System.currentTimeMillis()) : 0;
+      return "{\"enabled\":" + clientRegistry.lockdownMode + ",\"remainMs\":" + remain + "}";
     }
   }
   class AdminRoleHandler extends AdminHandlerBase {
@@ -765,6 +830,12 @@ class FeatureFlagServer {
       JSONObject o = readJsonBody(ex);
       pinManager.revoke(o.getString("pin", ""));
       return "{\"ok\":true}";
+    }
+  }
+  class AdminPinsRotateMasterHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      String fresh = pinManager.rotateMaster();
+      return "{\"masterPin\":\"" + fresh + "\"}";
     }
   }
 
@@ -803,6 +874,11 @@ class FeatureFlagServer {
       String m = ex.getRequestMethod();
       if (m.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
       if (!m.equals("POST"))   { ex.sendResponseHeaders(405, -1); ex.close(); return; }
+      String ip = ex.getRemoteAddress().getAddress().getHostAddress();
+      boolean local = isLocalhost(ex);
+      if (!local && adminLockedOut(ip)) {
+        ex.sendResponseHeaders(429, -1); ex.close(); return;
+      }
       try {
         java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
         byte[] chunk = new byte[1024]; int n;
@@ -812,7 +888,11 @@ class FeatureFlagServer {
         String expected  = getAdminToken();
         boolean ok = submitted != null && expected != null && submitted.length() == expected.length()
                   && java.security.MessageDigest.isEqual(submitted.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
-        if (!ok) { ex.sendResponseHeaders(401, -1); ex.close(); return; }
+        if (!ok) {
+          if (!local) bumpAdminWrong(ip);
+          ex.sendResponseHeaders(401, -1); ex.close(); return;
+        }
+        if (!local) resetAdminAttempts(ip);
         ex.getResponseHeaders().add("Set-Cookie",
           "vis_admin=" + expected + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400");
         byte[] body = "{\"ok\":true}".getBytes(StandardCharsets.UTF_8);
