@@ -21,6 +21,7 @@ class HelpOverlay {
     "F3\ttext overlay  (Shift+F3 cycles layout)",
     "F4\tMIDI bridge — scan + open inputs",
     "F5\tstart / stop mp4 recording",
+    "F6 / F7\ttoggle LAN stream (F7 fallback if WM eats F6)",
     "F9\tauto-switcher  (Shift+F9 cycles mode)",
     "",
     "TEMPO + SETLIST\t",
@@ -44,6 +45,10 @@ class HelpOverlay {
     "i\tcontroller guide",
     "m\tmetadata HUD",
     "`\tcode overlay (when scene exposes it)",
+    "",
+    "SCENE-LOCAL\t",
+    "Y\tlive Java console: force reload (scene 50)",
+    "R\ttable tennis: reset scoreboard + serve order",
   };
 
   void draw(int winW, int winH, PFont font) {
