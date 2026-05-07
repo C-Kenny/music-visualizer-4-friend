@@ -131,7 +131,16 @@
       pc.addTransceiver('video', {direction: 'recvonly'});
       pc.addTransceiver('audio', {direction: 'recvonly'});
       const stream = new MediaStream();
-      pc.ontrack = ev => { stream.addTrack(ev.track); v.srcObject = stream; };
+      // Resolves once we actually receive media, not just SDP exchange.
+      // WHEP can return 200 OK and then never deliver packets (publisher
+      // dropped between answer and first RTP); need a real-media gate so
+      // the page doesn't sit on "connecting…" forever.
+      let resolveMedia, mediaArrived = new Promise(r => resolveMedia = r);
+      pc.ontrack = ev => {
+        stream.addTrack(ev.track);
+        v.srcObject = stream;
+        resolveMedia();
+      };
       pc.onconnectionstatechange = () => {
         $('status').textContent = 'webrtc: ' + pc.connectionState;
         const s = pc.connectionState;
@@ -150,6 +159,9 @@
       if (!r.ok) throw new Error('WHEP HTTP ' + r.status);
       const ans = await r.text();
       await pc.setRemoteDescription({type: 'answer', sdp: ans});
+      // 5s window for first ontrack. If no media flows, fall through to HLS.
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('no media in 5s')), 5000));
+      await Promise.race([mediaArrived, timeout]);
       hideCenter();
       setMode('WEBRTC', 'connected (low-latency)');
       noteSuccess();
