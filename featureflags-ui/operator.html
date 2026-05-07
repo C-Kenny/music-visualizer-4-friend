@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizer Operator</title>
+<style>
+  :root {
+    --green: #00ff78; --green-dim: #7affb0; --bg: #000;
+    --border: rgba(0, 255, 120, 0.4);
+    --glow: 0 0 4px rgba(0,255,120,0.7), 0 0 12px rgba(0,255,120,0.25);
+    --red: #ff4444; --amber: #ffb84a;
+  }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--green);
+    font: 13px/1.4 "Courier New", "Consolas", monospace; text-shadow: var(--glow); }
+  .navbar { display:flex; background:var(--green); color:#000; border-bottom:1px solid var(--border); }
+  .navbar a { color:#000; text-decoration:none; padding:8px 16px; font-weight:bold;
+    letter-spacing:0.15em; font-size:13px; border-right:1px solid rgba(0,0,0,0.3); }
+  .navbar a.active { background:#000; color:var(--green); text-shadow:var(--glow); }
+  .wrap { padding: 12px; max-width: 980px; margin: 0 auto; }
+  h2 { letter-spacing:0.2em; font-size:12px; margin: 14px 0 6px; color: var(--green-dim); }
+  .grid { display:grid; gap:12px; grid-template-columns: 1fr 1fr; }
+  .card { border:1px solid var(--border); padding: 10px 12px; background: rgba(0,40,15,0.25); }
+  .big { font-size: 38px; line-height: 1.0; letter-spacing: 0.08em; }
+  .huge { font-size: 56px; line-height: 1.0; letter-spacing: 0.08em; }
+  .label { color: var(--green-dim); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
+  .row { display:flex; justify-content: space-between; gap: 8px; margin: 4px 0; }
+  .pill { display:inline-block; padding: 2px 8px; border:1px solid var(--border);
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .ok      { border-color: var(--green); color: var(--green); }
+  .warn    { border-color: var(--amber); color: var(--amber); text-shadow: 0 0 4px rgba(255,184,74,0.6); }
+  .danger  { border-color: var(--red);   color: var(--red);   text-shadow: 0 0 4px rgba(255,68,68,0.7); }
+  ul { list-style: none; margin: 4px 0; padding: 0; }
+  li { padding: 2px 0; }
+  .stale { opacity: 0.4; }
+  .footer { margin-top: 16px; color: var(--green-dim); font-size: 11px; letter-spacing: 0.1em; }
+  .err { color: var(--red); margin-top: 8px; }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/">FLAGS</a>
+  <a href="/controller.html">CONTROLLER</a>
+  <a href="/admin.html">ADMIN</a>
+  <a href="/operator.html" class="active">OPERATOR</a>
+</nav>
+<div class="wrap" id="root">
+  <div class="grid">
+    <div class="card" id="card-scene">
+      <div class="label">Scene</div>
+      <div class="big" id="scene-name">—</div>
+      <div class="small" id="scene-meta">id ? · ?/?</div>
+      <div class="small" id="song">—</div>
+    </div>
+    <div class="card">
+      <div class="label">FPS · BPM</div>
+      <div class="row">
+        <div>
+          <div class="huge" id="fps">--</div>
+          <div class="small">fps</div>
+        </div>
+        <div style="text-align:right">
+          <div class="huge" id="bpm">--</div>
+          <div class="small" id="bpm-state">unlocked</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Stage state</div>
+      <div class="row"><span>Strobe safety</span><span id="strobe" class="pill warn">?</span></div>
+      <div class="row"><span>Recorder</span><span id="rec" class="pill">?</span></div>
+      <div class="row"><span class="small" id="rec-meta">—</span></div>
+      <div class="row"><span>Phone clients</span><span id="clients" class="pill ok">0</span></div>
+    </div>
+    <div class="card">
+      <div class="label">Setlist</div>
+      <div id="setlist-body"><div class="small">empty</div></div>
+    </div>
+    <div class="card" style="grid-column: 1 / -1">
+      <div class="label">Blacklist (crashed scenes)</div>
+      <div id="blacklist"><div class="small">none — all green</div></div>
+    </div>
+  </div>
+  <div class="footer">
+    <span id="status">connecting…</span>
+    · poll 2 Hz · <a href="/operator" style="color:var(--green-dim)">raw json</a>
+  </div>
+  <div class="err" id="err"></div>
+</div>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  let consecutiveFails = 0;
+  let lastOk = 0;
+
+  function renderClients(n){
+    const el = $('clients');
+    el.textContent = n;
+    el.className = 'pill ' + (n > 0 ? 'ok' : '');
+  }
+  function renderStrobe(on){
+    const el = $('strobe');
+    el.textContent = on ? 'ON' : 'OFF';
+    el.className = 'pill ' + (on ? 'ok' : 'warn');
+  }
+  function renderRec(r){
+    const el = $('rec');
+    if (r.running) {
+      el.textContent = 'REC';
+      el.className = 'pill danger';
+      const elapsed = r.startMs ? Math.floor((Date.now() - r.startMs) / 1000) : 0;
+      const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
+      const ss = String(elapsed%60).padStart(2,'0');
+      $('rec-meta').textContent = mm + ':' + ss + '  written: ' + r.framesWritten + '  dropped: ' + r.framesDropped;
+    } else {
+      el.textContent = 'idle';
+      el.className = 'pill';
+      $('rec-meta').textContent = (r.framesWritten ? ('last: ' + r.framesWritten + ' frames') : '—');
+    }
+  }
+  function renderSetlist(s){
+    const body = $('setlist-body');
+    if (!s || !s.size) { body.innerHTML = '<div class="small">empty — drop setlist.txt in user data dir</div>'; return; }
+    body.innerHTML = '<div class="row"><span>Slot</span><span>' + (s.cursor + 1) + '/' + s.size +
+      (s.autoAdvance ? ' <span class="pill warn">AUTO</span>' : '') + '</span></div>' +
+      '<div class="row"><span class="small">now</span><span class="small">' + escapeHtml(s.now || '—') + '</span></div>' +
+      '<div class="row"><span class="small">next</span><span class="small">' + escapeHtml(s.next || '—') + '</span></div>';
+  }
+  function renderBlacklist(arr){
+    const root = $('blacklist');
+    if (!arr || !arr.length) { root.innerHTML = '<div class="small">none — all green</div>'; return; }
+    root.innerHTML = '<ul>' + arr.map(e =>
+      '<li class="pill danger" style="margin:2px 4px 2px 0">#' + e.id + ' ' + escapeHtml(e.name) + '</li>'
+    ).join('') + '</ul>';
+  }
+  function escapeHtml(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  async function tick(){
+    try {
+      const r = await fetch('/operator', { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      consecutiveFails = 0;
+      lastOk = Date.now();
+      $('err').textContent = '';
+      document.getElementById('root').classList.remove('stale');
+
+      $('scene-name').textContent = j.scene.name || '—';
+      $('scene-meta').textContent = 'id ' + j.scene.id + ' · ' + (j.scene.orderIndex + 1) + '/' + j.scene.orderCount;
+      $('song').textContent = j.scene.song || '—';
+
+      $('fps').textContent = j.fps != null ? j.fps.toFixed(0) : '--';
+      $('bpm').textContent = (j.tempo && j.tempo.locked) ? j.tempo.bpm.toFixed(1) : (j.tempo && j.tempo.bpm ? j.tempo.bpm.toFixed(1) : '--');
+      $('bpm-state').textContent = (j.tempo && j.tempo.locked) ? 'locked' : 'unlocked';
+
+      renderStrobe(!!(j.strobe && j.strobe.safety));
+      renderRec(j.recorder || {});
+      renderSetlist(j.setlist);
+      renderBlacklist(j.blacklist);
+      renderClients(j.clients ? j.clients.total : 0);
+
+      $('status').textContent = 'live · ' + new Date(j.nowMs).toLocaleTimeString();
+    } catch (e) {
+      consecutiveFails++;
+      $('err').textContent = 'fetch failed: ' + e.message + ' (×' + consecutiveFails + ')';
+      if (consecutiveFails > 2) document.getElementById('root').classList.add('stale');
+      $('status').textContent = lastOk ? ('stale · last ok ' + Math.round((Date.now() - lastOk)/1000) + 's ago') : 'no data';
+    }
+  }
+  tick();
+  setInterval(tick, 500);
+})();
+</script>
+</body>
+</html>

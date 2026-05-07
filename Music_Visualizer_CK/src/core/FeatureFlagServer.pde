@@ -188,6 +188,7 @@ class FeatureFlagServer {
       server.createContext("/admin/pins",        new AdminPinsListHandler());
       server.createContext("/admin/pins/mint",   new AdminPinsMintHandler());
       server.createContext("/admin/pins/revoke", new AdminPinsRevokeHandler());
+      server.createContext("/operator", new OperatorHandler());
       server.createContext("/", new UiHandler());
       server.setExecutor(null);
       server.start();
@@ -434,6 +435,113 @@ class FeatureFlagServer {
         OutputStream os = ex.getResponseBody(); os.write(body); os.close();
       }
     }
+  }
+
+  // ---------- Operator dashboard ----------
+
+  // GET /operator → JSON snapshot of stage state for live-show monitoring.
+  // Read-only; no auth required (LAN-bound). Powers operator.html and a future
+  // in-app secondary-display HUD.
+  class OperatorHandler implements com.sun.net.httpserver.HttpHandler {
+    public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
+      ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+      ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,OPTIONS");
+      ex.getResponseHeaders().set("Content-Type", "application/json");
+      String m = ex.getRequestMethod();
+      if (m.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
+      if (!m.equals("GET"))    { ex.sendResponseHeaders(405, -1); ex.close(); return; }
+      try {
+        byte[] body = buildOperatorPayload().getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(200, body.length);
+        OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      } catch (Exception e) {
+        println("[FEATUREFLAGS] /operator error: " + e.getMessage());
+        byte[] body = ("{\"error\":\"" + e.getMessage() + "\"}").getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(500, body.length);
+        OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      }
+    }
+  }
+
+  String buildOperatorPayload() {
+    JSONObject root = new JSONObject();
+    root.setLong("nowMs", System.currentTimeMillis());
+    root.setFloat("fps", frameRate);
+
+    // Scene
+    JSONObject scene = new JSONObject();
+    int curId = config.STATE;
+    scene.setInt("id", curId);
+    scene.setString("name",
+      (sceneSwitcher != null && curId >= 0 && curId < SCENE_COUNT)
+        ? sceneSwitcher.SCENE_NAMES[curId] : "?");
+    scene.setInt("orderIndex", _sceneOrderIndex(curId));
+    scene.setInt("orderCount", SCENE_ORDER.length);
+    scene.setString("song", config.SONG_NAME == null ? "" : config.SONG_NAME);
+    root.setJSONObject("scene", scene);
+
+    // Tempo
+    JSONObject tempo = new JSONObject();
+    tempo.setBoolean("locked", tempoLock != null && tempoLock.isLocked());
+    tempo.setFloat("bpm", tempoLock != null ? tempoLock.bpm : 0);
+    root.setJSONObject("tempo", tempo);
+
+    // Strobe
+    JSONObject strobe = new JSONObject();
+    strobe.setBoolean("safety", strobeSafety != null && strobeSafety.enabled);
+    root.setJSONObject("strobe", strobe);
+
+    // Recorder
+    JSONObject rec = new JSONObject();
+    if (recorder != null) {
+      rec.setBoolean("running", recorder.running);
+      rec.setInt("framesWritten", recorder.framesWritten);
+      rec.setInt("framesDropped", recorder.framesDropped);
+      rec.setLong("startMs", recorder.startMs);
+      rec.setString("path", recorder.outPath == null ? "" : recorder.outPath);
+    } else {
+      rec.setBoolean("running", false);
+    }
+    root.setJSONObject("recorder", rec);
+
+    // Setlist
+    JSONObject sl = new JSONObject();
+    if (setlist != null && setlist.entries != null && setlist.entries.size() > 0) {
+      sl.setInt("cursor", setlist.cursor);
+      sl.setInt("size", setlist.entries.size());
+      sl.setBoolean("autoAdvance", setlist.autoAdvance);
+      sl.setString("now", setlist.nowLabel());
+      sl.setString("next", setlist.nextLabel());
+    } else {
+      sl.setInt("size", 0);
+    }
+    root.setJSONObject("setlist", sl);
+
+    // Blacklist (from SceneGuard)
+    JSONArray bl = new JSONArray();
+    if (sceneGuard != null) {
+      for (int i = 0; i < SCENE_COUNT; i++) {
+        if (sceneGuard.isBlacklisted(i)) {
+          JSONObject e = new JSONObject();
+          e.setInt("id", i);
+          e.setString("name",
+            (sceneSwitcher != null) ? sceneSwitcher.SCENE_NAMES[i] : ("Scene " + i));
+          bl.append(e);
+        }
+      }
+    }
+    root.setJSONArray("blacklist", bl);
+
+    // Phone clients (count only — admin dashboard has full list)
+    JSONObject clients = new JSONObject();
+    if (clientRegistry != null) {
+      clients.setInt("total", clientRegistry.byId.size());
+    } else {
+      clients.setInt("total", 0);
+    }
+    root.setJSONObject("clients", clients);
+
+    return root.toString();
   }
 
   // ---------- Admin ----------

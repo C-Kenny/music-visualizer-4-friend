@@ -67,6 +67,7 @@ Music_Visualizer_CK/scores.txt
 Music_Visualizer_CK/setlist.txt
 Music_Visualizer_CK/text_overlay.txt
 Music_Visualizer_CK/live_shader.glsl
+Music_Visualizer_CK/live_shader.glsl.bak
 
 # Maven test artifacts
 tests/target/maven-status/
