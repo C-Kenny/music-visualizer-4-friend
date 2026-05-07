@@ -66,6 +66,14 @@
       </div>
     </div>
     <div class="card">
+      <div class="label">Audio source</div>
+      <div class="row"><span id="audio-mode" class="pill">?</span><span id="audio-source" style="text-align:right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</span></div>
+      <div style="height: 12px; background: #001a08; border:1px solid var(--border); margin-top:8px; position: relative;">
+        <div id="audio-meter" style="height: 100%; width: 0%; background: var(--green); box-shadow: var(--glow);"></div>
+      </div>
+      <div class="row"><span class="small" id="audio-level">level —</span></div>
+    </div>
+    <div class="card">
       <div class="label">Stage state</div>
       <div class="row"><span>Strobe safety</span><span id="strobe" class="pill warn">?</span></div>
       <div class="row"><span>Recorder</span><span id="rec" class="pill">?</span></div>
@@ -153,6 +161,17 @@
       $('fps').textContent = j.fps != null ? j.fps.toFixed(0) : '--';
       $('bpm').textContent = (j.tempo && j.tempo.locked) ? j.tempo.bpm.toFixed(1) : (j.tempo && j.tempo.bpm ? j.tempo.bpm.toFixed(1) : '--');
       $('bpm-state').textContent = (j.tempo && j.tempo.locked) ? 'locked' : 'unlocked';
+
+      // Audio
+      const a = j.audio || {};
+      const am = $('audio-mode');
+      am.textContent = a.mode || '?';
+      am.className = 'pill ' + (a.mode === 'DEVICE' ? 'ok' : '');
+      $('audio-source').textContent = a.source || '—';
+      const lvl = Math.min(1, (a.levelRms || 0) * 4);
+      $('audio-meter').style.width = (lvl * 100).toFixed(1) + '%';
+      $('audio-meter').style.background = lvl > 0.85 ? 'var(--red)' : (lvl > 0.6 ? 'var(--amber)' : 'var(--green)');
+      $('audio-level').textContent = 'level ' + (a.levelRms || 0).toFixed(3) + (a.playing ? '' : '  · paused');
 
       renderStrobe(!!(j.strobe && j.strobe.safety));
       renderRec(j.recorder || {});

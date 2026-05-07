@@ -538,6 +538,49 @@ class FeatureFlagServer {
     }
     root.setJSONArray("blacklist", bl);
 
+    // Audio source
+    JSONObject au = new JSONObject();
+    if (audio != null) {
+      String mode = audio.isDeviceInput() ? "DEVICE" : "FILE";
+      au.setString("mode", mode);
+      String src = "";
+      if (audio.isDeviceInput()) {
+        if (config != null && config.audioDeviceSelector != null) {
+          src = config.audioDeviceSelector.getSelectedDeviceName();
+        }
+      } else {
+        src = config != null && config.SONG_NAME != null ? config.SONG_NAME : "";
+      }
+      au.setString("source", src);
+      au.setBoolean("playing", config != null && config.SONG_PLAYING);
+      // Cheap level meter from current FFT mix buffer (RMS of left channel)
+      float level = 0;
+      try {
+        if (audio.player != null && audio.player.left != null) {
+          int n = audio.player.left.size();
+          if (n > 0) {
+            float sum = 0;
+            for (int i = 0; i < n; i++) { float v = audio.player.left.get(i); sum += v * v; }
+            level = (float) Math.sqrt(sum / n);
+          }
+        } else if (audio.audioInput != null && audio.audioInput.left != null) {
+          int n = audio.audioInput.left.size();
+          if (n > 0) {
+            float sum = 0;
+            for (int i = 0; i < n; i++) { float v = audio.audioInput.left.get(i); sum += v * v; }
+            level = (float) Math.sqrt(sum / n);
+          }
+        }
+      } catch (Throwable t) { /* best-effort */ }
+      au.setFloat("levelRms", level);
+    } else {
+      au.setString("mode", "?");
+      au.setString("source", "");
+      au.setBoolean("playing", false);
+      au.setFloat("levelRms", 0);
+    }
+    root.setJSONObject("audio", au);
+
     // Phone clients (count only — admin dashboard has full list)
     JSONObject clients = new JSONObject();
     if (clientRegistry != null) {

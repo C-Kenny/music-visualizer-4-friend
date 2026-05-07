@@ -73,8 +73,14 @@ void loadSongToVisualize() {
     config.SONG_NAME = "Live Audio: " + config.audioDeviceSelector.getSelectedDeviceName();
     
     if (audio.audioInput == null) {
-      System.err.println("[FATAL] Could not initialize audio device input. Exiting.");
-      exit();
+      System.err.println("[Audio] Device init failed — falling back to FILE mode so the show keeps running.");
+      config.AUDIO_INPUT_MODE = "FILE";
+      audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
+      config.SONG_PLAYING = (audio.player != null);
+      if (config.SONG_TO_VISUALIZE != null) {
+        config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
+      }
+      return;
     }
     
     // Note: DropPredictor cannot scan live audio (it's real-time, not seekable)
