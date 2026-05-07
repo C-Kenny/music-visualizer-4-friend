@@ -48,7 +48,7 @@
     <div id="centerText">connecting…</div>
     <div class="hint" id="centerHint"></div>
     <div class="url-box" id="urlBox" style="display:none">
-      <div class="qr" id="qr"></div>
+      <img class="qr" id="qr" alt="QR" width="180" height="180">
       <div>
         <div class="url-text" id="urlText">—</div>
         <div class="url-hint">scan with phone or type URL into TV browser</div>
@@ -182,12 +182,15 @@
     $('urlText').textContent = url;
     $('urlBox').style.display = 'flex';
     try {
-      const qr = $('qr');
-      qr.innerHTML = '';
-      if (window.QRCode) {
-        new QRCode(qr, { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M });
+      if (window.qrcode) {
+        const q = qrcode(0, 'M');
+        q.addData(url);
+        q.make();
+        $('qr').src = q.createDataURL(6, 4);
+      } else {
+        $('qr').alt = url;
       }
-    } catch(_){}
+    } catch(e){ $('qr').alt = 'QR err: ' + e.message; }
   }
 
   async function start(){

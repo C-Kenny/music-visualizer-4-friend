@@ -806,9 +806,10 @@ void keyPressed() {
     return;
   }
 
-  // F6 toggles LAN streaming via MediaMTX (WebRTC + HLS, audio included).
-  if (keyCode == java.awt.event.KeyEvent.VK_F6) {
-    println("[STREAM] F6 pressed");
+  // Stream toggle: F6 OR `~` (tilde) — F6 gets eaten by some WMs (GNOME).
+  // `~` is shift+backtick. If both fail, use the operator dashboard button.
+  if (keyCode == java.awt.event.KeyEvent.VK_F6 || key == '~') {
+    println("[STREAM] toggle hotkey pressed (key=" + key + " code=" + keyCode + ")");
     if (streamer != null) streamer.toggle();
     else                  println("[STREAM] streamer is null!");
     return;
