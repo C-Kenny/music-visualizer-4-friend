@@ -86,38 +86,67 @@ class ShaderScene implements IScene {
   }
 
   void drawErrorBanner(PGraphics pg) {
-    if (!console.hasError()) {
-      // Brief green flash on successful reload
-      long since = millis() - console.lastReloadMs;
-      if (console.reloadCount > 0 && since < 1200) {
-        pg.pushStyle();
-        float a = map(since, 0, 1200, 220, 0);
-        pg.noStroke();
-        pg.fill(0, 200, 0, a);
-        pg.rect(0, pg.height - 36 * uiScale(), pg.width, 36 * uiScale());
-        pg.fill(0, a);
-        pg.textAlign(CENTER, CENTER);
-        pg.textSize(14 * uiScale());
-        pg.text("shader reloaded #" + console.reloadCount, pg.width / 2.0, pg.height - 18 * uiScale());
-        pg.popStyle();
-      }
-      return;
+    float scale = uiScale();
+    long  since = millis() - console.lastReloadMs;
+    boolean justReloaded = console.reloadCount > 0 && since < 1500 && !console.hasError();
+
+    // Top-right persistent status pill — always visible, never covered by song
+    // name / ticker / setlist badge at bottom edge.
+    pg.pushStyle();
+    float ts = 14 * scale;
+    pg.textSize(ts);
+    String pillText = console.hasError()
+        ? ("GLSL ERR  #" + console.reloadCount)
+        : ("GLSL OK  #" + console.reloadCount);
+    float tw = pg.textWidth(pillText);
+    float padX = 10 * scale, padY = 6 * scale;
+    float pillW = tw + padX * 2;
+    float pillH = ts + padY * 2;
+    float pillX = pg.width - pillW - 12 * scale;
+    float pillY = 12 * scale;
+
+    int bg, border, fg;
+    if (console.hasError()) {
+      bg = color(80, 0, 0, 230); border = color(255, 80, 80); fg = color(255, 220, 220);
+    } else if (justReloaded) {
+      float t = 1.0 - (since / 1500.0);
+      bg = color(0, lerp(60, 200, t), 0, 230); border = color(120, 255, 120); fg = color(255);
+    } else {
+      bg = color(0, 60, 0, 200); border = color(80, 200, 80, 180); fg = color(220, 255, 220);
     }
+    pg.noStroke();
+    pg.fill(bg);
+    pg.rect(pillX, pillY, pillW, pillH, 6);
+    pg.stroke(border);
+    pg.strokeWeight(2);
+    pg.noFill();
+    pg.rect(pillX, pillY, pillW, pillH, 6);
+    pg.noStroke();
+    pg.fill(fg);
+    pg.textAlign(LEFT, TOP);
+    pg.text(pillText, pillX + padX, pillY + padY - 1);
+    pg.popStyle();
+
+    // Full error banner across the TOP — top edge is mostly clear (only scene
+    // HUD top-left, which we offset around).
+    if (!console.hasError()) return;
+
     pg.pushStyle();
     String msg = console.errorMessage();
     String[] lines = split(msg, '\n');
-    float ts = 13 * uiScale();
-    float lh = ts * 1.3;
-    float h  = lh * (lines.length + 1) + 16;
+    float ets = 13 * scale;
+    float lh  = ets * 1.3;
+    float h   = lh * (lines.length + 1) + 16;
+    float y   = pillY + pillH + 8 * scale;
     pg.noStroke();
-    pg.fill(80, 0, 0, 230);
-    pg.rect(0, pg.height - h, pg.width, h);
+    pg.fill(80, 0, 0, 235);
+    pg.rect(0, y, pg.width, h);
     pg.fill(255, 200, 200);
     pg.textAlign(LEFT, TOP);
-    pg.textSize(ts);
-    pg.text("GLSL ERROR — " + console.filePath(), 12, pg.height - h + 6);
+    pg.textSize(ets);
+    pg.text("GLSL ERROR — " + console.filePath(), 12, y + 6);
     for (int i = 0; i < lines.length; i++) {
-      pg.text(lines[i], 12, pg.height - h + 6 + lh * (i + 1));
+      pg.text(lines[i], 12, y + 6 + lh * (i + 1));
     }
     pg.popStyle();
   }
