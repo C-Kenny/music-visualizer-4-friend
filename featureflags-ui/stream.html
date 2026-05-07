@@ -82,6 +82,32 @@
   let pc = null;
   let hls = null;
   let mode = '';
+  let reconnectAttempt = 0;
+  let reconnectTimer = null;
+  let manualStop = false;     // user-initiated retry suppresses auto-reconnect
+
+  function teardown(){
+    try { if (pc) pc.close(); } catch(_){}
+    pc = null;
+    try { if (hls) hls.destroy(); } catch(_){}
+    hls = null;
+  }
+
+  function scheduleReconnect(reason){
+    if (manualStop) return;
+    if (reconnectTimer) return;
+    reconnectAttempt++;
+    const delay = Math.min(5000, 800 * Math.pow(1.6, reconnectAttempt - 1));
+    showCenter('reconnecting…', (reason || '') + ' · attempt #' + reconnectAttempt + ' in ' + Math.round(delay) + 'ms');
+    setMode('OFFLINE', 'reconnecting #' + reconnectAttempt);
+    reconnectTimer = setTimeout(async () => {
+      reconnectTimer = null;
+      teardown();
+      await start();
+    }, delay);
+  }
+
+  function noteSuccess(){ reconnectAttempt = 0; }
 
   function showCenter(text, hint, showRetry){
     $('center').style.display = 'flex';
@@ -108,8 +134,10 @@
       pc.ontrack = ev => { stream.addTrack(ev.track); v.srcObject = stream; };
       pc.onconnectionstatechange = () => {
         $('status').textContent = 'webrtc: ' + pc.connectionState;
-        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          fallbackToHLS('webrtc disconnected');
+        const s = pc.connectionState;
+        if (s === 'failed' || s === 'disconnected' || s === 'closed') {
+          // Fast retry — broken pipe / publisher restart / network blip
+          scheduleReconnect('webrtc ' + s);
         }
       };
       const offer = await pc.createOffer();
@@ -124,6 +152,7 @@
       await pc.setRemoteDescription({type: 'answer', sdp: ans});
       hideCenter();
       setMode('WEBRTC', 'connected (low-latency)');
+      noteSuccess();
       return true;
     } catch (e) {
       console.warn('WebRTC failed:', e);
@@ -137,9 +166,12 @@
     // Native HLS (Safari, Tizen, Samsung). Try first — lowest overhead.
     if (v.canPlayType('application/vnd.apple.mpegurl')) {
       v.src = HLS_URL;
+      v.onerror = () => scheduleReconnect('hls element error');
+      v.onstalled = () => scheduleReconnect('hls stalled');
       try { await v.play(); } catch(e){ /* autoplay may need tap */ }
       hideCenter();
       setMode('HLS', 'native HLS (~1-3s lag)');
+      noteSuccess();
       return true;
     }
     // hls.js fallback — load from CDN on first need
@@ -156,9 +188,14 @@
           hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) rej(data); });
           setTimeout(rej, 8000);
         });
+        // Fatal errors after manifest parse → reconnect
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data && data.fatal) scheduleReconnect('hls fatal: ' + data.type);
+        });
         try { await v.play(); } catch(e) {}
         hideCenter();
         setMode('HLS', 'hls.js (~1-3s lag)');
+        noteSuccess();
         return true;
       }
     } catch (e) {
@@ -182,6 +219,7 @@
     if (await tryHLS()) return;
     showCenter('no stream available', 'is the sketch streaming? press F6 to start.', true);
     setMode('OFFLINE', '');
+    scheduleReconnect('no stream');
   }
 
   function renderUrlBox(){
@@ -210,7 +248,10 @@
   }
 
   $('retryBtn').addEventListener('click', () => {
-    if (hls) { try { hls.destroy(); } catch(_){} hls = null; }
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    reconnectAttempt = 0;
+    manualStop = false;
+    teardown();
     start();
   });
 
@@ -248,7 +289,14 @@
     $('fsBtn').textContent = isFullscreen() ? '⛶ EXIT FS' : '⛶ FULLSCREEN';
   });
 
-  $('urlHint').textContent = `${host}`;
+  // When the tab comes back to foreground after being hidden (phone unlocked,
+  // browser tab refocused), kick a reconnect — backgrounded WebRTC sessions
+  // usually die.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && (!pc || pc.connectionState !== 'connected') && !v.duration) {
+      scheduleReconnect('tab visible');
+    }
+  });
 
   start();
 })();
