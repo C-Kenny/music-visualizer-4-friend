@@ -57,7 +57,11 @@ f.addEventListener("submit", async (e) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
     });
-    if (r.status === 200) { location.href = "/admin.html"; return; }
+    if (r.status === 200) {
+      const next = new URLSearchParams(location.search).get("next") || "/admin.html";
+      location.href = next;
+      return;
+    }
     if (r.status === 401) { errEl.textContent = "rejected"; return; }
     errEl.textContent = "error " + r.status;
   } catch (e) {

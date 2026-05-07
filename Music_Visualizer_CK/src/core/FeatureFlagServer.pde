@@ -234,7 +234,8 @@ class FeatureFlagServer {
     public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
       ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
       ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
+      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type,X-Admin-Token");
+      ex.getResponseHeaders().set("Access-Control-Allow-Credentials", "true");
       ex.getResponseHeaders().set("Content-Type", "application/json");
 
       String method = ex.getRequestMethod();
@@ -248,6 +249,12 @@ class FeatureFlagServer {
           return;
         }
         if (method.equals("POST")) {
+          if (!adminAuthed(ex)) {
+            byte[] body = "{\"error\":\"admin auth required\"}".getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(401, body.length);
+            OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+            return;
+          }
           byte[] in = readAll(ex.getRequestBody());
           String bodyStr = new String(in, StandardCharsets.UTF_8);
           JSONObject patch = parseJSONObject(bodyStr);
@@ -277,12 +284,13 @@ class FeatureFlagServer {
     }
   }
 
-  // GET /scene → list groups + current. POST /scene {"id":N} → switch.
+  // GET /scene → list groups + current. POST /scene {"id":N} → switch (admin only).
   class SceneHandler implements com.sun.net.httpserver.HttpHandler {
     public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
       ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
       ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
+      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type,X-Admin-Token");
+      ex.getResponseHeaders().set("Access-Control-Allow-Credentials", "true");
       ex.getResponseHeaders().set("Content-Type", "application/json");
 
       String method = ex.getRequestMethod();
@@ -290,6 +298,12 @@ class FeatureFlagServer {
 
       try {
         if (method.equals("POST")) {
+          if (!adminAuthed(ex)) {
+            byte[] body = "{\"error\":\"admin auth required\"}".getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(401, body.length);
+            OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+            return;
+          }
           byte[] in = readSceneBody(ex.getRequestBody());
           JSONObject patch = parseJSONObject(new String(in, StandardCharsets.UTF_8));
           if (patch == null || !patch.hasKey("id")) throw new RuntimeException("missing id");

@@ -270,11 +270,23 @@ async function fetchFlags() {
 async function postFlag(key, val) {
   const r = await fetch(ENDPOINT, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ [key]: val }),
   });
+  if (r.status === 401) { handle401(); throw new Error("admin login required"); }
   if (!r.ok) throw new Error("HTTP " + r.status);
   return r.json();
+}
+
+let _401Pending = false;
+function handle401() {
+  if (_401Pending) return;
+  _401Pending = true;
+  if (confirm("Admin login required to change settings. Go to login page?")) {
+    location.href = "/admin-login.html?next=/";
+  }
+  setTimeout(() => { _401Pending = false; }, 5000);
 }
 
 // Build DOM only when the schema shape changes; otherwise sync values in place.
@@ -389,9 +401,11 @@ async function fetchScenes() {
 async function postScene(id) {
   const r = await fetch(SCENE_ENDPOINT, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id }),
   });
+  if (r.status === 401) { handle401(); throw new Error("admin login required"); }
   if (!r.ok) throw new Error("HTTP " + r.status);
   return r.json();
 }
