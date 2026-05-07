@@ -260,6 +260,28 @@ class ClientRegistry {
     k = 0; for (String s : bannedIps) bIps.setString(k++, s);
     root.setJSONArray("bannedIds", bIds);
     root.setJSONArray("bannedIps", bIps);
+    JSONArray tb = new JSONArray();
+    int t = 0;
+    for (java.util.Map.Entry<String, Long> e : tempBanIds.entrySet()) {
+      long remain = e.getValue() - now;
+      if (remain <= 0) continue;
+      JSONObject o = new JSONObject();
+      o.setString("clientId", e.getKey());
+      o.setLong("remainMs", remain);
+      tb.setJSONObject(t++, o);
+    }
+    JSONArray tbIp = new JSONArray();
+    int u = 0;
+    for (java.util.Map.Entry<String, Long> e : tempBanIps.entrySet()) {
+      long remain = e.getValue() - now;
+      if (remain <= 0) continue;
+      JSONObject o = new JSONObject();
+      o.setString("ip", e.getKey());
+      o.setLong("remainMs", remain);
+      tbIp.setJSONObject(u++, o);
+    }
+    root.setJSONArray("tempBanIds", tb);
+    root.setJSONArray("tempBanIps", tbIp);
     return root;
   }
 
