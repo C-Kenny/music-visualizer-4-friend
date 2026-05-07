@@ -138,10 +138,12 @@ class Streamer {
     args.add("-maxrate"); args.add("3500k");
     args.add("-bufsize"); args.add("3500k");
     if (!audioSource.isEmpty()) {
-      args.add("-c:a"); args.add("aac");
+      // libopus required for WebRTC playback — AAC works for HLS but is
+      // dropped by browsers' WebRTC stack. Opus covers both.
+      args.add("-c:a"); args.add("libopus");
       args.add("-b:a"); args.add("128k");
       args.add("-ac"); args.add("2");
-      args.add("-ar"); args.add("44100");
+      args.add("-ar"); args.add("48000");
     }
     args.add("-f"); args.add("rtsp");
     args.add("-rtsp_transport"); args.add("tcp");
@@ -246,6 +248,14 @@ class Streamer {
   // Called every frame from main draw().
   void tick(PGraphics src) {
     if (!running || src == null) return;
+    // Detect dead ffmpeg (broken pipe, MediaMTX evicted publisher, etc.) and
+    // stop cleanly so the operator dashboard surfaces the failure.
+    if (ffmpeg != null && !ffmpeg.isAlive()) {
+      lastError = "ffmpeg exited (code " + ffmpeg.exitValue() + ") — see stream_ffmpeg.log";
+      println("[STREAM] " + lastError);
+      stop();
+      return;
+    }
     long now = System.currentTimeMillis();
     if (now - lastFrameMs < FRAME_INTERVAL_MS) return;
     lastFrameMs = now;
