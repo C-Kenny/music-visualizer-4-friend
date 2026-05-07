@@ -29,6 +29,10 @@
     padding:6px 12px; font:12px "Courier New", monospace; text-shadow:var(--glow); cursor:pointer; pointer-events: auto; }
   button:hover { background:var(--green); color:#000; text-shadow:none; }
   .center-msg { position:absolute; inset: 0; display:flex; align-items:center; justify-content:center; flex-direction: column; gap: 16px; text-align:center; padding: 20px; }
+  .url-box { display:flex; gap:24px; align-items:center; padding: 16px; border:1px solid var(--border); background: rgba(0,40,15,0.4); border-radius: 8px; max-width: 90%; }
+  .url-box .qr { padding: 6px; background: #fff; border: 1px solid var(--border); }
+  .url-box .url-text { font-size: 22px; letter-spacing: 0.05em; color: var(--green); }
+  .url-box .url-hint { font-size: 12px; color: var(--green-dim); margin-top: 8px; letter-spacing: 0.1em; }
 </style>
 </head>
 <body>
@@ -43,6 +47,13 @@
   <div class="center-msg" id="center" style="display:none">
     <div id="centerText">connecting…</div>
     <div class="hint" id="centerHint"></div>
+    <div class="url-box" id="urlBox" style="display:none">
+      <div class="qr" id="qr"></div>
+      <div>
+        <div class="url-text" id="urlText">—</div>
+        <div class="url-hint">scan with phone or type URL into TV browser</div>
+      </div>
+    </div>
     <button id="retryBtn" style="display:none">retry</button>
     <button id="unmuteBtn" style="display:none">tap to unmute</button>
   </div>
@@ -51,6 +62,7 @@
     <span class="hint" id="urlHint"></span>
   </div>
 </div>
+<script src="/qrcode.min.js"></script>
 <script>
 (function(){
   const $ = id => document.getElementById(id);
@@ -165,8 +177,22 @@
     setMode('OFFLINE', '');
   }
 
+  function renderUrlBox(){
+    const url = location.protocol + '//' + location.host + '/stream.html';
+    $('urlText').textContent = url;
+    $('urlBox').style.display = 'flex';
+    try {
+      const qr = $('qr');
+      qr.innerHTML = '';
+      if (window.QRCode) {
+        new QRCode(qr, { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M });
+      }
+    } catch(_){}
+  }
+
   async function start(){
     showCenter('connecting…', `host: ${host}`);
+    renderUrlBox();
     if (await tryWebRTC()) {
       $('unmuteBtn').style.display = 'inline-block';
       return;

@@ -1403,6 +1403,7 @@ void draw() {
     if (tempoLock != null && (tempoLock.isLocked() || tempoLock.taps.size() > 0)) nextHudY = drawTempoLockBadge(nextHudY);
     if (setlist != null && setlist.isActive()) nextHudY = drawSetlistBadge(nextHudY);
     if (recorder != null && recorder.running)  nextHudY = drawRecorderBadge(nextHudY);
+    if (streamer != null && streamer.running)  nextHudY = drawStreamerBadge(nextHudY);
     if (midiBridge != null && midiBridge.enabled) nextHudY = drawMidiBadge(nextHudY);
     if (sceneGuard != null) {
       ArrayList<String> bl = sceneGuard.blacklistedNames();
@@ -1827,6 +1828,67 @@ float drawMidiBadge(float startY) {
   text(line1, boxX + pad, boxY + pad);
   fill(200, 240, 255);
   text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawStreamerBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts  = 13 * uiScale();
+  float tsBig = 18 * uiScale();
+  textAlign(LEFT, TOP);
+
+  String streamUrl = "http://?:8080/stream.html";
+  if (featureFlagServer != null && featureFlagServer.lanUrls != null && featureFlagServer.lanUrls.size() > 0) {
+    String base = featureFlagServer.lanUrls.get(0);
+    if (base.endsWith("/")) streamUrl = base + "stream.html";
+    else                    streamUrl = base + "/stream.html";
+  }
+
+  String line1 = "[STREAM]  F6=stop";
+  String line2 = streamer.statusLabel();
+  String line3 = "TV / phone:";
+  String line4 = streamUrl;
+
+  float pad      = 10 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float bigH     = tsBig + 4;
+  textSize(ts);
+  float w1 = textWidth(line1), w2 = textWidth(line2), w3 = textWidth(line3);
+  textSize(tsBig);
+  float w4 = textWidth(line4);
+  float boxW = max(max(w1, w2), max(w3, w4)) + pad * 2;
+  float boxH = lineH * 3 + bigH + pad + 8;
+  float boxX = width  - outerPad - boxW;
+  float boxY = startY - boxH;
+
+  noStroke();
+  fill(0, 200);
+  rect(boxX, boxY, boxW, boxH, 6);
+  stroke(80, 220, 120);
+  strokeWeight(1.5);
+  noFill();
+  rect(boxX, boxY, boxW, boxH, 6);
+
+  // Pulsing green dot to signal "live"
+  noStroke();
+  float pulse = 0.6 + 0.4 * sin(millis() * 0.005);
+  fill(50, 255 * pulse, 120);
+  ellipse(boxX + pad + 5, boxY + pad + ts * 0.5, 8, 8);
+
+  textSize(ts);
+  fill(180, 255, 200);
+  text(line1, boxX + pad + 16, boxY + pad);
+  fill(220, 255, 230);
+  text(line2, boxX + pad, boxY + pad + lineH);
+  fill(140, 220, 160);
+  text(line3, boxX + pad, boxY + pad + lineH * 2 + 4);
+  textSize(tsBig);
+  fill(120, 255, 180);
+  text(line4, boxX + pad, boxY + pad + lineH * 3 + 4);
 
   popStyle();
   return boxY - 6 * uiScale();
