@@ -89,6 +89,7 @@
       <div class="row"><span>Recorder</span><span id="rec" class="pill">?</span></div>
       <div class="row"><span class="small" id="rec-meta">—</span></div>
       <div class="row"><span>Phone clients</span><span id="clients" class="pill ok">0</span></div>
+      <div class="row"><span>Lockdown</span><span id="lockdown" class="pill">off</span></div>
     </div>
     <div class="card">
       <div class="label">Setlist</div>
@@ -115,6 +116,18 @@
     const el = $('clients');
     el.textContent = n;
     el.className = 'pill ' + (n > 0 ? 'ok' : '');
+  }
+  function renderLockdown(on, remainMs){
+    const el = $('lockdown');
+    if (!on) { el.textContent = 'off'; el.className = 'pill'; return; }
+    if (remainMs > 0) {
+      const s = Math.ceil(remainMs / 1000);
+      const m = Math.floor(s / 60), r = s % 60;
+      el.textContent = 'ON · ' + (m > 0 ? (m + 'm ' + r + 's') : (r + 's'));
+    } else {
+      el.textContent = 'ON';
+    }
+    el.className = 'pill warn';
   }
   function renderStrobe(on){
     const el = $('strobe');
@@ -209,6 +222,7 @@
       renderSetlist(j.setlist);
       renderBlacklist(j.blacklist);
       renderClients(j.clients ? j.clients.total : 0);
+      renderLockdown(j.clients && j.clients.lockdown, (j.clients && j.clients.lockdownRemainMs) || 0);
 
       $('status').textContent = 'live · ' + new Date(j.nowMs).toLocaleTimeString();
     } catch (e) {

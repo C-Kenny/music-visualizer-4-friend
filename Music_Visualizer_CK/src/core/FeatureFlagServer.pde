@@ -615,8 +615,13 @@ class FeatureFlagServer {
     JSONObject clients = new JSONObject();
     if (clientRegistry != null) {
       clients.setInt("total", clientRegistry.byId.size());
+      clients.setBoolean("lockdown", clientRegistry.lockdownMode);
+      long remain = lockdownExpiresAtMs > 0 ? Math.max(0, lockdownExpiresAtMs - System.currentTimeMillis()) : 0;
+      clients.setLong("lockdownRemainMs", remain);
     } else {
       clients.setInt("total", 0);
+      clients.setBoolean("lockdown", false);
+      clients.setLong("lockdownRemainMs", 0);
     }
     root.setJSONObject("clients", clients);
 
