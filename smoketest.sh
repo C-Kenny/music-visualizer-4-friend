@@ -54,6 +54,10 @@ fi
 touch "$TRIGGER"
 touch "$DEVMODE"
 
+# Pin user-data dir to the build dir so SmokeTest's userDataPath(".smoketest_result")
+# lands at $RESULT instead of XDG. Mirrors run.sh's behavior.
+export MV_USER_DATA_DIR="$(cd "$BUILD_DIR" && pwd)"
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 echo "${BOLD}Running smoke test across refactored structure…${RESET}"
 echo
