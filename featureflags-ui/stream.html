@@ -173,6 +173,25 @@
     }
   }
 
+  // Resolves on first real playback (loadeddata + playing), rejects after timeoutMs.
+  // Manifest parse / src assignment isn't enough — segments can fail silently.
+  function waitForFirstFrame(timeoutMs){
+    return new Promise((res, rej) => {
+      let done = false;
+      const onPlaying = () => { if (done) return; done = true; cleanup(); res(); };
+      const onError   = () => { if (done) return; done = true; cleanup(); rej(new Error('video element error')); };
+      const cleanup = () => {
+        v.removeEventListener('playing', onPlaying);
+        v.removeEventListener('loadeddata', onPlaying);
+        v.removeEventListener('error', onError);
+      };
+      v.addEventListener('playing', onPlaying, {once:true});
+      v.addEventListener('loadeddata', onPlaying, {once:true});
+      v.addEventListener('error', onError, {once:true});
+      setTimeout(() => { if (done) return; done = true; cleanup(); rej(new Error('no media in ' + timeoutMs + 'ms')); }, timeoutMs);
+    });
+  }
+
   async function tryHLS(){
     setMode('HLS', 'loading…');
     // Native HLS (Safari, Tizen, Samsung). Try first — lowest overhead.
@@ -181,6 +200,14 @@
       v.onerror = () => scheduleReconnect('hls element error');
       v.onstalled = () => scheduleReconnect('hls stalled');
       try { await v.play(); } catch(e){ /* autoplay may need tap */ }
+      try {
+        await waitForFirstFrame(8000);
+      } catch (e) {
+        console.warn('native HLS no media:', e);
+        v.removeAttribute('src');
+        v.load();
+        return false;
+      }
       hideCenter();
       setMode('HLS', 'native HLS (~1-3s lag)');
       noteSuccess();
@@ -205,6 +232,14 @@
           if (data && data.fatal) scheduleReconnect('hls fatal: ' + data.type);
         });
         try { await v.play(); } catch(e) {}
+        try {
+          await waitForFirstFrame(8000);
+        } catch (e) {
+          console.warn('hls.js no media:', e);
+          try { hls.destroy(); } catch(_){}
+          hls = null;
+          return false;
+        }
         hideCenter();
         setMode('HLS', 'hls.js (~1-3s lag)');
         noteSuccess();
