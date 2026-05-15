@@ -187,10 +187,151 @@ jobs:
           path: dist/*.deb
 
       # ── Attach to GitHub Release on tag push ─────────────────────────────
+      # Project uses both `vX.Y.Z` (early) and bare `X.Y.Z` (2.3+) tags, so
+      # match any tag ref, not just `v*`.
       - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: |
             MusicVisualizer-${{ matrix.artifact }}.*
             dist/*.deb
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Mirror release assets to GitLab + Codeberg.
+  #
+  # Pull-mirroring on the GitLab/Codeberg side already syncs git refs; this
+  # job exists to copy the *binary release assets* (which only live on the
+  # source forge's release API) to the mirrors so the project survives a
+  # GH takedown without losing downloadable artifacts.
+  #
+  # No-op (skipped cleanly) if the corresponding secrets/vars are unset, so
+  # this stays green for contributors / forks that haven't wired mirrors.
+  # ══════════════════════════════════════════════════════════════════════════
+  mirror-release:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.deb' \) -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Mirror to GitLab
+        if: vars.GITLAB_PROJECT_PATH != ''
+        env:
+          TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          PROJECT: ${{ vars.GITLAB_PROJECT_PATH }}
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "GITLAB_TOKEN secret not set — skipping GitLab mirror"
+            exit 0
+          fi
+          # URL-encode the project path for the API
+          PROJECT_ENC=$(echo -n "$PROJECT" | jq -sRr @uri)
+          API="https://gitlab.com/api/v4/projects/$PROJECT_ENC"
+          AUTH=(-H "PRIVATE-TOKEN: $TOKEN")
+
+          # 1. Upload each asset, collect URLs
+          ASSET_JSON='['
+          first=1
+          for f in release-assets/*; do
+            name=$(basename "$f")
+            echo "Uploading $name to GitLab…"
+            resp=$(curl -sS "${AUTH[@]}" --fail \
+              --form "file=@$f" "$API/uploads")
+            url=$(echo "$resp" | jq -r .url)
+            full="https://gitlab.com/$PROJECT$url"
+            [ $first -eq 1 ] || ASSET_JSON+=','
+            ASSET_JSON+=$(jq -n --arg n "$name" --arg u "$full" \
+              '{name:$n, url:$u, link_type:"package"}')
+            first=0
+          done
+          ASSET_JSON+=']'
+
+          # 2. Create or update the release
+          BODY=$(jq -n --arg tag "$TAG" --arg name "$TAG" \
+                       --arg desc "Mirror of github.com/${{ github.repository }} release $TAG" \
+                       --argjson links "$ASSET_JSON" \
+                       '{tag_name:$tag, name:$name, description:$desc, assets:{links:$links}}')
+          # POST first; if already exists, PUT.
+          code=$(curl -sS -o /tmp/r.json -w '%{http_code}' "${AUTH[@]}" \
+            -H 'Content-Type: application/json' \
+            -X POST "$API/releases" -d "$BODY")
+          if [ "$code" = "409" ] || [ "$code" = "422" ]; then
+            echo "Release exists, updating…"
+            curl -sS --fail "${AUTH[@]}" -H 'Content-Type: application/json' \
+              -X PUT "$API/releases/$TAG" -d "$BODY"
+          elif [ "$code" -ge 300 ]; then
+            echo "GitLab release create failed: $code"
+            cat /tmp/r.json
+            exit 1
+          fi
+          echo "GitLab release $TAG mirrored."
+
+      - name: Mirror to Codeberg
+        if: vars.CODEBERG_REPO_PATH != ''
+        env:
+          TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          REPO: ${{ vars.CODEBERG_REPO_PATH }}
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "CODEBERG_TOKEN secret not set — skipping Codeberg mirror"
+            exit 0
+          fi
+          API="https://codeberg.org/api/v1/repos/$REPO"
+          AUTH=(-H "Authorization: token $TOKEN")
+
+          # 1. Find or create the release. Forgejo needs the tag to exist on
+          #    its side first — pull-mirror should have synced it, but allow
+          #    a short retry window in case the poll hasn't fired yet.
+          for i in 1 2 3 4 5; do
+            code=$(curl -sS -o /tmp/r.json -w '%{http_code}' "${AUTH[@]}" \
+              "$API/tags/$TAG")
+            [ "$code" = "200" ] && break
+            echo "Tag $TAG not on Codeberg yet (try $i/5), waiting 30s…"
+            sleep 30
+          done
+          if [ "$code" != "200" ]; then
+            echo "Tag $TAG never appeared on Codeberg — pull-mirror likely not configured."
+            exit 1
+          fi
+
+          BODY=$(jq -n --arg tag "$TAG" --arg name "$TAG" \
+                       --arg body "Mirror of github.com/${{ github.repository }} release $TAG" \
+                       '{tag_name:$tag, name:$name, body:$body, draft:false, prerelease:false}')
+          code=$(curl -sS -o /tmp/r.json -w '%{http_code}' "${AUTH[@]}" \
+            -H 'Content-Type: application/json' \
+            -X POST "$API/releases" -d "$BODY")
+          if [ "$code" = "409" ]; then
+            echo "Release exists, fetching id…"
+            REL_ID=$(curl -sS "${AUTH[@]}" "$API/releases/tags/$TAG" | jq -r .id)
+          elif [ "$code" -ge 300 ]; then
+            echo "Codeberg release create failed: $code"
+            cat /tmp/r.json
+            exit 1
+          else
+            REL_ID=$(jq -r .id /tmp/r.json)
+          fi
+
+          # 2. Upload assets
+          for f in release-assets/*; do
+            name=$(basename "$f")
+            echo "Uploading $name to Codeberg…"
+            curl -sS --fail "${AUTH[@]}" \
+              -F "attachment=@$f" \
+              "$API/releases/$REL_ID/assets?name=$name" >/dev/null
+          done
+          echo "Codeberg release $TAG mirrored."
