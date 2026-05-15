@@ -18,8 +18,8 @@ class CircuitGate {
 }
 
 class CircuitMazeScene implements IScene {
-  int cols = 12;
-  int rows = 8;
+  int cols = 24;
+  int rows = 14;
 
   CircuitGate[][] rightGates;
   CircuitGate[][] downGates;
@@ -38,7 +38,8 @@ class CircuitMazeScene implements IScene {
   }
 
   void updateLetterGrid(String text) {
-    cols = max(12, text.length() * 6);
+    cols = max(20, text.length() * 12);
+    rows = 14;
     letterMask = new boolean[cols][rows];
 
     int scale = 10;
@@ -77,18 +78,7 @@ class CircuitMazeScene implements IScene {
     return letterMask[x][y];
   }
 
-  boolean isLetterCell(int x, int y) {
-    if (x < 0 || x >= cols - 1 || y < 0 || y >= rows - 1) return false;
-    // A cell is "Letter" if most of its corners are letter nodes
-    int count = 0;
-    if (isLetterNode(x, y)) count++;
-    if (isLetterNode(x + 1, y)) count++;
-    if (isLetterNode(x, y + 1)) count++;
-    if (isLetterNode(x + 1, y + 1)) count++;
-    return count >= 3; 
-  }
-
-  boolean isLetterGate(CircuitGate g) {
+boolean isLetterGate(CircuitGate g) {
     return isLetterNode(g.x1, g.y1) && isLetterNode(g.x2, g.y2);
   }
 
@@ -142,10 +132,10 @@ class CircuitMazeScene implements IScene {
   void toggleRandomGate() {
     if (random(1) < 0.5) {
       int x = (int) random(cols - 1); int y = (int) random(rows);
-      CircuitGate g = rightGates[x][y]; if (g.exists) g.isOpen = !g.isOpen;
+      CircuitGate g = rightGates[x][y]; if (g.exists && !isLetterGate(g)) g.isOpen = !g.isOpen;
     } else {
       int x = (int) random(cols); int y = (int) random(rows - 1);
-      CircuitGate g = downGates[x][y]; if (g.exists) g.isOpen = !g.isOpen;
+      CircuitGate g = downGates[x][y]; if (g.exists && !isLetterGate(g)) g.isOpen = !g.isOpen;
     }
   }
 
@@ -155,10 +145,16 @@ class CircuitMazeScene implements IScene {
     int[] qx = new int[capacity]; int[] qy = new int[capacity];
     int head = 0; int tail = 0;
 
-    // Batteries: All nodes on the left, plus booster nodes every 12 columns
-    for (int x = 0; x < cols; x += 12) {
+    // Batteries: every 8 columns, all rows act as power source
+    for (int x = 0; x < cols; x += 8) {
       for (int y = 0; y < rows; y++) {
-        if (x == 0 || (x > 0 && isLetterNode(x, y))) {
+        reachable[x][y] = true; qx[tail] = x; qy[tail] = y; tail++;
+      }
+    }
+    // Letters always lit: seed every letter node as source
+    for (int x = 0; x < cols; x++) {
+      for (int y = 0; y < rows; y++) {
+        if (isLetterNode(x, y) && !reachable[x][y]) {
           reachable[x][y] = true; qx[tail] = x; qy[tail] = y; tail++;
         }
       }
@@ -211,33 +207,7 @@ class CircuitMazeScene implements IScene {
     beatFlash *= 0.84;
   }
 
-  void drawBlockUnderlays(PGraphics pg, float originX, float originY, float stepX, float stepY) {
-    pg.rectMode(CORNER);
-    float glowPulse = 0.5 + 0.5 * sin(frameCount * 0.1) + beatFlash * 0.5;
-    
-    for (int x = 0; x < cols - 1; x++) {
-      for (int y = 0; y < rows - 1; y++) {
-        if (isLetterCell(x, y)) {
-          float px = originX + x * stepX;
-          float py = originY + y * stepY;
-          
-          pg.noStroke();
-          pg.fill(30, 255, 200, 90 + glowPulse * 40);
-          pg.rect(px - 3, py - 3, stepX + 6, stepY + 6, 6);
-          
-          pg.fill(30, 255, 250, 140 + beatFlash * 80);
-          pg.rect(px + 3, py + 3, stepX - 6, stepY - 6, 4);
-          
-          pg.stroke(180, 255, 255, 180);
-          pg.strokeWeight(2);
-          pg.noFill();
-          pg.rect(px - 1, py - 1, stepX + 2, stepY + 2, 4);
-        }
-      }
-    }
-  }
-
-  void drawGridNodes(PGraphics pg, float originX, float originY, float stepX, float stepY) {
+void drawGridNodes(PGraphics pg, float originX, float originY, float stepX, float stepY) {
     pg.noStroke();
     for (int x = 0; x < cols; x++) {
       for (int y = 0; y < rows; y++) {
@@ -246,12 +216,7 @@ class CircuitMazeScene implements IScene {
         boolean isLetter = isLetterNode(x, y);
         float r = energised ? (isLetter ? 7.0 : 4.0) : 3.0; // Scale nodes
         
-        if (x % 12 == 0) { // Battery / Booster
-          pg.fill(140, 255, 255, 220); // Cyan Battery
-          pg.ellipse(px, py, 14, 14);
-          pg.fill(120, 255, 255, 180 + beatFlash * 70);
-          pg.ellipse(px, py, 8 + beatFlash * 8, 8 + beatFlash * 8);
-        }
+        // (Battery column dots removed — flow itself shows energy)
         if (x == cols - 1 && y == rows - 1) {
           float lamp = constrain(lampGlow * 255.0, 0, 255);
           pg.fill(30, 255, 220, 80 + lamp); // Gold Lamp
@@ -288,7 +253,7 @@ class CircuitMazeScene implements IScene {
     boolean isLet = isLetterGate(g);
     float baseW = max(1.2, (2.0 + g.glow * 1.5) * (12.0/cols));
     if (isLet) {
-      pg.strokeWeight(baseW * 5.0);
+      pg.strokeWeight(baseW * 2.5);
       pg.stroke(30, 255, bright, min(255, alpha * 1.4));
     } else {
       pg.strokeWeight(baseW);
@@ -298,22 +263,40 @@ class CircuitMazeScene implements IScene {
     float gap = 12.0 * (1.0 - g.openVis) * (12.0/cols);
     if (abs(x2 - x1) > abs(y2 - y1)) {
       pg.line(x1, y1, cx - gap, cy); pg.line(cx + gap, cy, x2, y2);
-      if (g.glow > 0.5) { 
-        float p = (frameCount * 0.08) % 1.0; 
-        float sx = lerp(x1, x2, p); 
-        pg.strokeWeight(isLet ? 6 : 4); 
-        pg.stroke(0, 0, 255, 200 * g.glow); 
-        pg.line(sx - 5, y1, sx + 5, y1); 
+      if (g.glow > 0.2) {
+        float base = frameCount * 0.12;
+        int n = 3;
+        for (int s = 0; s < n; s++) {
+          float p = (base + s / (float)n) % 1.0;
+          float sx = lerp(x1, x2, p);
+          // tail (dim cyan)
+          pg.strokeWeight(isLet ? 4 : 3);
+          pg.stroke(130, 200, 255, 120 * g.glow);
+          float tx = lerp(x1, x2, (p - 0.06 + 1.0) % 1.0);
+          pg.line(tx, y1, sx, y1);
+          // head (bright white)
+          pg.strokeWeight(isLet ? 7 : 5);
+          pg.stroke(0, 0, 255, 240 * g.glow);
+          pg.line(sx - 4, y1, sx + 4, y1);
+        }
       }
       if (gap > 1.0) { pg.noStroke(); pg.fill(0, 180, 120, 190); pg.rectMode(CENTER); pg.rect(cx, cy, 4 * (12.0/cols), 11 * (12.0/cols)); }
     } else {
       pg.line(x1, y1, cx, cy - gap); pg.line(cx, cy + gap, x2, y2);
-      if (g.glow > 0.5) { 
-        float p = (frameCount * 0.08) % 1.0; 
-        float sy = lerp(y1, y2, p); 
-        pg.strokeWeight(isLet ? 6 : 4); 
-        pg.stroke(0, 0, 255, 200 * g.glow); 
-        pg.line(x1, sy - 5, x1, sy + 5); 
+      if (g.glow > 0.2) {
+        float base = frameCount * 0.12;
+        int n = 3;
+        for (int s = 0; s < n; s++) {
+          float p = (base + s / (float)n) % 1.0;
+          float sy = lerp(y1, y2, p);
+          pg.strokeWeight(isLet ? 4 : 3);
+          pg.stroke(130, 200, 255, 120 * g.glow);
+          float ty = lerp(y1, y2, (p - 0.06 + 1.0) % 1.0);
+          pg.line(x1, ty, x1, sy);
+          pg.strokeWeight(isLet ? 7 : 5);
+          pg.stroke(0, 0, 255, 240 * g.glow);
+          pg.line(x1, sy - 4, x1, sy + 4);
+        }
       }
       if (gap > 1.0) { pg.noStroke(); pg.fill(0, 180, 120, 190); pg.rectMode(CENTER); pg.rect(cx, cy, 11 * (12.0/cols), 4 * (12.0/cols)); }
     }
@@ -329,8 +312,6 @@ class CircuitMazeScene implements IScene {
     float padX = pg.width * 0.05; float padY = pg.height * 0.14;
     float stepX = (pg.width - padX * 2.0) / (cols - 1); float stepY = (pg.height - padY * 2.0) / (rows - 1);
     pg.noStroke(); pg.fill(6, 25, 28, 190); pg.rectMode(CORNER); pg.rect(padX - 20, padY - 20, stepX * (cols-1) + 40, stepY * (rows-1) + 40, 24);
-    
-    drawBlockUnderlays(pg, padX, padY, stepX, stepY);
     
     for (int x = 0; x < cols - 1; x++) for (int y = 0; y < rows; y++) drawGate(pg, rightGates[x][y], padX, padY, stepX, stepY);
     for (int x = 0; x < cols; x++) for (int y = 0; y < rows - 1; y++) drawGate(pg, downGates[x][y], padX, padY, stepX, stepY);

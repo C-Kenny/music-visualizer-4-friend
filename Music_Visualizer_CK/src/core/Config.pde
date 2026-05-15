@@ -1,4 +1,9 @@
 class Config {
+  // Verbose runtime logging (per-second SCENE/CONTROLLER/FPS heartbeat).
+  // Set true via .devverbose file in sketch dir. Off by default — same info
+  // is in the HUD and on /operator.
+  boolean VERBOSE_LOG = false;
+
   String CIRCUIT_TEXT = "CK";
   float PULSE_VALUE;
   float HEART_PULSE;

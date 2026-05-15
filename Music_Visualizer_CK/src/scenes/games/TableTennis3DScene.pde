@@ -948,6 +948,15 @@ class TableTennis3DScene extends TableTennisScene {
     else super.handleKey(k);
   }
 
+  void resetMatchState() {
+    super.resetMatchState();
+    outOfBounds    = false;
+    outBounceCount = 0;
+    ballZ          = 0;
+    ballVZ         = 0;
+    trail3D.clear();
+  }
+
   void cycleShader(int dir) {
     shaderStyle = (shaderStyle + dir + STYLE_NAMES.length) % STYLE_NAMES.length;
   }

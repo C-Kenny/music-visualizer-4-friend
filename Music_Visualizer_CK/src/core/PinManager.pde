@@ -50,6 +50,14 @@ class PinManager {
     loadNamed();
   }
 
+  // Mint a fresh master PIN. Old one stops working immediately. Named PINs unaffected.
+  // Used by admin "rotate master" action when the venue PIN gets shoulder-surfed.
+  synchronized String rotateMaster() {
+    masterPin = randomPin();
+    println("[PIN] master PIN rotated: " + masterPin);
+    return masterPin;
+  }
+
   // --- Generation ---
 
   String randomPin() {

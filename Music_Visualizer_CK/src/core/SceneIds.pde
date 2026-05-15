@@ -57,3 +57,4 @@ static final int SCENE_CHLADNI_PLATE     = 46;
 static final int SCENE_STRANGE_ATTRACTOR = 47;
 static final int SCENE_SACRED_FRACTALS   = 48;
 static final int SCENE_THEY_DONT_KNOW    = 49;
+static final int SCENE_LIVE_CODE         = 50;

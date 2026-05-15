@@ -188,6 +188,9 @@ class FeatureFlagServer {
       server.createContext("/admin/pins",        new AdminPinsListHandler());
       server.createContext("/admin/pins/mint",   new AdminPinsMintHandler());
       server.createContext("/admin/pins/revoke", new AdminPinsRevokeHandler());
+      server.createContext("/admin/pins/rotate-master", new AdminPinsRotateMasterHandler());
+      server.createContext("/operator.json", new OperatorHandler());
+      server.createContext("/admin/stream/toggle", new AdminStreamToggleHandler());
       server.createContext("/", new UiHandler());
       server.setExecutor(null);
       server.start();
@@ -232,7 +235,8 @@ class FeatureFlagServer {
     public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
       ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
       ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
+      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type,X-Admin-Token");
+      ex.getResponseHeaders().set("Access-Control-Allow-Credentials", "true");
       ex.getResponseHeaders().set("Content-Type", "application/json");
 
       String method = ex.getRequestMethod();
@@ -246,6 +250,12 @@ class FeatureFlagServer {
           return;
         }
         if (method.equals("POST")) {
+          if (!adminAuthed(ex)) {
+            byte[] body = "{\"error\":\"admin auth required\"}".getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(401, body.length);
+            OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+            return;
+          }
           byte[] in = readAll(ex.getRequestBody());
           String bodyStr = new String(in, StandardCharsets.UTF_8);
           JSONObject patch = parseJSONObject(bodyStr);
@@ -275,12 +285,13 @@ class FeatureFlagServer {
     }
   }
 
-  // GET /scene → list groups + current. POST /scene {"id":N} → switch.
+  // GET /scene → list groups + current. POST /scene {"id":N} → switch (admin only).
   class SceneHandler implements com.sun.net.httpserver.HttpHandler {
     public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
       ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
       ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
+      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type,X-Admin-Token");
+      ex.getResponseHeaders().set("Access-Control-Allow-Credentials", "true");
       ex.getResponseHeaders().set("Content-Type", "application/json");
 
       String method = ex.getRequestMethod();
@@ -288,6 +299,12 @@ class FeatureFlagServer {
 
       try {
         if (method.equals("POST")) {
+          if (!adminAuthed(ex)) {
+            byte[] body = "{\"error\":\"admin auth required\"}".getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(401, body.length);
+            OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+            return;
+          }
           byte[] in = readSceneBody(ex.getRequestBody());
           JSONObject patch = parseJSONObject(new String(in, StandardCharsets.UTF_8));
           if (patch == null || !patch.hasKey("id")) throw new RuntimeException("missing id");
@@ -436,6 +453,181 @@ class FeatureFlagServer {
     }
   }
 
+  // ---------- Operator dashboard ----------
+
+  // GET /operator → JSON snapshot of stage state for live-show monitoring.
+  // Read-only; no auth required (LAN-bound). Powers operator.html and a future
+  // in-app secondary-display HUD.
+  class OperatorHandler implements com.sun.net.httpserver.HttpHandler {
+    public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
+      ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+      ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,OPTIONS");
+      ex.getResponseHeaders().set("Content-Type", "application/json");
+      String m = ex.getRequestMethod();
+      if (m.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
+      if (!m.equals("GET"))    { ex.sendResponseHeaders(405, -1); ex.close(); return; }
+      try {
+        byte[] body = buildOperatorPayload().getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(200, body.length);
+        OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      } catch (Exception e) {
+        println("[FEATUREFLAGS] /operator error: " + e.getMessage());
+        byte[] body = ("{\"error\":\"" + e.getMessage() + "\"}").getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(500, body.length);
+        OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      }
+    }
+  }
+
+  String sceneNameOrFallback(int id) {
+    if (id < 0 || id >= SCENE_COUNT) return "Scene " + id;
+    if (sceneSwitcher != null && sceneSwitcher.SCENE_NAMES != null) {
+      String nm = sceneSwitcher.SCENE_NAMES[id];
+      if (nm != null && nm.length() > 0) return nm;
+    }
+    return "Scene " + id;
+  }
+
+  String buildOperatorPayload() {
+    JSONObject root = new JSONObject();
+    root.setLong("nowMs", System.currentTimeMillis());
+    root.setFloat("fps", frameRate);
+
+    // Scene
+    JSONObject scene = new JSONObject();
+    int curId = config.STATE;
+    scene.setInt("id", curId);
+    scene.setString("name", sceneNameOrFallback(curId));
+    scene.setInt("orderIndex", _sceneOrderIndex(curId));
+    scene.setInt("orderCount", SCENE_ORDER.length);
+    scene.setString("song", config.SONG_NAME == null ? "" : config.SONG_NAME);
+    root.setJSONObject("scene", scene);
+
+    // Tempo
+    JSONObject tempo = new JSONObject();
+    tempo.setBoolean("locked", tempoLock != null && tempoLock.isLocked());
+    tempo.setFloat("bpm", tempoLock != null ? tempoLock.bpm : 0);
+    root.setJSONObject("tempo", tempo);
+
+    // Strobe
+    JSONObject strobe = new JSONObject();
+    strobe.setBoolean("safety", strobeSafety != null && strobeSafety.enabled);
+    root.setJSONObject("strobe", strobe);
+
+    // Recorder
+    JSONObject rec = new JSONObject();
+    if (recorder != null) {
+      rec.setBoolean("running", recorder.running);
+      rec.setInt("framesWritten", recorder.framesWritten);
+      rec.setInt("framesDropped", recorder.framesDropped);
+      rec.setLong("startMs", recorder.startMs);
+      rec.setString("path", recorder.outPath == null ? "" : recorder.outPath);
+    } else {
+      rec.setBoolean("running", false);
+    }
+    root.setJSONObject("recorder", rec);
+
+    // Setlist
+    JSONObject sl = new JSONObject();
+    if (setlist != null && setlist.entries != null && setlist.entries.size() > 0) {
+      sl.setInt("cursor", setlist.cursor);
+      sl.setInt("size", setlist.entries.size());
+      sl.setBoolean("autoAdvance", setlist.autoAdvance);
+      sl.setString("now", setlist.nowLabel());
+      sl.setString("next", setlist.nextLabel());
+    } else {
+      sl.setInt("size", 0);
+    }
+    root.setJSONObject("setlist", sl);
+
+    // Blacklist (from SceneGuard)
+    JSONArray bl = new JSONArray();
+    if (sceneGuard != null) {
+      for (int i = 0; i < SCENE_COUNT; i++) {
+        if (sceneGuard.isBlacklisted(i)) {
+          JSONObject e = new JSONObject();
+          e.setInt("id", i);
+          e.setString("name", sceneNameOrFallback(i));
+          bl.append(e);
+        }
+      }
+    }
+    root.setJSONArray("blacklist", bl);
+
+    // Audio source
+    JSONObject au = new JSONObject();
+    if (audio != null) {
+      String mode = audio.isDeviceInput() ? "DEVICE" : "FILE";
+      au.setString("mode", mode);
+      String src = "";
+      if (audio.isDeviceInput()) {
+        if (config != null && config.audioDeviceSelector != null) {
+          src = config.audioDeviceSelector.getSelectedDeviceName();
+        }
+      } else {
+        src = config != null && config.SONG_NAME != null ? config.SONG_NAME : "";
+      }
+      au.setString("source", src);
+      au.setBoolean("playing", config != null && config.SONG_PLAYING);
+      // Cheap level meter from current FFT mix buffer (RMS of left channel)
+      float level = 0;
+      try {
+        if (audio.player != null && audio.player.left != null) {
+          int n = audio.player.left.size();
+          if (n > 0) {
+            float sum = 0;
+            for (int i = 0; i < n; i++) { float v = audio.player.left.get(i); sum += v * v; }
+            level = (float) Math.sqrt(sum / n);
+          }
+        } else if (audio.audioInput != null && audio.audioInput.left != null) {
+          int n = audio.audioInput.left.size();
+          if (n > 0) {
+            float sum = 0;
+            for (int i = 0; i < n; i++) { float v = audio.audioInput.left.get(i); sum += v * v; }
+            level = (float) Math.sqrt(sum / n);
+          }
+        }
+      } catch (Throwable t) { /* best-effort */ }
+      au.setFloat("levelRms", level);
+    } else {
+      au.setString("mode", "?");
+      au.setString("source", "");
+      au.setBoolean("playing", false);
+      au.setFloat("levelRms", 0);
+    }
+    root.setJSONObject("audio", au);
+
+    // Streamer (LAN streaming via MediaMTX)
+    JSONObject st = new JSONObject();
+    if (streamer != null) {
+      st.setBoolean("running", streamer.running);
+      st.setInt("framesPushed", streamer.framesPushed);
+      st.setInt("framesDropped", streamer.framesDropped);
+      st.setLong("startMs", streamer.startMs);
+      st.setString("audioSource", streamer.audioSource == null ? "" : streamer.audioSource);
+      st.setString("error", streamer.lastError == null ? "" : streamer.lastError);
+    } else {
+      st.setBoolean("running", false);
+    }
+    root.setJSONObject("stream", st);
+
+    // Phone clients (count only — admin dashboard has full list)
+    JSONObject clients = new JSONObject();
+    if (clientRegistry != null) {
+      clients.setInt("total", clientRegistry.byId.size());
+      clients.setBoolean("lockdown", clientRegistry.lockdownMode);
+      long remain = lockdownExpiresAtMs > 0 ? Math.max(0, lockdownExpiresAtMs - System.currentTimeMillis()) : 0;
+      clients.setLong("lockdownRemainMs", remain);
+    } else {
+      clients.setInt("total", 0);
+      clients.setBoolean("lockdown", false);
+      clients.setLong("lockdownRemainMs", 0);
+    }
+    root.setJSONObject("clients", clients);
+
+    return root.toString();
+  }
+
   // ---------- Admin ----------
 
   // Token: read .devadmintoken from sketch dir; create with random value if missing.
@@ -462,6 +654,40 @@ class FeatureFlagServer {
   boolean isLocalhost(com.sun.net.httpserver.HttpExchange ex) {
     String h = ex.getRemoteAddress().getAddress().getHostAddress();
     return h.equals("127.0.0.1") || h.equals("0:0:0:0:0:0:0:1") || h.equals("::1");
+  }
+
+  // Per-IP brute-force lockout for /admin/auth. Mirrors PinManager.
+  // 5 wrong tokens → 60s lockout. Localhost (laptop operator) is exempt.
+  class AdminAttemptState { int wrong = 0; long lockUntilMs = 0; }
+  final int  ADMIN_MAX_WRONG  = 5;
+  final long ADMIN_LOCKOUT_MS = 60_000L;
+  ConcurrentHashMap<String, AdminAttemptState> adminAttempts =
+    new ConcurrentHashMap<String, AdminAttemptState>();
+
+  AdminAttemptState adminAttemptState(String ip) {
+    AdminAttemptState st = adminAttempts.get(ip);
+    if (st == null) { st = new AdminAttemptState(); adminAttempts.put(ip, st); }
+    return st;
+  }
+  boolean adminLockedOut(String ip) {
+    AdminAttemptState st = adminAttempts.get(ip);
+    if (st == null) return false;
+    synchronized (st) { return st.lockUntilMs > System.currentTimeMillis(); }
+  }
+  void bumpAdminWrong(String ip) {
+    AdminAttemptState st = adminAttemptState(ip);
+    long now = System.currentTimeMillis();
+    synchronized (st) {
+      st.wrong++;
+      if (st.wrong >= ADMIN_MAX_WRONG) {
+        st.lockUntilMs = now + ADMIN_LOCKOUT_MS;
+        println("[ADMIN] IP " + ip + " locked out for " + (ADMIN_LOCKOUT_MS/1000) + "s");
+      }
+    }
+  }
+  void resetAdminAttempts(String ip) {
+    AdminAttemptState st = adminAttempts.get(ip);
+    if (st != null) synchronized (st) { st.wrong = 0; st.lockUntilMs = 0; }
   }
 
   boolean adminAuthed(com.sun.net.httpserver.HttpExchange ex) {
@@ -502,6 +728,18 @@ class FeatureFlagServer {
     }
   }
 
+  // POST /admin/stream/toggle → admin-only. Cookie auth (vis_admin) or
+  // X-Admin-Token header. Localhost bypasses auth (operator at the laptop).
+  class AdminStreamToggleHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      if (!"POST".equals(ex.getRequestMethod())) throw new RuntimeException("POST required");
+      if (streamer == null) throw new RuntimeException("streamer not initialized");
+      streamer.toggle();
+      return "{\"running\":" + streamer.running
+           + ",\"error\":\"" + (streamer.lastError == null ? "" : streamer.lastError.replace("\"", "\\\"")) + "\"}";
+    }
+  }
+
   class AdminClientsHandler extends AdminHandlerBase {
     String handleAdmin(com.sun.net.httpserver.HttpExchange ex) {
       return clientRegistry.snapshot().toString();
@@ -528,16 +766,46 @@ class FeatureFlagServer {
       return "{\"ok\":true}";
     }
   }
+  // Optional auto-release timer. Set when admin posts {enabled:true, ttlMs:N}.
+  // Cancelled on any subsequent /admin/lockdown POST.
+  java.util.concurrent.ScheduledExecutorService lockdownTimer;
+  java.util.concurrent.ScheduledFuture lockdownTimerFuture;
+  volatile long lockdownExpiresAtMs = 0;
+
   class AdminLockdownHandler extends AdminHandlerBase {
     String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
       String m = ex.getRequestMethod();
       if (m.equals("GET")) {
-        return "{\"enabled\":" + clientRegistry.lockdownMode + "}";
+        long remain = lockdownExpiresAtMs > 0 ? Math.max(0, lockdownExpiresAtMs - System.currentTimeMillis()) : 0;
+        return "{\"enabled\":" + clientRegistry.lockdownMode + ",\"remainMs\":" + remain + "}";
       }
       JSONObject o = readJsonBody(ex);
-      clientRegistry.lockdownMode = o.getBoolean("enabled", false);
-      println("[REG] lockdown " + (clientRegistry.lockdownMode ? "ON" : "OFF"));
-      return "{\"enabled\":" + clientRegistry.lockdownMode + "}";
+      boolean enable = o.getBoolean("enabled", false);
+      long ttlMs = 0;
+      try { ttlMs = o.getLong("ttlMs", 0L); } catch (Exception ignore) {}
+      // Always cancel any pending auto-release first.
+      if (lockdownTimerFuture != null) { lockdownTimerFuture.cancel(false); lockdownTimerFuture = null; }
+      lockdownExpiresAtMs = 0;
+      clientRegistry.lockdownMode = enable;
+      if (enable && ttlMs > 0) {
+        if (lockdownTimer == null) {
+          lockdownTimer = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(new java.util.concurrent.ThreadFactory() {
+            public Thread newThread(Runnable r) { Thread t = new Thread(r, "lockdown-timer"); t.setDaemon(true); return t; }
+          });
+        }
+        lockdownExpiresAtMs = System.currentTimeMillis() + ttlMs;
+        final long ttl = ttlMs;
+        lockdownTimerFuture = lockdownTimer.schedule(new Runnable() {
+          public void run() {
+            clientRegistry.lockdownMode = false;
+            lockdownExpiresAtMs = 0;
+            println("[REG] lockdown auto-released after " + (ttl/1000) + "s");
+          }
+        }, ttlMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+      }
+      println("[REG] lockdown " + (clientRegistry.lockdownMode ? "ON" : "OFF") + (ttlMs > 0 ? (" (ttl " + (ttlMs/1000) + "s)") : ""));
+      long remain = lockdownExpiresAtMs > 0 ? Math.max(0, lockdownExpiresAtMs - System.currentTimeMillis()) : 0;
+      return "{\"enabled\":" + clientRegistry.lockdownMode + ",\"remainMs\":" + remain + "}";
     }
   }
   class AdminRoleHandler extends AdminHandlerBase {
@@ -567,6 +835,12 @@ class FeatureFlagServer {
       JSONObject o = readJsonBody(ex);
       pinManager.revoke(o.getString("pin", ""));
       return "{\"ok\":true}";
+    }
+  }
+  class AdminPinsRotateMasterHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      String fresh = pinManager.rotateMaster();
+      return "{\"masterPin\":\"" + fresh + "\"}";
     }
   }
 
@@ -605,6 +879,11 @@ class FeatureFlagServer {
       String m = ex.getRequestMethod();
       if (m.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
       if (!m.equals("POST"))   { ex.sendResponseHeaders(405, -1); ex.close(); return; }
+      String ip = ex.getRemoteAddress().getAddress().getHostAddress();
+      boolean local = isLocalhost(ex);
+      if (!local && adminLockedOut(ip)) {
+        ex.sendResponseHeaders(429, -1); ex.close(); return;
+      }
       try {
         java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
         byte[] chunk = new byte[1024]; int n;
@@ -614,7 +893,11 @@ class FeatureFlagServer {
         String expected  = getAdminToken();
         boolean ok = submitted != null && expected != null && submitted.length() == expected.length()
                   && java.security.MessageDigest.isEqual(submitted.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8));
-        if (!ok) { ex.sendResponseHeaders(401, -1); ex.close(); return; }
+        if (!ok) {
+          if (!local) bumpAdminWrong(ip);
+          ex.sendResponseHeaders(401, -1); ex.close(); return;
+        }
+        if (!local) resetAdminAttempts(ip);
         ex.getResponseHeaders().add("Set-Cookie",
           "vis_admin=" + expected + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400");
         byte[] body = "{\"ok\":true}".getBytes(StandardCharsets.UTF_8);

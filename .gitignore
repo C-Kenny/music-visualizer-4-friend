@@ -63,6 +63,14 @@ media/inspiration/
 Music_Visualizer_CK/data/crash_log.txt
 Music_Visualizer_CK/scores.txt
 
+# Per-machine live-show user data (auto-seeded on first run)
+Music_Visualizer_CK/setlist.txt
+Music_Visualizer_CK/text_overlay.txt
+Music_Visualizer_CK/live_shader.glsl
+Music_Visualizer_CK/live_shader.glsl.bak
+Music_Visualizer_CK/live_code.java
+Music_Visualizer_CK/live_code.java.bak
+
 # Maven test artifacts
 tests/target/maven-status/
 tests/target/test-classes/

@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizer Stream</title>
+<style>
+  :root {
+    --green: #00ff78; --green-dim: #7affb0; --bg: #000;
+    --border: rgba(0, 255, 120, 0.4);
+    --glow: 0 0 4px rgba(0,255,120,0.7);
+    --red: #ff4444;
+  }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--green);
+    font: 13px/1.4 "Courier New", "Consolas", monospace; text-shadow: var(--glow); height: 100%; }
+  .navbar { display:flex; background:var(--green); color:#000; }
+  .navbar a { color:#000; text-decoration:none; padding:8px 16px; font-weight:bold;
+    letter-spacing:0.15em; font-size:13px; border-right:1px solid rgba(0,0,0,0.3); }
+  .navbar a.active { background:#000; color:var(--green); text-shadow:var(--glow); }
+  .stage { position: relative; width: 100%; height: calc(100vh - 40px); background:#000; overflow: hidden; }
+  video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+  .overlay { position:absolute; left:0; right:0; bottom: 0; padding: 8px 12px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0)); color: var(--green);
+    display:flex; justify-content: space-between; align-items: center; gap: 8px; pointer-events: none; }
+  .overlay .ctrls { display: flex; gap: 6px; pointer-events: auto; }
+  .overlay button { padding: 8px 14px; font: 13px "Courier New",monospace; background: rgba(0,0,0,0.7); color: var(--green); border: 1px solid var(--border); cursor: pointer; letter-spacing: 0.1em; }
+  .overlay button.danger { color: #ffb84a; border-color: #ffb84a; }
+  .overlay button:hover { background: var(--green); color: #000; }
+  video { cursor: pointer; }
+  .badge { padding: 2px 8px; border:1px solid var(--border); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .err { color: var(--red); }
+  .hint { font-size: 11px; color: var(--green-dim); }
+  button { background:#000; color:var(--green); border:1px solid var(--green);
+    padding:6px 12px; font:12px "Courier New", monospace; text-shadow:var(--glow); cursor:pointer; pointer-events: auto; }
+  button:hover { background:var(--green); color:#000; text-shadow:none; }
+  .center-msg { position:absolute; inset: 0; display:flex; align-items:center; justify-content:center; flex-direction: column; gap: 16px; text-align:center; padding: 20px; }
+  .url-box { display:flex; gap:24px; align-items:center; padding: 16px; border:1px solid var(--border); background: rgba(0,40,15,0.4); border-radius: 8px; max-width: 90%; }
+  .url-box .qr { padding: 6px; background: #fff; border: 1px solid var(--border); }
+  .url-box .url-text { font-size: 22px; letter-spacing: 0.05em; color: var(--green); }
+  .url-box .url-hint { font-size: 12px; color: var(--green-dim); margin-top: 8px; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/">FLAGS</a>
+  <a href="/controller.html">CONTROLLER</a>
+  <a href="/operator.html">OPERATOR</a>
+  <a href="/stream.html" class="active">STREAM</a>
+</nav>
+<div class="stage" id="stage">
+  <video id="v" autoplay playsinline muted controls></video>
+  <div class="center-msg" id="center" style="display:none">
+    <div id="centerText">connecting…</div>
+    <div class="hint" id="centerHint"></div>
+    <div class="url-box" id="urlBox" style="display:none">
+      <img class="qr" id="qr" alt="QR" width="180" height="180">
+      <div>
+        <div class="url-text" id="urlText">—</div>
+        <div class="url-hint">scan with phone or type URL into TV browser</div>
+      </div>
+    </div>
+    <button id="retryBtn" style="display:none">retry</button>
+  </div>
+  <div class="overlay">
+    <span><span class="badge" id="modeBadge">…</span> <span id="status" class="hint"></span></span>
+    <span class="ctrls">
+      <button id="unmuteBtn" class="danger">🔊 UNMUTE</button>
+      <button id="fsBtn">⛶ FULLSCREEN</button>
+    </span>
+  </div>
+</div>
+<script src="/qrcode.min.js"></script>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const v = $('v');
+  const STREAM_NAME = 'visualizer';
+  const host = location.hostname;
+  const WEBRTC_WHEP = `http://${host}:8889/${STREAM_NAME}/whep`;
+  const HLS_URL     = `http://${host}:8888/${STREAM_NAME}/index.m3u8`;
+
+  let pc = null;
+  let hls = null;
+  let mode = '';
+  let reconnectAttempt = 0;
+  let reconnectTimer = null;
+  let manualStop = false;     // user-initiated retry suppresses auto-reconnect
+
+  function teardown(){
+    try { if (pc) pc.close(); } catch(_){}
+    pc = null;
+    try { if (hls) hls.destroy(); } catch(_){}
+    hls = null;
+  }
+
+  function scheduleReconnect(reason){
+    if (manualStop) return;
+    if (reconnectTimer) return;
+    reconnectAttempt++;
+    const delay = Math.min(5000, 800 * Math.pow(1.6, reconnectAttempt - 1));
+    showCenter('reconnecting…', (reason || '') + ' · attempt #' + reconnectAttempt + ' in ' + Math.round(delay) + 'ms');
+    setMode('OFFLINE', 'reconnecting #' + reconnectAttempt);
+    reconnectTimer = setTimeout(async () => {
+      reconnectTimer = null;
+      teardown();
+      await start();
+    }, delay);
+  }
+
+  function noteSuccess(){ reconnectAttempt = 0; }
+
+  function showCenter(text, hint, showRetry){
+    $('center').style.display = 'flex';
+    $('centerText').textContent = text;
+    $('centerHint').textContent = hint || '';
+    $('retryBtn').style.display = showRetry ? 'inline-block' : 'none';
+  }
+  function hideCenter(){ $('center').style.display = 'none'; }
+
+  function setMode(m, statusText){
+    mode = m;
+    $('modeBadge').textContent = m;
+    $('modeBadge').style.color = (m === 'WEBRTC') ? 'var(--green)' : (m === 'HLS' ? '#ffb84a' : 'var(--red)');
+    $('status').textContent = statusText || '';
+  }
+
+  async function tryWebRTC(){
+    setMode('WEBRTC', 'negotiating…');
+    try {
+      pc = new RTCPeerConnection({iceServers: []});  // LAN only — no STUN needed
+      pc.addTransceiver('video', {direction: 'recvonly'});
+      pc.addTransceiver('audio', {direction: 'recvonly'});
+      const stream = new MediaStream();
+      // Resolves once we actually receive media, not just SDP exchange.
+      // WHEP can return 200 OK and then never deliver packets (publisher
+      // dropped between answer and first RTP); need a real-media gate so
+      // the page doesn't sit on "connecting…" forever.
+      let resolveMedia, mediaArrived = new Promise(r => resolveMedia = r);
+      pc.ontrack = ev => {
+        stream.addTrack(ev.track);
+        v.srcObject = stream;
+        resolveMedia();
+      };
+      pc.onconnectionstatechange = () => {
+        $('status').textContent = 'webrtc: ' + pc.connectionState;
+        const s = pc.connectionState;
+        if (s === 'failed' || s === 'disconnected' || s === 'closed') {
+          // Fast retry — broken pipe / publisher restart / network blip
+          scheduleReconnect('webrtc ' + s);
+        }
+      };
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      const r = await fetch(WEBRTC_WHEP, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/sdp'},
+        body: offer.sdp
+      });
+      if (!r.ok) throw new Error('WHEP HTTP ' + r.status);
+      const ans = await r.text();
+      await pc.setRemoteDescription({type: 'answer', sdp: ans});
+      // 5s window for first ontrack. If no media flows, fall through to HLS.
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('no media in 5s')), 5000));
+      await Promise.race([mediaArrived, timeout]);
+      hideCenter();
+      setMode('WEBRTC', 'connected (low-latency)');
+      noteSuccess();
+      return true;
+    } catch (e) {
+      console.warn('WebRTC failed:', e);
+      if (pc) { try { pc.close(); } catch(_){} pc = null; }
+      return false;
+    }
+  }
+
+  // Resolves on first real playback (loadeddata + playing), rejects after timeoutMs.
+  // Manifest parse / src assignment isn't enough — segments can fail silently.
+  function waitForFirstFrame(timeoutMs){
+    return new Promise((res, rej) => {
+      let done = false;
+      const onPlaying = () => { if (done) return; done = true; cleanup(); res(); };
+      const onError   = () => { if (done) return; done = true; cleanup(); rej(new Error('video element error')); };
+      const cleanup = () => {
+        v.removeEventListener('playing', onPlaying);
+        v.removeEventListener('loadeddata', onPlaying);
+        v.removeEventListener('error', onError);
+      };
+      v.addEventListener('playing', onPlaying, {once:true});
+      v.addEventListener('loadeddata', onPlaying, {once:true});
+      v.addEventListener('error', onError, {once:true});
+      setTimeout(() => { if (done) return; done = true; cleanup(); rej(new Error('no media in ' + timeoutMs + 'ms')); }, timeoutMs);
+    });
+  }
+
+  async function tryHLS(){
+    setMode('HLS', 'loading…');
+    // Native HLS (Safari, Tizen, Samsung). Try first — lowest overhead.
+    if (v.canPlayType('application/vnd.apple.mpegurl')) {
+      v.src = HLS_URL;
+      v.onerror = () => scheduleReconnect('hls element error');
+      v.onstalled = () => scheduleReconnect('hls stalled');
+      try { await v.play(); } catch(e){ /* autoplay may need tap */ }
+      try {
+        await waitForFirstFrame(8000);
+      } catch (e) {
+        console.warn('native HLS no media:', e);
+        v.removeAttribute('src');
+        v.load();
+        return false;
+      }
+      hideCenter();
+      setMode('HLS', 'native HLS (~1-3s lag)');
+      noteSuccess();
+      return true;
+    }
+    // hls.js fallback — load from CDN on first need
+    try {
+      if (!window.Hls) {
+        await loadScript('https://cdn.jsdelivr.net/npm/hls.js@1.5.13');
+      }
+      if (window.Hls && Hls.isSupported()) {
+        hls = new Hls({lowLatencyMode: true, liveSyncDuration: 2});
+        hls.loadSource(HLS_URL);
+        hls.attachMedia(v);
+        await new Promise((res, rej) => {
+          hls.on(Hls.Events.MANIFEST_PARSED, res);
+          hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) rej(data); });
+          setTimeout(rej, 8000);
+        });
+        // Fatal errors after manifest parse → reconnect
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data && data.fatal) scheduleReconnect('hls fatal: ' + data.type);
+        });
+        try { await v.play(); } catch(e) {}
+        try {
+          await waitForFirstFrame(8000);
+        } catch (e) {
+          console.warn('hls.js no media:', e);
+          try { hls.destroy(); } catch(_){}
+          hls = null;
+          return false;
+        }
+        hideCenter();
+        setMode('HLS', 'hls.js (~1-3s lag)');
+        noteSuccess();
+        return true;
+      }
+    } catch (e) {
+      console.warn('HLS failed:', e);
+    }
+    return false;
+  }
+
+  function loadScript(src){
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function fallbackToHLS(why){
+    if (mode === 'HLS') return;
+    showCenter('webrtc unavailable, switching to hls', why || '');
+    if (pc) { try { pc.close(); } catch(_){} pc = null; }
+    if (await tryHLS()) return;
+    showCenter('no stream available', 'is the sketch streaming? press F6 to start.', true);
+    setMode('OFFLINE', '');
+    scheduleReconnect('no stream');
+  }
+
+  function renderUrlBox(){
+    const url = location.protocol + '//' + location.host + '/stream.html';
+    $('urlText').textContent = url;
+    $('urlBox').style.display = 'flex';
+    try {
+      if (window.qrcode) {
+        const q = qrcode(0, 'M');
+        q.addData(url);
+        q.make();
+        $('qr').src = q.createDataURL(6, 4);
+      } else {
+        $('qr').alt = url;
+      }
+    } catch(e){ $('qr').alt = 'QR err: ' + e.message; }
+  }
+
+  async function start(){
+    showCenter('connecting…', `host: ${host}`);
+    renderUrlBox();
+    if (await tryWebRTC()) {
+      return;
+    }
+    await fallbackToHLS('webrtc not supported / sketch not streaming');
+  }
+
+  $('retryBtn').addEventListener('click', () => {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    reconnectAttempt = 0;
+    manualStop = false;
+    teardown();
+    start();
+  });
+
+  $('unmuteBtn').addEventListener('click', async () => {
+    v.muted = !v.muted;
+    $('unmuteBtn').textContent = v.muted ? '🔊 UNMUTE' : '🔇 MUTE';
+    $('unmuteBtn').className = v.muted ? 'danger' : '';
+    if (!v.muted) { try { await v.play(); } catch(_){} }
+  });
+
+  function enterFullscreen(){
+    const el = $('stage');
+    const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (fn) fn.call(el).catch(()=>{});
+  }
+  function exitFullscreen(){
+    const fn = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    if (fn) fn.call(document).catch(()=>{});
+  }
+  function isFullscreen(){
+    return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+  }
+  $('fsBtn').addEventListener('click', () => {
+    if (isFullscreen()) exitFullscreen(); else enterFullscreen();
+  });
+  // Double-tap / dbl-click the video to toggle fullscreen
+  v.addEventListener('dblclick', () => $('fsBtn').click());
+  let lastTap = 0;
+  v.addEventListener('touchend', () => {
+    const now = Date.now();
+    if (now - lastTap < 350) $('fsBtn').click();
+    lastTap = now;
+  });
+  document.addEventListener('fullscreenchange', () => {
+    $('fsBtn').textContent = isFullscreen() ? '⛶ EXIT FS' : '⛶ FULLSCREEN';
+  });
+
+  // When the tab comes back to foreground after being hidden (phone unlocked,
+  // browser tab refocused), kick a reconnect — backgrounded WebRTC sessions
+  // usually die.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && (!pc || pc.connectionState !== 'connected') && !v.duration) {
+      scheduleReconnect('tab visible');
+    }
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>

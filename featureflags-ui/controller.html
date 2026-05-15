@@ -251,6 +251,8 @@
 <nav class="navbar">
   <a href="/">FLAGS</a>
   <a href="/controller.html" class="active">CONTROLLER</a>
+  <a href="/operator.html">OPERATOR</a>
+  <a href="/stream.html">STREAM</a>
   <span class="status" id="status">connecting…</span>
 </nav>
 
@@ -364,6 +366,7 @@ let ws = null;
 let wsReady = false;
 let mode = "ws-connecting";
 let helloSent = false;
+let wsRetryAttempt = 0;
 
 function connect() {
   helloSent = false;
@@ -374,7 +377,7 @@ function connect() {
   }, 2000);
   ws.onopen = async () => {
     clearTimeout(fallbackTimer);
-    wsReady = true; mode = "ws";
+    wsReady = true; mode = "ws"; wsRetryAttempt = 0;
     const hello = await buildHello();
     try { ws.send(JSON.stringify(hello)); helloSent = true; } catch (e) {}
     statusEl.textContent = "WS · " + nickname + " · " + clientId.slice(0, 8);
@@ -388,7 +391,12 @@ function connect() {
   };
   ws.onclose = () => {
     wsReady = false; helloSent = false;
-    if (mode === "ws") { mode = "ws-connecting"; setTimeout(connect, 1000); }
+    if (mode === "ws" || mode === "ws-connecting") {
+      mode = "ws-connecting";
+      // Exp backoff capped at 5s — was flat 1s loop, hammered server on long outages.
+      const delay = Math.min(5000, 800 * Math.pow(1.7, wsRetryAttempt++));
+      setTimeout(connect, delay);
+    }
   };
   ws.onerror = () => { wsReady = false; };
 }

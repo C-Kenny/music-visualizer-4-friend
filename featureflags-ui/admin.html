@@ -44,6 +44,8 @@
   <a href="/">FLAGS</a>
   <a href="/controller.html">CONTROLLER</a>
   <a href="/admin.html" class="active">ADMIN</a>
+  <a href="/operator.html">OPERATOR</a>
+  <a href="/stream.html">STREAM</a>
 </nav>
 <div class="wrap">
   <div class="tokenbox">
@@ -59,6 +61,7 @@
       <div class="small">MASTER PIN (rotates each launch)</div>
       <div id="masterPin" style="font-size: 32px; letter-spacing: 0.3em; padding: 8px 0;">—</div>
       <div class="small" id="venueUrl"></div>
+      <button id="rotateMasterBtn" class="danger" style="margin-top:8px;">ROTATE MASTER PIN</button>
     </div>
     <div>
       <div class="small">SCAN TO CONNECT</div>
@@ -68,8 +71,15 @@
   </div>
 
   <h2>LOCKDOWN</h2>
-  <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+  <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
     <button id="lockdownBtn">—</button>
+    <select id="lockdownTtl" title="auto-release after">
+      <option value="0">no auto-release</option>
+      <option value="300000">5 min</option>
+      <option value="900000">15 min</option>
+      <option value="1800000">30 min</option>
+      <option value="3600000">1 hr</option>
+    </select>
     <span id="lockdownState" class="small">checking…</span>
   </div>
 
@@ -141,23 +151,33 @@ async function refresh() {
     const lock = await rl.json();
     statusEl.textContent = "ok · " + new Date().toLocaleTimeString();
     statusEl.className = "small";
-    renderClients(data.clients || []);
-    renderBans(data.bannedIds || [], data.bannedIps || []);
+    renderClients(data.clients || [], data.tempBanIds || []);
+    renderBans(data.bannedIds || [], data.bannedIps || [], data.tempBanIds || [], data.tempBanIps || []);
     renderPins(pins);
-    renderLockdown(lock.enabled);
+    renderLockdown(lock.enabled, lock.remainMs || 0);
   } catch (e) {
     statusEl.textContent = "err: " + e.message;
     statusEl.className = "small err";
   }
 }
 
-function renderLockdown(enabled) {
+function fmtRemain(ms) {
+  if (ms <= 0) return "";
+  const s = Math.ceil(ms / 1000);
+  if (s < 60) return s + "s";
+  const m = Math.floor(s / 60), r = s % 60;
+  return m + "m " + r + "s";
+}
+
+function renderLockdown(enabled, remainMs) {
   const btn = document.getElementById("lockdownBtn");
   const lbl = document.getElementById("lockdownState");
+  const ttlSel = document.getElementById("lockdownTtl");
   if (enabled) {
     btn.textContent = "DISABLE LOCKDOWN";
     btn.className = "";
-    lbl.textContent = "ON — all new external connections blocked";
+    const tail = remainMs > 0 ? (" — auto-release in " + fmtRemain(remainMs)) : "";
+    lbl.textContent = "ON — all new external connections blocked" + tail;
     lbl.className = "small err";
   } else {
     btn.textContent = "ENABLE LOCKDOWN";
@@ -168,8 +188,9 @@ function renderLockdown(enabled) {
   btn.onclick = async () => {
     const next = !enabled;
     if (next && !confirm("Block all new external phone/HTTP connections?")) return;
+    const ttlMs = next ? parseInt(ttlSel.value, 10) || 0 : 0;
     try {
-      await fetch("/admin/lockdown", { method:"POST", headers: authHeaders(), body: JSON.stringify({ enabled: next }) });
+      await fetch("/admin/lockdown", { method:"POST", headers: authHeaders(), body: JSON.stringify({ enabled: next, ttlMs }) });
     } catch (e) { statusEl.textContent = "err: " + e.message; }
     refresh();
   };
@@ -229,7 +250,9 @@ function fmtIdle(ms) { return ms < 1000 ? ms + "ms" : (ms/1000).toFixed(1) + "s"
 let clientsRowSig = "";
 let clientRows = {};   // clientId -> { tr, nick, id, ip, dev, screen, role, msgs, idle, status }
 
-function renderClients(list) {
+function renderClients(list, tempBanIds) {
+  const kickById = {};
+  (tempBanIds || []).forEach(b => kickById[b.clientId] = b.remainMs);
   const tb = document.querySelector("#clients tbody");
   const sig = list.map(c => c.clientId).sort().join("|");
   if (sig !== clientsRowSig) {
@@ -286,11 +309,18 @@ function renderClients(list) {
     if (document.activeElement !== r.role && r.role.value !== c.role) r.role.value = c.role;
     r.msgs.textContent = c.msgCount;
     r.idle.textContent = fmtIdle(c.idleMs);
-    r.status.textContent = c.connected ? "live" : "gone";
+    const remain = kickById[c.clientId] || 0;
+    if (remain > 0) {
+      r.status.textContent = "kicked · " + Math.ceil(remain/1000) + "s";
+      r.status.className = "small err";
+    } else {
+      r.status.textContent = c.connected ? "live" : "gone";
+      r.status.className = "";
+    }
   }
 }
 
-function renderBans(ids, ips) {
+function renderBans(ids, ips, kickIds, kickIps) {
   const root = document.getElementById("banlist");
   root.innerHTML = "";
   const mk = (label, val, payload) => {
@@ -300,9 +330,20 @@ function renderBans(ids, ips) {
     div.querySelector("button").onclick = () => action("/admin/unban", payload);
     return div;
   };
+  const mkKick = (label, val, remainMs) => {
+    const div = document.createElement("div");
+    div.className = "banpill";
+    div.style.opacity = "0.7";
+    div.innerHTML = `<span>${label}: ${escape(val)} · ${Math.ceil(remainMs/1000)}s</span>`;
+    return div;
+  };
   ids.forEach(id  => root.appendChild(mk("id", id,  { clientId: id })));
   ips.forEach(ip  => root.appendChild(mk("ip", ip,  { ip })));
-  if (!ids.length && !ips.length) root.innerHTML = "<span class='small'>none</span>";
+  (kickIds || []).forEach(b => root.appendChild(mkKick("kick id", (b.clientId||"").slice(0,12), b.remainMs)));
+  (kickIps || []).forEach(b => root.appendChild(mkKick("kick ip", b.ip, b.remainMs)));
+  if (!ids.length && !ips.length && !(kickIds||[]).length && !(kickIps||[]).length) {
+    root.innerHTML = "<span class='small'>none</span>";
+  }
 }
 
 async function action(url, body) {
@@ -315,6 +356,15 @@ async function action(url, body) {
 
 function escape(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, m => ({
   "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); }
+
+document.getElementById("rotateMasterBtn").onclick = async () => {
+  if (!confirm("Mint a fresh master PIN? The current one stops working immediately.")) return;
+  try {
+    const r = await fetch("/admin/pins/rotate-master", { method: "POST", headers: authHeaders() });
+    if (!r.ok) { statusEl.textContent = "rotate → " + r.status; return; }
+  } catch (e) { statusEl.textContent = "err: " + e.message; }
+  refresh();
+};
 
 refresh();
 setInterval(refresh, 1500);

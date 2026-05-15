@@ -21,10 +21,19 @@ SceneSwitcher sceneSwitcher;
 AudioSourceSwitcher audioSwitcher;
 AutoSwitcher   autoSwitcher;
 SceneGuard       sceneGuard;
+FrameWatchdog    frameWatchdog;
 KillSwitch       killSwitch;
+StrobeSafety     strobeSafety;
+TempoLock        tempoLock;
+Setlist          setlist;
+TextOverlay      textOverlay;
+Recorder         recorder;
+Streamer         streamer;
+MidiBridge       midiBridge;
+HelpOverlay      helpOverlay;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
-final int SCENE_COUNT = 50;
+final int SCENE_COUNT = 51;
 int previousState = -1;
 boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
 
@@ -65,8 +74,14 @@ void loadSongToVisualize() {
     config.SONG_NAME = "Live Audio: " + config.audioDeviceSelector.getSelectedDeviceName();
     
     if (audio.audioInput == null) {
-      System.err.println("[FATAL] Could not initialize audio device input. Exiting.");
-      exit();
+      System.err.println("[Audio] Device init failed — falling back to FILE mode so the show keeps running.");
+      config.AUDIO_INPUT_MODE = "FILE";
+      audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
+      config.SONG_PLAYING = (audio.player != null);
+      if (config.SONG_TO_VISUALIZE != null) {
+        config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
+      }
+      return;
     }
     
     // Note: DropPredictor cannot scan live audio (it's real-time, not seekable)
@@ -189,6 +204,7 @@ void initializeGlobals() {
   logToStdout("initializeGlobals");
 
   config = new Config();
+  config.VERBOSE_LOG = isDevVerbose();
   dropPredictor = new DropPredictor();
 
   ellipseMode(CENTER);
@@ -231,10 +247,24 @@ boolean isDevMode() {
     System.getProperty("user.home") + "/.devmode"
   };
   for (String path : candidates) {
-    java.io.File f = new java.io.File(path);
-    logToStdout("devmode check: " + f.getAbsolutePath() + " → " + f.exists());
-    if (f.exists()) return true;
+    if (new java.io.File(path).exists()) {
+      logToStdout("devmode active: " + path);
+      return true;
+    }
   }
+  return false;
+}
+
+// Verbose stdout heartbeat (SCENE/CONTROLLER/FPS once per second).
+// Off by default — drop a `.devverbose` file in the sketch dir to re-enable
+// for debugging. HUD + /operator already show this info live.
+boolean isDevVerbose() {
+  String[] candidates = {
+    sketchPath() + "/.devverbose",
+    sketchPath() + "/../.devverbose",
+    System.getProperty("user.dir") + "/.devverbose"
+  };
+  for (String path : candidates) if (new java.io.File(path).exists()) return true;
   return false;
 }
 
@@ -469,6 +499,7 @@ void settings() {
 
 void setup() {
   config = new Config();
+  config.VERBOSE_LOG = isDevVerbose();
   pinManager = new PinManager();
   clientRegistry = new ClientRegistry();
   featureFlagServer = new FeatureFlagServer();
@@ -564,6 +595,7 @@ void setup() {
   scenes[47] = new StrangeAttractorScene();
   scenes[48] = new SacredFractalsScene();
   scenes[49] = new TheyDontKnowScene();
+  scenes[50] = new LiveCodeScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
@@ -571,7 +603,19 @@ void setup() {
   autoSwitcher   = new AutoSwitcher();
   featureFlagServer.loadFromDisk();  // after autoSwitcher so AUTO_SWITCH_MODE applies
   sceneGuard     = new SceneGuard();
+  frameWatchdog  = new FrameWatchdog();
+  if (!SMOKE_TEST_MODE) frameWatchdog.start();
   killSwitch     = new KillSwitch();
+  strobeSafety   = new StrobeSafety();
+  strobeSafety.loadPref();
+  tempoLock      = new TempoLock();
+  setlist        = new Setlist();
+  setlist.load();
+  textOverlay    = new TextOverlay();
+  recorder       = new Recorder();
+  streamer       = new Streamer();
+  midiBridge     = new MidiBridge();
+  helpOverlay    = new HelpOverlay();
   displayManager = new DisplayManager();
   demoInput      = new DemoInputDriver();
   displayManager.initFromPrefs();
@@ -606,6 +650,10 @@ void setup() {
 }
 
 void stop() {
+  if (recorder != null && recorder.running) recorder.stop();
+  if (streamer != null && streamer.running) streamer.stop();
+  if (midiBridge != null && midiBridge.enabled) midiBridge.stop();
+  if (frameWatchdog != null) frameWatchdog.stop();
   audio.stop();
   super.stop();
 }
@@ -724,8 +772,65 @@ void keyPressed() {
   }
 
   // F11 toggles "fill current display" mode (borderless-style fullscreen).
+  // Auto-enables strobe safety on the way into fullscreen (venue assumption);
+  // leaves it untouched when leaving fullscreen so manual overrides stick.
   if (keyCode == java.awt.event.KeyEvent.VK_F11) {
+    boolean wasFullscreen = displayManager.fullscreen;
     displayManager.toggleFullscreen();
+    if (!wasFullscreen && displayManager.fullscreen && strobeSafety != null && !strobeSafety.enabled) {
+      strobeSafety.setEnabled(true);
+      println("[STROBE] auto-enabled with fullscreen");
+    }
+    return;
+  }
+
+  // Ctrl+Enter: "showtime" macro — flip everything safety-relevant on at once.
+  // Idempotent: re-pressing is safe. Pairs with Esc kill switch for emergencies.
+  if (keyCode == java.awt.event.KeyEvent.VK_ENTER
+      && keyEvent != null && keyEvent.isControlDown()) {
+    if (displayManager != null && !displayManager.fullscreen) displayManager.toggleFullscreen();
+    if (strobeSafety != null && !strobeSafety.enabled)        strobeSafety.setEnabled(true);
+    println("[SHOWTIME] fullscreen + strobe safety enabled");
+    return;
+  }
+
+  // F4 toggles MIDI bridge (auto-scans inputs on enable).
+  if (keyCode == java.awt.event.KeyEvent.VK_F4) {
+    if (midiBridge != null) midiBridge.toggle();
+    return;
+  }
+
+  // F5 toggles mp4 recording (downscaled, ffmpeg-piped).
+  if (keyCode == java.awt.event.KeyEvent.VK_F5) {
+    if (recorder != null) recorder.toggle();
+    return;
+  }
+
+  // Stream toggle: F6 OR F7 — F6 gets eaten by some WMs (GNOME).
+  // If both fail, use the operator dashboard button (no auth needed on localhost).
+  if (keyCode == java.awt.event.KeyEvent.VK_F6 || keyCode == java.awt.event.KeyEvent.VK_F7) {
+    println("[STREAM] toggle hotkey pressed (key=" + key + " code=" + keyCode + ")");
+    if (streamer != null) streamer.toggle();
+    else                  println("[STREAM] streamer is null!");
+    return;
+  }
+
+  // F3 toggles live text overlay (DJ name / track title); Shift+F3 cycles layout.
+  if (keyCode == java.awt.event.KeyEvent.VK_F3) {
+    if (textOverlay != null) {
+      boolean shift = (keyEvent != null && keyEvent.isShiftDown());
+      if (shift) textOverlay.cycleLayout();
+      else       textOverlay.toggle();
+    }
+    return;
+  }
+
+  // F12 toggles strobe safety cap (photosensitive-seizure protection).
+  if (keyCode == java.awt.event.KeyEvent.VK_F12) {
+    if (strobeSafety != null) {
+      strobeSafety.toggle();
+      println("[STROBE] " + (strobeSafety.enabled ? "ON" : "OFF"));
+    }
     return;
   }
 
@@ -795,6 +900,23 @@ void keyPressed() {
       switchScene(prevActiveScene());
     if (keyCode == 12 || keyCode == java.awt.event.KeyEvent.VK_PAGE_DOWN)
       switchScene(nextActiveScene());
+  }
+
+  // ? toggles stage hotkey help overlay
+  if (key == '?') { if (helpOverlay != null) helpOverlay.toggle(); return; }
+
+  // Setlist: ] advance, [ back, } toggle auto, { reload from disk
+  if (key == ']') { if (setlist != null) setlist.advance(); return; }
+  if (key == '[') { if (setlist != null) setlist.back();    return; }
+  if (key == '}') { if (setlist != null) setlist.toggleAuto(); return; }
+  if (key == '{') { if (setlist != null) setlist.load();      return; }
+
+  // Tap tempo: `\` = tap (4 taps to lock), `|` (Shift+\) = clear lock
+  if (key == '\\') {
+    if (tempoLock != null) tempoLock.tap();
+  }
+  if (key == '|') {
+    if (tempoLock != null) tempoLock.clear();
   }
 
   // Global background toggles
@@ -908,11 +1030,11 @@ public void getUserInput() {
   // then lbWasChorded will be true and no scene switch will occur.
   if (!controller.chord(controller.lbButton, controller.rbButton)) {
     if (controller.lbJustReleased && !controller.lbWasChorded) {
-      println("CONTROLLER: LB released -> switching prev");
+      if (config.VERBOSE_LOG) println("CONTROLLER: LB released -> switching prev");
       switchScene(prevActiveScene());
     }
     if (controller.rbJustReleased && !controller.rbWasChorded) {
-      println("CONTROLLER: RB released -> switching next");
+      if (config.VERBOSE_LOG) println("CONTROLLER: RB released -> switching next");
       switchScene(nextActiveScene());
     }
   }
@@ -945,11 +1067,11 @@ public void getUserInput() {
   }
 
   if (controller.backJustReleased && !controller.backWasChorded) {
-    println("CONTROLLER: BACK released -> stopping");
+    if (config.VERBOSE_LOG) println("CONTROLLER: BACK released -> stopping");
     stopSong();
   }
   if (controller.startJustReleased && !controller.startWasChorded) {
-    println("CONTROLLER: START released -> starting");
+    if (config.VERBOSE_LOG) println("CONTROLLER: START released -> starting");
     startSong();
   }
 }
@@ -990,7 +1112,8 @@ final int[] SCENE_ORDER = {
   SCENE_STRANGE_ATTRACTOR,
   SCENE_SACRED_FRACTALS,
   SCENE_EXPLAINER,
-  SCENE_THEY_DONT_KNOW
+  SCENE_THEY_DONT_KNOW,
+  SCENE_LIVE_CODE
 };
 
 int _sceneOrderIndex(int state) {
@@ -1093,6 +1216,7 @@ long lastLogicalFrame = 0;
 float accumulator = 0;
 
 void draw() {
+  if (frameWatchdog != null) frameWatchdog.tick(config.STATE);
   // ── Smoke test fast-path ─────────────────────────────────────────────────
   if (SMOKE_TEST_MODE) {
     // Keep audio ticking so FFT data is valid (scenes read it in drawScene)
@@ -1106,8 +1230,29 @@ void draw() {
     return;
   }
   // ────────────────────────────────────────────────────────────────────────
-  if (frameCount % 60 == 0) println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
+  // Per-second SCENE/CONTROLLER/FPS heartbeat removed — same info is in the HUD
+  // and on /operator. Set .devverbose in the sketch dir to re-enable.
+  if (config.VERBOSE_LOG && frameCount % 60 == 0) {
+    println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
+  }
   saveDevPreview();
+
+  if (setlist != null) setlist.tick();
+  if (midiBridge != null) midiBridge.drainPending();
+
+  // ── Frame-stall recovery ─────────────────────────────────────────────────
+  // Watchdog flagged a >2s render gap. Charge the failure to the scene that
+  // was on screen when the stall began; SceneGuard will blacklist it after
+  // repeated offenses. Force-switch to a non-blacklisted scene now.
+  if (frameWatchdog != null && frameWatchdog.consumeStall()) {
+    int suspect = frameWatchdog.stallSceneId;
+    if (suspect >= 0 && suspect < SCENE_COUNT) {
+      sceneGuard.recordFailure(suspect,
+        new RuntimeException("frame stall " + frameWatchdog.stallDurationMs + "ms"));
+      int safe = nextNonBlacklistedScene(suspect);
+      if (safe != suspect) switchSceneDirect(safe);
+    }
+  }
   
   // 1. Scene Lifecycle Management
   if (config.STATE != previousState) {
@@ -1238,6 +1383,18 @@ void draw() {
   PGraphics toDisplay = postFX.process(sceneBuffer);
   image(toDisplay, 0, 0, width, height);
 
+  // Strobe safety cap — measures luma jumps + flash rate on the final
+  // composite, blends prior frame back over to flatten unsafe spikes.
+  if (strobeSafety != null) {
+    strobeSafety.maybeDampen(toDisplay, width, height);
+    strobeSafety.snapshot(toDisplay);
+  }
+
+  // mp4 capture — pipes the post-FX composite to ffmpeg via worker thread.
+  // Excludes HUDs and text overlay (they sit on top of the window blit).
+  if (recorder != null) recorder.tick(toDisplay);
+  if (streamer != null) streamer.tick(toDisplay);
+
   // Headache-free wash: dim brightness + soft warm tint to round off harshness.
   // Applied in window space so it covers anything in the scene chain. HUD/overlays
   // draw on top unaffected so controls stay readable.
@@ -1252,6 +1409,10 @@ void draw() {
   // 5. Global overlays (UI drawn at native res, over the buffer)
   blendMode(BLEND);
 
+  // Live text overlay (DJ name / track title). Drawn before HUD so HUD reads
+  // on top, hidden in demo capture and when no text file is present.
+  if (textOverlay != null) textOverlay.draw(width, height, monoFont);
+
   // Demo capture mode hides every HUD/badge so the recorded gif is pure scene.
   boolean hideHuds = (demoInput != null && demoInput.isActive());
 
@@ -1261,6 +1422,16 @@ void draw() {
     nextHudY = drawAudioSourceBadge(nextHudY);
     if (autoSwitcher != null) nextHudY = drawAutoSwitcherBadge(nextHudY);
     if (postFX != null && postFX.anyEnabled()) nextHudY = drawPostFXBadge(nextHudY);
+    if (strobeSafety != null && strobeSafety.enabled) nextHudY = drawStrobeSafetyBadge(nextHudY);
+    if (tempoLock != null && (tempoLock.isLocked() || tempoLock.taps.size() > 0)) nextHudY = drawTempoLockBadge(nextHudY);
+    if (setlist != null && setlist.isActive()) nextHudY = drawSetlistBadge(nextHudY);
+    if (recorder != null && recorder.running)  nextHudY = drawRecorderBadge(nextHudY);
+    if (streamer != null && streamer.running)  nextHudY = drawStreamerBadge(nextHudY);
+    if (midiBridge != null && midiBridge.enabled) nextHudY = drawMidiBadge(nextHudY);
+    if (sceneGuard != null) {
+      ArrayList<String> bl = sceneGuard.blacklistedNames();
+      if (!bl.isEmpty()) nextHudY = drawBlacklistBadge(nextHudY, bl);
+    }
 
     drawWebControlBadge(); // Bottom-Left (doesn't stack)
   }
@@ -1317,6 +1488,9 @@ void draw() {
     sceneSwitcher.update();
     sceneSwitcher.drawOverlay();
   }
+
+  // Stage hotkey help (?) — sits above HUDs but below kill switch fade.
+  if (helpOverlay != null) helpOverlay.draw(width, height, monoFont);
 
   // KillSwitch composites a black quad over EVERYTHING — must be the very last draw.
   killSwitch.tick();
@@ -1613,6 +1787,286 @@ float drawAutoSwitcherBadge(float startY) {
 // Bottom-right, stacked ABOVE the AutoSwitcher badge.
 // Shows active FX names; hidden when no effects are enabled.
 // Keyboard: g=cycle next, G=clear all. Controller: LB+RB+Y=cycle, LB+RB+X=clear.
+float drawBlacklistBadge(float startY, ArrayList<String> names) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[GUARD] " + names.size() + " scene(s) disabled this session";
+  String joined = "";
+  for (int i = 0; i < names.size(); i++) {
+    if (i > 0) joined += ", ";
+    joined += names.get(i);
+  }
+  String line2 = joined;
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(255, 120, 100);
+  text(line1, boxX + pad, boxY + pad);
+  fill(255, 200, 200);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawMidiBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[MIDI] F4=toggle";
+  String line2 = midiBridge.openDevices.size() + " device(s) — pad note 36+ -> scene order";
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(160, 220, 255);
+  text(line1, boxX + pad, boxY + pad);
+  fill(200, 240, 255);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawStreamerBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts  = 13 * uiScale();
+  float tsBig = 18 * uiScale();
+  textAlign(LEFT, TOP);
+
+  String streamUrl = "http://?:8080/stream.html";
+  if (featureFlagServer != null && featureFlagServer.lanUrls != null && featureFlagServer.lanUrls.size() > 0) {
+    String base = featureFlagServer.lanUrls.get(0);
+    if (base.endsWith("/")) streamUrl = base + "stream.html";
+    else                    streamUrl = base + "/stream.html";
+  }
+
+  String line1 = "[STREAM]  F6=stop";
+  String line2 = streamer.statusLabel();
+  String line3 = "TV / phone:";
+  String line4 = streamUrl;
+
+  float pad      = 10 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float bigH     = tsBig + 4;
+  textSize(ts);
+  float w1 = textWidth(line1), w2 = textWidth(line2), w3 = textWidth(line3);
+  textSize(tsBig);
+  float w4 = textWidth(line4);
+  float boxW = max(max(w1, w2), max(w3, w4)) + pad * 2;
+  float boxH = lineH * 3 + bigH + pad + 8;
+  float boxX = width  - outerPad - boxW;
+  float boxY = startY - boxH;
+
+  noStroke();
+  fill(0, 200);
+  rect(boxX, boxY, boxW, boxH, 6);
+  stroke(80, 220, 120);
+  strokeWeight(1.5);
+  noFill();
+  rect(boxX, boxY, boxW, boxH, 6);
+
+  // Pulsing green dot to signal "live"
+  noStroke();
+  float pulse = 0.6 + 0.4 * sin(millis() * 0.005);
+  fill(50, 255 * pulse, 120);
+  ellipse(boxX + pad + 5, boxY + pad + ts * 0.5, 8, 8);
+
+  textSize(ts);
+  fill(180, 255, 200);
+  text(line1, boxX + pad + 16, boxY + pad);
+  fill(220, 255, 230);
+  text(line2, boxX + pad, boxY + pad + lineH);
+  fill(140, 220, 160);
+  text(line3, boxX + pad, boxY + pad + lineH * 2 + 4);
+  textSize(tsBig);
+  fill(120, 255, 180);
+  text(line4, boxX + pad, boxY + pad + lineH * 3 + 4);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawRecorderBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[REC]  F5=stop";
+  String line2 = recorder.statusLabel();
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  // Pulsing red dot
+  float pulse = 0.6 + 0.4 * sin(millis() * 0.005);
+  fill(255 * pulse, 50, 50);
+  ellipse(boxX + pad + 5, boxY + pad + ts * 0.5, 8, 8);
+
+  fill(255, 200, 200);
+  text(line1, boxX + pad + 16, boxY + pad);
+  fill(255, 240, 240);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawSetlistBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[SETLIST " + (setlist.cursor + 1) + "/" + setlist.size()
+               + (setlist.autoAdvance ? " AUTO" : "") + "]  ]=next [=back }=auto {=reload";
+  String line2 = "now: "  + setlist.nowLabel();
+  String line3 = "next: " + setlist.nextLabel();
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(max(textWidth(line1), textWidth(line2)), textWidth(line3)) + pad * 2;
+  float boxH     = lineH * 3 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(255, 200, 120);
+  text(line1, boxX + pad, boxY + pad);
+  fill(220, 240, 200);
+  text(line2, boxX + pad, boxY + pad + lineH);
+  fill(160, 200, 160);
+  text(line3, boxX + pad, boxY + pad + lineH * 2);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawTempoLockBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[TEMPO]  \\=tap  |=clear";
+  String line2 = tempoLock.statusLabel();
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(140, 220, 255);
+  text(line1, boxX + pad, boxY + pad);
+  if (tempoLock.isLocked()) fill(120, 255, 160); else fill(255, 220, 120);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  // Metronome pulse — visible verification that locked BPM matches the track.
+  if (tempoLock.isLocked() && tempoLock.beatPeriodMs > 0) {
+    long elapsed = System.currentTimeMillis() - tempoLock.lockEpochMs;
+    float phase  = (elapsed % tempoLock.beatPeriodMs) / (float) tempoLock.beatPeriodMs;
+    float pulse  = 1.0 - constrain(phase * 4, 0, 1);
+    float r      = 6 * uiScale() * (1 + pulse);
+    fill(120, 255, 160, 200);
+    noStroke();
+    ellipse(boxX + boxW - pad - 8 * uiScale(), boxY + pad + ts * 0.5, r, r);
+  }
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+float drawStrobeSafetyBadge(float startY) {
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+
+  String line1 = "[STROBE-SAFE]  F12=toggle";
+  String line2 = strobeSafety.lastDampAlpha > 0.02
+                 ? "dampening: " + nf(strobeSafety.lastDampAlpha, 1, 2)
+                 : "ok";
+
+  float pad      = 8 * uiScale();
+  float outerPad = 10 * uiScale();
+  float lineH    = ts + 4;
+  float boxW     = max(textWidth(line1), textWidth(line2)) + pad * 2;
+  float boxH     = lineH * 2 + pad;
+
+  float boxX  = width  - outerPad - boxW;
+  float boxY  = startY - boxH;
+
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+
+  fill(255, 180, 80);
+  text(line1, boxX + pad, boxY + pad);
+  if (strobeSafety.lastDampAlpha > 0.02) fill(255, 100, 100); else fill(120, 220, 140);
+  text(line2, boxX + pad, boxY + pad + lineH);
+
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
 float drawPostFXBadge(float startY) {
   String badge = postFX.getActiveBadge();
   if (badge.length() == 0) return startY;

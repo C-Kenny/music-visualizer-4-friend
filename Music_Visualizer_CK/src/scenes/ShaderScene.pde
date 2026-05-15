@@ -1,168 +1,199 @@
+/**
+ * ShaderScene — live GLSL playground.
+ *
+ * Edits to `live_shader.glsl` in the user data dir hot-reload on save (mtime
+ * poll). Compile failures display a red banner with the GLSL error; the last
+ * good shader keeps rendering so the screen never goes black mid-set.
+ *
+ * Seed: copied from bundled milkdrop_lesson.glsl on first run.
+ *
+ * Controls:
+ *   Left stick  pan
+ *   Right stick X  twist
+ *   A  recenter
+ *   Y  force reload (ignores mtime)
+ */
 class ShaderScene implements IScene {
-  PShader milkdropShader;
-  boolean shaderLoaded = false;
-  
-  // Controller variables we will pass to the shader uniforms
-  float panX = 0.0;
-  float panY = 0.0;
-  float twist = 0.0;
-  
+  ShaderConsole console;
+
+  float panX = 0.0, panY = 0.0, twist = 0.0;
+
   ShaderScene() {
-    loadMyShader();
-  }
-  
-  void loadMyShader() {
-    try {
-      // In Processing, loadShader looks in the data/ folder automatically
-      milkdropShader = loadShader("milkdrop_lesson.glsl");
-      shaderLoaded = true;
-      println("Successfully loaded the GPU Milkdrop Shader!");
-    } catch (Exception e) {
-      shaderLoaded = false;
-      println("Failed to load shader: " + e.getMessage());
-    }
+    console = new ShaderConsole("live_shader.glsl", "milkdrop_lesson.glsl");
+    console.forceReload();
   }
 
   void applyController(Controller c) {
-    // We map the Left Stick axes (-1 to 1 natively) to variables we can push to GLSL
-    float leftStickX = map(c.lx, 0, width, -1, 1);
-    float leftStickY = map(c.ly, 0, height, -1, 1);
-    
-    // Right stick X will twist the kaleidoscope
-    float rightStickX = map(c.rx, 0, width, -1, 1);
-    
-    // Applying deadzones so tiny stick drift doesn't move it continuously
-    if (abs(leftStickX) > 0.1) panX -= leftStickX * 0.02; // Accumulate the pan overtime
-    if (abs(leftStickY) > 0.1) panY += leftStickY * 0.02; // Processing Y is inverted from GLSL Y
-    if (abs(rightStickX) > 0.1) twist += rightStickX * 0.05;
-    
-    // A button to center the pan and untwist
-    if (c.aJustPressed) {
-      panX = 0.0;
-      panY = 0.0;
-      twist = 0.0;
-    }
-    
-    // Y button to hot-reload the shader while debugging! (Awesome feature)
-    if (c.yJustPressed) {
-      loadMyShader();
-    }
+    float lx = map(c.lx, 0, width,  -1, 1);
+    float ly = map(c.ly, 0, height, -1, 1);
+    float rx = map(c.rx, 0, width,  -1, 1);
+    if (abs(lx) > 0.1) panX -= lx * 0.02;
+    if (abs(ly) > 0.1) panY += ly * 0.02;
+    if (abs(rx) > 0.1) twist += rx * 0.05;
+    if (c.aJustPressed) { panX = 0; panY = 0; twist = 0; }
+    if (c.yJustPressed) console.forceReload();
   }
 
   void drawScene(PGraphics pg) {
-    pg.background(0); // Clear the frame buffer
-    
-    if (!shaderLoaded || milkdropShader == null) {
-      pg.fill(255, 0, 0);
-      pg.textSize(32);
-      pg.text("Shader Failed to Load! Check console.", pg.width/2.0, pg.height/2.0);
+    pg.background(0);
+    console.reloadIfChanged();
+
+    PShader sh = console.activeShader();
+    if (sh == null) {
+      drawNoShader(pg);
+      drawHud(pg, 0, 0, 0);
       return;
     }
 
-    // Capture the audio analytics
-    float basRaw = analyzer.bass; 
-    float midRaw = analyzer.mid; 
-    float higRaw = analyzer.high; 
-
-    // 1. SET THE UNIFORMS (Talk to the GPU!)
-    // Pass the standard screen and time values
+    float bass = analyzer.bass, mid = analyzer.mid, high = analyzer.high;
     float d = displayDensity();
-    milkdropShader.set("u_resolution", float(pg.width) * d, float(pg.height) * d);
-    milkdropShader.set("u_time", pg.parent.millis() / 1000.0);
-    
-    // Pass our music reaction layers
-    milkdropShader.set("audio_bass", basRaw);
-    milkdropShader.set("audio_mid", midRaw);
-    milkdropShader.set("audio_high", higRaw);
-    
-    // Pass our controller variables
-    milkdropShader.set("controller_pan", panX, panY);
-    milkdropShader.set("controller_twist", twist);
 
-    // 2. TELL PROCESSING TO USE THE GPU SHADER
-    pg.shader(milkdropShader);
-    
-    // 3. DRAW A CANVAS FOR THE GPU TO RENDER ON
-    // We literally just draw a giant flat rectangle that covers the whole screen.
-    // The GPU shader will overwrite this rectangle with pure math!
-    pg.noStroke();
-    pg.fill(255);
-    pg.rect(0, 0, pg.width, pg.height);
-    
-    // 4. RESET THE SHADER
-    // Critical: If we don't reset the shader here, the text HUD and every other scene
-    // in the application will try to be drawn using the Milkdrop GLSL logic which will break it!
-    pg.resetShader();
+    boolean ok = true;
+    try {
+      sh.set("u_resolution", float(pg.width) * d, float(pg.height) * d);
+      sh.set("u_time", pg.parent.millis() / 1000.0);
+      sh.set("audio_bass", bass);
+      sh.set("audio_mid",  mid);
+      sh.set("audio_high", high);
+      sh.set("controller_pan", panX, panY);
+      sh.set("controller_twist", twist);
+      pg.shader(sh);
+      pg.noStroke();
+      pg.fill(255);
+      pg.rect(0, 0, pg.width, pg.height);
+    } catch (Throwable t) {
+      ok = false;
+      console.markRuntimeError(t);
+    } finally {
+      pg.resetShader();
+    }
 
-    // Now we can draw normal CPU graphics (like the text HUD) over top of the GPU art safely.
+    if (!ok) drawNoShader(pg);
+
     drawSongNameOnScreen(pg, config.SONG_NAME, pg.width / 2.0, pg.height - 5);
-    drawHud(pg, basRaw, midRaw, higRaw);
+    drawHud(pg, bass, mid, high);
+    drawErrorBanner(pg);
   }
 
-  // Our educational code overlay lines!
+  void drawNoShader(PGraphics pg) {
+    pg.fill(40, 0, 0);
+    pg.noStroke();
+    pg.rect(0, 0, pg.width, pg.height);
+    pg.fill(255, 90, 90);
+    pg.textAlign(CENTER, CENTER);
+    pg.textSize(28 * uiScale());
+    pg.text("shader compile failed — see banner", pg.width / 2.0, pg.height / 2.0);
+  }
+
+  void drawErrorBanner(PGraphics pg) {
+    float scale = uiScale();
+    long  since = millis() - console.lastReloadMs;
+    boolean justReloaded = console.reloadCount > 0 && since < 1500 && !console.hasError();
+
+    // Top-right persistent status pill — always visible, never covered by song
+    // name / ticker / setlist badge at bottom edge.
+    pg.pushStyle();
+    float ts = 14 * scale;
+    pg.textSize(ts);
+    String pillText = console.hasError()
+        ? ("GLSL ERR  #" + console.reloadCount)
+        : ("GLSL OK  #" + console.reloadCount);
+    float tw = pg.textWidth(pillText);
+    float padX = 10 * scale, padY = 6 * scale;
+    float pillW = tw + padX * 2;
+    float pillH = ts + padY * 2;
+    float pillX = pg.width - pillW - 12 * scale;
+    float pillY = 12 * scale;
+
+    int bg, border, fg;
+    if (console.hasError()) {
+      bg = color(80, 0, 0, 230); border = color(255, 80, 80); fg = color(255, 220, 220);
+    } else if (justReloaded) {
+      float t = 1.0 - (since / 1500.0);
+      bg = color(0, lerp(60, 200, t), 0, 230); border = color(120, 255, 120); fg = color(255);
+    } else {
+      bg = color(0, 60, 0, 200); border = color(80, 200, 80, 180); fg = color(220, 255, 220);
+    }
+    pg.noStroke();
+    pg.fill(bg);
+    pg.rect(pillX, pillY, pillW, pillH, 6);
+    pg.stroke(border);
+    pg.strokeWeight(2);
+    pg.noFill();
+    pg.rect(pillX, pillY, pillW, pillH, 6);
+    pg.noStroke();
+    pg.fill(fg);
+    pg.textAlign(LEFT, TOP);
+    pg.text(pillText, pillX + padX, pillY + padY - 1);
+    pg.popStyle();
+
+    // Full error banner across the TOP — top edge is mostly clear (only scene
+    // HUD top-left, which we offset around).
+    if (!console.hasError()) return;
+
+    pg.pushStyle();
+    String msg = console.errorMessage();
+    String[] lines = split(msg, '\n');
+    float ets = 13 * scale;
+    float lh  = ets * 1.3;
+    float h   = lh * (lines.length + 1) + 16;
+    float y   = pillY + pillH + 8 * scale;
+    pg.noStroke();
+    pg.fill(80, 0, 0, 235);
+    pg.rect(0, y, pg.width, h);
+    pg.fill(255, 200, 200);
+    pg.textAlign(LEFT, TOP);
+    pg.textSize(ets);
+    pg.text("GLSL ERROR — " + console.filePath(), 12, y + 6);
+    for (int i = 0; i < lines.length; i++) {
+      pg.text(lines[i], 12, y + 6 + lh * (i + 1));
+    }
+    pg.popStyle();
+  }
+
   String[] getCodeLines() {
     return new String[] {
-      "// GPU MILKDROP LESSON",
-      "void main() {",
-      "  // Get normalized pixel coords centered at (0,0)",
-      "  vec2 coord = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;",
-      "  ",
-      "  // 4x folding space recursive loop",
-      "  float acc = 0.0;",
-      "  for(float i=0.; i<4.; i++) {",
-      "    coord = abs(coord); // mirror symmetry",
-      "    coord = (coord * (1.3 + audio_bass*0.5)) - 0.5; // expansion",
-      "    ",
-      "    // Math rotation around axis",
-      "    float s = sin(u_time*0.2 + controller_twist);",
-      "    float c = cos(u_time*0.2 + controller_twist);",
-      "    coord = vec2(coord.x*c - coord.y*s, coord.x*s + coord.y*c);",
-      "    ",
-      "    // Intense inverse ripples based on distance",
-      "    float d = length(coord);",
-      "    float wave = sin(d*8.0 - u_time*2.0 + audio_mid*2.0);",
-      "    acc += (0.01 + audio_high*0.05) / abs(wave);",
-      "  }",
-      "  ",
-      "  // Output time-shifting colors!",
-      "  gl_FragColor = vec4(base_color * color_shift * acc, 1.0);",
-      "}"
+      "// LIVE SHADER CONSOLE",
+      "// Edit: " + (console != null ? console.filePath() : "(not initialized)"),
+      "// Save → next frame recompiles. Fail → red banner, last-good keeps drawing.",
+      "//",
+      "// Uniforms available:",
+      "//   uniform vec2  u_resolution;",
+      "//   uniform float u_time;",
+      "//   uniform float audio_bass, audio_mid, audio_high;",
+      "//   uniform vec2  controller_pan;",
+      "//   uniform float controller_twist;",
+      "//",
+      "// Y = force reload   A = recenter pan/twist"
     };
   }
 
   void drawHud(PGraphics pg, float low, float mid, float high) {
     pg.pushStyle();
-      float ts = 11 * uiScale();
-      float lh = ts * 1.3;
-      pg.fill(0, 125);
-      pg.noStroke();
-      pg.rectMode(CORNER);
-      pg.rect(8, 8, 380 * uiScale(), 8 + lh * 6);
-      pg.fill(255);
-      pg.textSize(ts);
-      pg.textAlign(LEFT, TOP);
-      pg.text("Scene: GPU Shader Lesson", 12, 12);
-      pg.text("low / mid / high (norm): " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh);
-      pg.text("controller twist: " + nf(twist, 1, 2) + "  pan X/Y: " + nf(panX, 1, 2) + " / " + nf(panY, 1, 2), 12, 12 + lh * 2);
-      pg.text("A center  Y hot-reload shader", 12, 12 + lh * 3);
-      pg.text("Press ` (backtick) to view the GLSL Shader lesson code overlay!", 12, 12 + lh * 4);
-      pg.text("FPS varies by GPU. CPU usage should be ~0%.", 12, 12 + lh * 5);
+    float ts = 11 * uiScale();
+    float lh = ts * 1.3;
+    pg.fill(0, 125);
+    pg.noStroke();
+    pg.rectMode(CORNER);
+    pg.rect(8, 8, 420 * uiScale(), 8 + lh * 6);
+    pg.fill(255);
+    pg.textSize(ts);
+    pg.textAlign(LEFT, TOP);
+    pg.text("Scene: Live Shader Console", 12, 12);
+    pg.text("file: " + (console != null ? console.userFileName : "?") +
+            "  reloads: " + (console != null ? console.reloadCount : 0), 12, 12 + lh);
+    pg.text("low / mid / high: " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh * 2);
+    pg.text("twist: " + nf(twist, 1, 2) + "  pan: " + nf(panX, 1, 2) + " / " + nf(panY, 1, 2), 12, 12 + lh * 3);
+    pg.text("A center  Y force-reload  edit .glsl in any editor → autoreloads", 12, 12 + lh * 4);
+    pg.text("` for code overlay", 12, 12 + lh * 5);
     pg.popStyle();
   }
 
-  void onEnter() {
-    background(0);
-  }
-
-  void onExit() {
-    // We should be careful resetting global shaders here specifically.
-    // In our new architecture, it's safer to always clear in drawScene.
-  }
+  void onEnter() { background(0); }
+  void onExit()  { }
 
   void handleKey(char k) {
-    if (k == 'y' || k == 'Y') {
-      loadMyShader();
-    }
+    if (k == 'y' || k == 'Y') console.forceReload();
   }
 
   ControllerLayout[] getControllerLayout() {

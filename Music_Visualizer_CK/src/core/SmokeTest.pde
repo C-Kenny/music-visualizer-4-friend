@@ -311,7 +311,11 @@ class SmokeTestRunner {
   // smoketest.sh reads to produce coloured pass/fail output and exit code.
   void printReport() {
     boolean passed = failures.size() == 0;
-    String resultPath = sketchPath(".smoketest_result");
+    // userDataPath: in dev MV_USER_DATA_DIR pins this to the build/sketch
+    // dir so smoketest.sh sees the file at $BUILD_DIR/.smoketest_result. On
+    // a real install (sketchPath = /opt/music-visualizer, read-only) this
+    // routes to ~/.config/music-visualizer instead.
+    String resultPath = userDataPath(".smoketest_result");
 
     // Write result file first so smoketest.sh can always read it even if
     // console output was partially lost

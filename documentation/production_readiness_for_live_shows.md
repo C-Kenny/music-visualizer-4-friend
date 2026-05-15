@@ -10,6 +10,25 @@ a real gig and must be addressed before the first booking. Track separately.
 
 ---
 
+## Status as of 2026-05-06
+
+- ✅ #1 Crash resilience — `SceneGuard` (try/catch + blacklist) + `FrameWatchdog` (>2s stall detection)
+- ✅ #2 Fullscreen + display select — `DisplayManager` (F11, Ctrl+1..9, persisted)
+- ✅ #3 Emergency kill switch — `KillSwitch` (Esc, Back+Start chord)
+- ✅ #4 Strobe safety cap — `StrobeSafety` (F12, auto-on with fullscreen, persisted)
+- ✅ #5 Tap tempo / BPM lock — `TempoLock` (`\` tap, `|` clear)
+- ✅ #6 MIDI bridge — `MidiBridge` (F4 toggle, pad note → SCENE_ORDER)
+- ⏳ #7 Operator HUD on secondary display — deferred, needs 2nd screen for testing
+- ✅ #8 Setlist — `Setlist` (`]` next, `[` back, `}` auto, `{` reload)
+- ✅ #9 Live text overlay — `TextOverlay` (F3 toggle, Shift+F3 layout)
+- ⏳ #10 Preset snapshots — deferred, needs per-scene `getPreset/applyPreset` retrofit
+- ✅ #11 Output recording to mp4 — `Recorder` (F5, ffmpeg subprocess pipe)
+- ⏳ #12 Session settings file — partial (per-component prefs: `.display`, `.strobe`)
+
+Remaining gating gap for actual gigs: live audio input (mixer line-in / loopback) — see `feature_audio_device_input` memory; deferred until DJ mixer hardware is on the dev rig.
+
+---
+
 ## Critical — will ruin the set if missing
 
 ### 1. Crash resilience
