@@ -113,7 +113,7 @@ class TheyDontKnowScene implements IScene {
     h2.setSeed(sketchSeed);
     h2.setIsHandy(true);
     h2.setRoughness(1.4);
-    h2.setBowing(1.0);
+    // (Handy 2012 bundled jar lacks setBowing — would no-op anyway at default 1.0)
   }
 
   // ── Frame ──────────────────────────────────────────────────────────────────
