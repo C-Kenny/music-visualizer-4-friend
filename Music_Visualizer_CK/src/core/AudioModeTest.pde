@@ -98,7 +98,9 @@ void testDeviceModeConstructor(SmokeTestRunner runner) {
     if (probe == null) throw new RuntimeException("constructor returned null");
     if (!"DEVICE".equals(probe.getInputMode())) throw new RuntimeException("getInputMode() != DEVICE: " + probe.getInputMode());
     if (!probe.isDeviceInput()) throw new RuntimeException("isDeviceInput() false in device mode");
-    if (probe.player != null) throw new RuntimeException("player non-null in device mode");
+    // Device mode loads a muted/paused stub player so legacy scenes reading
+    // audio.player.left/right don't NPE. Contract: must not be playing.
+    if (probe.player != null && probe.player.isPlaying()) throw new RuntimeException("stub player should not be playing in device mode");
 
     probe.forward();
     probe.play();

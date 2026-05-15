@@ -40,7 +40,7 @@ jobs:
         id: cache-libs
         with:
           path: ~/sketchbook/libraries
-          key: processing-libs-v1
+          key: processing-libs-v2
 
       - name: Install Processing libraries
         if: steps.cache-libs.outputs.cache-hit != 'true'
@@ -93,14 +93,14 @@ jobs:
 
       - name: Assert PASS
         run: |
-          RESULT=$(head -1 .build/Music_Visualizer_CK/.smoketest_result 2>/dev/null || echo "MISSING")
+          RESULT=$(head -1 Music_Visualizer_CK/.smoketest_result 2>/dev/null || echo "MISSING")
           echo "Result: $RESULT"
-          grep -q "^PASS$" .build/Music_Visualizer_CK/.smoketest_result
+          grep -q "^PASS$" Music_Visualizer_CK/.smoketest_result
 
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: smoketest-result
-          path: .build/Music_Visualizer_CK/.smoketest_result
+          path: Music_Visualizer_CK/.smoketest_result
           if-no-files-found: warn
