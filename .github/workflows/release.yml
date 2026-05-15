@@ -71,8 +71,8 @@ jobs:
           # Fail fast if 404 returned an HTML body instead of a zip
           file p.zip | grep -qi zip || { echo "Download is not a zip:"; head -c 200 p.zip; exit 1; }
           unzip -q p.zip -d "$HOME"
-          # Portable zip extracts as $HOME/Processing/Processing.app
-          echo "PROCESSING_BIN=$HOME/Processing/Processing.app/Contents/MacOS/Processing" >> $GITHUB_ENV
+          # Portable zip extracts Processing.app flat at $HOME (no wrapper dir)
+          echo "PROCESSING_BIN=$HOME/Processing.app/Contents/MacOS/Processing" >> $GITHUB_ENV
 
       # ── Libraries (same bundled zips CI uses for smoke) ──────────────────
       # Processing 4 default sketchbook is OS-specific:
