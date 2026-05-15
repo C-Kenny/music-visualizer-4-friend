@@ -24,11 +24,8 @@ jobs:
             arch: amd64
             artifact: windows-amd64
             archive: zip
-          - os: macos-13          # Intel
-            platform: macos
-            arch: x86_64
-            artifact: macos-x86_64
-            archive: zip
+          # macOS Intel (macos-13) dropped: Intel Macs EOL, runner queue
+          # routinely exceeded 24h. Apple Silicon covers all current macOS users.
           - os: macos-latest      # Apple Silicon
             platform: macos
             arch: aarch64
@@ -66,20 +63,31 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.arch }}" = "aarch64" ]; then
-            URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-macos-aarch64.zip
+            URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-macos-aarch64-portable.zip
           else
-            URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-macos-x86_64.zip
+            URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-macos-x64-portable.zip
           fi
-          curl -sL "$URL" -o p.zip
+          curl -fsSL "$URL" -o p.zip
+          # Fail fast if 404 returned an HTML body instead of a zip
+          file p.zip | grep -qi zip || { echo "Download is not a zip:"; head -c 200 p.zip; exit 1; }
           unzip -q p.zip -d "$HOME"
-          # macOS app bundle launcher
-          echo "PROCESSING_BIN=$HOME/Processing.app/Contents/MacOS/Processing" >> $GITHUB_ENV
+          # Portable zip extracts as $HOME/Processing/Processing.app
+          echo "PROCESSING_BIN=$HOME/Processing/Processing.app/Contents/MacOS/Processing" >> $GITHUB_ENV
 
       # ── Libraries (same bundled zips CI uses for smoke) ──────────────────
+      # Processing 4 default sketchbook is OS-specific:
+      #   Linux   → ~/sketchbook
+      #   macOS   → ~/Documents/Processing
+      #   Windows → ~/Documents/Processing
+      # Libraries must live under <sketchbook>/libraries or Processing's CLI
+      # fails the export with "No library found for …".
       - name: Install Processing libraries
         shell: bash
         run: |
-          export SKETCHBOOK_LIBS="$HOME/sketchbook/libraries"
+          case "${{ matrix.platform }}" in
+            linux)   SKETCHBOOK_LIBS="$HOME/sketchbook/libraries" ;;
+            macos|windows) SKETCHBOOK_LIBS="$HOME/Documents/Processing/libraries" ;;
+          esac
           mkdir -p "$SKETCHBOOK_LIBS"
           for z in Music_Visualizer_CK/libraries/*.zip; do
             unzip -qo "$z" -d "$SKETCHBOOK_LIBS"
