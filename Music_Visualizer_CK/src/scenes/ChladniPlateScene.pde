@@ -76,6 +76,10 @@ class ChladniPlateScene implements IScene {
   // ── Precomputed cosine tables (separable eval) ────────────────────────────
   int maxModeIdx = 12;
   float[][] cosTable;                        // cosTable[k][i] = cos(k*pi*i/GRID)
+  // Time-modulation cache: cos(u_time*0.5 + phase*(k+1)) depends only on
+  // (faceIdx, k), not on grid position. Refreshed once per frame in drawScene.
+  // Was being recomputed ~100k times per frame inside uAtGrid's grid loop.
+  float[][] timeMod = new float[N_FACES][16]; // sized > ACTIVE_MODES
 
   // ── Sand grains (per-face arrays) ─────────────────────────────────────────
   static final int MAX_PER_FACE = 900;
@@ -221,6 +225,7 @@ class ChladniPlateScene implements IScene {
     float envelope = 0.65 + 0.35 * sin(u_time * 2.0);
 
     refreshCosineTables();
+    refreshTimeMod();
     updateAllGrains(envelope);
 
     pg.beginDraw();
@@ -279,15 +284,28 @@ class ChladniPlateScene implements IScene {
     }
   }
 
+  // Refresh per-(face, mode) time modulation once per frame. Reduces what
+  // used to be ~100k cos() calls per frame inside the grid loop down to
+  // N_FACES * ACTIVE_MODES = 24 cos calls. Call from drawScene.
+  void refreshTimeMod() {
+    float t = u_time * 0.5;
+    for (int f = 0; f < N_FACES; f++) {
+      float phase = f * 0.18;
+      for (int k = 0; k < ACTIVE_MODES; k++) {
+        timeMod[f][k] = cos(t + phase * (k + 1));
+      }
+    }
+  }
+
   // Evaluate u at integer grid (i, j) for face f (face supplies a phase).
   float uAtGrid(int i, int j, int faceIdx) {
-    float phase = faceIdx * 0.18;   // small decorrelation between faces
+    float[] tm = timeMod[faceIdx];
     float s = 0;
     for (int k = 0; k < ACTIVE_MODES; k++) {
       int n = modeN[k], m = modeM[k];
       float a = cosTable[n][i] * cosTable[m][j]
               - cosTable[m][i] * cosTable[n][j];
-      s += modeAmp[k] * cos(u_time * 0.5 + phase * (k + 1)) * a;
+      s += modeAmp[k] * tm[k] * a;
     }
     return s;
   }
@@ -295,12 +313,12 @@ class ChladniPlateScene implements IScene {
   // Evaluate u at arbitrary normalised (x, y) in [0, 1] on a given face.
   float uAtNorm(float x, float y, int faceIdx) {
     float px = x * PI, py = y * PI;
-    float phase = faceIdx * 0.18;
+    float[] tm = timeMod[faceIdx];
     float s = 0;
     for (int k = 0; k < ACTIVE_MODES; k++) {
       int n = modeN[k], m = modeM[k];
       float a = cos(n * px) * cos(m * py) - cos(m * px) * cos(n * py);
-      s += modeAmp[k] * cos(u_time * 0.5 + phase * (k + 1)) * a;
+      s += modeAmp[k] * tm[k] * a;
     }
     return s;
   }
