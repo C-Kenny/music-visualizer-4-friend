@@ -33,6 +33,7 @@ MidiBridge       midiBridge;
 HelpOverlay      helpOverlay;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
+FrameBudget      frameBudget;
 final int SCENE_COUNT = 51;
 int previousState = -1;
 boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
@@ -618,6 +619,7 @@ void setup() {
   helpOverlay    = new HelpOverlay();
   displayManager = new DisplayManager();
   demoInput      = new DemoInputDriver();
+  frameBudget    = new FrameBudget();
   displayManager.initFromPrefs();
 
   // Initialise smoke test runner after all scenes exist
@@ -822,6 +824,12 @@ void keyPressed() {
       if (shift) textOverlay.cycleLayout();
       else       textOverlay.toggle();
     }
+    return;
+  }
+
+  // F8 toggles per-phase frame budget HUD (perf diagnostic).
+  if (keyCode == java.awt.event.KeyEvent.VK_F8) {
+    if (frameBudget != null) frameBudget.toggle();
     return;
   }
 
@@ -1216,6 +1224,7 @@ long lastLogicalFrame = 0;
 float accumulator = 0;
 
 void draw() {
+  if (frameBudget != null) frameBudget.frameStart();
   if (frameWatchdog != null) frameWatchdog.tick(config.STATE);
   // ── Smoke test fast-path ─────────────────────────────────────────────────
   if (SMOKE_TEST_MODE) {
@@ -1297,11 +1306,16 @@ void draw() {
       shuffleSong();
     }
 
+    if (frameBudget != null) frameBudget.begin(FrameBudget.P_AUDIO);
     audio.forward();
     audio.detectBeat();
     analyzer.update(audio);
+    if (frameBudget != null) frameBudget.end();
+
+    if (frameBudget != null) frameBudget.begin(FrameBudget.P_INPUT);
     getUserInput();
     if (autoSwitcher != null) autoSwitcher.tick();
+    if (frameBudget != null) frameBudget.end();
 
     didRenderScene = true;
   } // End Fixed Timestep
@@ -1343,7 +1357,9 @@ void draw() {
           sceneBuffer.background(0);
           skipTarget = nextNonBlacklistedScene(config.STATE);
         } else {
+          if (frameBudget != null) frameBudget.begin(FrameBudget.P_SCENE);
           scenes[config.STATE].drawScene(sceneBuffer);
+          if (frameBudget != null) frameBudget.end();
         }
       } finally {
         try { sceneBuffer.popMatrix(); } catch (Throwable ignored) {}
@@ -1380,7 +1396,10 @@ void draw() {
   imageMode(CORNER);
   // Run enabled PostFX (CPU in-place, then GLSL ping-pong). Returns the
   // final buffer to blit — may be sceneBuffer itself or a temp FX buffer.
+  if (frameBudget != null) frameBudget.begin(FrameBudget.P_POSTFX);
   PGraphics toDisplay = postFX.process(sceneBuffer);
+  if (frameBudget != null) frameBudget.end();
+  if (frameBudget != null) frameBudget.begin(FrameBudget.P_COMPOSE);
   image(toDisplay, 0, 0, width, height);
 
   // Strobe safety cap — measures luma jumps + flash rate on the final
@@ -1406,8 +1425,11 @@ void draw() {
     fill(255, 200, 160, 18);
     rect(0, 0, width, height);
   }
+  if (frameBudget != null) frameBudget.end(); // close P_COMPOSE
+
   // 5. Global overlays (UI drawn at native res, over the buffer)
   blendMode(BLEND);
+  if (frameBudget != null) frameBudget.begin(FrameBudget.P_HUD);
 
   // Live text overlay (DJ name / track title). Drawn before HUD so HUD reads
   // on top, hidden in demo capture and when no text file is present.
@@ -1492,9 +1514,16 @@ void draw() {
   // Stage hotkey help (?) — sits above HUDs but below kill switch fade.
   if (helpOverlay != null) helpOverlay.draw(width, height, monoFont);
 
+  if (frameBudget != null) frameBudget.end(); // close P_HUD
+
   // KillSwitch composites a black quad over EVERYTHING — must be the very last draw.
   killSwitch.tick();
   killSwitch.draw();
+
+  if (frameBudget != null) {
+    frameBudget.frameEnd();
+    frameBudget.draw();
+  }
 }
 
 void drawMetadataOverlay() {
