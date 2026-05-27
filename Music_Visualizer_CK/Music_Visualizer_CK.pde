@@ -660,27 +660,12 @@ void stop() {
   super.stop();
 }
 
-int sceneBufferRenderWidth() {
-  if (config != null && config.LOW_POWER_MODE) {
-    return max(1, width / config.LOW_POWER_SCALE);
-  }
-  if (config != null && config.STAGE_RENDER_CAP_HEIGHT > 0
-      && height > config.STAGE_RENDER_CAP_HEIGHT) {
-    return max(1, round(config.STAGE_RENDER_CAP_HEIGHT * (float) width / height));
-  }
-  return width;
-}
-
-int sceneBufferRenderHeight() {
-  if (config != null && config.LOW_POWER_MODE) {
-    return max(1, height / config.LOW_POWER_SCALE);
-  }
-  if (config != null && config.STAGE_RENDER_CAP_HEIGHT > 0
-      && height > config.STAGE_RENDER_CAP_HEIGHT) {
-    return config.STAGE_RENDER_CAP_HEIGHT;
-  }
-  return height;
-}
+// Buffer-resize path disabled pending scene refactor — scenes draw in display
+// coords (width/height globals), so a smaller buffer makes geometry centre at
+// (display_w/2, display_h/2) which lands at the buffer's bottom-right corner.
+// MSAA reduction + bloom-off still apply in LOW_POWER_MODE.
+int sceneBufferRenderWidth()  { return width;  }
+int sceneBufferRenderHeight() { return height; }
 
 void toggleHandDrawn(){
   config.APPEAR_HAND_DRAWN = !config.APPEAR_HAND_DRAWN;
@@ -932,6 +917,10 @@ void keyPressed() {
     config.DRAW_TUNNEL = !config.DRAW_TUNNEL;
     if (config.DRAW_TUNNEL) enableOneBackgroundAndDisableOthers("tunnel");
   }
+  // Hotkey-only scenes (excluded from rotation order)
+  if (key == 'w') { switchSceneDirect(SCENE_MATH_WAVE); return; }
+  if (key == 'v') { switchSceneDirect(SCENE_EXPLAINER); return; }
+
   if (key == 'p') {
     config.DRAW_PLASMA = !config.DRAW_PLASMA;
     if (config.DRAW_PLASMA) enableOneBackgroundAndDisableOthers("plasma");
@@ -1105,7 +1094,7 @@ final int[] SCENE_ORDER = {
   SCENE_CIRCUIT_MAZE,
   SCENE_HOURGLASS,
   SCENE_SACRED_GEOMETRY,
-  SCENE_MATH_WAVE,
+  // SCENE_MATH_WAVE — hotkey-only ('w'), excluded from rotation
   SCENE_TORUS_KNOT,
   SCENE_ROSE_CURVE,
   SCENE_SRI_YANTRA,
@@ -1119,7 +1108,7 @@ final int[] SCENE_ORDER = {
   SCENE_CHLADNI_PLATE,
   SCENE_STRANGE_ATTRACTOR,
   SCENE_SACRED_FRACTALS,
-  SCENE_EXPLAINER,
+  // SCENE_EXPLAINER — hotkey-only ('v'), excluded from rotation
   SCENE_THEY_DONT_KNOW,
   SCENE_LIVE_CODE
 };
