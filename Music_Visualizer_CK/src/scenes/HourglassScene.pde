@@ -48,6 +48,14 @@ class HourglassScene implements IScene {
   int FALL_COUNT = 60;
   float[] fallY, fallX, fallZ, fallSpeed;
 
+  // Precomputed ring cos/sin tables — every ring loop in this scene iterates
+  // j=0..N computing cos(TWO_PI*j/N) / sin(...). Cache once at construction;
+  // saves ~10k trig calls per frame across drawSandFill / drawSandySurface /
+  // drawRevolvedBulb / drawCylinder.
+  float[] ringCos24, ringSin24;
+  float[] ringCos28, ringSin28;
+  float[] ringCos32, ringSin32;
+
   HourglassScene() {
     trickleY = new float[TRICKLE_COUNT];
     trickleX = new float[TRICKLE_COUNT];
@@ -56,6 +64,13 @@ class HourglassScene implements IScene {
     fallX    = new float[FALL_COUNT];
     fallZ    = new float[FALL_COUNT];
     fallSpeed = new float[FALL_COUNT];
+
+    ringCos24 = new float[25]; ringSin24 = new float[25];
+    ringCos28 = new float[29]; ringSin28 = new float[29];
+    ringCos32 = new float[33]; ringSin32 = new float[33];
+    for (int j = 0; j <= 24; j++) { float a = TWO_PI * j / 24; ringCos24[j] = cos(a); ringSin24[j] = sin(a); }
+    for (int j = 0; j <= 28; j++) { float a = TWO_PI * j / 28; ringCos28[j] = cos(a); ringSin28[j] = sin(a); }
+    for (int j = 0; j <= 32; j++) { float a = TWO_PI * j / 32; ringCos32[j] = cos(a); ringSin32[j] = sin(a); }
   }
 
   void onEnter() {
@@ -190,8 +205,8 @@ class HourglassScene implements IScene {
     canvas.beginShape(TRIANGLE_FAN);
     canvas.vertex(0, floorY, 0);
     for (int j = 0; j <= ringDetail; j++) {
-      float a = TWO_PI * j / ringDetail;
-      canvas.vertex(cos(a) * floorR, floorY, sin(a) * floorR);
+      float c = ringCos24[j], s = ringSin24[j];
+      canvas.vertex(c * floorR, floorY, s * floorR);
     }
     canvas.endShape();
 
@@ -218,11 +233,12 @@ class HourglassScene implements IScene {
       );
       canvas.beginShape(TRIANGLE_STRIP);
       for (int j = 0; j <= ringDetail; j++) {
-        float a   = TWO_PI * j / ringDetail;
-        float yn1 = noise(cos(a) * 1.5 + i       * 0.7, sin(a) * 1.5 + 10) * 3.0 * dir;
-        float yn2 = noise(cos(a) * 1.5 + (i + 1) * 0.7, sin(a) * 1.5 + 10) * 3.0 * dir;
-        canvas.vertex(cos(a) * r1, y1 + yn1, sin(a) * r1);
-        canvas.vertex(cos(a) * r2, y2 + yn2, sin(a) * r2);
+        float c = ringCos24[j], s = ringSin24[j];
+        float cN = c * 1.5, sN = s * 1.5;
+        float yn1 = noise(cN + i       * 0.7, sN + 10) * 3.0 * dir;
+        float yn2 = noise(cN + (i + 1) * 0.7, sN + 10) * 3.0 * dir;
+        canvas.vertex(c * r1, y1 + yn1, s * r1);
+        canvas.vertex(c * r2, y2 + yn2, s * r2);
       }
       canvas.endShape();
 
@@ -235,9 +251,9 @@ class HourglassScene implements IScene {
       canvas.beginShape(TRIANGLE_FAN);
       canvas.vertex(0, y2, 0);
       for (int j = 0; j <= ringDetail; j++) {
-        float a   = TWO_PI * j / ringDetail;
-        float yn2 = noise(cos(a) * 1.5 + (i + 1) * 0.7, sin(a) * 1.5 + 10) * 3.0 * dir;
-        canvas.vertex(cos(a) * r2, y2 + yn2, sin(a) * r2);
+        float c = ringCos24[j], s = ringSin24[j];
+        float yn2 = noise(c * 1.5 + (i + 1) * 0.7, s * 1.5 + 10) * 3.0 * dir;
+        canvas.vertex(c * r2, y2 + yn2, s * r2);
       }
       canvas.endShape();
     }
@@ -258,16 +274,16 @@ class HourglassScene implements IScene {
     // Center slightly mounded
     canvas.vertex(0, surfY - dir * 4, 0);
     for (int j = 0; j <= ringDetail; j++) {
-      float a = TWO_PI * j / ringDetail;
+      float c = ringCos28[j], s = ringSin28[j];
       // Rough noise: varies per angle and time (slow drift + beat wobble)
-      float roughness = noise(cos(a) * 3 + frameCount * 0.02, sin(a) * 3 + 200) * (5 + beatWobble * 0.6) * dir;
-      float bright = 0.7 + noise(cos(a) * 4, sin(a) * 4 + 300) * 0.3;
+      float roughness = noise(c * 3 + frameCount * 0.02, s * 3 + 200) * (5 + beatWobble * 0.6) * dir;
+      float bright = 0.7 + noise(c * 4, s * 4 + 300) * 0.3;
       canvas.fill(
         (int)(220 * bright),
         (int)(170 * bright),
         (int)(65  * bright)
       );
-      canvas.vertex(cos(a) * surfR, surfY - roughness, sin(a) * surfR);
+      canvas.vertex(c * surfR, surfY - roughness, s * surfR);
     }
     canvas.endShape();
 
@@ -406,9 +422,9 @@ class HourglassScene implements IScene {
 
       canvas.beginShape(TRIANGLE_STRIP);
       for (int hi = 0; hi <= detail; hi++) {
-        float a = TWO_PI * hi / detail;
-        canvas.vertex(cos(a) * r1, y1, sin(a) * r1);
-        canvas.vertex(cos(a) * r2, y2, sin(a) * r2);
+        float c = ringCos32[hi], s = ringSin32[hi];
+        canvas.vertex(c * r1, y1, s * r1);
+        canvas.vertex(c * r2, y2, s * r2);
       }
       canvas.endShape();
     }
@@ -426,9 +442,9 @@ class HourglassScene implements IScene {
 
     canvas.beginShape(TRIANGLE_STRIP);
     for (int ci = 0; ci <= detail; ci++) {
-      float a = TWO_PI * ci / detail;
-      canvas.vertex(cos(a) * radius, -height / 2, sin(a) * radius);
-      canvas.vertex(cos(a) * radius,  height / 2, sin(a) * radius);
+      float c = ringCos32[ci], s = ringSin32[ci];
+      canvas.vertex(c * radius, -height / 2, s * radius);
+      canvas.vertex(c * radius,  height / 2, s * radius);
     }
     canvas.endShape();
   }
