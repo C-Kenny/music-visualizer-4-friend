@@ -115,6 +115,7 @@ class OriginalScene implements IScene {
 
   void drawBezierFins(PGraphics pg, float redness, float fins, boolean finRotationClockWise) {
     pg.strokeWeight(5);
+    pg.bezierDetail(10); // default 20 — fins are small, halving detail cuts JOGL tessellation
     float xOffset = -20;
     float yOffset = config.BEZIER_Y_OFFSET;
 
