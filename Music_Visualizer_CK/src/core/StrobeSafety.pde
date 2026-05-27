@@ -106,8 +106,10 @@ class StrobeSafety {
   }
 
   // Save the current composite for next frame's damping source.
+  // Skipped when disabled — the full-frame image copy was ~3% CPU on
+  // profile sampling, and maybeDampen() already early-exits on !enabled.
   void snapshot(PGraphics src) {
-    if (src == null) return;
+    if (!enabled || src == null) return;
     if (prevBuf == null || prevBuf.width != src.width || prevBuf.height != src.height) {
       prevBuf = createGraphics(src.width, src.height, P3D);
       prevBuf.smooth(0);
