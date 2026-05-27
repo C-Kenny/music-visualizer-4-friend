@@ -515,7 +515,7 @@ void setup() {
   featureFlagServer.wsPort = wsPort;
   println("[DIAG] displayWidth=" + displayWidth + " displayHeight=" + displayHeight + " width=" + width + " height=" + height);
   sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
-  sceneBuffer.smooth(4);
+  sceneBuffer.smooth(config.LOW_POWER_MODE ? 2 : 4);
   println("[DIAG] sceneBuffer=" + sceneBuffer.width + "x" + sceneBuffer.height);
   sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
   background(200);
@@ -1312,7 +1312,7 @@ void draw() {
     int targetH = sceneBufferRenderHeight();
     if (sceneBuffer.width != targetW || sceneBuffer.height != targetH) {
       sceneBuffer = createGraphics(targetW, targetH, P3D);
-      sceneBuffer.smooth(4);
+      sceneBuffer.smooth(config.LOW_POWER_MODE ? 2 : 4);
       sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
     }
 
@@ -1358,7 +1358,7 @@ void draw() {
     if (sceneThrew) {
       // P3D renderer state may be corrupt mid-draw — recreate buffer fresh.
       sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
-  sceneBuffer.smooth(4);
+      sceneBuffer.smooth(config.LOW_POWER_MODE ? 2 : 4);
       sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
     }
     if (skipTarget >= 0 && skipTarget != config.STATE) {
