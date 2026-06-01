@@ -24,6 +24,7 @@ class TableTennisScene implements IScene {
   float leftTargetY,  rightTargetY;
   float leftTargetX,  rightTargetX;   // target X for horizontal movement
   float leftLungeX,   rightLungeX;
+  float leftPaddleVY, rightPaddleVY;   // per-frame paddle vertical velocity (for spin)
   final float PADDLE_W      = 16;
   final float PADDLE_H      = 110;
   final float PADDLE_SPEED   = 0.38;   // bumped up — paddle waits for bounce so needs faster catch-up
@@ -79,6 +80,25 @@ class TableTennisScene implements IScene {
   // ── physics ───────────────────────────────────────────────────────────────
   float gravity        = 0.28;
   float magnusStrength = 0.045;
+  // Magnus runaway guard: the per-frame Magnus accel (spin·|vx|·strength) must
+  // stay below gravity, else backspin + high ball speed creates net upward
+  // acceleration that never reverses → ball "to the moon". Cap it well under
+  // gravity (0.28) and bleed spin off mid-flight (previously spin only decayed
+  // on a table bounce, so a long flight kept full spin the whole way up).
+  // Tuned via tools/tt_sim: 0.10 cap + 0.98 decay → 0% moon over 200k trials.
+  // NOT final — the Sim Lab (scene 53) evolves these and writes tt_genome.cfg;
+  // loadGenomeFile() overrides them on onEnter. Defaults = shipped tuned values.
+  float MAGNUS_TERM_MAX   = 0.10;
+  float SPIN_FLIGHT_DECAY = 0.98;
+
+  // ── Evolved per-paddle "style" (return launch, spin brush, tracking speed) ──
+  // Shared ball physics (above) come from the single best genome; these styles
+  // are assigned per side from a roster each new game (random) so the two
+  // players can have distinct personalities. Defaults match the hand-tuned game.
+  float paddleLaunchL = 12,   paddleLaunchR = 12;     // upward-launch cap on a return
+  float paddleBrushL  = 0.015, paddleBrushR = 0.015;  // paddle-brush spin coefficient
+  float paddleSpeedL  = PADDLE_SPEED, paddleSpeedR = PADDLE_SPEED;  // Y tracking lerp
+  float[][] styleRoster = null;   // each row = { launchVy, brush, aiSpeed }
   float speedMult      = 1.3;    // global speed multiplier — adjustable in-game
   final float DRAG     = 0.999;
 
@@ -147,7 +167,6 @@ class TableTennisScene implements IScene {
     // the opponent's side. -sideSign points net-ward (left server → +X drift).
     ballVX = -sideSign * random(0.3, 1.2);
     ballVY = random(-14, -8);  // toss height varies → apex 130..280px
-    spin   = random(-0.12, 0.12);
     spin   = random(-0.12, 0.12);
     trail.clear();
     impactFlash  = 0;
@@ -254,26 +273,33 @@ class TableTennisScene implements IScene {
       // Ball heading left — right paddle rests
       rightTargetX = rightHomeX;
       rightTargetY = constrain(restY, yMin, yMax);
-      leftTargetX  = leftHomeX - 20;
       // Left paddle only tracks AFTER ball has bounced on the left side.
       // lastBounceSide == -1 means it already landed there — legal to return.
       // If lastBounceSide is 0 or 1 the ball hasn't touched left's court yet — wait.
       if (lastBounceSide == -1) {
+        // Step IN toward the ball to meet it instead of waiting at the baseline.
+        // Track the ball's X up to a forward limit that stays on the left half
+        // (short of the net).
+        float fwdMax = leftHomeX + (netX - leftHomeX) * 0.5;
+        leftTargetX  = constrain(ballX - 6, leftHomeX - 20, fwdMax);
         float t = abs(ballX - leftPaddleX) / max(abs(ballVX), 0.5);
         leftTargetY = constrain(predictBallY(t) + leftMissOffset, yMin, yMax);
       } else {
-        leftTargetY = constrain(restY, yMin, yMax);
+        leftTargetX  = leftHomeX - 20;
+        leftTargetY  = constrain(restY, yMin, yMax);
       }
     } else {
       // Ball heading right — left paddle rests
       leftTargetX  = leftHomeX;
       leftTargetY  = constrain(restY, yMin, yMax);
-      rightTargetX = rightHomeX + 20;
       // Right paddle only tracks AFTER ball has bounced on the right side.
       if (lastBounceSide == 1) {
+        float fwdMin = rightHomeX - (rightHomeX - netX) * 0.5;
+        rightTargetX = constrain(ballX + 6, fwdMin, rightHomeX + 20);
         float t = abs(rightPaddleX - ballX) / max(abs(ballVX), 0.5);
         rightTargetY = constrain(predictBallY(t) + rightMissOffset, yMin, yMax);
       } else {
+        rightTargetX = rightHomeX + 20;
         rightTargetY = constrain(restY, yMin, yMax);
       }
     }
@@ -302,10 +328,15 @@ class TableTennisScene implements IScene {
   // ── paddle movement ───────────────────────────────────────────────────────
 
   void movePaddles() {
-    leftPaddleY  += (leftTargetY  - leftPaddleY)  * PADDLE_SPEED;
-    rightPaddleY += (rightTargetY - rightPaddleY) * PADDLE_SPEED;
+    // Remember pre-move Y so the per-frame paddle vertical velocity can be read
+    // by checkPaddleCollision — a paddle brushing up/down imparts top/backspin.
+    float pLY = leftPaddleY, pRY = rightPaddleY;
+    leftPaddleY  += (leftTargetY  - leftPaddleY)  * paddleSpeedL;
+    rightPaddleY += (rightTargetY - rightPaddleY) * paddleSpeedR;
     leftPaddleX  += (leftTargetX  - leftPaddleX)  * PADDLE_X_SPEED;
     rightPaddleX += (rightTargetX - rightPaddleX) * PADDLE_X_SPEED;
+    leftPaddleVY  = leftPaddleY  - pLY;
+    rightPaddleVY = rightPaddleY - pRY;
     leftLungeX  *= 0.80;
     rightLungeX *= 0.80;
   }
@@ -347,7 +378,8 @@ class TableTennisScene implements IScene {
     }
 
     // ── Normal physics ────────────────────────────────────────────────────────
-    ballVY += spin * abs(ballVX) * magnusStrength;
+    ballVY += constrain(spin * abs(ballVX) * magnusStrength, -MAGNUS_TERM_MAX, MAGNUS_TERM_MAX);
+    spin   *= SPIN_FLIGHT_DECAY;   // bleed spin mid-flight — prevents Magnus runaway
     ballVY += gravity;
     ballVX *= DRAG;
     float prevBallX = ballX;
@@ -522,8 +554,17 @@ class TableTennisScene implements IScene {
     float cap      = (isPowerShot ? 30 : 22) * speedMult;
     float newSpeed = constrain((abs(ballVX) * speedMod + power * 0.3) * speedMult, 6 * speedMult, cap);
     ballVX = isLeft ? newSpeed : -newSpeed;
-    ballVY = constrain(hitPos * 2 + random(-14, -1), -16, -2);
-    spin   = isPowerShot ? random(-0.35, 0.35) : random(-0.20, 0.20);
+    float styleLaunch = isLeft ? paddleLaunchL : paddleLaunchR;   // per-paddle style
+    float styleBrush  = isLeft ? paddleBrushL  : paddleBrushR;
+    ballVY = constrain(hitPos * 2 + random(-14, -1), -styleLaunch, -2);   // cap upward launch — keeps lobs on-screen
+    // Spin physics: imparted by WHERE on the paddle the ball hits (hitPos) and
+    // by the paddle's vertical brush at contact. Paddle moving UP (Y decreasing,
+    // so paddleVY < 0) brushes topspin (positive spin → ball dips via Magnus);
+    // moving down brushes backspin (ball floats). Power shots add extra bite.
+    float paddleVY = isLeft ? leftPaddleVY : rightPaddleVY;
+    float biteScale = isPowerShot ? 1.6 : 1.0;
+    spin = constrain((hitPos * 0.10 - paddleVY * styleBrush) * biteScale + random(-0.04, 0.04),
+                     -0.4, 0.4);   // per-paddle brush coeff (evolved); AI lunges no longer max out backspin
 
     rallyCount++;
     impactFlash        = isPowerShot ? 1.5 : 1.0;
@@ -570,6 +611,7 @@ class TableTennisScene implements IScene {
     inServeDrop  = true;
     serveBounced = false;
     pointPauseFrames = POINT_PAUSE_FRAMES;
+    assignStyles();   // new game → reshuffle each side's evolved personality
   }
 
   // ── score logging ──────────────────────────────────────────────────────────
@@ -884,9 +926,57 @@ class TableTennisScene implements IScene {
 
   void onEnter() {
     background(15, 35, 15);
+    loadGenomeFile();   // pick up the Sim Lab's latest evolved values, if any
+    assignStyles();
   }
 
   void onExit() {}
+
+  // ── Evolved genome I/O — reads tt_genome.cfg written by the Sim Lab (53) ─────
+  // Format (whitespace-separated, '#' comments):
+  //   physics <magnusStrength> <magnusTermMax> <spinFlightDecay>
+  //   style   <launchVy> <brush> <aiSpeed>     (one per roster entry)
+  void loadGenomeFile() {
+    styleRoster = null;
+    try {
+      java.io.File f = new java.io.File(userDataPath("tt_genome.cfg"));
+      if (!f.exists()) return;                 // no cfg → keep shipped defaults
+      String[] lines = loadStrings(f.getAbsolutePath());
+      if (lines == null) return;
+      ArrayList<float[]> styles = new ArrayList<float[]>();
+      for (String ln : lines) {
+        if (ln == null) continue;
+        ln = ln.trim();
+        if (ln.length() == 0 || ln.startsWith("#")) continue;
+        String[] t = splitTokens(ln, " \t");
+        if (t[0].equals("physics") && t.length >= 4) {
+          magnusStrength    = float(t[1]);
+          MAGNUS_TERM_MAX   = float(t[2]);
+          SPIN_FLIGHT_DECAY = float(t[3]);
+        } else if (t[0].equals("style") && t.length >= 4) {
+          styles.add(new float[]{ float(t[1]), float(t[2]), float(t[3]) });
+        }
+      }
+      if (styles.size() > 0) styleRoster = styles.toArray(new float[0][]);
+    } catch (Exception e) {
+      println("TableTennis: genome load failed — " + e.getMessage());
+    }
+  }
+
+  // Assign a random roster style to each side (or shipped defaults if no roster).
+  // Called each new game so the two players' personalities reshuffle.
+  void assignStyles() {
+    if (styleRoster == null || styleRoster.length == 0) {
+      paddleLaunchL = paddleLaunchR = 12;
+      paddleBrushL  = paddleBrushR  = 0.015;
+      paddleSpeedL  = paddleSpeedR  = PADDLE_SPEED;
+      return;
+    }
+    float[] a = styleRoster[(int) random(styleRoster.length)];
+    float[] b = styleRoster[(int) random(styleRoster.length)];
+    paddleLaunchL = a[0]; paddleBrushL = a[1]; paddleSpeedL = a[2];
+    paddleLaunchR = b[0]; paddleBrushR = b[1]; paddleSpeedR = b[2];
+  }
 
   void handleKey(char k) {
     if (k == '+' || k == '=') adjustGravity(0.02);
