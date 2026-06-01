@@ -52,10 +52,9 @@ class OriginalScene implements IScene {
     config.DIAMOND_WIDTH_OFFSET  = map(c.rx, 0, width,  -120, 120);
     config.DIAMOND_HEIGHT_OFFSET = map(c.ry, 0, height, -120, 120);
 
-    try {
-      float leftTriggerDepletion = map(c.stick.getSlider("lt").getValue(), -1, 1, -2, 6);
-      config.TUNNEL_ZOOM_INCREMENT += int(leftTriggerDepletion);
-    } catch (Exception e) {}
+    // LT = zoom IN. Baseline -2 keeps tunnel drifting; pressing LT
+    // adds *negative* increment so depth grows toward camera.
+    config.TUNNEL_ZOOM_INCREMENT += int(-2 - c.lt * 8);
 
     if (c.aJustPressed) config.RAINBOW_FINS = !config.RAINBOW_FINS;
     if (c.bJustPressed) changeBlendMode();
@@ -68,7 +67,9 @@ class OriginalScene implements IScene {
   }
   
   void cycleBackgroundMode(int dir) {
-    backgroundMode = (backgroundMode + dir + 6) % 6;
+    // Skip mode 0 (Stacking) in dpad cycle — landing on it disables bg overlay
+    // entirely, which reads as a "flash off" mid-cycle. Reachable via keyboard.
+    backgroundMode = ((backgroundMode - 1 + dir + 5) % 5) + 1;
     config.BACKGROUND_ENABLED = (backgroundMode != 0);
     config.DRAW_TUNNEL       = (backgroundMode == 2 || backgroundMode == 5);
     config.DRAW_PLASMA       = (backgroundMode == 3 || backgroundMode == 5);
@@ -348,11 +349,13 @@ class OriginalScene implements IScene {
       pg.save("/tmp/output/frames####.png");
     }
 
-    float posx = map(audio.player.position(), 0, audio.player.length(), 0, s1Size);
-    pg.pushStyle();
-      pg.stroke(252,4,243);
-      pg.line(posx, s1Size, posx, s1Size * .975);
-    pg.popStyle();
+    if (audio.player != null && audio.player.length() > 0) {
+      float posx = map(audio.player.position(), 0, audio.player.length(), 0, s1Size);
+      pg.pushStyle();
+        pg.stroke(252,4,243);
+        pg.line(posx, s1Size, posx, s1Size * .975);
+      pg.popStyle();
+    }
 
     pg.popMatrix(); // end square canvas translate
 

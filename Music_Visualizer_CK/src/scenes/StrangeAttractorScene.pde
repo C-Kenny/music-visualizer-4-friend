@@ -76,7 +76,12 @@ class StrangeAttractorScene implements IScene {
   // ── Camera ────────────────────────────────────────────────────────────────
   float camAzim = 0.4, camPitch = 0.25;
   float targetAzim = 0.4, targetPitch = 0.25;
-  float camDist = 1800, targetDist = 1800;
+  float camDist = 1200, targetDist = 1200;
+  // Smoothed centroid of the particle cloud — used to keep the attractor
+  // centred on screen since several systems (Chen, Aizawa, Lorenz) orbit
+  // around a non-zero point in world space and would otherwise drift off
+  // to the side under autoOrbit.
+  float centerX = 0, centerY = 0, centerZ = 0;
   float orbitPhase = 0;
   boolean autoOrbit = true;
 
@@ -284,11 +289,22 @@ class StrangeAttractorScene implements IScene {
     pg.beginDraw();
     pg.background(3, 3, 8);
 
+    // Track particle-cloud centroid so we render around the cloud's actual
+    // center, not the world origin. Sampled across all N particles each
+    // frame, lerp-smoothed so it doesn't jitter during morph transitions.
+    float sx = 0, sy = 0, sz = 0;
+    for (int i = 0; i < N; i++) { sx += px[i]; sy += py[i]; sz += pz[i]; }
+    float meanX = sx / N, meanY = sy / N, meanZ = sz / N;
+    centerX = lerp(centerX, meanX, 0.06);
+    centerY = lerp(centerY, meanY, 0.06);
+    centerZ = lerp(centerZ, meanZ, 0.06);
+
     pg.pushMatrix();
     pg.translate(pg.width * 0.5, pg.height * 0.5, 0);
     pg.rotateX(camPitch);
     pg.rotateY(camAzim);
     pg.translate(0, 0, -camDist);
+    pg.translate(-centerX, -centerY, -centerZ);
 
     pg.colorMode(HSB, 360, 100, 100, 100);
     pg.blendMode(ADD);
