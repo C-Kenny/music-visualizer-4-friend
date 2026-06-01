@@ -49,6 +49,7 @@ class AutoSwitcher {
     if (frameCount - lastSwitchFrame < COOLDOWN_FRAMES) return;
     if (pendingScene >= 0) return; // switch already queued
 
+    if (audio == null || audio.player == null) return;
     float imminence = dropPredictor.majorImminentDropFactor(audio.player.position(), 4.0);
     if (imminence < DROP_THRESHOLD) return;
 

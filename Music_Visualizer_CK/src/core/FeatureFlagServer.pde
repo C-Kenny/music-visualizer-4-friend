@@ -173,6 +173,7 @@ class FeatureFlagServer {
       server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
       server.createContext("/featureflags", new FeatureFlagHandler());
       server.createContext("/scene", new SceneHandler());
+      server.createContext("/param", new ParamHandler());
       server.createContext("/input/sticks", new SticksHandler());
       server.createContext("/input/button", new ButtonHandler());
       server.createContext("/input/trigger",new TriggerHandler());
@@ -189,6 +190,9 @@ class FeatureFlagServer {
       server.createContext("/admin/pins/mint",   new AdminPinsMintHandler());
       server.createContext("/admin/pins/revoke", new AdminPinsRevokeHandler());
       server.createContext("/admin/pins/rotate-master", new AdminPinsRotateMasterHandler());
+      server.createContext("/admin/queue/rotate", new AdminQueueRotateHandler());
+      server.createContext("/admin/queue/pause",  new AdminQueuePauseHandler());
+      server.createContext("/admin/queue/pin",    new AdminQueuePinHandler());
       server.createContext("/operator.json", new OperatorHandler());
       server.createContext("/admin/stream/toggle", new AdminStreamToggleHandler());
       server.createContext("/", new UiHandler());
@@ -229,6 +233,51 @@ class FeatureFlagServer {
     root.setJSONArray("schema", sch);
     root.setJSONObject("values", snapshotValues());
     return root.toString();
+  }
+
+  // Live scene-knob endpoint:
+  //   GET  /param  → {scene,name,params:[{id,label,min,max,value,norm}]}
+  //   POST /param  → {"id":"speed","norm":0.0..1.0}  (or "value": absolute)
+  // Open to LAN clients (audience sliders). The web control queue task will gate
+  // POST to the active driver later; for now any connected client may tweak.
+  class ParamHandler implements com.sun.net.httpserver.HttpHandler {
+    public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
+      ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+      ex.getResponseHeaders().set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      ex.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type,X-Admin-Token");
+      ex.getResponseHeaders().set("Access-Control-Allow-Credentials", "true");
+      ex.getResponseHeaders().set("Content-Type", "application/json");
+
+      String method = ex.getRequestMethod();
+      if (method.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); ex.close(); return; }
+
+      try {
+        if (method.equals("POST")) {
+          String cid = ex.getRequestHeaders().getFirst("X-Client-Id");
+          boolean isDriver = (webQueueManager != null && webQueueManager.activeDriverId != null) ?
+                             webQueueManager.isActiveDriver(cid) : true;
+          boolean isAdmin = adminAuthed(ex);
+          if (!isDriver && !isAdmin) {
+            throw new RuntimeException("not the active driver");
+          }
+          java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+          byte[] chunk = new byte[1024]; int n;
+          while ((n = ex.getRequestBody().read(chunk)) > 0) buf.write(chunk, 0, n);
+          JSONObject o = parseJSONObject(new String(buf.toByteArray(), StandardCharsets.UTF_8));
+          if (o == null || !o.hasKey("id")) throw new RuntimeException("missing id");
+          String id = o.getString("id", "");
+          if (o.hasKey("value")) setParamValue(id, o.getFloat("value", 0));
+          else                   setParamNorm(id, o.getFloat("norm", 0));
+        }
+        byte[] body = paramsToJson().getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(200, body.length);
+        OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      } catch (Exception e) {
+        byte[] body = ("{\"error\":\"" + e.getMessage() + "\"}").getBytes(StandardCharsets.UTF_8);
+        ex.sendResponseHeaders(400, body.length);
+        OutputStream os = ex.getResponseBody(); os.write(body); os.close();
+      }
+    }
   }
 
   class FeatureFlagHandler implements com.sun.net.httpserver.HttpHandler {
@@ -444,6 +493,9 @@ class FeatureFlagServer {
         info.dpr      = o.getFloat("dpr",       info.dpr);
         JSONArray scr = o.getJSONArray("screen");
         if (scr != null && scr.size() == 2) { info.screenW = scr.getInt(0); info.screenH = scr.getInt(1); }
+        if (webQueueManager != null) {
+          webQueueManager.join(cid);
+        }
         ex.sendResponseHeaders(204, -1); ex.close();
       } catch (Exception e) {
         byte[] body = ("{\"error\":\"" + e.getMessage() + "\"}").getBytes(StandardCharsets.UTF_8);
@@ -624,6 +676,31 @@ class FeatureFlagServer {
       clients.setLong("lockdownRemainMs", 0);
     }
     root.setJSONObject("clients", clients);
+
+    // Queue Status
+    if (webQueueManager != null) {
+      JSONObject q = new JSONObject();
+      q.setString("activeDriverId", webQueueManager.activeDriverId != null ? webQueueManager.activeDriverId : "");
+      q.setString("activeDriverName", webQueueManager.getNickname(webQueueManager.activeDriverId));
+      long now = System.currentTimeMillis();
+      long elapsedSec = webQueueManager.activeDriverId != null ? (now - webQueueManager.turnStartMs) / 1000 : 0;
+      q.setLong("timeLeftSec", Math.max(0, webQueueManager.turnDurationSec - elapsedSec));
+      q.setInt("likes", webQueueManager.likes);
+      q.setInt("dislikes", webQueueManager.dislikes);
+      q.setBoolean("paused", webQueueManager.paused);
+      q.setString("pinnedDriverId", webQueueManager.pinnedDriverId != null ? webQueueManager.pinnedDriverId : "");
+
+      JSONArray list = new JSONArray();
+      for (int i = 0; i < webQueueManager.queue.size(); i++) {
+        String cid = webQueueManager.queue.get(i);
+        JSONObject entry = new JSONObject();
+        entry.setString("clientId", cid);
+        entry.setString("nickname", webQueueManager.getNickname(cid));
+        list.setJSONObject(i, entry);
+      }
+      q.setJSONArray("list", list);
+      root.setJSONObject("queue", q);
+    }
 
     return root.toString();
   }
@@ -951,7 +1028,94 @@ class FeatureFlagServer {
     }
   }
 
+  class AdminQueueRotateHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      if (webQueueManager != null) {
+        webQueueManager.rotate();
+        return "{\"status\":\"ok\"}";
+      }
+      return "{\"error\":\"no queue manager\"}";
+    }
+  }
+
+  class AdminQueuePauseHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      JSONObject body = readJsonBody(ex);
+      boolean pause = body.getBoolean("paused", false);
+      if (webQueueManager != null) {
+        webQueueManager.paused = pause;
+        webQueueManager.broadcastStatus();
+        return "{\"status\":\"ok\",\"paused\":" + pause + "}";
+      }
+      return "{\"error\":\"no queue manager\"}";
+    }
+  }
+
+  class AdminQueuePinHandler extends AdminHandlerBase {
+    String handleAdmin(com.sun.net.httpserver.HttpExchange ex) throws Exception {
+      JSONObject body = readJsonBody(ex);
+      String cid = body.getString("clientId", "");
+      if (webQueueManager != null) {
+        if (cid == null || cid.isEmpty()) {
+          webQueueManager.pinnedDriverId = null;
+        } else {
+          webQueueManager.pinnedDriverId = cid;
+          if (webQueueManager.isConnected(cid)) {
+            webQueueManager.activeDriverId = cid;
+            webQueueManager.turnStartMs = System.currentTimeMillis();
+          }
+        }
+        webQueueManager.broadcastStatus();
+        return "{\"status\":\"ok\",\"pinned\":\"" + (webQueueManager.pinnedDriverId != null ? webQueueManager.pinnedDriverId : "") + "\"}";
+      }
+      return "{\"error\":\"no queue manager\"}";
+    }
+  }
+
+  // How reachable an address is for audience phones, lowest = best. The HUD and
+  // the stream URL use lanUrls.get(0), so ordering by this puts the address that
+  // phones can actually reach first.
+  static final int REACH_LAN         = 0;  // private home/venue LAN — open phones here
+  static final int REACH_OTHER       = 1;  // routable but probably not your network
+  static final int REACH_VIRTUAL     = 2;  // Docker / VM / VPN — phones can't reach it
+  static final int REACH_LINK_LOCAL  = 3;  // 169.254.x — no DHCP, likely unplugged
+
+  // Interface-name prefixes that mean "not the venue LAN": virtual bridges,
+  // container networks, and VPN tunnels. Phones cannot reach the laptop on these.
+  boolean looksVirtual(String interfaceName) {
+    String name = interfaceName.toLowerCase();
+    return name.startsWith("docker") || name.startsWith("br-")  || name.startsWith("veth")
+        || name.startsWith("virbr")  || name.startsWith("vmnet") || name.startsWith("vboxnet")
+        || name.startsWith("tun")    || name.startsWith("tap")   || name.startsWith("wg")
+        || name.startsWith("zt")     || name.startsWith("ppp");
+  }
+
+  int addressReach(java.net.NetworkInterface ni, java.net.InetAddress a) {
+    if (a.isLinkLocalAddress())                          return REACH_LINK_LOCAL;
+    if (looksVirtual(ni.getName()))                      return REACH_VIRTUAL;
+    if (a.isSiteLocalAddress())                          return REACH_LAN;  // 192.168/10/172.16
+    return REACH_OTHER;
+  }
+
+  String reachLabel(int reach) {
+    switch (reach) {
+      case REACH_LAN:        return "LAN — open phones here";
+      case REACH_OTHER:      return "other — probably not your network";
+      case REACH_VIRTUAL:    return "virtual/VPN — phones CAN'T reach this";
+      case REACH_LINK_LOCAL: return "link-local — not connected to a router?";
+      default:               return "unknown";
+    }
+  }
+
+  // Enumerate every usable IPv4 address, label how reachable it is, and order the
+  // resulting URLs best-first so the HUD / stream advertise the address phones
+  // can actually open. Warns loudly if no real LAN address was found.
   void printLanAddresses() {
+    lanUrls.clear();
+    ArrayList<String> urls   = new ArrayList<String>();
+    ArrayList<Integer> reach = new ArrayList<Integer>();
+    ArrayList<String> notes  = new ArrayList<String>();
+
     try {
       java.util.Enumeration<java.net.NetworkInterface> ifs = java.net.NetworkInterface.getNetworkInterfaces();
       while (ifs.hasMoreElements()) {
@@ -960,15 +1124,38 @@ class FeatureFlagServer {
         java.util.Enumeration<java.net.InetAddress> addrs = ni.getInetAddresses();
         while (addrs.hasMoreElements()) {
           java.net.InetAddress a = addrs.nextElement();
-          if (a instanceof java.net.Inet4Address) {
-            String url = "http://" + a.getHostAddress() + ":" + port + "/";
-            lanUrls.add(url);
-            println("[FEATUREFLAGS] open on phone: " + url);
-          }
+          if (!(a instanceof java.net.Inet4Address)) continue;
+          int r = addressReach(ni, a);
+          urls.add("http://" + a.getHostAddress() + ":" + port + "/");
+          reach.add(r);
+          notes.add(ni.getName() + " — " + reachLabel(r));
         }
       }
     } catch (Exception e) {
       println("[FEATUREFLAGS] could not enumerate IPs: " + e.getMessage());
+      return;
     }
+
+    // Sort best-reach first (stable selection sort — only a handful of addresses).
+    for (int i = 0; i < urls.size(); i++)
+      for (int j = i + 1; j < urls.size(); j++)
+        if (reach.get(j) < reach.get(i)) {
+          urls.add(i, urls.remove(j)); reach.add(i, reach.remove(j)); notes.add(i, notes.remove(j));
+        }
+
+    boolean foundRealLan = false;
+    for (int i = 0; i < urls.size(); i++) {
+      lanUrls.add(urls.get(i));
+      String marker = (i == 0) ? "  ★ open phones here → " : "    also: ";
+      println("[FEATUREFLAGS]" + marker + urls.get(i) + "   [" + notes.get(i) + "]");
+      if (reach.get(i) == REACH_LAN) foundRealLan = true;
+    }
+
+    if (!foundRealLan) {
+      println("[FEATUREFLAGS] ⚠ NO LAN ADDRESS FOUND — phones probably can't reach this laptop.");
+      println("[FEATUREFLAGS]   Plug into your own router (not venue WiFi). See documentation/venue_network_setup.md.");
+    }
+    println("[FEATUREFLAGS] If a phone can't connect, open the laptop firewall for TCP " + port
+          + " (+ stream ports 8889/8888/8554). See the 'Firewall & ports' section in the network guide.");
   }
 }

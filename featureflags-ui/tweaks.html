@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
+<title>Visualizer Tweaks</title>
+<style>
+  :root {
+    --green:    #00ff78;
+    --green-dim:#00b050;
+    --bg:       #000000;
+    --border:   rgba(0, 255, 120, 0.4);
+    --glow:     0 0 4px rgba(0,255,120,0.7), 0 0 12px rgba(0,255,120,0.25);
+  }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--green);
+    font: 13px/1.5 "Courier New", "Consolas", monospace;
+    text-shadow: var(--glow);
+    min-height: 100%;
+    -webkit-user-select: none; user-select: none;
+  }
+  .navbar {
+    display: flex; align-items: center; gap: 0;
+    background: var(--green); color: #000;
+    border-bottom: 1px solid var(--border);
+  }
+  .navbar a {
+    color: #000; text-decoration: none;
+    padding: 6px 12px; font-weight: bold;
+    letter-spacing: 0.15em; font-size: 11px;
+    border-right: 1px solid rgba(0,0,0,0.3);
+  }
+  .navbar a.active { background: #000; color: var(--green); text-shadow: var(--glow); }
+  .navbar .status {
+    margin-left: auto; padding: 6px 10px; font-size: 10px;
+    color: rgba(0,0,0,0.7); overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .wrap { padding: 14px; max-width: 640px; margin: 0 auto; }
+  .scene-name {
+    font-size: 15px; letter-spacing: 0.1em; margin: 4px 0 16px;
+    color: var(--green); border-bottom: 1px solid var(--border); padding-bottom: 8px;
+  }
+  .scene-name small { color: var(--green-dim); font-size: 11px; }
+  .knob-row { margin: 0 0 20px; }
+  .knob-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .knob-label { letter-spacing: 0.08em; }
+  .knob-val {
+    color: var(--green-dim); font-variant-numeric: tabular-nums; font-size: 12px;
+  }
+  /* Big, finger-friendly slider */
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 38px; background: transparent; margin: 0;
+    touch-action: pan-y;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 10px; border-radius: 5px;
+    background: rgba(0,255,120,0.12); border: 1px solid var(--border);
+  }
+  input[type=range]::-moz-range-track {
+    height: 10px; border-radius: 5px;
+    background: rgba(0,255,120,0.12); border: 1px solid var(--border);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 32px; height: 32px; margin-top: -12px; border-radius: 50%;
+    background: rgba(0,255,120,0.25); border: 2px solid var(--green);
+    box-shadow: var(--glow), inset 0 0 10px rgba(0,255,120,0.3); cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(0,255,120,0.25); border: 2px solid var(--green);
+    box-shadow: var(--glow); cursor: pointer;
+  }
+  .empty { color: var(--green-dim); margin-top: 30px; text-align: center; }
+  .hint { color: var(--green-dim); font-size: 11px; margin-top: 24px; line-height: 1.6; }
+  #queue-hud {
+    background: rgba(0, 255, 120, 0.05);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 12px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #queue-hud.driving {
+    background: rgba(0, 255, 120, 0.2);
+    border-color: var(--green);
+  }
+  #queue-hud .not-driver-hint {
+    color: var(--green-dim);
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="/">FLAGS</a>
+  <a href="/controller.html">CONTROLLER</a>
+  <a href="/tweaks.html" class="active">TWEAKS</a>
+  <a href="/operator.html">OPERATOR</a>
+  <a href="/stream.html">STREAM</a>
+  <span class="status" id="status">loading…</span>
+</nav>
+
+<div id="queue-hud">
+  <span id="queue-hud-text">Queue: connecting…</span>
+  <span class="not-driver-hint" id="queue-hud-hint"></span>
+</div>
+<div class="wrap">
+  <div class="scene-name" id="sceneName">—</div>
+  <div id="knobs"></div>
+  <div class="empty" id="empty" style="display:none">
+    This scene has no live controls yet.<br>Try another scene, or use the CONTROLLER tab.
+  </div>
+  <div class="hint">
+    Drag a slider to change the visuals live. Knobs refresh automatically when the
+    scene changes. Anyone on this network can tweak — be kind. ✦
+  </div>
+</div>
+
+<script>
+const statusEl = document.getElementById("status");
+const knobsEl  = document.getElementById("knobs");
+const nameEl   = document.getElementById("sceneName");
+const emptyEl  = document.getElementById("empty");
+
+// Identity — must match controller.html so the server recognises us as same client.
+let clientId = localStorage.getItem("vis.clientId") || "";
+if (!clientId) {
+  clientId = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+  localStorage.setItem("vis.clientId", clientId);
+}
+
+let currentScene = -1;     // scene id the sliders were built for
+let dragging = false;      // pause refresh-rebuild while a finger is down
+const sliders = {};        // id -> {input, valEl}
+let isActiveDriver = false;
+
+// Throttle outbound POSTs per knob so a drag doesn't flood the server (~25Hz).
+const lastSent = {};
+function postParam(id, norm) {
+  const now = performance.now();
+  if (lastSent[id] && now - lastSent[id] < 40) { pending[id] = norm; return; }
+  lastSent[id] = now;
+  fetch("/param", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Client-Id": clientId },
+    body: JSON.stringify({ id, norm }),
+  }).then(r => {
+    if (r.status === 400) {
+      r.json().then(j => { if (j.error === "not the active driver") updateSlidersDisabled(true); });
+    }
+  }).catch(() => {});
+}
+// Flush any value that was throttled so the final position always lands.
+const pending = {};
+setInterval(() => {
+  for (const id in pending) {
+    const v = pending[id]; delete pending[id];
+    lastSent[id] = performance.now();
+    fetch("/param", { method:"POST",
+      headers:{"Content-Type":"application/json", "X-Client-Id": clientId},
+      body: JSON.stringify({ id, norm: v }) }).catch(()=>{});
+  }
+}, 60);
+
+function updateSlidersDisabled(disabled) {
+  for (const id in sliders) {
+    sliders[id].input.disabled = disabled;
+  }
+  const hint = document.getElementById("queue-hud-hint");
+  if (hint) hint.textContent = disabled ? "(waiting for your turn to tweak)" : "";
+}
+
+// ---- Queue status via polling /operator.json ----
+function updateQueueHUD(qData) {
+  if (!qData) return;
+  const hud = document.getElementById("queue-hud");
+  const hudText = document.getElementById("queue-hud-text");
+  const hudHint = document.getElementById("queue-hud-hint");
+  const activeName = qData.activeDriverName || "None";
+  const activeId = qData.activeDriverId || "";
+  isActiveDriver = (activeId === clientId);
+
+  if (!activeId) {
+    hud.className = "";
+    hudText.textContent = "Queue: no driver — you may tweak freely";
+    hudHint.textContent = "";
+    updateSlidersDisabled(false);
+    return;
+  }
+
+  if (isActiveDriver) {
+    hud.className = "driving";
+    const timeLeft = qData.timeLeftSec || 0;
+    const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+    hudText.textContent = "▶ YOU ARE DRIVING — " + m + ":" + String(s).padStart(2,"0") + " left";
+    hudHint.textContent = "";
+    updateSlidersDisabled(false);
+  } else {
+    hud.className = "";
+    const list = qData.list || [];
+    const myPos = list.findIndex(c => c.clientId === clientId);
+    const posStr = myPos >= 0 ? " · you are #" + (myPos + 1) + " in queue" : " · not in queue";
+    hudText.textContent = "Driver: " + activeName + posStr;
+    hudHint.textContent = "sliders locked";
+    updateSlidersDisabled(true);
+  }
+}
+
+// Poll queue status from /operator.json (shared endpoint — no extra route needed).
+async function pollQueueStatus() {
+  try {
+    const r = await fetch("/operator.json", { cache: "no-store" });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (j.queue) updateQueueHUD(j.queue);
+  } catch (e) {}
+}
+pollQueueStatus();
+setInterval(pollQueueStatus, 2000);
+
+function fmt(v) { return (Math.round(v * 100) / 100).toString(); }
+
+function buildKnobs(data) {
+  knobsEl.innerHTML = "";
+  for (const id in sliders) delete sliders[id];
+  const ps = data.params || [];
+  emptyEl.style.display = ps.length ? "none" : "block";
+
+  ps.forEach(p => {
+    const row = document.createElement("div"); row.className = "knob-row";
+
+    const head = document.createElement("div"); head.className = "knob-head";
+    const lab = document.createElement("span"); lab.className = "knob-label"; lab.textContent = p.label;
+    const val = document.createElement("span"); val.className = "knob-val"; val.textContent = fmt(p.value);
+    head.appendChild(lab); head.appendChild(val);
+
+    const input = document.createElement("input");
+    input.type = "range"; input.min = "0"; input.max = "1000"; input.step = "1";
+    input.value = Math.round((p.norm || 0) * 1000);
+
+    input.addEventListener("input", () => {
+      const norm = input.value / 1000;
+      const realVal = p.min + (p.max - p.min) * norm;
+      val.textContent = fmt(realVal);
+      postParam(p.id, norm);
+    });
+    input.addEventListener("pointerdown", () => dragging = true);
+    input.addEventListener("pointerup",   () => dragging = false);
+    input.addEventListener("pointercancel", () => dragging = false);
+
+    row.appendChild(head); row.appendChild(input);
+    knobsEl.appendChild(row);
+    sliders[p.id] = { input, valEl: val, p };
+  });
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/param", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const data = await r.json();
+    statusEl.textContent = "live";
+    nameEl.innerHTML = (data.name || "Scene") + "  <small>#" + data.scene + "</small>";
+
+    // Rebuild sliders only when the scene changed (avoids fighting a live drag).
+    if (data.scene !== currentScene) {
+      currentScene = data.scene;
+      buildKnobs(data);
+    } else if (!dragging) {
+      // Same scene: sync slider positions to server truth (controller/keyboard
+      // may have moved them too), but never yank a slider mid-drag.
+      (data.params || []).forEach(p => {
+        const s = sliders[p.id];
+        if (s) { s.input.value = Math.round((p.norm || 0) * 1000); s.valEl.textContent = fmt(p.value); }
+      });
+    }
+  } catch (e) {
+    statusEl.textContent = "offline: " + e.message;
+  }
+}
+
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>

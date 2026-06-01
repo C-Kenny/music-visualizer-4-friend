@@ -83,6 +83,14 @@
     <span id="lockdownState" class="small">checking…</span>
   </div>
 
+  <h2>QUEUE CONTROL</h2>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+    <button id="queueRotateBtn">SKIP TURN</button>
+    <button id="queuePauseBtn">—</button>
+    <span id="queueState" class="small">loading…</span>
+  </div>
+  <div id="queueList" class="small" style="margin-bottom:12px;"></div>
+
   <h2>NAMED PINS</h2>
   <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
     <input id="mintLabel" placeholder="label (e.g. alice)" style="background:#000; color:var(--green); border:1px solid var(--border); padding:6px 8px; font:12px 'Courier New', monospace; text-shadow:var(--glow);">
@@ -138,10 +146,11 @@ function authHeaders(extra) {
 
 async function refresh() {
   try {
-    const [rc, rp, rl] = await Promise.all([
+    const [rc, rp, rl, ro] = await Promise.all([
       fetch("/admin/clients",  { headers: authHeaders() }),
       fetch("/admin/pins",     { headers: authHeaders() }),
       fetch("/admin/lockdown", { headers: authHeaders() }),
+      fetch("/operator.json",  { cache: "no-store" }),
     ]);
     if (rc.status === 401 || rp.status === 401) {
       statusEl.textContent = "401 — token wrong / not localhost"; statusEl.className = "small err"; return;
@@ -149,12 +158,14 @@ async function refresh() {
     const data = await rc.json();
     const pins = await rp.json();
     const lock = await rl.json();
+    const oper = ro.ok ? await ro.json() : {};
     statusEl.textContent = "ok · " + new Date().toLocaleTimeString();
     statusEl.className = "small";
-    renderClients(data.clients || [], data.tempBanIds || []);
+    renderClients(data.clients || [], data.tempBanIds || [], oper.queue);
     renderBans(data.bannedIds || [], data.bannedIps || [], data.tempBanIds || [], data.tempBanIps || []);
     renderPins(pins);
     renderLockdown(lock.enabled, lock.remainMs || 0);
+    renderQueue(oper.queue);
   } catch (e) {
     statusEl.textContent = "err: " + e.message;
     statusEl.className = "small err";
@@ -250,7 +261,34 @@ function fmtIdle(ms) { return ms < 1000 ? ms + "ms" : (ms/1000).toFixed(1) + "s"
 let clientsRowSig = "";
 let clientRows = {};   // clientId -> { tr, nick, id, ip, dev, screen, role, msgs, idle, status }
 
-function renderClients(list, tempBanIds) {
+function renderQueue(q) {
+  const stateEl = document.getElementById("queueState");
+  const listEl  = document.getElementById("queueList");
+  const pauseBtn = document.getElementById("queuePauseBtn");
+  if (!q) { stateEl.textContent = "no queue data"; listEl.textContent = ""; return; }
+  const timeLeft = q.timeLeftSec || 0;
+  const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+  stateEl.textContent = q.activeDriverId
+    ? "Driver: " + (q.activeDriverName || q.activeDriverId.slice(0,8)) + " · " + m + ":" + String(s).padStart(2,"0") + " left"
+      + (q.paused ? " · PAUSED" : "")
+      + " · crowd: +" + (q.likes||0) + " -" + (q.dislikes||0)
+    : "no active driver";
+  pauseBtn.textContent = q.paused ? "RESUME ROTATION" : "PAUSE ROTATION";
+  const list = q.list || [];
+  listEl.textContent = list.length ? ("Queue ("+list.length+"): " + list.map((c,i) => (i+1)+". "+(c.nickname||c.clientId.slice(0,8))).join(" → ")) : "Queue empty";
+
+  pauseBtn.onclick = async () => {
+    await fetch("/admin/queue/pause", { method:"POST", headers: authHeaders(), body: JSON.stringify({ paused: !q.paused }) });
+    refresh();
+  };
+}
+
+document.getElementById("queueRotateBtn").onclick = async () => {
+  await fetch("/admin/queue/rotate", { method:"POST", headers: authHeaders() });
+  refresh();
+};
+
+function renderClients(list, tempBanIds, queue) {
   const kickById = {};
   (tempBanIds || []).forEach(b => kickById[b.clientId] = b.remainMs);
   const tb = document.querySelector("#clients tbody");
@@ -275,6 +313,7 @@ function renderClients(list, tempBanIds) {
         <td><div class="actions">
           <button data-id="${escape(c.clientId)}" class="kick">KICK</button>
           <button data-id="${escape(c.clientId)}" class="ban danger">BAN</button>
+          <button data-id="${escape(c.clientId)}" class="pin-driver" title="Pin this client as active driver">PIN▶</button>
         </div></td>`;
       tb.appendChild(tr);
       const sel = tr.querySelector("select.role");
@@ -282,6 +321,13 @@ function renderClients(list, tempBanIds) {
       tr.querySelector("button.kick").onclick = () => action("/admin/kick", { clientId: c.clientId });
       tr.querySelector("button.ban").onclick = () => {
         if (confirm("Ban " + c.clientId + "?")) action("/admin/ban", { clientId: c.clientId });
+      };
+      tr.querySelector("button.pin-driver").onclick = async () => {
+        const btn = tr.querySelector("button.pin-driver");
+        const isPinned = btn.textContent === "UNPIN";
+        await fetch("/admin/queue/pin", { method:"POST", headers: authHeaders(),
+          body: JSON.stringify({ clientId: isPinned ? "" : c.clientId }) });
+        refresh();
       };
       clientRows[c.clientId] = {
         tr,
@@ -316,6 +362,11 @@ function renderClients(list, tempBanIds) {
     } else {
       r.status.textContent = c.connected ? "live" : "gone";
       r.status.className = "";
+    }
+    // Update PIN button label based on current queue pin state
+    const pinBtn = r.tr.querySelector("button.pin-driver");
+    if (pinBtn && queue) {
+      pinBtn.textContent = (queue.pinnedDriverId === c.clientId) ? "UNPIN" : "PIN▶";
     }
   }
 }
