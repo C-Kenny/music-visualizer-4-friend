@@ -57,6 +57,9 @@ class ControllerWebSocket extends WebSocketServer {
           try { conn.close(1008, err); } catch (Exception e) {}
         } else {
           try { conn.send("{\"type\":\"hello-ok\"}"); } catch (Exception e) {}
+          if (webQueueManager != null) {
+            webQueueManager.join(o.getString("clientId", ""));
+          }
         }
         return;
       }
@@ -86,6 +89,11 @@ class ControllerWebSocket extends WebSocketServer {
       } else if (type.equals("trigger")) {
         webController.setTrigger(info.clientId,
           o.getString("which", ""), o.getFloat("value", 0));
+      } else if (type.equals("vote")) {
+        int val = o.getInt("val", 0);
+        if (webQueueManager != null) {
+          webQueueManager.vote(info.clientId, val);
+        }
       }
     } catch (Exception e) {
       println("[WS] message parse error: " + e.getMessage());

@@ -245,16 +245,44 @@
     background: var(--green); color: #000; text-shadow: none;
     box-shadow: var(--glow);
   }
+  #queue-hud {
+    background: rgba(0, 255, 120, 0.05);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+  #queue-hud button {
+    font-family: monospace;
+    font-size: 11px;
+    padding: 2px 6px;
+    cursor: pointer;
+    margin-left: 4px;
+    border-radius: 3px;
+  }
 </style>
 </head>
 <body>
 <nav class="navbar">
   <a href="/">FLAGS</a>
   <a href="/controller.html" class="active">CONTROLLER</a>
+  <a href="/tweaks.html">TWEAKS</a>
   <a href="/operator.html">OPERATOR</a>
   <a href="/stream.html">STREAM</a>
   <span class="status" id="status">connecting…</span>
 </nav>
+
+<div id="queue-hud">
+  <span id="queue-status-text">Connecting to queue...</span>
+  <div style="display: flex; align-items: center;">
+    <span id="vote-tally" style="margin-right: 6px; display: none;">crowd: +0 / -0</span>
+    <button id="btn-like" style="display: none; background: #000; color: var(--green); border: 1px solid var(--border);">👍</button>
+    <button id="btn-dislike" style="display: none; background: #000; color: #ff4444; border: 1px solid var(--border);">👎</button>
+  </div>
+</div>
 
 <div class="topbar">
   <div class="shoulder" id="btnLT">LT</div>
@@ -383,10 +411,15 @@ function connect() {
     statusEl.textContent = "WS · " + nickname + " · " + clientId.slice(0, 8);
     statusEl.className = "status";
   };
+  let lastQueueStatus = null;
   ws.onmessage = (ev) => {
     try {
       const m = JSON.parse(ev.data);
       if (m.type === "hello-rejected") clearPinAndReprompt(m.reason || "rejected");
+      if (m.type === "queue-status") {
+        lastQueueStatus = m;
+        updateQueueHUD(m);
+      }
     } catch (e) {}
   };
   ws.onclose = () => {
@@ -574,6 +607,119 @@ function wireTrigger(id, which) {
 }
 wireTrigger("btnLT", "L");
 wireTrigger("btnRT", "R");
+
+// ---- Queue HUD & Moderation ----
+let myVote = 0;
+let lastActiveDriverId = null;
+
+function updateQueueHUD(m) {
+  const hud = document.getElementById("queue-hud");
+  if (!hud) return;
+  
+  const statusText = document.getElementById("queue-status-text");
+  const voteTally = document.getElementById("vote-tally");
+  const btnLike = document.getElementById("btn-like");
+  const btnDislike = document.getElementById("btn-dislike");
+  
+  if (!m || !m.queue) {
+    statusText.textContent = "Connecting to queue...";
+    voteTally.style.display = "none";
+    btnLike.style.display = "none";
+    btnDislike.style.display = "none";
+    return;
+  }
+  
+  const activeId = m.activeDriverId;
+  const activeName = m.activeDriverName || "None";
+  const queueList = m.queue || [];
+
+  // When the driver changes, the server has cleared everyone's vote — clear our
+  // local 👍/👎 state too so the buttons don't stay highlighted for the newcomer.
+  if (activeId !== lastActiveDriverId) {
+    myVote = 0;
+    lastActiveDriverId = activeId;
+  }
+
+  let text = "";
+  let isActive = (activeId === clientId);
+  
+  if (isActive) {
+    text = "▶ YOU ARE DRIVING! " + formatTime(m.timeLeftSec) + " left";
+    hud.style.background = "rgba(0, 255, 120, 0.25)";
+    hud.style.borderColor = "var(--green)";
+    btnLike.style.display = "none";
+    btnDislike.style.display = "none";
+  } else {
+    hud.style.background = "rgba(0, 255, 120, 0.05)";
+    hud.style.borderColor = "var(--border)";
+    
+    if (activeId) {
+      text = "Driver: " + activeName + " (" + formatTime(m.timeLeftSec) + " left) ";
+    } else {
+      text = "Driver: None ";
+    }
+    
+    // Position counts only people waiting (the active driver also sits in the
+    // queue list, so exclude them). Wait = full turns for everyone strictly
+    // ahead of you, plus whatever the current driver has left.
+    const waiting = queueList.filter(c => c.clientId !== activeId);
+    const waitIndex = waiting.findIndex(c => c.clientId === clientId);
+    if (waitIndex >= 0) {
+      const pos = waitIndex + 1;
+      const estWait = waitIndex * m.turnDurationSec + (m.timeLeftSec || 0);
+      text += "· You are #" + pos + " in queue (wait ~" + Math.ceil(estWait / 60) + "m)";
+    } else {
+      text += "· Spectating (PIN guest)";
+    }
+    
+    btnLike.style.display = "inline-block";
+    btnDislike.style.display = "inline-block";
+    
+    btnLike.style.borderColor = myVote === 1 ? "var(--green)" : "var(--border)";
+    btnLike.style.background = myVote === 1 ? "var(--green)" : "#000";
+    btnLike.style.color = myVote === 1 ? "#000" : "var(--green)";
+    
+    btnDislike.style.borderColor = myVote === -1 ? "#ff4444" : "var(--border)";
+    btnDislike.style.background = myVote === -1 ? "#ff4444" : "#000";
+    btnDislike.style.color = myVote === -1 ? "#000" : "#ff4444";
+  }
+  
+  statusText.textContent = text;
+  
+  if (activeId && !isActive) {
+    voteTally.style.display = "inline";
+    voteTally.textContent = "crowd: +" + (m.likes || 0) + " / -" + (m.dislikes || 0);
+  } else {
+    voteTally.style.display = "none";
+  }
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+document.getElementById("btn-like").addEventListener("click", () => {
+  myVote = myVote === 1 ? 0 : 1;
+  send({ type: "vote", val: myVote });
+  if (lastQueueStatus) updateQueueHUD(lastQueueStatus);
+});
+
+document.getElementById("btn-dislike").addEventListener("click", () => {
+  myVote = myVote === -1 ? 0 : -1;
+  send({ type: "vote", val: myVote });
+  if (lastQueueStatus) updateQueueHUD(lastQueueStatus);
+});
+
+setInterval(() => {
+  if (lastQueueStatus && lastQueueStatus.activeDriverId && !lastQueueStatus.paused) {
+    if (lastQueueStatus.timeLeftSec > 0) {
+      lastQueueStatus.timeLeftSec--;
+      updateQueueHUD(lastQueueStatus);
+    }
+  }
+}, 1000);
 </script>
 </body>
 </html>

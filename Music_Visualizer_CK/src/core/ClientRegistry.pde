@@ -163,7 +163,12 @@ class ClientRegistry {
 
   void onClose(WebSocket conn) {
     ClientInfo i = byConn(conn);
-    if (i != null) i.conn = null;   // keep entry briefly so admin sees disconnect; pruned later
+    if (i != null) {
+      i.conn = null;   // keep entry briefly so admin sees disconnect; pruned later
+      if (webQueueManager != null) {
+        webQueueManager.leave(i.clientId);
+      }
+    }
   }
 
   // --- Rate limiting ---
