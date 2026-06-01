@@ -87,7 +87,7 @@ class AudioAnalyser {
     // Same pattern as HourglassScene: pre-scanned major drop + bass sanity +
     // 20-second cooldown (1200 frames at 60 fps).
     smoothDropBass = lerp(smoothDropBass, bass, 0.04);
-    if (dropPredictor != null && dropPredictor.isReady) {
+    if (dropPredictor != null && dropPredictor.isReady && audio.player != null) {
       float dropFactor   = dropPredictor.majorImminentDropFactor(audio.player.position(), 4.0);
       boolean cooldownOk = (frameCount - lastRotFlipFrame) > 1200;
       boolean shouldFlip = dropFactor > 0.5

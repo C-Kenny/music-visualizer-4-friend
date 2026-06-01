@@ -121,7 +121,9 @@ class HourglassScene implements IScene {
     // 4s window, threshold 0.5 → triggers within ~2s of a pre-scanned peak.
     // Bass sanity check lowered (drops often have brief silence before bass hits).
     // 8s cooldown prevents double-fires; 0.65 fill threshold avoids flip on empty.
-    dropImminence = dropPredictor.majorImminentDropFactor(audio.player.position(), 4.0);
+    dropImminence = (audio.player != null)
+      ? dropPredictor.majorImminentDropFactor(audio.player.position(), 4.0)
+      : 0;
     boolean cooldownOk  = (frameCount - lastFlipFrame) > 480; // 8 s at 60 fps
     boolean massiveDrop = dropPredictor.isReady
                        && dropImminence > 0.5
@@ -471,6 +473,7 @@ class HourglassScene implements IScene {
     float barY   = canvas.height - barH - 8;
     float barX   = 40;
     float barW   = canvas.width - 80;
+    if (audio.player == null) return;
     float nowMs  = audio.player.position();
     float windowMs = 30000; // ±30 seconds visible
 

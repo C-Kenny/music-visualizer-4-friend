@@ -40,6 +40,15 @@ interface IScene {
   default void handleMouseWheel(int delta) {}
 
   /**
+   * Optional: live-tweakable knobs this scene exposes (see SceneParam).
+   * Returned objects are the source of truth — the scene reads param.value in
+   * drawScene(). Controller, keyboard, and the web UI all drive these same
+   * objects through ParamRouter, so declaring a knob here makes it reachable
+   * from every input at once. Default: none.
+   */
+  default SceneParam[] getParams() { return null; }
+
+  /**
    * Returns an array of strings to display in the code overlay.
    * Return an empty array if no overlay is needed.
    */

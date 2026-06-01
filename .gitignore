@@ -11,6 +11,7 @@ Music_Visualizer_CK/data/images/*.jpg
 Music_Visualizer_CK/.devscene
 Music_Visualizer_CK/.devsong
 Music_Visualizer_CK/.devscene.bak
+Music_Visualizer_CK/.devscene.prev
 
 # Display selection persistence (per-machine)
 Music_Visualizer_CK/.display
@@ -71,8 +72,20 @@ Music_Visualizer_CK/live_shader.glsl.bak
 Music_Visualizer_CK/live_code.java
 Music_Visualizer_CK/live_code.java.bak
 
+# Developer-local profiling tools (async-profiler install)
+tools/
+
+# Profiling output (transient flame graphs)
+flame.html
+flame.collapsed
+flame-*.html
+
 # Maven test artifacts
 tests/target/maven-status/
 tests/target/test-classes/
 tests/target/surefire-reports/
 tests/target/generated-test-sources/
+
+# Sim Lab evolved genome (generated at runtime)
+Music_Visualizer_CK/tt_genome.cfg
+tools/tt_sim/*.class

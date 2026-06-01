@@ -36,6 +36,13 @@ class TableTennis3DScene extends TableTennisScene {
   float ballVZ     = 0;
   int   prevRallyCount = 0;
 
+  // ── Side-spin (lateral curve through the Z axis) ──────────────────────────
+  // A paddle that slices across the ball in Z imparts side-spin; Magnus then
+  // curves the ball's depth-path mid-flight, like a hook/slice serve or return.
+  float spinZ   = 0;
+  float magnusZ = 0.05;
+  float leftPaddleVZ, rightPaddleVZ;   // per-frame paddle Z velocity (for side-spin)
+
   // ── Out-of-bounds 2-bounce rule ───────────────────────────────────────────
   // Ball can go past the paddle. Only scored when it bounces twice on the floor
   // or exits through the back wall of the enclosure (ENV_HW).
@@ -247,7 +254,45 @@ class TableTennis3DScene extends TableTennisScene {
     updatePaddleTargets();
     movePaddles();
     updateZPhysics();   // Z first so paddle Z is fresh when collision fires
+    float netSafetyPrevX = ballX;     // capture before parent moves ballX
+    boolean wasServeDrop = inServeDrop;
     updatePhysics();
+
+    // Serve just auto-hit this frame → reshape the launch. The parent's auto-hit
+    // sends every serve at a fixed ~45° (ballVX≈±9, ballVY=8), which bounces
+    // right by the bat and arcs steeply up. Reshape to a flatter, controlled
+    // trajectory whose first bounce lands well inside the server's half toward
+    // the net.
+    if (wasServeDrop && !inServeDrop) reshapeServeLaunch();
+
+    // ── Physical table-top collision (after parent physics) ─────────────────
+    // PURE physical constraint — NO rally/escape/pause/serve state gates. The
+    // ball simply cannot occupy the solid table volume while it is over the
+    // table footprint (X and Z), full stop. This fixes the fall-through that
+    // happened (a) when a netted ball passed the paddle while still over the
+    // table (outOfBounds set, old guard skipped it) and (b) during the ~2s
+    // post-point coast where the parent moves the ball with no collision at all.
+    // The ball only drops below table level once it has cleared the table edge
+    // (then checkEscape's floor logic takes over).
+    {
+      float netX  = sceneBuffer.width / 2.0;
+      float halfW = sceneBuffer.width * 0.44;   // table X half-extent (tw = w*0.88)
+      float halfD = TABLE_DEPTH / 2.0;          // table Z half-extent
+      boolean overTable = abs(ballX - netX) < halfW && abs(ballZ) < halfD;
+      if (overTable && ballY + BALL_RADIUS > tableY) {
+        ballY = tableY - BALL_RADIUS;
+        if (ballVY > 0) ballVY = -ballVY * 0.55;   // reflect only if descending
+      }
+      // Net body: keep the ball out of the net volume on the side it approached.
+      float netTop = tableY - NET_H;
+      if (!inServeDrop && ballY + BALL_RADIUS > netTop && ballY - BALL_RADIUS < tableY
+          && abs(ballX - netX) < BALL_RADIUS + 1) {
+        float pushSign = (netSafetyPrevX < netX) ? -1 : 1;
+        ballX  = netX + pushSign * (BALL_RADIUS + 2);
+        ballVX = pushSign * abs(ballVX) * 0.4;
+        ballVY *= 0.3;
+      }
+    }
 
     trail3D.add(new PVector(ballX, ballY, ballZ));
     if (trail3D.size() > MAX_TRAIL) trail3D.remove(0);
@@ -328,10 +373,16 @@ class TableTennis3DScene extends TableTennisScene {
     if (rallyCount == 0 && prevRallyCount > 0) {
       ballZ  = 0;
       ballVZ = 0;
+      spinZ  = 0;
       trail3D.clear();
     }
     prevRallyCount = rallyCount;
 
+    // Side-spin Magnus: curve the depth-path mid-flight, then bleed the spin off.
+    // Cap the per-frame term (same runaway guard as the Y-axis MAGNUS_TERM_MAX)
+    // so a fast ball + max side-spin can't accelerate the ball off into depth.
+    ballVZ += constrain(spinZ * abs(ballVX) * magnusZ, -MAGNUS_TERM_MAX, MAGNUS_TERM_MAX);
+    spinZ  *= 0.985;
     ballVZ *= 0.994;
     ballZ  += ballVZ;
 
@@ -353,6 +404,7 @@ class TableTennis3DScene extends TableTennisScene {
     float predZR = constrain(ballZ + ballVZ * tRight, -zEdgePred, zEdgePred);
     float zSpeed = 0.09;   // faster tracking now that prediction is accurate
 
+    float prevLZ = leftPaddleZ, prevRZ = rightPaddleZ;   // for paddle Z velocity
     if (playerSide == 1) {
       leftPaddleZ  = lerp(leftPaddleZ, playerTargetZ, 0.18);
       rightPaddleZ = lerp(rightPaddleZ, ballVX > 0 ? predZR : 0, zSpeed);
@@ -368,12 +420,23 @@ class TableTennis3DScene extends TableTennisScene {
         leftPaddleZ  = lerp(leftPaddleZ,  0,      zSpeed * 0.5);
       }
     }
+    leftPaddleVZ  = leftPaddleZ  - prevLZ;
+    rightPaddleVZ = rightPaddleZ - prevRZ;
   }
 
   void checkPaddleCollision(boolean isLeft, float paddleX, float paddleY) {
     float pz = isLeft ? leftPaddleZ : rightPaddleZ;
     if (abs(ballZ - pz) > PADDLE_Z / 2.0 + BALL_RADIUS) return;
+    int prevRally = rallyCount;
     super.checkPaddleCollision(isLeft, paddleX, paddleY);
+    // Only impart side-spin if the hit actually landed (rallyCount advanced).
+    if (rallyCount > prevRally) {
+      float paddleVZ = isLeft ? leftPaddleVZ : rightPaddleVZ;
+      // Slicing across the ball in Z (paddle moving in Z) + where the ball met
+      // the paddle in Z both contribute side-spin. Magnus then curves the path.
+      float hitZ = constrain((ballZ - pz) / (PADDLE_Z / 2.0), -1, 1);
+      spinZ = constrain(paddleVZ * 0.035 + hitZ * 0.06 + random(-0.02, 0.02), -0.4, 0.4);
+    }
   }
 
   // ── player control helpers ────────────────────────────────────────────────
@@ -385,12 +448,17 @@ class TableTennis3DScene extends TableTennisScene {
     float yMin = PADDLE_H / 2;
     float yMax = tableY - PADDLE_H / 2 - 4;
     playerTargetY = constrain(playerTargetY, yMin, yMax);
+    // The human side must stay snappy — override any slow evolved aiSpeed style
+    // (paddleSpeedL/R) with a responsive tracking lerp just for that paddle.
+    final float HUMAN_SPEED = 0.5;
     if (playerSide == 1) {
       leftTargetY = playerTargetY;
       leftTargetX = leftHomeX;
+      paddleSpeedL = HUMAN_SPEED;
     } else {
       rightTargetY = playerTargetY;
       rightTargetX = rightHomeX;
+      paddleSpeedR = HUMAN_SPEED;
     }
   }
 
@@ -410,28 +478,89 @@ class TableTennis3DScene extends TableTennisScene {
     outOfBounds    = false;
     outBounceCount = 0;
     super.serve();
+    // Clear the 3D trail too (parent only clears the 2D `trail`). Without this,
+    // the trail still holds the previous rally's coast positions and draws an
+    // ugly streak from there to the new serve spot when the ball teleports.
+    // Null-guard: the parent constructor calls serve() (virtual) before this
+    // subclass's field initializers run, so trail3D can still be null here.
+    if (trail3D != null) trail3D.clear();
 
-    // ITTF: toss must originate behind the server's end line, ball entirely
-    // beyond the back edge. 2D parent picks X anywhere in the server's half
-    // (often over the table). Re-place behind the end line and spread Z across
-    // the back edge so the toss reads as a real serve.
-    float backOffset = random(40, 140);
+    // ITTF: toss must originate behind the server's end line. Vary the
+    // standing depth more aggressively so the server isn't always at the
+    // same distance — combined with the style switch below this kills the
+    // monotonous "vertical bounce every time" feel.
+    float backOffset = random(40, 220);
     float paddleX = leftServes ? (leftHomeX - backOffset) : (rightHomeX + backOffset);
 
     ballX = paddleX;
     if (leftServes) { leftPaddleX  = paddleX; leftTargetX  = paddleX; }
     else            { rightPaddleX = paddleX; rightTargetX = paddleX; }
 
-    // Spread the toss across the table's back edge in Z.
+    // Spread the toss across the table's back edge in Z (server can stand
+    // anywhere across their end line).
     float zMax = TABLE_DEPTH / 2.0 - BALL_RADIUS * 2;
-    ballZ  = random(-zMax * 0.85, zMax * 0.85);
+    ballZ  = random(-zMax * 0.9, zMax * 0.9);
     ballVZ = 0;
 
-    // Re-aim the toss back toward the server's half so the bounce still lands
-    // on their side after starting further from the net.
+    // ── Serve toss ───────────────────────────────────────────────────────
+    // ITTF legal serve: the ball must be tossed clearly upward (≥16cm) before
+    // being struck. Always give the toss a solid upward velocity so the rise is
+    // unmistakable; the parent auto-hits when it falls back to paddle height,
+    // and reshapeServeLaunch() then sets the actual (flat, controlled) launch.
+    // ballVY ≈ -8 rises ~115px under g=0.28 — an obvious, legal toss every time.
     float netX = sceneBuffer.width / 2.0;
     float toNetSign = (netX > paddleX) ? 1 : -1;
-    ballVX = toNetSign * random(0.6, 1.6);
+    ballY  = tableY - 60 + random(-6, 6);
+    ballVY = random(-9, -7);                    // clear vertical toss (~88–145px rise)
+    ballVX = toNetSign * random(0.2, 0.5);      // minimal drift; launch handles aim
+  }
+
+  // Reshape the serve the moment the parent's auto-hit launches it.
+  //
+  // The serve's POST-bounce arc is set by the parent's onTableBounce(), which
+  // pops ballVY upward (clamped -5..-22) to clear the net. The steepness of
+  // that pop is atan(popVY / ballVX) — so a low horizontal speed makes the
+  // serve shoot up vertically (the "too wild/vertical" complaint). The fix is a
+  // brisk, FLAT horizontal drive: high ballVX + small downward ballVY. That
+  // both (a) carries the first bounce well toward the net and (b) keeps the
+  // post-bounce angle shallow, like a real ITTF drive serve.
+  void reshapeServeLaunch() {
+    float netX = sceneBuffer.width / 2.0;
+    float dir  = (netX > ballX) ? 1 : -1;          // toward the net
+    // Moderate flat drive — just enough to land the first bounce around the
+    // middle of the server's half (good distance-to-net headroom). The actual
+    // net-clearing arc is computed in onTableBounce() below.
+    ballVX = dir * 10.0;
+    ballVY = 2.0;
+    ballVZ = random(-0.5, 0.5);                    // faint lateral spread
+  }
+
+  // Override the serve's first-bounce handling so the serve RELIABLY clears the
+  // net and lands on the receiver's half. The parent's version pops ballVY just
+  // barely over the net (critVY-4), and that margin shrinks toward zero as the
+  // bounce nears the net — so fast/flat serves clip the net and fault, which is
+  // why the AI was losing so many serve points. Here we aim a proper arc: peak
+  // exactly at the net, NET_H + margin above the table, landing mirrored onto
+  // the receiver's side. Rally bounces (serveBounced==true) defer to the parent.
+  void onTableBounce() {
+    if (!serveBounced) {
+      float netX = sceneBuffer.width / 2.0;
+      int side       = ballX < netX ? -1 : 1;
+      int serverSide = leftServes ? -1 : 1;
+      if (side != serverSide) { super.onTableBounce(); return; }  // wrong half = fault
+
+      float dir       = (netX > ballX) ? 1 : -1;
+      float hApex     = NET_H + 70;                 // clear the net by ~70px
+      float vy        = -sqrt(2 * gravity * hApex); // upward launch to reach apex
+      float tApex     = -vy / gravity;              // frames to apex
+      float distToNet = abs(netX - ballX);
+      float vx        = constrain(distToNet / max(tApex, 1), 6, 18);
+      ballVY = vy;
+      ballVX = dir * vx;                            // apex lands ~over the net
+      serveBounced = true;
+      return;
+    }
+    super.onTableBounce();
   }
 
   void cyclePlayer() {

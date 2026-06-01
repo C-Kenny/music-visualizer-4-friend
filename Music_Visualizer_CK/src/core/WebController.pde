@@ -113,7 +113,13 @@ class WebController {
     ClientInfo info = clientRegistry.byId.get(clientId);
     if (info == null) return true;
     if (clientRegistry.bannedIds.contains(clientId)) return false;
-    return !"spectator".equals(info.role);
+    if ("spectator".equals(info.role)) return false;
+    if ("admin".equals(info.role)) return true; // operator bypasses queue
+
+    if (webQueueManager != null && webQueueManager.activeDriverId != null) {
+      return webQueueManager.isActiveDriver(clientId);
+    }
+    return true;
   }
 
   // Aggregate sticks across contributing clients with fresh stick data.

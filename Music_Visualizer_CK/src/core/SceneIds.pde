@@ -58,3 +58,7 @@ static final int SCENE_STRANGE_ATTRACTOR = 47;
 static final int SCENE_SACRED_FRACTALS   = 48;
 static final int SCENE_THEY_DONT_KNOW    = 49;
 static final int SCENE_LIVE_CODE         = 50;
+static final int SCENE_SILHOUETTE_PAINTING = 51;
+static final int SCENE_HYPERSPACE_BLOOM    = 52;
+static final int SCENE_TT_SIM_LAB          = 53;
+static final int SCENE_SIM_CUBE            = 54;

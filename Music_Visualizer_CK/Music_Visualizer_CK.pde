@@ -15,6 +15,7 @@ FeatureFlagServer featureFlagServer;
 WebController webController;
 ControllerWebSocket controllerWS;
 ClientRegistry clientRegistry;
+WebQueueManager webQueueManager;
 PinManager pinManager;
 IScene[] scenes;
 SceneSwitcher sceneSwitcher;
@@ -34,7 +35,7 @@ HelpOverlay      helpOverlay;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
 FrameBudget      frameBudget;
-final int SCENE_COUNT = 51;
+final int SCENE_COUNT = 55;
 int previousState = -1;
 boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
 
@@ -392,12 +393,41 @@ void setSongToVisualize() {
   config.SONG_NAME = getSongNameFromFilePath(config.SONG_TO_VISUALIZE, config.OS_TYPE);
 }
 
+volatile boolean _loadingSong = false;
+// Cross-thread song-load request. Set by any thread (AWT-EDT picker, network
+// handler, etc); serviced on the draw thread via drainPendingSongLoad() so
+// Minim teardown/init never collides with audio.forward().
+volatile String _pendingSongPath = null;
+
+void requestSongLoad(String path) {
+  _pendingSongPath = path;
+}
+
+void drainPendingSongLoad() {
+  String path = _pendingSongPath;
+  if (path == null) return;
+  _pendingSongPath = null;
+  loadSongByPath(path);
+}
+
 void loadSongByPath(String path) {
-  audio.stop();
-  config.SONG_TO_VISUALIZE = path;
-  config.SONG_NAME = getSongNameFromFilePath(path, config.OS_TYPE);
-  loadSongToVisualize();
-  logToStdout("Now playing: " + config.SONG_NAME);
+  // Re-entrancy guard. With the pending-load queue this should only ever fire
+  // if loadSongByPath itself recurses; keeping it as a belt-and-suspenders.
+  if (_loadingSong) {
+    logToStdout("[Audio] loadSongByPath ignored — load already in flight: " + path);
+    return;
+  }
+  _loadingSong = true;
+  try {
+    if (audio != null) audio.stop();
+    config.SONG_TO_VISUALIZE = path;
+    config.SONG_NAME = getSongNameFromFilePath(path, config.OS_TYPE);
+    loadSongToVisualize();
+    logToStdout("Now playing: " + config.SONG_NAME);
+    if (webQueueManager != null) webQueueManager.rotate();
+  } finally {
+    _loadingSong = false;
+  }
 }
 
 void nextSong() {
@@ -432,6 +462,47 @@ void collectSongs(java.io.File dir, ArrayList<String> songs) {
   }
 }
 
+void folderSelected(File selection) {
+  if (selection == null) {
+    logToStdout("[FolderPicker] cancelled / null selection");
+    return;
+  }
+  logToStdout("[FolderPicker] raw selection: " + selection.getAbsolutePath()
+            + " isDir=" + selection.isDirectory() + " isFile=" + selection.isFile());
+
+  // Linux GTK selectFolder sometimes returns the highlighted *file* inside the
+  // folder rather than the folder itself. If that happens, fall back to its
+  // parent directory so the picker still does the obvious thing.
+  File dir = selection;
+  if (!dir.isDirectory()) {
+    File parent = dir.getParentFile();
+    if (parent != null && parent.isDirectory()) {
+      logToStdout("[FolderPicker] selection was a file — falling back to parent: " + parent.getAbsolutePath());
+      dir = parent;
+    } else {
+      logToStdout("[FolderPicker] selection is not a folder and has no usable parent. Aborting.");
+      return;
+    }
+  }
+
+  config.songList.clear();
+  collectSongs(dir, config.songList);
+  logToStdout("[FolderPicker] scanned " + dir.getAbsolutePath() + " -> " + config.songList.size() + " song(s)");
+  if (config.songList.size() == 0) {
+    logToStdout("[FolderPicker] no playable .mp3 / .wav / .aiff under that folder.");
+    return;
+  }
+
+  int idx = (int) random(config.songList.size());
+  config.currentSongIndex = idx;
+  String path = config.songList.get(idx);
+  config.SONG_TO_VISUALIZE = path;
+  config.SONG_NAME = getSongNameFromFilePath(path, config.OS_TYPE);
+  logToStdout("[FolderPicker] enqueue first track: " + path);
+  if (audio != null) requestSongLoad(path);
+  else logToStdout("[FolderPicker] WARN: audio is null at request time");
+}
+
 void fileSelected(File selection) {
   if (selection == null) {
     logToStdout("No file selected. Window might have been closed/cancelled");
@@ -447,10 +518,11 @@ void fileSelected(File selection) {
   config.currentSongIndex = config.songList.indexOf(path);
   if (config.currentSongIndex < 0) config.currentSongIndex = 0;
 
-  // At runtime (audio already exists) load immediately.
+  // At runtime (audio already exists) enqueue — the picker callback runs on
+  // AWT-EDT, so doing the Minim teardown/init here would race the draw thread.
   // At startup the setSongToVisualize() while-loop picks up SONG_TO_VISUALIZE instead.
   if (audio != null) {
-    loadSongByPath(path);
+    requestSongLoad(path);
   }
 }
 
@@ -503,6 +575,7 @@ void setup() {
   config.VERBOSE_LOG = isDevVerbose();
   pinManager = new PinManager();
   clientRegistry = new ClientRegistry();
+  webQueueManager = new WebQueueManager();
   featureFlagServer = new FeatureFlagServer();
   featureFlagServer.start();
   webController = new WebController();
@@ -597,6 +670,10 @@ void setup() {
   scenes[48] = new SacredFractalsScene();
   scenes[49] = new TheyDontKnowScene();
   scenes[50] = new LiveCodeScene();
+  scenes[51] = new SilhouettePaintingScene();
+  scenes[52] = new HyperspaceBloomScene();
+  scenes[53] = new TableTennisSimScene();
+  scenes[54] = new SimCubeScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
@@ -615,6 +692,14 @@ void setup() {
   textOverlay    = new TextOverlay();
   recorder       = new Recorder();
   streamer       = new Streamer();
+  // .devstream = "venue" starts the stream in low-bandwidth profile (weak WiFi)
+  try {
+    java.io.File devStreamFile = new java.io.File(sketchPath(".devstream"));
+    if (devStreamFile.exists()) {
+      String raw = join(loadStrings(devStreamFile.getAbsolutePath()), "").trim();
+      if (raw.equalsIgnoreCase("venue")) streamer.profile = Streamer.PROFILE_VENUE;
+    }
+  } catch (Exception e) { /* ignore — missing or malformed file */ }
   midiBridge     = new MidiBridge();
   helpOverlay    = new HelpOverlay();
   displayManager = new DisplayManager();
@@ -632,12 +717,20 @@ void setup() {
   monoFont = createFont("Monospaced", 15, true);
   // Dev shortcut: if .devscene exists in the sketch dir, start on that scene.
   // Must be resolved BEFORE onEnter() so the correct scene receives the call.
-  // e.g.  echo 6 > Music_Visualizer_CK/.devscene
+  // The file may hold a number OR a scene name (whichever you can remember):
+  //   echo 54        > Music_Visualizer_CK/.devscene
+  //   echo SimCube   > Music_Visualizer_CK/.devscene
+  //   echo sim_cube  > Music_Visualizer_CK/.devscene
   try {
     java.io.File devScene = new java.io.File(sketchPath(".devscene"));
     if (devScene.exists()) {
       String raw = join(loadStrings(devScene.getAbsolutePath()), "").trim();
-      config.STATE = Integer.parseInt(raw);
+      int sceneIndex = resolveDevScene(raw);
+      if (sceneIndex >= 0 && sceneIndex < scenes.length && scenes[sceneIndex] != null) {
+        config.STATE = sceneIndex;
+        println("DEVSCENE: starting on " + sceneIndex + " = "
+                + scenes[sceneIndex].getClass().getSimpleName());
+      }
     }
   } catch (Exception e) { /* ignore — missing or malformed file */ }
 
@@ -649,6 +742,47 @@ void setup() {
 
   xboxFrontSVG = loadShape("controller/front.svg");
   if (xboxFrontSVG != null) xboxFrontSVG.disableStyle();
+}
+
+// Resolve a .devscene value to a scene index. Accepts a plain number ("54") or
+// a scene name in any casing/spacing ("SimCube", "sim_cube", "SimCubeScene",
+// even "SCENE_SIM_CUBE"). Returns -1 if nothing matches, and lists the valid
+// names to the console so the right spelling is one glance away.
+int resolveDevScene(String raw) {
+  if (raw == null) return -1;
+  raw = raw.trim();
+  if (raw.length() == 0) return -1;
+
+  // A bare number is taken as the index directly.
+  try { return Integer.parseInt(raw); } catch (NumberFormatException notANumber) { }
+
+  // Otherwise match by name. Normalise both sides so punctuation and casing
+  // don't matter; prefer an exact match, fall back to a partial one.
+  String wanted = normalizeSceneName(raw);
+  int exactMatch = -1, partialMatch = -1;
+  for (int i = 0; i < scenes.length; i++) {
+    if (scenes[i] == null) continue;
+    String name = normalizeSceneName(scenes[i].getClass().getSimpleName());
+    if (name.equals(wanted)) { exactMatch = i; break; }
+    if (partialMatch < 0 && (name.contains(wanted) || wanted.contains(name))) partialMatch = i;
+  }
+  int found = (exactMatch >= 0) ? exactMatch : partialMatch;
+
+  if (found < 0) {
+    println("DEVSCENE: no scene matches \"" + raw + "\". Available scenes:");
+    for (int i = 0; i < scenes.length; i++)
+      if (scenes[i] != null) println("  " + i + " = " + scenes[i].getClass().getSimpleName());
+  }
+  return found;
+}
+
+// Lower-case, strip anything that isn't a letter or digit, and drop a trailing
+// "scene" so "SimCubeScene", "sim_cube" and "Sim Cube" all become "simcube".
+String normalizeSceneName(String name) {
+  String cleaned = name.toLowerCase().replaceAll("[^a-z0-9]", "");
+  String suffix = "scene";
+  if (cleaned.endsWith(suffix)) cleaned = cleaned.substring(0, cleaned.length() - suffix.length());
+  return cleaned;
 }
 
 void stop() {
@@ -796,9 +930,15 @@ void keyPressed() {
   // Stream toggle: F6 OR F7 — F6 gets eaten by some WMs (GNOME).
   // If both fail, use the operator dashboard button (no auth needed on localhost).
   if (keyCode == java.awt.event.KeyEvent.VK_F6 || keyCode == java.awt.event.KeyEvent.VK_F7) {
-    println("[STREAM] toggle hotkey pressed (key=" + key + " code=" + keyCode + ")");
-    if (streamer != null) streamer.toggle();
-    else                  println("[STREAM] streamer is null!");
+    boolean shift = (keyEvent != null && keyEvent.isShiftDown());
+    if (shift) {
+      // Shift+F6/F7 — cycle stream bandwidth profile NORMAL <-> VENUE (weak WiFi)
+      if (streamer != null) streamer.cycleProfile();
+    } else {
+      println("[STREAM] toggle hotkey pressed (key=" + key + " code=" + keyCode + ")");
+      if (streamer != null) streamer.toggle();
+      else                  println("[STREAM] streamer is null!");
+    }
     return;
   }
 
@@ -860,7 +1000,12 @@ void keyPressed() {
   if (key == 's' || key == 'S') toggleSongPlaying();
   if (key == 'n') nextSong();
   if (key == 'N') shuffleSong();
-  if (key == 'o' || key == 'O') selectInput("Select song to visualize", "fileSelected");
+  if (key == 'o') selectInput("Select song to visualize", "fileSelected");
+  // selectInput uses the native GTK picker on Linux (has bookmarks); selectFolder
+  // falls back to Swing (no bookmarks). So we use selectInput for both — the
+  // folder version asks for any song *inside* the desired folder, and
+  // folderSelected() walks up to the parent directory.
+  if (key == 'O') selectInput("Pick any song in the folder to shuffle", "folderSelected");
   if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
   if (key == 'm' || key == 'M') config.SHOW_METADATA = !config.SHOW_METADATA;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
@@ -1082,6 +1227,8 @@ final int[] SCENE_ORDER = {
   SCENE_LISSAJOUS_KNOT,
   // SCENE_TABLE_TENNIS,
   SCENE_TABLE_TENNIS_3D,
+  SCENE_TT_SIM_LAB,
+  SCENE_SIM_CUBE,
   SCENE_PRISM_CODEX,
   SCENE_GRAVITY_STRINGS,
   SCENE_NEURAL_WEAVE,
@@ -1091,26 +1238,28 @@ final int[] SCENE_ORDER = {
   SCENE_RECURSIVE_MANDALA,
   SCENE_KALEIDOSCOPE,
   SCENE_VOID_BLOOM,
-  SCENE_CIRCUIT_MAZE,
+  // SCENE_CIRCUIT_MAZE,        // disabled — dynamic circuit maze, revisit later
   SCENE_HOURGLASS,
   SCENE_SACRED_GEOMETRY,
   // SCENE_MATH_WAVE — hotkey-only ('w'), excluded from rotation
   SCENE_TORUS_KNOT,
   SCENE_ROSE_CURVE,
-  SCENE_SRI_YANTRA,
-  SCENE_NET_OF_BEING,
+  // SCENE_SRI_YANTRA,          // disabled, revisit later
+  // SCENE_NET_OF_BEING,        // disabled, revisit later
   SCENE_PSYCHEDELIC_EYE,
   SCENE_COSMIC_LATTICE,
-  SCENE_DOT_MANDALA,
+  // SCENE_DOT_MANDALA,         // disabled, revisit later
   SCENE_MERKABA_STAR,
   SCENE_PENTAGONAL_VORTEX,
-  SCENE_TUNNEL_YANTRA,
-  SCENE_CHLADNI_PLATE,
+  // SCENE_TUNNEL_YANTRA,       // disabled — combo layer scene, revisit later
+  // SCENE_CHLADNI_PLATE,       // disabled — chladni skybox, revisit later
   SCENE_STRANGE_ATTRACTOR,
+  SCENE_HYPERSPACE_BLOOM,
   SCENE_SACRED_FRACTALS,
   // SCENE_EXPLAINER — hotkey-only ('v'), excluded from rotation
-  SCENE_THEY_DONT_KNOW,
-  SCENE_LIVE_CODE
+  // SCENE_THEY_DONT_KNOW,      // disabled, revisit later
+  // SCENE_LIVE_CODE,           // disabled — live code console, revisit later
+  // SCENE_SILHOUETTE_PAINTING  // disabled, revisit later
 };
 
 int _sceneOrderIndex(int state) {
@@ -1234,6 +1383,7 @@ void draw() {
     println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
   }
   saveDevPreview();
+  if (webQueueManager != null) webQueueManager.tick();
 
   if (setlist != null) setlist.tick();
   if (midiBridge != null) midiBridge.drainPending();
@@ -1289,10 +1439,29 @@ void draw() {
     // 2. Continuous Logic Updates
     if (frameCount % 480 == 0) logToStdout("Draw state=" + config.STATE);
 
+    // Service any cross-thread song-load requests (file picker on AWT-EDT)
+    // here on the draw thread so Minim teardown/setup doesn't race with
+    // audio.forward() reading player.mix.
+    drainPendingSongLoad();
+
     // Auto-advance to next track only in FILE mode. DEVICE input never "ends".
-    if (config.SONG_PLAYING && !audio.isDeviceInput() && !audio.isPlaying()
-        && config.songList.size() > 0) {
-      shuffleSong();
+    // Uses isPlaybackComplete() not isPlaying() because Minim's isPlaying()
+    // doesn't reliably flip at EOF.
+    if (!audio.isDeviceInput() && config.songList.size() > 0) {
+      // Periodic diagnostic (~every 4s at 60fps logical) so we can see why
+      // auto-advance might not fire.
+      if (frameCount % 240 == 0) {
+        int pos = (audio.player != null) ? audio.player.position() : -1;
+        int len = (audio.player != null) ? audio.player.length()   : -1;
+        boolean playing = (audio.player != null) && audio.player.isPlaying();
+        logToStdout("[AutoAdvance] pos=" + pos + "/" + len + " playing=" + playing
+                  + " songPlaying=" + config.SONG_PLAYING
+                  + " complete=" + audio.isPlaybackComplete());
+      }
+      if (audio.isPlaybackComplete()) {
+        logToStdout("[AutoAdvance] track ended -> shuffleSong()");
+        shuffleSong();
+      }
     }
 
     if (frameBudget != null) frameBudget.begin(FrameBudget.P_AUDIO);
@@ -1515,6 +1684,97 @@ void draw() {
   }
 }
 
+// ── Unified terminal-style HUD panel ──────────────────────────────────────────
+// All on-screen HUDs route through this so they share the SYSTEM METADATA look:
+// black 200-alpha bg, 2px bright-green border, 8px corners, bright-green mono text,
+// auto-sized box. Pass anchor = "TL" | "TR" | "BL" | "BR" or specific x/y via
+// drawTerminalPanelAt().
+//
+// All HUDs share the same width band so a Mandala HUD and an Audio HUD don't
+// look like different products. HUD_MIN_W / HUD_MAX_W are *interior* widths
+// (text region inside the padding). Lines longer than HUD_MAX_W are wrapped
+// on spaces, or hard-broken if a single token is too long.
+final float HUD_MIN_W = 360;
+final float HUD_MAX_W = 460;
+
+float[] hudWidthBounds() { return new float[] { HUD_MIN_W * uiScale(), HUD_MAX_W * uiScale() }; }
+
+String[] wrapHUDLines(String[] lines, float maxTextW) {
+  ArrayList<String> out = new ArrayList<String>();
+  for (String raw : lines) {
+    if (raw == null) { out.add(""); continue; }
+    if (textWidth(raw) <= maxTextW) { out.add(raw); continue; }
+    // Split on spaces, greedily pack onto current line.
+    String[] words = raw.split(" ");
+    String cur = "";
+    for (String w : words) {
+      String candidate = cur.length() == 0 ? w : (cur + " " + w);
+      if (textWidth(candidate) <= maxTextW) {
+        cur = candidate;
+      } else if (cur.length() == 0) {
+        // Single token wider than maxTextW — hard-break by characters.
+        String chunk = "";
+        for (int i = 0; i < w.length(); i++) {
+          String next = chunk + w.charAt(i);
+          if (textWidth(next) > maxTextW && chunk.length() > 0) {
+            out.add(chunk);
+            chunk = "" + w.charAt(i);
+          } else chunk = next;
+        }
+        cur = chunk;
+      } else {
+        out.add(cur);
+        cur = w;
+      }
+    }
+    if (cur.length() > 0) out.add(cur);
+  }
+  return out.toArray(new String[0]);
+}
+
+void drawTerminalPanel(String[] rawLines, String anchor) {
+  blendMode(BLEND);
+  pushStyle();
+  textFont(monoFont);
+  textAlign(LEFT, BASELINE);
+
+  float lineH = 18 * uiScale();
+  float pad   = 14 * uiScale();
+  float[] b   = hudWidthBounds();
+  float minTextW = b[0], maxTextW = b[1];
+
+  String[] lines = wrapHUDLines(rawLines, maxTextW);
+  float maxW = 0;
+  for (String l : lines) { float w = textWidth(l); if (w > maxW) maxW = w; }
+  float textW = constrain(maxW, minTextW, maxTextW);
+  float boxW = textW + pad * 2;
+  float boxH = pad * 2 + lines.length * lineH;
+  float margin = 12 * uiScale();
+  float boxX, boxY;
+  if (anchor.equals("TR"))      { boxX = width - boxW - margin; boxY = margin; }
+  else if (anchor.equals("BL")) { boxX = margin;                 boxY = height - boxH - margin; }
+  else if (anchor.equals("BR")) { boxX = width - boxW - margin; boxY = height - boxH - margin; }
+  else                          { boxX = margin;                 boxY = margin; }
+  drawTerminalPanelAt(lines, boxX, boxY, boxW, boxH, pad, lineH);
+  popStyle();
+}
+
+void drawTerminalPanelAt(String[] lines, float boxX, float boxY,
+                         float boxW, float boxH, float pad, float lineH) {
+  fill(0, 200);
+  stroke(0, 255, 0);
+  strokeWeight(2);
+  rect(boxX, boxY, boxW, boxH, 8);
+
+  fill(0, 255, 0);
+  noStroke();
+  float ty = boxY + pad + lineH * 0.8;
+  for (int i = 0; i < lines.length; i++) {
+    text(lines[i], boxX + pad, ty);
+    ty += lineH;
+  }
+}
+
 void drawMetadataOverlay() {
   String[] lines = {
     "=== SYSTEM METADATA ===",
@@ -1529,36 +1789,7 @@ void drawMetadataOverlay() {
     "Controller Match: " + config.USING_CONTROLLER
   };
 
-  blendMode(BLEND);
-  pushStyle();
-  textFont(monoFont);
-  
-  float maxTextWidth = 0;
-  for (String line : lines) {
-    float w = textWidth(line);
-    if (w > maxTextWidth) maxTextWidth = w;
-  }
-  
-  float lineH = 18 * uiScale();
-  float pad   = 14 * uiScale();
-  float boxW  = maxTextWidth + pad * 2;
-  float boxH  = pad * 2 + lines.length * lineH;
-  float boxX  = width - boxW - 12 * uiScale();
-  float boxY  = 12 * uiScale();
-
-  fill(0, 200);   
-  stroke(0, 255, 0); 
-  strokeWeight(2);
-  rect(boxX, boxY, boxW, boxH, 8);
-
-  fill(0, 255, 0);
-  noStroke();
-  float ty = boxY + pad + lineH * 0.8;
-  for (int i = 0; i < lines.length; i++) {
-    text(lines[i], boxX + pad, ty);
-    ty += lineH;
-  }
-  popStyle();
+  drawTerminalPanel(lines, "TR");
 }
 
 // ── Standard top-left matrix-green HUD used by all scenes ──────────────────
@@ -1567,52 +1798,65 @@ void drawMetadataOverlay() {
 void sceneHUD(PGraphics pg, String title, String[] lines) {
   if (isProjecting) return;
   if (demoInput != null && demoInput.isActive()) return;
+  // Unified terminal style — matches SYSTEM METADATA / WEB CONTROL / AUDIO HUDs.
+  // Title is "=== TITLE ===" centered as the first row of the lines block.
+  String[] composed = new String[lines.length + 1];
+  composed[0] = "=== " + title.toUpperCase() + " ===";
+  for (int i = 0; i < lines.length; i++) composed[i + 1] = lines[i];
+
   pg.pushStyle();
-  float ts = 11 * uiScale(), lh = ts * 1.35, mg = 6 * uiScale();
-  float boxW = 390 * uiScale();
-  float boxH = mg * 2 + (1 + lines.length) * lh;
   pg.textFont(monoFont);
-  pg.noStroke(); pg.rectMode(CORNER);
-  pg.fill(0, 0, 0, 200);
-  pg.rect(8, 8, boxW, boxH, 4 * uiScale());
-  pg.stroke(0, 220, 80, 160); pg.strokeWeight(1.5 * uiScale()); pg.noFill();
-  pg.rect(8, 8, boxW, boxH, 4 * uiScale());
-  pg.textAlign(LEFT, TOP); pg.textSize(ts);
-  pg.fill(0, 255, 120);
-  pg.text("== " + title + " ==", 14, 8 + mg);
-  pg.fill(160, 255, 160);
-  for (int i = 0; i < lines.length; i++) {
-    pg.text(lines[i], 14, 8 + mg + (i + 1) * lh);
+  pg.textAlign(LEFT, BASELINE);
+
+  float lineH = 18 * uiScale();
+  float pad   = 14 * uiScale();
+  float minTextW = HUD_MIN_W * uiScale(), maxTextW = HUD_MAX_W * uiScale();
+  // PGraphics textWidth uses pg's font metrics; wrapHUDLines uses the global
+  // canvas font. They're the same monoFont so widths match — wrap then size.
+  String[] wrapped = wrapHUDLines(composed, maxTextW);
+  float maxW = 0;
+  for (String l : wrapped) { float w = pg.textWidth(l); if (w > maxW) maxW = w; }
+  float textW = constrain(maxW, minTextW, maxTextW);
+  float boxW = textW + pad * 2;
+  float boxH = pad * 2 + wrapped.length * lineH;
+  float boxX = 12 * uiScale();
+  float boxY = 12 * uiScale();
+
+  pg.rectMode(CORNER);
+  pg.fill(0, 200);
+  pg.stroke(0, 255, 0);
+  pg.strokeWeight(2);
+  pg.rect(boxX, boxY, boxW, boxH, 8);
+
+  pg.fill(0, 255, 0);
+  pg.noStroke();
+  float ty = boxY + pad + lineH * 0.8;
+  for (int i = 0; i < wrapped.length; i++) {
+    pg.text(wrapped[i], boxX + pad, ty);
+    ty += lineH;
   }
   pg.popStyle();
 }
 
 // Generic right-side terminal HUD — used by worm scenes (and any future scene).
-void drawSceneControlsHUD(String[] lines) {
+void drawSceneControlsHUD(String[] rawLines) {
   blendMode(BLEND);
   pushStyle();
   textFont(monoFont);
+  textAlign(LEFT, BASELINE);
+
   float lineH = 18 * uiScale();
   float pad   = 14 * uiScale();
-  float boxW  = 360 * uiScale();
-  float boxH  = pad * 2 + lines.length * lineH;
-  float boxX  = width - boxW - 12 * uiScale();
-  float boxY  = (height - boxH) / 2.0;
-
-  fill(0, 0, 0, 210); noStroke(); rectMode(CORNER);
-  rect(boxX, boxY, boxW, boxH, 6);
-  stroke(0, 220, 80, 180); strokeWeight(1.5); noFill();
-  rect(boxX, boxY, boxW, boxH, 6);
-
-  textAlign(LEFT, TOP); textSize(13 * uiScale());
-  float tx = boxX + pad, ty = boxY + pad;
-  for (int i = 0; i < lines.length; i++) {
-    String line = lines[i];
-    if      (line.startsWith("===")) fill(0, 255, 120);
-    else if (line.equals(""))        fill(0, 0, 0, 0); // invisible spacer
-    else                             fill(180, 255, 180);
-    text(line, tx, ty + i * lineH);
-  }
+  float[] b = hudWidthBounds();
+  String[] lines = wrapHUDLines(rawLines, b[1]);
+  float maxW = 0;
+  for (String l : lines) { float w = textWidth(l); if (w > maxW) maxW = w; }
+  float textW = constrain(maxW, b[0], b[1]);
+  float boxW = textW + pad * 2;
+  float boxH = pad * 2 + lines.length * lineH;
+  float boxX = width - boxW - 12 * uiScale();
+  float boxY = (height - boxH) / 2.0;
+  drawTerminalPanelAt(lines, boxX, boxY, boxW, boxH, pad, lineH);
   popStyle();
 }
 
@@ -1621,35 +1865,23 @@ void drawSceneControlsHUD(String[] lines) {
 // Controls HUD for scene 1 — shown on the right side when ` is pressed.
 // Toggle with the backtick key (`).
 void drawCodeOverlay(String[] lines) {
-  // Same style as drawSceneControlsHUD but anchored to the left edge.
+  // Unified terminal style — left-anchored, vertically centered.
   blendMode(BLEND);
   pushStyle();
   textFont(monoFont);
-  textSize(13 * uiScale());
+  textAlign(LEFT, BASELINE);
   float lineH = 18 * uiScale();
   float pad   = 14 * uiScale();
-  float maxLineW = 0;
-  for (String l : lines) maxLineW = max(maxLineW, textWidth(l));
-  float boxW  = maxLineW + pad * 2;
-  float boxH  = pad * 2 + lines.length * lineH;
-  float boxX  = 12 * uiScale();
-  float boxY  = (height - boxH) / 2.0;
-
-  fill(0, 0, 0, 210); noStroke(); rectMode(CORNER);
-  rect(boxX, boxY, boxW, boxH, 6);
-  stroke(0, 220, 80, 180); strokeWeight(1.5); noFill();
-  rect(boxX, boxY, boxW, boxH, 6);
-
-  textAlign(LEFT, TOP);
-  float tx = boxX + pad, ty = boxY + pad;
-  for (int i = 0; i < lines.length; i++) {
-    String line = lines[i];
-    if      (line.startsWith("//"))  fill(120, 200, 120);  // comments → dim green
-    else if (line.startsWith("===")) fill(0, 255, 120);    // title → bright green
-    else if (line.equals(""))        fill(0, 0, 0, 0);     // invisible spacer
-    else                             fill(180, 255, 180);   // body → light green
-    text(line, tx, ty + i * lineH);
-  }
+  float[] b = hudWidthBounds();
+  String[] wrapped = wrapHUDLines(lines, b[1]);
+  float maxW = 0;
+  for (String l : wrapped) { float w = textWidth(l); if (w > maxW) maxW = w; }
+  float textW = constrain(maxW, b[0], b[1]);
+  float boxW = textW + pad * 2;
+  float boxH = pad * 2 + wrapped.length * lineH;
+  float boxX = 12 * uiScale();
+  float boxY = (height - boxH) / 2.0;
+  drawTerminalPanelAt(wrapped, boxX, boxY, boxW, boxH, pad, lineH);
   popStyle();
 }
 
@@ -1660,51 +1892,63 @@ void drawWebControlBadge() {
   boolean haveUrls = featureFlagServer.lanUrls != null && featureFlagServer.lanUrls.size() > 0;
   boolean haveErr  = featureFlagServer.startError != null && featureFlagServer.startError.length() > 0;
   if (!haveUrls && !haveErr) return;
+  // Unified terminal style — bottom-left anchored.
   pushStyle();
   textFont(monoFont);
-  float ts = 14 * uiScale();
-  textSize(ts);
-  textAlign(LEFT, BOTTOM);
-  float pad = 10 * uiScale();
-  float lineH = ts + 4;
+  textAlign(LEFT, BASELINE);
+  int urlCount = haveUrls ? featureFlagServer.lanUrls.size() : 0;
   String pinLine = pinManager == null ? "" : ("PIN  " + pinManager.masterPin);
   String errLine = haveErr ? ("SERVER FAIL: " + featureFlagServer.startError) : "";
-  int urlCount = haveUrls ? featureFlagServer.lanUrls.size() : 0;
-  int extraLines = (pinLine.length() > 0 ? 1 : 0) + (haveErr ? 1 : 0);
-  float boxH = lineH * (urlCount + 1 + extraLines) + 12;
-  float boxW = 0;
-  if (haveUrls) for (String u : featureFlagServer.lanUrls) boxW = max(boxW, textWidth(u));
-  boxW = max(boxW, textWidth("WEB CONTROL"));
-  if (pinLine.length() > 0) boxW = max(boxW, textWidth(pinLine));
-  if (haveErr) boxW = max(boxW, textWidth(errLine));
-  boxW += 16;
-  float boxX = pad;
-  float boxY = height - pad;
+
+  ArrayList<String> lineList = new ArrayList<String>();
+  lineList.add("=== WEB CONTROL ===");
+  for (int i = 0; i < urlCount; i++) lineList.add(featureFlagServer.lanUrls.get(i));
+  if (pinLine.length() > 0) lineList.add(pinLine);
+  if (haveErr) lineList.add(errLine);
+  float lineH = 18 * uiScale();
+  float pad   = 14 * uiScale();
+  float[] b = hudWidthBounds();
+  String[] lines = wrapHUDLines(lineList.toArray(new String[0]), b[1]);
+  float maxW  = 0;
+  for (String l : lines) { float w = textWidth(l); if (w > maxW) maxW = w; }
+  // Reserve room for the LOCKDOWN pill next to the title if active.
+  boolean lockdown = (clientRegistry != null && clientRegistry.lockdownMode);
+  float pillW = lockdown ? textWidth("LOCKDOWN") + 10 + 8 : 0;
+  float contentW = max(maxW, textWidth(lines[0]) + pillW);
+  float textW = constrain(contentW, b[0], b[1]);
+  float boxW = textW + pad * 2;
+  float boxH = pad * 2 + lines.length * lineH;
+  float margin = 12 * uiScale();
+  float boxX = margin;
+  float boxY = height - boxH - margin;
+
+  // Body — bright-green border + bright-green text on black, like SYSTEM METADATA.
+  fill(0, 200);
+  stroke(0, 255, 0);
+  strokeWeight(2);
+  rectMode(CORNER);
+  rect(boxX, boxY, boxW, boxH, 8);
+
   noStroke();
-  fill(0, 180);
-  rect(boxX, boxY - boxH, boxW, boxH, 4);
-  fill(0, 255, 120);
-  text("WEB CONTROL", boxX + 8, boxY - boxH + lineH);
-  if (clientRegistry != null && clientRegistry.lockdownMode) {
+  float ty = boxY + pad + lineH * 0.8;
+  for (int i = 0; i < lines.length; i++) {
+    if (i > 0 && errLine.length() > 0 && lines[i].equals(errLine)) fill(255, 80, 80);
+    else fill(0, 255, 0);
+    text(lines[i], boxX + pad, ty);
+    ty += lineH;
+  }
+
+  // LOCKDOWN pill on the title row.
+  if (lockdown) {
     String pill = "LOCKDOWN";
-    float pillW = textWidth(pill) + 10;
-    float pillX = boxX + 8 + textWidth("WEB CONTROL") + 8;
-    float pillY = boxY - boxH + 4;
+    float pillX = boxX + pad + textWidth(lines[0]) + 8;
+    float pillY = boxY + pad - lineH * 0.2;
+    float pillH = lineH * 0.95;
     fill(180, 30, 30);
-    rect(pillX, pillY, pillW, lineH, 3);
+    noStroke();
+    rect(pillX, pillY, textWidth(pill) + 10, pillH, 3);
     fill(255);
-    text(pill, pillX + 5, pillY + lineH - 3);
-  }
-  int row = 2;
-  for (int i = 0; i < urlCount; i++) {
-    text(featureFlagServer.lanUrls.get(i), boxX + 8, boxY - boxH + lineH * row++);
-  }
-  if (pinLine.length() > 0) {
-    text(pinLine, boxX + 8, boxY - boxH + lineH * row++);
-  }
-  if (haveErr) {
-    fill(255, 80, 80);
-    text(errLine, boxX + 8, boxY - boxH + lineH * row);
+    text(pill, pillX + 5, pillY + pillH * 0.78);
   }
   popStyle();
 }
@@ -1733,28 +1977,35 @@ float drawAudioSourceBadge(float startY) {
   String l2 = src;
   String l3 = audio.isDeviceInput() ? "'  source    +/-  gain" : "'  open source picker";
 
-  float pad = 8 * uiScale();
-  float lineH = ts + 4;
-  // Cap source name so an absurdly long monitor name doesn't blow the box width.
-  float maxBoxW = 360 * uiScale();
-  while (l2.length() > 4 && textWidth(l2) + pad * 2 > maxBoxW) l2 = l2.substring(0, l2.length() - 1);
-  if (!l2.equals(src)) l2 = l2 + "…";
-  float boxW = min(maxBoxW, max(max(textWidth(l1), textWidth(l2)), textWidth(l3)) + pad * 2);
-  float boxH = lineH * 4 + pad;
-  // Bottom-right; metadata HUD sits top-right, WEB CONTROL sits bottom-left.
-  float boxX = width - boxW - 10 * uiScale();
+  float pad   = 14 * uiScale();
+  float lineH = 18 * uiScale();
+  float[] b = hudWidthBounds();
+  String title = audio.isDeviceInput() ? "=== AUDIO DEVICE ===" : "=== AUDIO FILE ===";
+  String[] raw = { title, l1, l2, l3 };
+  String[] lines = wrapHUDLines(raw, b[1]);
+  float maxW = 0;
+  for (String l : lines) { float w = textWidth(l); if (w > maxW) maxW = w; }
+  float textW = constrain(maxW, b[0], b[1]);
+  float boxW = textW + pad * 2;
+  float boxH = pad * 2 + lines.length * lineH + 12; // +12 for RMS bar
+  float boxX = width - boxW - 12 * uiScale();
   float boxY = startY - boxH;
 
-  noStroke();
-  fill(0, 180);
-  rect(boxX, boxY, boxW, boxH, 4);
+  // Unified terminal style — bright green border + text, black bg.
+  fill(0, 200);
+  stroke(0, 255, 0);
+  strokeWeight(2);
+  rectMode(CORNER);
+  rect(boxX, boxY, boxW, boxH, 8);
 
-  fill(audio.isDeviceInput() ? color(255, 200, 80) : color(0, 255, 120));
-  text(l1, boxX + pad, boxY + pad);
-  fill(180, 255, 180);
-  text(l2, boxX + pad, boxY + pad + lineH);
-  fill(120, 200, 120);
-  text(l3, boxX + pad, boxY + pad + lineH * 2);
+  fill(0, 255, 0);
+  noStroke();
+  textAlign(LEFT, BASELINE);
+  float ty = boxY + pad + lineH * 0.8;
+  for (int i = 0; i < lines.length; i++) {
+    text(lines[i], boxX + pad, ty);
+    ty += lineH;
+  }
 
   // Live RMS bar — pulled from FFT band energies (no extra audio touch needed).
   float rms = 0;
@@ -1766,11 +2017,11 @@ float drawAudioSourceBadge(float startY) {
   float barW = boxW - pad * 2;
   float barH = 4 * uiScale();
   float barX = boxX + pad;
-  float barY = boxY + pad + lineH * 3 + 2;
+  float barY = boxY + boxH - barH - pad * 0.4;
   fill(40);
   rect(barX, barY, barW, barH, 2);
   float fill01 = constrain(rms / 5.0, 0, 1);
-  fill(fill01 > 0.02 ? color(0, 255, 120) : color(120, 90, 90));
+  fill(fill01 > 0.02 ? color(0, 255, 0) : color(120, 90, 90));
   rect(barX, barY, barW * fill01, barH, 2);
 
   popStyle();
@@ -1888,7 +2139,7 @@ float drawStreamerBadge(float startY) {
     else                    streamUrl = base + "/stream.html";
   }
 
-  String line1 = "[STREAM]  F6=stop";
+  String line1 = "[STREAM]  F6=stop  +Shift=" + (streamer.profile == Streamer.PROFILE_VENUE ? "normal" : "venue");
   String line2 = streamer.statusLabel();
   String line3 = "TV / phone:";
   String line4 = streamUrl;

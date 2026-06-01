@@ -7,6 +7,14 @@ class CyberGridScene implements IScene {
   float flying = 0;
   float[][] terrain;
 
+  // Live knobs — driven by controller sticks, keyboard, or web sliders via the
+  // ParamRouter spine. The scene reads .value directly each frame.
+  SceneParam pSpeed  = new SceneParam("speed",  "Scroll Speed", 0,    3,   1);
+  SceneParam pRelief = new SceneParam("relief", "Hill Height",  0,    2.5, 1);
+  SceneParam pPunch  = new SceneParam("punch",  "Bass Punch",   0,    5,   2.5);
+  SceneParam pTilt   = new SceneParam("tilt",   "Camera Tilt",  0.55, 1.45, PI / 2.5);
+  SceneParam[] params = { pSpeed, pRelief, pPunch, pTilt };
+
   CyberGridScene() {
     cols = w / scale;
     rows = h / scale;
@@ -14,12 +22,13 @@ class CyberGridScene implements IScene {
   }
 
   void drawScene(PGraphics pg) {
-    flying -= map(analyzer.bass, 0, 1, 0.02, 0.2); // scroll speed based on bass
+    flying -= map(analyzer.bass, 0, 1, 0.02, 0.2) * pSpeed.value; // scroll speed (bass + knob)
     float yoff = flying;
     for (int y = 0; y < rows; y++) {
       float xoff = 0;
       for (int x = 0; x < cols; x++) {
-        terrain[x][y] = map(noise(xoff, yoff), 0, 1, -80, 80) * (1 + analyzer.bass * 2.5);
+        terrain[x][y] = map(noise(xoff, yoff), 0, 1, -80, 80)
+                      * pRelief.value * (1 + analyzer.bass * pPunch.value);
         xoff += 0.15;
       }
       yoff += 0.15;
@@ -36,7 +45,7 @@ class CyberGridScene implements IScene {
     // Draw Grid
     pg.pushMatrix();
     pg.translate(pg.width / 2, pg.height / 2 + 100);
-    pg.rotateX(PI / 2.5);
+    pg.rotateX(pTilt.value);
     pg.translate(-w / 2, -h / 2);
 
     pg.strokeWeight(1.5);
@@ -93,11 +102,15 @@ class CyberGridScene implements IScene {
   void onExit() {}
 
   void applyController(Controller c) {
-    // scale could be adjusted
+    // Generic spine mapping: LX=speed, LY=height, RX=bass punch, RY=tilt, A=reset.
+    routeParamsToSticks(c, params);
   }
 
   void handleKey(char k) {
+    handleParamKey(k);   // < > select knob, - + nudge (when invoked by operator)
   }
+
+  SceneParam[] getParams() { return params; }
 
   String[] getCodeLines() {
     return new String[] {

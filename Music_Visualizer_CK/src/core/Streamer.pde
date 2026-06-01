@@ -23,11 +23,31 @@
  *   F6  start / stop streaming
  */
 class Streamer {
-  static final int   TARGET_FPS         = 30;
-  static final float SCALE              = 0.5;
-  static final int   QUEUE_CAPACITY     = 4;
-  static final long  FRAME_INTERVAL_MS  = 1000L / TARGET_FPS;
+  // Deeper queue absorbs sketch frame-pacing hitches (~0.4s at 30fps) so the
+  // video pipe to ffmpeg never starves — a starved video input is what stalls
+  // the shared muxer and makes the AUDIO stutter on the listener's end.
+  static final int   QUEUE_CAPACITY     = 12;
   static final String STREAM_NAME       = "visualizer";
+
+  // --- Profiles ------------------------------------------------------------
+  // NORMAL: high quality for good LAN. VENUE: low-bandwidth for congested/weak
+  // venue WiFi — smaller frame, fewer fps, much lower bitrate. Switch with F7.
+  static final int PROFILE_NORMAL = 0;
+  static final int PROFILE_VENUE  = 1;
+  int profile = PROFILE_NORMAL;
+
+  int   profileFps()       { return profile == PROFILE_VENUE ? 24    : 30;    }
+  float profileScale()     { return profile == PROFILE_VENUE ? 0.45  : 0.6;   }
+  int   profileBitrateK()  { return profile == PROFILE_VENUE ? 1500  : 4000;  }
+  int   profileMaxrateK()  { return profile == PROFILE_VENUE ? 1800  : 4500;  }
+  String profileName()     { return profile == PROFILE_VENUE ? "VENUE" : "NORMAL"; }
+
+  // Active fps after adaptive throttling. Steps down when frames drop (writer /
+  // ffmpeg can't keep up), recovers when the link catches its breath.
+  int  targetFps      = 30;
+  long frameIntervalMs = 1000L / 30;
+  long lastAdaptMs    = 0;
+  int  dropsAtLastAdapt = 0;
 
   boolean running = false;
   long    startMs = 0;
@@ -42,7 +62,11 @@ class Streamer {
   Process mediamtx;
   Process ffmpeg;
   java.io.OutputStream pipe;
-  java.util.concurrent.ArrayBlockingQueue<byte[]> queue;
+  // Queue carries raw int[] pixel snapshots (cheap arraycopy on the render
+  // thread). The writer thread does the ARGB byte-packing + pipe write, keeping
+  // the per-pixel loop OFF the render thread so it can't cause frame hitches.
+  java.util.concurrent.ArrayBlockingQueue<int[]> queue;
+  java.util.concurrent.ArrayBlockingQueue<int[]> framePool;
   Thread writer;
   PGraphics scaleBuf;
 
@@ -50,11 +74,18 @@ class Streamer {
 
   void start() {
     if (running) return;
-    int w = (int)(width * SCALE) & ~1;
-    int h = (int)(height * SCALE) & ~1;
+    float scale = profileScale();
+    int w = (int)(width * scale) & ~1;
+    int h = (int)(height * scale) & ~1;
     if (w <= 0 || h <= 0) { lastError = "window not ready"; println("[STREAM] " + lastError); return; }
     outW = w; outH = h;
     lastError = "";
+
+    // Reset adaptive throttle to the profile's nominal fps.
+    targetFps = profileFps();
+    frameIntervalMs = 1000L / targetFps;
+    lastAdaptMs = 0;
+    dropsAtLastAdapt = 0;
 
     mediamtxPath = locateMediaMTX();
     if (mediamtxPath == null) {
@@ -80,20 +111,36 @@ class Streamer {
       return;
     }
 
-    queue = new java.util.concurrent.ArrayBlockingQueue<byte[]>(QUEUE_CAPACITY);
+    queue = new java.util.concurrent.ArrayBlockingQueue<int[]>(QUEUE_CAPACITY);
+    // Buffer pool: render thread borrows an int[] to copy pixels into, writer
+    // returns it after the pipe write. Eliminates the per-frame clone()/alloc
+    // (~3MB/frame) that was the render-thread GC churn behind stream chop.
+    framePool = new java.util.concurrent.ArrayBlockingQueue<int[]>(QUEUE_CAPACITY + 2);
     framesPushed = framesDropped = 0;
     startMs = System.currentTimeMillis();
     lastFrameMs = 0;
     running = true;
 
+    final int fw = w, fh = h;
     writer = new Thread(new Runnable() {
       public void run() {
+        byte[] buf = new byte[fw * fh * 4];   // reused — no per-frame allocation
         try {
           while (running || !queue.isEmpty()) {
-            byte[] buf = queue.poll(200, java.util.concurrent.TimeUnit.MILLISECONDS);
-            if (buf == null) continue;
-            pipe.write(buf);
+            int[] px = queue.poll(200, java.util.concurrent.TimeUnit.MILLISECONDS);
+            if (px == null) continue;
+            int n = px.length;
+            for (int i = 0; i < n; i++) {
+              int p = px[i];
+              int o = i << 2;
+              buf[o    ] = (byte)((p >> 24) & 0xff);   // A
+              buf[o + 1] = (byte)((p >> 16) & 0xff);   // R
+              buf[o + 2] = (byte)((p >> 8)  & 0xff);   // G
+              buf[o + 3] = (byte)( p        & 0xff);   // B
+            }
+            pipe.write(buf, 0, n * 4);
             framesPushed++;
+            framePool.offer(px);   // recycle (drop if pool full — never blocks)
           }
         } catch (Throwable t) {
           if (running) println("[STREAM] writer error: " + t);
@@ -105,7 +152,8 @@ class Streamer {
     writer.setDaemon(true);
     writer.start();
 
-    println("[STREAM] live  " + w + "x" + h + " @" + TARGET_FPS
+    println("[STREAM] live  " + w + "x" + h + " @" + targetFps
+          + "  profile=" + profileName() + " " + profileBitrateK() + "k"
           + "  audio: " + (audioSource.isEmpty() ? "none" : audioSource)
           + "  → http://<lan>:8080/stream.html");
   }
@@ -122,7 +170,7 @@ class Streamer {
     args.add("-f"); args.add("rawvideo");
     args.add("-pix_fmt"); args.add("argb");
     args.add("-s"); args.add(w + "x" + h);
-    args.add("-r"); args.add("" + TARGET_FPS);
+    args.add("-r"); args.add("" + targetFps);
     args.add("-i"); args.add("-");
     // Audio in: pulse sink monitor (system audio output capture).
     if (!audioSource.isEmpty()) {
@@ -131,28 +179,38 @@ class Streamer {
       args.add("-fragment_size"); args.add("960");   // ~5ms @ 48kHz/stereo/s16
       args.add("-i"); args.add(audioSource);
     }
-    // Encode: smooth low-latency. Lower bitrate + CFR + smaller GOP =
-    // fewer WiFi-drop stalls and faster recovery. Pad audio if late.
+    // Encode: smooth low-latency. CFR + small GOP = fast WiFi-drop recovery.
     args.add("-vsync"); args.add("cfr");
     args.add("-c:v"); args.add("libx264");
     args.add("-preset"); args.add("ultrafast");
     args.add("-tune"); args.add("zerolatency");
     args.add("-pix_fmt"); args.add("yuv420p");
-    args.add("-g"); args.add("" + (TARGET_FPS / 2));    // 0.5s GOP — fast recovery
-    args.add("-keyint_min"); args.add("" + (TARGET_FPS / 2));
+    args.add("-g"); args.add("" + targetFps);          // 1s GOP
+    args.add("-keyint_min"); args.add("" + (targetFps / 2));
     args.add("-x264-params"); args.add("scenecut=0:nal-hrd=cbr:bframes=0:rc-lookahead=0:sync-lookahead=0:sliced-threads=1");
-    args.add("-b:v"); args.add("2000k");
-    args.add("-maxrate"); args.add("2000k");
-    args.add("-bufsize"); args.add("1000k");           // half a second of buffer
+    // Bitrate per profile: NORMAL trades bandwidth for sharpness on good LAN;
+    // VENUE drops to ~1.5Mbit so congested venue WiFi stops dropping packets
+    // (the chop viewers see). VBV buffer = 1s so quality holds between keyframes.
+    args.add("-b:v"); args.add(profileBitrateK() + "k");
+    args.add("-maxrate"); args.add(profileMaxrateK() + "k");
+    args.add("-bufsize"); args.add(profileBitrateK() + "k");
     if (!audioSource.isEmpty()) {
       args.add("-c:a"); args.add("libopus");
-      args.add("-b:a"); args.add("96k");                // 96k opus is transparent
+      args.add("-b:a"); args.add("128k");
       args.add("-ac"); args.add("2");
       args.add("-ar"); args.add("48000");
-      args.add("-application"); args.add("lowdelay");
+      args.add("-application"); args.add("audio");      // full-quality (not lowdelay) — smoother
       args.add("-frame_duration"); args.add("20");
-      args.add("-af"); args.add("aresample=async=1:first_pts=0");
+      // async=1000 lets the resampler stretch/squeeze up to 1000 samples/sec to
+      // track drift WITHOUT dropping/inserting silence (the audible stutter).
+      args.add("-af"); args.add("aresample=async=1000:first_pts=0");
     }
+    // CRITICAL for smooth audio: never let the muxer hold back one stream
+    // waiting to interleave the other. Without this, a late video frame freezes
+    // the audio too — the "stop/start" the listener hears. flush_packets pushes
+    // each packet out immediately for low latency.
+    args.add("-max_interleave_delta"); args.add("0");
+    args.add("-flush_packets"); args.add("1");
     args.add("-f"); args.add("rtsp");
     args.add("-rtsp_transport"); args.add("tcp");
     args.add("rtsp://127.0.0.1:8554/" + STREAM_NAME);
@@ -265,7 +323,8 @@ class Streamer {
       return;
     }
     long now = System.currentTimeMillis();
-    if (now - lastFrameMs < FRAME_INTERVAL_MS) return;
+    adapt(now);
+    if (now - lastFrameMs < frameIntervalMs) return;
     lastFrameMs = now;
 
     if (scaleBuf == null || scaleBuf.width != outW || scaleBuf.height != outH) {
@@ -279,17 +338,39 @@ class Streamer {
     scaleBuf.endDraw();
     scaleBuf.loadPixels();
 
+    // Render thread only does a fast arraycopy into a pooled buffer; the writer
+    // thread packs bytes and recycles the buffer. No per-frame allocation.
     int n = scaleBuf.pixels.length;
-    byte[] buf = new byte[n * 4];
-    for (int i = 0; i < n; i++) {
-      int p = scaleBuf.pixels[i];
-      int o = i * 4;
-      buf[o    ] = (byte)((p >> 24) & 0xff);
-      buf[o + 1] = (byte)((p >> 16) & 0xff);
-      buf[o + 2] = (byte)((p >> 8)  & 0xff);
-      buf[o + 3] = (byte)(p         & 0xff);
+    int[] snap = framePool.poll();
+    if (snap == null || snap.length != n) snap = new int[n];
+    System.arraycopy(scaleBuf.pixels, 0, snap, 0, n);
+    if (!queue.offer(snap)) { framesDropped++; framePool.offer(snap); }
+  }
+
+  // Adaptive fps: if frames are dropping (writer/ffmpeg/network can't keep up),
+  // step the capture rate down so what we DO send is paced smoothly instead of
+  // jittering. Recover slowly toward the profile's nominal fps when drops stop.
+  void adapt(long now) {
+    if (lastAdaptMs == 0) { lastAdaptMs = now; dropsAtLastAdapt = framesDropped; return; }
+    if (now - lastAdaptMs < 2000) return;            // evaluate every 2s
+    int dropsSince = framesDropped - dropsAtLastAdapt;
+    int nominal = profileFps();
+    if (dropsSince > 3 && targetFps > 15) {
+      targetFps = max(15, targetFps - 3);            // back off
+    } else if (dropsSince == 0 && targetFps < nominal) {
+      targetFps = min(nominal, targetFps + 2);       // ease back up
     }
-    if (!queue.offer(buf)) framesDropped++;
+    frameIntervalMs = 1000L / targetFps;
+    lastAdaptMs = now;
+    dropsAtLastAdapt = framesDropped;
+  }
+
+  // Toggle NORMAL <-> VENUE. Restarts the pipe if live (ffmpeg cmd is built at
+  // start, so bitrate/scale/fps changes need a fresh ffmpeg).
+  void cycleProfile() {
+    profile = (profile == PROFILE_NORMAL) ? PROFILE_VENUE : PROFILE_NORMAL;
+    println("[STREAM] profile -> " + profileName());
+    if (running) { stop(); start(); }
   }
 
   void stop() {
@@ -299,7 +380,7 @@ class Streamer {
     try { if (writer != null) writer.join(2000); } catch (InterruptedException ignored) {}
     try { if (ffmpeg != null) { ffmpeg.destroy(); ffmpeg.waitFor(); } } catch (InterruptedException ignored) {}
     stopMediaMTX();
-    ffmpeg = null; pipe = null; writer = null; queue = null;
+    ffmpeg = null; pipe = null; writer = null; queue = null; framePool = null;
   }
 
   String statusLabel() {
@@ -309,6 +390,7 @@ class Streamer {
     }
     long elapsed = (System.currentTimeMillis() - startMs) / 1000;
     return "STREAM " + nf((int)(elapsed / 60), 2) + ":" + nf((int)(elapsed % 60), 2)
+         + " " + profileName() + "@" + targetFps
          + " [" + framesPushed + "f" + (framesDropped > 0 ? " -" + framesDropped : "") + "]";
   }
 }

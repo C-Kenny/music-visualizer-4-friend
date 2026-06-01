@@ -184,6 +184,21 @@ class Audio {
     return player != null && player.isPlaying();
   }
 
+  // Minim's AudioPlayer.isPlaying() is unreliable at EOF — has been observed to
+  // keep returning true after the last sample drained. Auto-advance polling
+  // isPlaying() alone misses the end-of-track and the show goes silent.
+  // This combines both signals: true when track ran out OR was paused at end.
+  boolean isPlaybackComplete() {
+    if (isUsingDeviceInput) return false;       // device input never ends
+    if (player == null) return true;            // closed/torn-down counts as done
+    int len = player.length();
+    int pos = player.position();
+    if (len <= 0) return false;                 // unknown length — can't tell
+    // 250ms tolerance for Minim's per-buffer position jitter at EOF.
+    if (pos >= len - 250) return true;
+    return !player.isPlaying();
+  }
+
   void forward() {
     AudioBuffer buffer = getAudioBuffer();
     if (buffer == null) return;
@@ -292,10 +307,18 @@ class Audio {
   }
 
   void stop() {
+    // Explicit per-resource teardown before minim.stop(). minim.stop() alone
+    // has been observed to leave file-mode AudioPlayer streams alive long
+    // enough that a follow-up new Audio() overlaps two songs on output.
+    if (player != null) {
+      try { player.pause(); } catch (Throwable ignored) {}
+      try { player.close(); } catch (Throwable ignored) {}
+      player = null;
+    }
     if (audioInput != null) {
-      audioInput.close();
+      try { audioInput.close(); } catch (Throwable ignored) {}
       audioInput = null;
     }
-    minim.stop();
+    try { minim.stop(); } catch (Throwable ignored) {}
   }
 }
