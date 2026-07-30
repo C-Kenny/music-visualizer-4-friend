@@ -1,6 +1,6 @@
-// SceneSwitcher — matrix terminal overlay for browsing, favouriting, and reordering scenes.
+// SceneSwitcher - matrix terminal overlay for browsing, favouriting, and reordering scenes.
 //
-// Toggle with Tab. While open, ALL key input is routed here — scene hotkeys are suppressed.
+// Toggle with Tab. While open, ALL key input is routed here - scene hotkeys are suppressed.
 //
 // Keys while open:
 //   j / ↓        move cursor down
@@ -191,14 +191,14 @@ class SceneSwitcher {
     }
   }
 
-  // ── Key handling — returns true if the key was consumed ──────────────────
+  // ── Key handling - returns true if the key was consumed ──────────────────
   boolean handleKey(char k, int kc) {
     if (!isOpen) {
       if (k == TAB) { toggle(); return true; }
       return false;
     }
 
-    // Overlay is open — handle one-off keys (Tab, Esc, Enter, f, Shift-J/K)
+    // Overlay is open - handle one-off keys (Tab, Esc, Enter, f, Shift-J/K)
     // Movement (j/k) is handled in update() for repeats.
     if (k == TAB || kc == ESC || k == ESC) {
       isOpen = false;
@@ -374,7 +374,7 @@ class SceneSwitcher {
     try {
       String[] lines = loadStrings(userDataPath(PREFS_FILE));
       if (lines == null) return;
-      // Combine — saveStrings might split our newlines
+      // Combine - saveStrings might split our newlines
       String raw = join(lines, "\n");
       for (String line : raw.split("\n")) {
         line = line.trim();
@@ -404,7 +404,7 @@ class SceneSwitcher {
         }
       }
     } catch (Exception e) {
-      // No prefs yet — silently use defaults
+      // No prefs yet - silently use defaults
     }
   }
 }

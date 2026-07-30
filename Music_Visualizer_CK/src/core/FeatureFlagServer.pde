@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 class FeatureFlagServer {
   com.sun.net.httpserver.HttpServer server;
   String jsonPath;
-  int port   = 8080;   // chosen at start() — may walk forward if 8080 taken
+  int port   = 8080;   // chosen at start() - may walk forward if 8080 taken
   int wsPort = 8081;   // set by main after ControllerWebSocket binds; injected into controller.html
 
   // Schema entry. type: "bool" | "float" | "enum"
@@ -663,7 +663,7 @@ class FeatureFlagServer {
     }
     root.setJSONObject("stream", st);
 
-    // Phone clients (count only — admin dashboard has full list)
+    // Phone clients (count only - admin dashboard has full list)
     JSONObject clients = new JSONObject();
     if (clientRegistry != null) {
       clients.setInt("total", clientRegistry.byId.size());
@@ -922,7 +922,7 @@ class FeatureFlagServer {
   }
 
   // Gate /admin.html: only localhost OR a valid auth cookie gets through.
-  // The cookie is planted by POST /admin/auth — we deliberately do NOT accept
+  // The cookie is planted by POST /admin/auth - we deliberately do NOT accept
   // ?token=XXX in the URL, since query strings leak via screenshots, browser
   // history, referrer headers, and shoulder-surfing.
   boolean adminPageAllowed(com.sun.net.httpserver.HttpExchange ex) {
@@ -932,7 +932,7 @@ class FeatureFlagServer {
     return false;
   }
 
-  // POST /admin/logout — clears the auth cookie. HttpOnly means JS can't drop it,
+  // POST /admin/logout - clears the auth cookie. HttpOnly means JS can't drop it,
   // so the server has to overwrite with Max-Age=0.
   class AdminLogoutHandler implements com.sun.net.httpserver.HttpHandler {
     public void handle(com.sun.net.httpserver.HttpExchange ex) throws IOException {
@@ -944,7 +944,7 @@ class FeatureFlagServer {
     }
   }
 
-  // POST /admin/auth { token: "..." } — validates and plants the cookie.
+  // POST /admin/auth { token: "..." } - validates and plants the cookie.
   // No GET (cookie via URL would defeat the point). Constant-time compare
   // so a quick brute-force loop can't easily distinguish prefix matches.
   class AdminAuthHandler implements com.sun.net.httpserver.HttpHandler {
@@ -995,7 +995,7 @@ class FeatureFlagServer {
       if (path.equals("/admin.html") && !adminPageAllowed(ex)) {
         // Redirect to a login form. Trade-off: this advertises that an admin page
         // exists, but the previous 404 forced operators to paste the token into
-        // the URL — which leaks via screenshots / browser history. The login form
+        // the URL - which leaks via screenshots / browser history. The login form
         // POSTs the token so it never appears in any URL.
         ex.getResponseHeaders().set("Location", "/admin-login.html");
         ex.sendResponseHeaders(302, -1); ex.close(); return;
@@ -1075,10 +1075,10 @@ class FeatureFlagServer {
   // How reachable an address is for audience phones, lowest = best. The HUD and
   // the stream URL use lanUrls.get(0), so ordering by this puts the address that
   // phones can actually reach first.
-  static final int REACH_LAN         = 0;  // private home/venue LAN — open phones here
+  static final int REACH_LAN         = 0;  // private home/venue LAN - open phones here
   static final int REACH_OTHER       = 1;  // routable but probably not your network
-  static final int REACH_VIRTUAL     = 2;  // Docker / VM / VPN — phones can't reach it
-  static final int REACH_LINK_LOCAL  = 3;  // 169.254.x — no DHCP, likely unplugged
+  static final int REACH_VIRTUAL     = 2;  // Docker / VM / VPN - phones can't reach it
+  static final int REACH_LINK_LOCAL  = 3;  // 169.254.x - no DHCP, likely unplugged
 
   // Interface-name prefixes that mean "not the venue LAN": virtual bridges,
   // container networks, and VPN tunnels. Phones cannot reach the laptop on these.
@@ -1099,10 +1099,10 @@ class FeatureFlagServer {
 
   String reachLabel(int reach) {
     switch (reach) {
-      case REACH_LAN:        return "LAN — open phones here";
-      case REACH_OTHER:      return "other — probably not your network";
-      case REACH_VIRTUAL:    return "virtual/VPN — phones CAN'T reach this";
-      case REACH_LINK_LOCAL: return "link-local — not connected to a router?";
+      case REACH_LAN:        return "LAN - open phones here";
+      case REACH_OTHER:      return "other - probably not your network";
+      case REACH_VIRTUAL:    return "virtual/VPN - phones CAN'T reach this";
+      case REACH_LINK_LOCAL: return "link-local - not connected to a router?";
       default:               return "unknown";
     }
   }
@@ -1128,7 +1128,7 @@ class FeatureFlagServer {
           int r = addressReach(ni, a);
           urls.add("http://" + a.getHostAddress() + ":" + port + "/");
           reach.add(r);
-          notes.add(ni.getName() + " — " + reachLabel(r));
+          notes.add(ni.getName() + " - " + reachLabel(r));
         }
       }
     } catch (Exception e) {
@@ -1136,7 +1136,7 @@ class FeatureFlagServer {
       return;
     }
 
-    // Sort best-reach first (stable selection sort — only a handful of addresses).
+    // Sort best-reach first (stable selection sort - only a handful of addresses).
     for (int i = 0; i < urls.size(); i++)
       for (int j = i + 1; j < urls.size(); j++)
         if (reach.get(j) < reach.get(i)) {
@@ -1152,7 +1152,7 @@ class FeatureFlagServer {
     }
 
     if (!foundRealLan) {
-      println("[FEATUREFLAGS] ⚠ NO LAN ADDRESS FOUND — phones probably can't reach this laptop.");
+      println("[FEATUREFLAGS] ⚠ NO LAN ADDRESS FOUND - phones probably can't reach this laptop.");
       println("[FEATUREFLAGS]   Plug into your own router (not venue WiFi). See documentation/venue_network_setup.md.");
     }
     println("[FEATUREFLAGS] If a phone can't connect, open the laptop firewall for TCP " + port

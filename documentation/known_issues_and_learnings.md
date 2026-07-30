@@ -2,7 +2,7 @@
 
 ## Controller axis naming (GameControlPlus on Linux)
 
-**Problem:** Calling `c.stick.getSlider("lt").getValue()` or `"rt"` throws a `NullPointerException` — these named sliders don't exist on the Xbox controller config on Linux.
+**Problem:** Calling `c.stick.getSlider("lt").getValue()` or `"rt"` throws a `NullPointerException` - these named sliders don't exist on the Xbox controller config on Linux.
 
 **Fix:** Use `"z"` for the combined trigger axis. LT and RT share one axis: `-1.0` = LT fully pressed, `+1.0` = RT fully pressed.
 
@@ -27,7 +27,7 @@ Always wrap in try/catch in case the axis doesn't exist on a different controlle
 
 **Fix:** Remove `if (config.SHOW_CODE) drawCodeOverlay(scene.getCodeLines())` from case 3 and case 9. These scenes use `drawSceneControlsHUD()` (right-side panel) after the switch block instead.
 
-## FFT Worm radius formula — "big circles" bug
+## FFT Worm radius formula - "big circles" bug
 
 **Problem:** Using `r = lerp(14, 3, t) + amp * 2.2` caused head segments to expand to 70+ px radius at high bass, merging the worm into a blob of overlapping circles.
 
@@ -37,7 +37,7 @@ float r = constrain(lerp(14, 3, t) + amp * 0.5 + rip * 5, 3, 24);
 ```
 Similarly, perpendicular wiggle amplitude should be small (`amp * 0.45`) to keep the worm silhouette intact.
 
-## Scene accessibility — state numbers vs keyboard keys
+## Scene accessibility - state numbers vs keyboard keys
 
 **Problem:** States 10 and 11 can't be reached by number keys (only 1–9 supported) and were at the end of SCENE_ORDER where LB/RB cycling is awkward.
 
@@ -59,7 +59,7 @@ Processing's `pushStyle()` / `popStyle()` saves most style attributes but **not*
 
 **Fix:** Render at `1/RENDER_SCALE` resolution (RENDER_SCALE=4 → 1/16th pixels), then scale up with `image(frame, 0, 0, width, height)`. Adjust spatial frequencies in the shader-style loops by multiplying by RENDER_SCALE to compensate.
 
-## Worm Colony — intensity tuning
+## Worm Colony - intensity tuning
 
 Several beat effects were too intense and were removed/reduced:
 - Full-screen vignette on beat → **removed**

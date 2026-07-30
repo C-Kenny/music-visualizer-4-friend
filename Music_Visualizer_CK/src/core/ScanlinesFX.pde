@@ -1,5 +1,5 @@
 /**
- * ScanlinesFX — CRT scanlines + film grain post-FX.
+ * ScanlinesFX - CRT scanlines + film grain post-FX.
  *
  * Uses fx_scanlines.glsl. Very cheap (single texture sample + math per pixel).
  * Intensity is mostly static; bass slightly thickens the scanlines on drops.
@@ -7,7 +7,7 @@
 class ScanlinesFX implements IPostFX {
   private PShader shader;
   private boolean enabled;
-  private float   intensity = 0.7; // fixed strength — visible but not distracting
+  private float   intensity = 0.7; // fixed strength - visible but not distracting
 
   ScanlinesFX() {
     enabled = false;

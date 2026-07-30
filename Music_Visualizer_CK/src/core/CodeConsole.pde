@@ -1,5 +1,5 @@
 /**
- * CodeConsole — hot-reload Java snippet engine (Janino-backed).
+ * CodeConsole - hot-reload Java snippet engine (Janino-backed).
  *
  * Watches a .java file (mtime poll). On change, compiles via Janino's
  * SimpleCompiler and finds a class named `LiveCode` with method:
@@ -7,7 +7,7 @@
  *   public void draw(PGraphics pg, float t, float bass, float mid, float high)
  *
  * Compile or runtime exceptions are captured and exposed for HUD display.
- * The previous good instance keeps drawing — never blanks the screen.
+ * The previous good instance keeps drawing - never blanks the screen.
  *
  * Sandboxing: Janino runs user code with full JVM permissions (no SecurityManager
  * wrapper here). The watchdog (>2s frame stall) still applies, so an infinite

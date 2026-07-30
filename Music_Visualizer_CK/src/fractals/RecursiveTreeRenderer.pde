@@ -1,5 +1,5 @@
 /**
- * RecursiveTreeRenderer — classic L-system-style binary branching tree.
+ * RecursiveTreeRenderer - classic L-system-style binary branching tree.
  * Bass deepens recursion; mid widens branch angle.
  */
 class RecursiveTreeRenderer implements FractalRenderer {

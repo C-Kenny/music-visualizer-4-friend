@@ -1,5 +1,5 @@
 /**
- * Setlist — pre-planned scene queue for live shows.
+ * Setlist - pre-planned scene queue for live shows.
  *
  * Reads `setlist.txt` from the user data directory. Format: one entry per
  * line. Each line is either a scene index (0..SCENE_COUNT-1) or a scene
@@ -113,7 +113,7 @@ class Setlist {
   }
 
   void advance() {
-    if (entries.isEmpty()) { println("[SETLIST] empty — load setlist.txt first"); return; }
+    if (entries.isEmpty()) { println("[SETLIST] empty - load setlist.txt first"); return; }
     cursor = (cursor + 1) % entries.size();
     activate();
   }
@@ -148,7 +148,7 @@ class Setlist {
   }
 
   String nowLabel() {
-    if (cursor < 0 || cursor >= entries.size()) return "—";
+    if (cursor < 0 || cursor >= entries.size()) return "-";
     Entry e = entries.get(cursor);
     int total = e.durationSeconds;
     if (total <= 0) return e.label;
@@ -157,7 +157,7 @@ class Setlist {
   }
 
   String nextLabel() {
-    if (entries.isEmpty()) return "—";
+    if (entries.isEmpty()) return "-";
     int next = (cursor + 1) % entries.size();
     return entries.get(next).label;
   }

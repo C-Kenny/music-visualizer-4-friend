@@ -1,14 +1,14 @@
-// Particle Fountain — state 8
+// Particle Fountain - state 8
 // Physics-based particles driven by bass / mid / high frequencies.
 // Press '8' to switch to this scene.
 //
 // Keyboard controls (active when STATE == 8):
-//   Mouse move   — aim the fountain toward the cursor
-//   Mouse click  — burst explosion at click position
-//   Space        — manual burst from fountain origin
-//   W A S D      — nudge emission origin around the screen
-//   Up / Down    — increase / decrease gravity
-//   [ / ]        — narrow / widen emission spread cone
+//   Mouse move - aim the fountain toward the cursor
+//   Mouse click - burst explosion at click position
+//   Space - manual burst from fountain origin
+//   W A S D - nudge emission origin around the screen
+//   Up / Down - increase / decrease gravity
+//   [ / ] - narrow / widen emission spread cone
 
 class Particle {
   float x, y;         // position

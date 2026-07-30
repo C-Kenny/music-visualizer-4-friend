@@ -1,35 +1,35 @@
 # Production Readiness for Live Shows
 
 Gap analysis for deploying the visualizer at raves, festivals, and other live
-events. Ranked by blast radius — the top items are what turns a "cool demo"
+events. Ranked by blast radius - the top items are what turns a "cool demo"
 into "I can book this."
 
 Note: **live audio input (DJ mixer line-in / loopback) is excluded** from this
-list for now — dev machine has no mixer. It remains the single biggest gap for
+list for now - dev machine has no mixer. It remains the single biggest gap for
 a real gig and must be addressed before the first booking. Track separately.
 
 ---
 
 ## Status as of 2026-05-06
 
-- ✅ #1 Crash resilience — `SceneGuard` (try/catch + blacklist) + `FrameWatchdog` (>2s stall detection)
-- ✅ #2 Fullscreen + display select — `DisplayManager` (F11, Ctrl+1..9, persisted)
-- ✅ #3 Emergency kill switch — `KillSwitch` (Esc, Back+Start chord)
-- ✅ #4 Strobe safety cap — `StrobeSafety` (F12, auto-on with fullscreen, persisted)
-- ✅ #5 Tap tempo / BPM lock — `TempoLock` (`\` tap, `|` clear)
-- ✅ #6 MIDI bridge — `MidiBridge` (F4 toggle, pad note → SCENE_ORDER)
-- ⏳ #7 Operator HUD on secondary display — deferred, needs 2nd screen for testing
-- ✅ #8 Setlist — `Setlist` (`]` next, `[` back, `}` auto, `{` reload)
-- ✅ #9 Live text overlay — `TextOverlay` (F3 toggle, Shift+F3 layout)
-- ⏳ #10 Preset snapshots — deferred, needs per-scene `getPreset/applyPreset` retrofit
-- ✅ #11 Output recording to mp4 — `Recorder` (F5, ffmpeg subprocess pipe)
-- ⏳ #12 Session settings file — partial (per-component prefs: `.display`, `.strobe`)
+- ✅ #1 Crash resilience - `SceneGuard` (try/catch + blacklist) + `FrameWatchdog` (>2s stall detection)
+- ✅ #2 Fullscreen + display select - `DisplayManager` (F11, Ctrl+1..9, persisted)
+- ✅ #3 Emergency kill switch - `KillSwitch` (Esc, Back+Start chord)
+- ✅ #4 Strobe safety cap - `StrobeSafety` (F12, auto-on with fullscreen, persisted)
+- ✅ #5 Tap tempo / BPM lock - `TempoLock` (`\` tap, `|` clear)
+- ✅ #6 MIDI bridge - `MidiBridge` (F4 toggle, pad note → SCENE_ORDER)
+- ⏳ #7 Operator HUD on secondary display - deferred, needs 2nd screen for testing
+- ✅ #8 Setlist - `Setlist` (`]` next, `[` back, `}` auto, `{` reload)
+- ✅ #9 Live text overlay - `TextOverlay` (F3 toggle, Shift+F3 layout)
+- ⏳ #10 Preset snapshots - deferred, needs per-scene `getPreset/applyPreset` retrofit
+- ✅ #11 Output recording to mp4 - `Recorder` (F5, ffmpeg subprocess pipe)
+- ⏳ #12 Session settings file - partial (per-component prefs: `.display`, `.strobe`)
 
-Remaining gating gap for actual gigs: live audio input (mixer line-in / loopback) — see `feature_audio_device_input` memory; deferred until DJ mixer hardware is on the dev rig.
+Remaining gating gap for actual gigs: live audio input (mixer line-in / loopback) - see `feature_audio_device_input` memory; deferred until DJ mixer hardware is on the dev rig.
 
 ---
 
-## Critical — will ruin the set if missing
+## Critical - will ruin the set if missing
 
 ### 1. Crash resilience
 Any uncaught exception inside a scene currently kills the whole sketch. Mid-set
@@ -50,8 +50,8 @@ Currently windowed. At a venue you plug into a projector/LED wall as a second
 display and want output there, not on the laptop.
 
 **Fix sketch:**
-- `F11` — toggle fullscreen on current display.
-- `Ctrl+1` / `Ctrl+2` / `Ctrl+3` — move the sketch window to display 1/2/3.
+- `F11` - toggle fullscreen on current display.
+- `Ctrl+1` / `Ctrl+2` / `Ctrl+3` - move the sketch window to display 1/2/3.
 - Persist the last-used display index in a settings file.
 - Remember to hide the OS cursor when fullscreen on the output display.
 
@@ -60,9 +60,9 @@ Venues demand an instant way to black the screen (wardrobe malfunction,
 technical issue, house lights need to come up, etc.).
 
 **Fix sketch:**
-- `Esc` — smooth 300 ms fade-to-black and hold. Re-press to fade back.
+- `Esc` - smooth 300 ms fade-to-black and hold. Re-press to fade back.
 - Also exposable via MIDI cue button and controller combo (e.g. Back+Start).
-- Critically: this must bypass any scene logic — draw black directly over the
+- Critically: this must bypass any scene logic - draw black directly over the
   final `sceneBuffer` composite.
 
 ### 4. Strobe / flash safety cap
@@ -79,19 +79,19 @@ brightness delta capped over a 100 ms window.
 
 ---
 
-## Important — looks amateur without these
+## Important - looks amateur without these
 
 ### 5. BPM lock + tap tempo
 Minim's beat detector drifts on four-on-the-floor house/techno. Beat-synced
 scenes (crossfades, TriggerEngine drops) go off-grid, which reads as broken.
 
 **Fix sketch:**
-- `T` — tap tempo. Four taps → average BPM. Ten taps → lock.
+- `T` - tap tempo. Four taps → average BPM. Ten taps → lock.
 - While locked, replace onset-based beat detection with a metronome seeded
   from the lock moment. Onsets can still kick the visual pulse but timing grid
   is authoritative.
 - HUD shows current BPM + "locked / following" status.
-- `Shift+T` — clear lock.
+- `Shift+T` - clear lock.
 
 ### 6. MIDI controller support
 Xbox pad is fine for you, but industry-standard VJ rigs use Launchpad /
@@ -131,7 +131,7 @@ Manual scene jumping during peak time is error-prone.
 
 ---
 
-## Polish — makes everything feel pro
+## Polish - makes everything feel pro
 
 ### 9. Live text overlay
 DJ name, track title, gig name, sponsor logo. Fade in/out on hotkey so the
@@ -164,24 +164,24 @@ Capture the final composite to disk for highlight reels and social posts.
 
 ### 12. Session settings file
 One place for all the above: preferred display, locked BPM, strobe cap
-threshold, MIDI device name, operator HUD toggle. Not committed — lives
+threshold, MIDI device name, operator HUD toggle. Not committed - lives
 alongside `.devmode` and friends.
 
 ---
 
 ## Suggested work order
 
-1. Crash resilience (#1) — underpins everything else; we should not ship new
+1. Crash resilience (#1) - underpins everything else; we should not ship new
    features on top of a sketch that can crash mid-scene.
-2. Emergency kill switch (#3) — cheapest to add, massive safety win.
-3. Fullscreen + display selection (#2) — unlocks actual projector testing.
-4. Strobe safety cap (#4) — required before any public show.
-5. Tap tempo / BPM lock (#5) — beat-sync work compounds once the grid is
+2. Emergency kill switch (#3) - cheapest to add, massive safety win.
+3. Fullscreen + display selection (#2) - unlocks actual projector testing.
+4. Strobe safety cap (#4) - required before any public show.
+5. Tap tempo / BPM lock (#5) - beat-sync work compounds once the grid is
    reliable.
-6. Operator HUD + setlist (#7, #8) — together these turn the visualizer into a
+6. Operator HUD + setlist (#7, #8) - together these turn the visualizer into a
    real instrument.
-7. MIDI (#6), overlays (#9), presets (#10), recording (#11) — rolling polish.
+7. MIDI (#6), overlays (#9), presets (#10), recording (#11) - rolling polish.
 
 Live audio input (excluded above) should be tackled the moment a DJ mixer or
-loopback device is available for dev — it is non-negotiable for an actual
+loopback device is available for dev - it is non-negotiable for an actual
 booking.

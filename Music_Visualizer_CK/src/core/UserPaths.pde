@@ -1,4 +1,4 @@
-// UserPaths.pde — resolve a writable per-user data dir for runtime files.
+// UserPaths.pde - resolve a writable per-user data dir for runtime files.
 //
 // Why: when the app is installed under /opt/music-visualizer (deb) or
 // C:\Program Files (Windows), the install dir is not user-writable. Anything
@@ -6,9 +6,9 @@
 // log, prefs, scores) must live under a per-user location.
 //
 // Layout (XDG / platform-native):
-//   Linux   — $XDG_CONFIG_HOME/music-visualizer/   (or ~/.config/music-visualizer/)
-//   macOS   — ~/Library/Application Support/MusicVisualizer/
-//   Windows — %APPDATA%\MusicVisualizer\           (fallback ~/AppData/Roaming)
+//   Linux - $XDG_CONFIG_HOME/music-visualizer/   (or ~/.config/music-visualizer/)
+//   macOS - ~/Library/Application Support/MusicVisualizer/
+//   Windows - %APPDATA%\MusicVisualizer\           (fallback ~/AppData/Roaming)
 //
 // Dev-mode bypass: when isDevMode() is true (./run.sh creates .devmode), we
 // keep using sketchPath() so files stay next to the sketch in the repo and
@@ -25,7 +25,7 @@ String userDataDir() {
 
   // Dev override: run.sh exports MV_USER_DATA_DIR=$ORIGIN_DIR so editing the
   // sketch from the repo keeps state next to the source. We deliberately do
-  // NOT use isDevMode() here — it checks ~/.devmode, which leaks into any
+  // NOT use isDevMode() here - it checks ~/.devmode, which leaks into any
   // installed copy on the same user account.
   String env = System.getenv("MV_USER_DATA_DIR");
   String dir;

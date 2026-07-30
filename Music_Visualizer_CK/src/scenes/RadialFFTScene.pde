@@ -1,7 +1,7 @@
-// Radial FFT Scene — state 11
+// Radial FFT Scene - state 11
 //
 // The full FFT spectrum arranged as a circle of tapered spikes.
-// Each bar is a filled triangle — wide at the inner ring, pointing outward —
+// Each bar is a filled triangle - wide at the inner ring, pointing outward - 
 // so high-energy bands look like sunbeams or teeth rather than rectangles.
 // A mirror ring on the inside creates a symmetrical sun/eye shape.
 // The whole disc rotates slowly; on beat it pulses outward and snaps back.

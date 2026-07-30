@@ -7,7 +7,7 @@
  *   - Flat purple circle → Thick wireframe torus
  *   - Flat waveform line → 3D helix ribbon wrapping the composition
  *
- * Same colours, same audio reactivity, same controls — but truly 3D.
+ * Same colours, same audio reactivity, same controls - but truly 3D.
  */
 class Original3DScene implements IScene {
 
@@ -178,7 +178,7 @@ class Original3DScene implements IScene {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 3D DIAMONDS — double-pyramid shapes at the original's 4 corner positions
+  // 3D DIAMONDS - double-pyramid shapes at the original's 4 corner positions
   // ══════════════════════════════════════════════════════════════════════════
 
   void draw3DDiamonds() {
@@ -237,7 +237,7 @@ class Original3DScene implements IScene {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 3D FINS — bezier curves that sweep UP and OUT through Y and Z,
+  // 3D FINS - bezier curves that sweep UP and OUT through Y and Z,
   // creating a flower/turbine shape with real depth
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -274,7 +274,7 @@ class Original3DScene implements IScene {
       float xOff = -20;
       float finScale = 1.6;
 
-      // Original bezier control points — we transform each (x,y) into 3D:
+      // Original bezier control points - we transform each (x,y) into 3D:
       //   X in 2D → radial outward (using ca/sa rotation)
       //   Y in 2D → becomes both Y and Z in 3D (fin curves up AND out in depth)
       //
@@ -321,7 +321,7 @@ class Original3DScene implements IScene {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 3D TORUS — actual torus ring with tube cross-section (not a flat circle)
+  // 3D TORUS - actual torus ring with tube cross-section (not a flat circle)
   // ══════════════════════════════════════════════════════════════════════════
 
   void draw3DTorus() {
@@ -369,7 +369,7 @@ class Original3DScene implements IScene {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 3D WAVEFORM — helix that spirals around the Y axis through the scene
+  // 3D WAVEFORM - helix that spirals around the Y axis through the scene
   // ══════════════════════════════════════════════════════════════════════════
 
   void draw3DWaveform() {

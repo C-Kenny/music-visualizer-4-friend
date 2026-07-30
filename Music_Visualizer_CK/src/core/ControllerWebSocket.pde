@@ -1,4 +1,4 @@
-// ControllerWebSocket — low-latency phone-controller stream over WS.
+// ControllerWebSocket - low-latency phone-controller stream over WS.
 //
 // Listens on port 8081. Browser sends JSON frames:
 //   {"type":"hello","clientId":"<uuid>","nickname":"Sam","ua":"...","platform":"...",
@@ -66,7 +66,7 @@ class ControllerWebSocket extends WebSocketServer {
 
       ClientInfo info = clientRegistry.byConn(conn);
       if (info == null) {
-        // No hello yet — drop and ask client to identify (we just close; client reconnects + sends hello).
+        // No hello yet - drop and ask client to identify (we just close; client reconnects + sends hello).
         try { conn.close(1002, "hello required"); } catch (Exception e) {}
         return;
       }

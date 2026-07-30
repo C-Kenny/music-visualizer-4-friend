@@ -1,7 +1,7 @@
 /**
- * HelpOverlay — onscreen cheat sheet of stage hotkeys.
+ * HelpOverlay - onscreen cheat sheet of stage hotkeys.
  *
- * Shown / hidden with `?`. Designed for venue use — operator hits `?` once
+ * Shown / hidden with `?`. Designed for venue use - operator hits `?` once
  * to see what every key does, hits `?` again to dismiss. Lines are grouped
  * by subsystem so each section reads as a self-contained panel.
  */
@@ -9,21 +9,21 @@ class HelpOverlay {
   boolean visible = false;
   void toggle() { visible = !visible; }
 
-  // Each line is "KEY...DESCRIPTION" — a tab marker `\t` separates the two.
+  // Each line is "KEY...DESCRIPTION" - a tab marker `\t` separates the two.
   // Two-column layout: section title rows have empty key half.
   String[] lines = {
     "STAGE\t",
-    "Ctrl+Enter\tshowtime — fullscreen + strobe safety on",
+    "Ctrl+Enter\tshowtime - fullscreen + strobe safety on",
     "F11\ttoggle fullscreen on current display",
     "Ctrl+1..9\tmove window to display N",
     "Esc\temergency fade-to-black (kill switch)",
     "F12\ttoggle strobe safety cap",
     "F3\ttext overlay  (Shift+F3 cycles layout)",
-    "F4\tMIDI bridge — scan + open inputs",
+    "F4\tMIDI bridge - scan + open inputs",
     "F5\tstart / stop mp4 recording",
     "F6 / F7\ttoggle LAN stream (F7 fallback if WM eats F6)",
     "F9\tauto-switcher  (Shift+F9 cycles mode)",
-    ":\tknob autopilot — drifts scene params when idle",
+    ":\tknob autopilot - drifts scene params when idle",
     "",
     "TEMPO + SETLIST\t",
     "\\\ttap tempo  (4 taps to lock)",

@@ -1,5 +1,5 @@
 /**
- * TableTennisSimScene (scene 53) — "Sim Lab"
+ * TableTennisSimScene (scene 53) - "Sim Lab"
  *
  * 32 headless table-tennis matches play in parallel in a 4×8 grid, each driven
  * by the SAME physics as TableTennis3DScene (ported into TTSimGame, no PGraphics
@@ -10,7 +10,7 @@
  *     combines STABILITY (no "to the moon" shots, legal serves) with REALISM
  *     (balanced server/receiver wins, human-length rallies).
  *   - On each beat (or a timeout) the worst genomes are culled and replaced with
- *     mutated copies of the best — you watch the population converge live.
+ *     mutated copies of the best - you watch the population converge live.
  *
  * The grid cells are tinted by fitness (red = unstable/blows up, green = clean),
  * and a bottom panel shows the generation, the all-time best genome, and the
@@ -22,8 +22,8 @@
  *   Beat → advance a learning generation (cull + breed)
  *
  * Controller / keys:
- *   A — force a generation now      X — reseed the whole population
- *   B — toggle detail panel         LStick/RStick — unused
+ *   A - force a generation now      X - reseed the whole population
+ *   B - toggle detail panel         LStick/RStick - unused
  */
 class TableTennisSimScene implements IScene {
 
@@ -34,7 +34,7 @@ class TableTennisSimScene implements IScene {
   static final float TABLEY   = VH * 0.68;           // 734.4
   static final float TW       = VW * 0.88;           // 1689.6
   static final float NET_H    = TW * (0.1525 / 2.74);// 94.0
-  static final float TABLE_DEPTH = TW * (1.525 / 2.74); // 940.6 — Z extent (for the 3D cube)
+  static final float TABLE_DEPTH = TW * (1.525 / 2.74); // 940.6 - Z extent (for the 3D cube)
   static final float PADDLE_Z = 130;
   static final float BALL_R   = 16;
   static final float PADDLE_H = 110, PADDLE_W = 16;
@@ -75,7 +75,7 @@ class TableTennisSimScene implements IScene {
     generation = 0; stepsThisGen = 0; bestEver = null; bestEverFitness = -1;
   }
 
-  // ── genome factories (here, not on TTGenome — inner classes can't be static) ─
+  // ── genome factories (here, not on TTGenome - inner classes can't be static) ─
   TTGenome genomeMake(float a, float b, float c, float d, float e, float f) {
     TTGenome g = new TTGenome();
     g.magnusStrength = a; g.magnusTermMax = b; g.spinFlightDecay = c;
@@ -159,7 +159,7 @@ class TableTennisSimScene implements IScene {
             max(2, PADDLE_W * sx), PADDLE_H * sy);
 
     // ball (clamp y into the cell so a moon shot shows as a ball pinned to the
-    // top edge rather than vanishing — visually flags the runaway)
+    // top edge rather than vanishing - visually flags the runaway)
     float by = constrain(g.ballY, -BALL_R, VH);
     boolean mooning = g.ballY < -BALL_R;
     pg.fill(mooning ? color(255, 60, 60) : color(255, 250, 200));
@@ -181,7 +181,7 @@ class TableTennisSimScene implements IScene {
     float ts = constrain(h * 0.22, 11, 22);
     pg.textSize(ts);
     pg.fill(60, 230, 120);
-    pg.text("SIM LAB — genetic tuner   gen " + generation
+    pg.text("SIM LAB - genetic tuner   gen " + generation
           + "   pop " + POP + "   speed x" + (1 + round(constrain(analyzer.bass,0,1)*7)),
           x + 16, y + 8);
 
@@ -229,7 +229,7 @@ class TableTennisSimScene implements IScene {
       aggServerWin = sumSrv / counted; aggFitness = sumFit / counted;
     }
 
-    // rank indices by fitness (desc), simple selection sort over 32 — trivial
+    // rank indices by fitness (desc), simple selection sort over 32 - trivial
     Integer[] order = new Integer[POP];
     for (int i = 0; i < POP; i++) order[i] = i;
     for (int a = 0; a < POP; a++)
@@ -270,7 +270,7 @@ class TableTennisSimScene implements IScene {
     int n = min(8, POP);
     try {
       java.io.PrintWriter w = new java.io.PrintWriter(new java.io.FileWriter(userDataPath("tt_genome.cfg")));
-      w.println("# Sim Lab evolved genome — gen " + generation + "  bestFit " + nf(bestEverFitness, 1, 3));
+      w.println("# Sim Lab evolved genome - gen " + generation + "  bestFit " + nf(bestEverFitness, 1, 3));
       w.println("# physics <magnusStrength> <magnusTermMax> <spinFlightDecay>");
       w.println("physics " + bestEver.magnusStrength + " " + bestEver.magnusTermMax + " " + bestEver.spinFlightDecay);
       w.println("# style <launchVyMax> <brushCoeff> <aiSpeed>");
@@ -280,7 +280,7 @@ class TableTennisSimScene implements IScene {
       }
       w.close();
     } catch (Exception e) {
-      println("SimLab: genome write failed — " + e.getMessage());
+      println("SimLab: genome write failed - " + e.getMessage());
     }
   }
 
@@ -298,7 +298,7 @@ class TableTennisSimScene implements IScene {
 
   String[] getCodeLines() {
     return new String[] {
-      "SIM LAB — live genetic tuner",
+      "SIM LAB - live genetic tuner",
       "",
       "32 parallel matches, one genome each:",
       "  magnusStrength, magnusTermMax (cap),",
@@ -329,7 +329,7 @@ class TableTennisSimScene implements IScene {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// TTGenome — the per-game parameter vector the GA evolves. Plain inner class
+// TTGenome - the per-game parameter vector the GA evolves. Plain inner class
 // (NOT static) so its methods can call Processing's random()/constrain(). The
 // factory methods live on TableTennisSimScene (inner classes can't be static).
 // ════════════════════════════════════════════════════════════════════════════
@@ -362,7 +362,7 @@ class TTGenome {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// TTSimGame — headless port of the TableTennis3D physics (X/Y only). One ball,
+// TTSimGame - headless port of the TableTennis3D physics (X/Y only). One ball,
 // two simple-AI paddles, full serve/rally/scoring, plus stat accumulators the
 // GA reads. Self-contained: no PGraphics, no audio.
 // ════════════════════════════════════════════════════════════════════════════
@@ -370,7 +370,7 @@ class TTSimGame {
   TTGenome genome;
 
   float ballX, ballY, ballVX, ballVY, spin;
-  // Depth (Z) — purely cosmetic for the 3D Sim Cube (scene 54). Independent of
+  // Depth (Z) - purely cosmetic for the 3D Sim Cube (scene 54). Independent of
   // the X/Y physics, so the 2D lab's behaviour and fitness are unaffected.
   float ballZ, ballVZ, leftPaddleZ, rightPaddleZ;
   boolean inServeDrop, serveBounced, rallyStarted, leftServes;
@@ -389,7 +389,7 @@ class TTSimGame {
 
   TTSimGame(TTGenome g, int seed) {
     genome = g;
-    // alternate which side opens, derived from the seed. (No randomSeed() here —
+    // alternate which side opens, derived from the seed. (No randomSeed() here - 
     // it would reset Processing's GLOBAL RNG and starve every other game/scene.)
     leftServes = (seed & 1) == 0;
     leftPaddleX = TableTennisSimScene.LHOMEX; rightPaddleX = TableTennisSimScene.RHOMEX;

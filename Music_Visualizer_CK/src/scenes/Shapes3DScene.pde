@@ -82,7 +82,7 @@ class Shapes3DScene implements IScene {
 
     // gentle rotation for the whole emblem
     pg.rotate(angle + config.logicalFrameCount * 0.0006);
-    // background plate (rotated square -> diamond) — darker for contrast
+    // background plate (rotated square -> diamond) - darker for contrast
     pg.pushMatrix();
       pg.rotate(radians(45));
       pg.noStroke();
@@ -91,7 +91,7 @@ class Shapes3DScene implements IScene {
       pg.rect(0, 0, plateSize, plateSize);
     pg.popMatrix();
 
-    // outer radial fins (2D bars) that pulse with audio — uniform, long and narrow
+    // outer radial fins (2D bars) that pulse with audio - uniform, long and narrow
     pg.pushMatrix();
       pg.noStroke();
       float finBase = radius * 0.45;

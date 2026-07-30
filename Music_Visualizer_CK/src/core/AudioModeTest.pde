@@ -1,4 +1,4 @@
-// AudioModeTest.pde — assertions for audio init paths.
+// AudioModeTest.pde - assertions for audio init paths.
 //
 // Runs once at smoke-test startup (before scene loop). Verifies:
 //   - FILE mode (the existing global `audio` instance) is fully initialised
@@ -23,9 +23,9 @@ void runAudioModeTests(SmokeTestRunner runner) {
 
   int newFails = runner.failures.size() - startFails;
   if (newFails == 0) {
-    println("[AUDIOTEST] PASS — all audio-mode assertions held");
+    println("[AUDIOTEST] PASS - all audio-mode assertions held");
   } else {
-    println("[AUDIOTEST] FAIL — " + newFails + " audio-mode assertion(s) failed");
+    println("[AUDIOTEST] FAIL - " + newFails + " audio-mode assertion(s) failed");
   }
 }
 
@@ -111,7 +111,7 @@ void testDeviceModeConstructor(SmokeTestRunner runner) {
     if (probe.getPosition() != 0) throw new RuntimeException("getPosition() non-zero in device mode");
     if (probe.getLength()   != 0) throw new RuntimeException("getLength() non-zero in device mode");
 
-    // If first device didn't open, walk the list to find one that does — so
+    // If first device didn't open, walk the list to find one that does - so
     // the signal-level probe below has a real input to sample. Idle mics
     // (e.g. suspended USB) often fail to open; system "default" usually works.
     if (probe.audioInput == null && config.audioDeviceSelector != null) {
@@ -151,7 +151,7 @@ void testDeviceModeConstructor(SmokeTestRunner runner) {
       String verdict = rms > 0.001 ? "SIGNAL" : "silent";
       println("[AUDIOTEST] " + section + " ok (audioInput opened=true, rms=" + nf(rms, 0, 5) + ", peak=" + nf(peak, 0, 5) + " -> " + verdict + ")");
     } else {
-      println("[AUDIOTEST] " + section + " ok (audioInput opened=false — JVM has no usable input on this platform)");
+      println("[AUDIOTEST] " + section + " ok (audioInput opened=false - JVM has no usable input on this platform)");
     }
   } catch (Throwable t) {
     runner.logFailure(section, "device-mode init", new RuntimeException(t));

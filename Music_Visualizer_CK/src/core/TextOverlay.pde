@@ -1,8 +1,8 @@
 /**
- * TextOverlay — DJ name / track title overlay for live shows.
+ * TextOverlay - DJ name / track title overlay for live shows.
  *
  * Reads `text_overlay.txt` from the user data directory. Format: up to two
- * lines — first is the title, second is the subtitle. Blank lines and lines
+ * lines - first is the title, second is the subtitle. Blank lines and lines
  * starting with `#` are ignored.
  *
  *   # DJ name on top, track on bottom
@@ -96,9 +96,9 @@ class TextOverlay {
         text(subtitle, winW / 2, baseY + subSize + 8);
       }
     } else if (layout == LAYOUT_TICKER) {
-      // Endless scroll: title + " — " + subtitle, repeating with a wide gap.
+      // Endless scroll: title + " - " + subtitle, repeating with a wide gap.
       String msg = title;
-      if (subtitle.length() > 0) msg += "   —   " + subtitle;
+      if (subtitle.length() > 0) msg += " - " + subtitle;
       if (msg.length() == 0) { popStyle(); return; }
       String repeated = msg + "          ";
       textSize(subSize * 1.2);

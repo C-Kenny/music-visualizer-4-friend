@@ -1,4 +1,4 @@
-// RecursiveMandalaScene — Scene 23
+// RecursiveMandalaScene - Scene 23
 //
 // A fractal mandala: N arms radiate from a drifting centre; each arm recurses
 // at its tip spawning three sub-arms (centre + ±spreadAngle), producing nested
@@ -9,7 +9,7 @@
 //   Each arm spawns 3 sub-arms → O(3^depth) shapes per initial arm.
 //   depth 3 = 8 × 39  = 312 shapes  (~fast)
 //   depth 4 = 8 × 120 = 960 shapes  (default)
-//   depth 5 = 8 × 363 = 2904 shapes (heavy — use on fast hardware)
+//   depth 5 = 8 × 363 = 2904 shapes (heavy - use on fast hardware)
 //   Hard cap enforced at depth 5.  beatBoost is limited to +1.
 //
 // Audio mapping:
@@ -19,7 +19,7 @@
 //   Beat  → +1 depth burst (1 frame) + white flash
 //
 // Movement:
-//   The mandala centre drifts via Perlin-noise Lissajous — the whole flower
+//   The mandala centre drifts via Perlin-noise Lissajous - the whole flower
 //   floats gently around the screen, faster with mid frequency energy.
 //   A slow "breathe" scale adds organic pulsing independent of beat.
 //
@@ -55,9 +55,9 @@ class RecursiveMandalaScene implements IScene {
   int   paletteIdx  = 0;
   float driftAmp    = 0.08;       // fraction of screen the centre may wander
 
-  static final int HARD_MAX_DEPTH = 5;   // absolute cap — prevents slideshow
+  static final int HARD_MAX_DEPTH = 5;   // absolute cap - prevents slideshow
 
-  // ── Palette definitions — add more rows freely ─────────────────────────────
+  // ── Palette definitions - add more rows freely ─────────────────────────────
   final String[] paletteNames = { "Aurora", "Crimson", "Ocean",  "Solar"  };
   final float[]  paletteHues  = { 160,       0,         200,      45      };
 
@@ -72,7 +72,7 @@ class RecursiveMandalaScene implements IScene {
   int   beatBoost      = 0;       // +1 depth for exactly 1 frame per beat
   float lt = 0, rt     = 0;
 
-  // Organic movement — noise target + lerped actual position (prevents jitter)
+  // Organic movement - noise target + lerped actual position (prevents jitter)
   float driftPhase   = 0;
   float breathePhase = 0;
   float driftX       = 0, driftY = 0;   // current smoothed position
@@ -83,7 +83,7 @@ class RecursiveMandalaScene implements IScene {
   PShape    petalShape;
 
   // Per-level color/stroke terms depend only on recursion level + this
-  // frame's smoothed audio, not on the individual arm — precomputed once
+  // frame's smoothed audio, not on the individual arm - precomputed once
   // per frame (levelTables()) instead of re-deriving via lerp()/map() on
   // every one of up to ~960 drawArm() calls.
   float[] levelHue, levelSat, levelAlpha, levelSw;
@@ -144,7 +144,7 @@ class RecursiveMandalaScene implements IScene {
     sMid   = lerp(sMid,   analyzer.mid,   0.12);
     sHigh  = lerp(sHigh,  analyzer.high,  0.20);
 
-    // Beat — +1 depth, last exactly 1 frame
+    // Beat - +1 depth, last exactly 1 frame
     if (analyzer.isBeat) { beatFlash = 1.0; beatBoost = 1; }
     beatFlash = max(0, beatFlash - 0.055);
     if (beatBoost > 0) beatBoost--;
@@ -152,11 +152,11 @@ class RecursiveMandalaScene implements IScene {
     // Hard-cap effective depth to prevent exponential blowup
     int depth = min(maxDepth + beatBoost, HARD_MAX_DEPTH);
 
-    // Rotation — mid + triggers
+    // Rotation - mid + triggers
     float speedMod = 1.0 + sMid * 0.5 + (rt - lt) * 1.2;
     globalRot += rotSpeed * speedMod;
 
-    // Organic drift — noise target lerped very slowly into actual position
+    // Organic drift - noise target lerped very slowly into actual position
     // Lerp factor 0.012 means it takes ~80 frames to close half the gap → butter smooth
     float driftSpeed = 0.0012 + sMid * 0.0010;
     driftPhase   += driftSpeed;
@@ -232,7 +232,7 @@ class RecursiveMandalaScene implements IScene {
     float sw     = levelSw[lvl];
     float petalW = len * petalWFactor;
 
-    // Filled petal — low alpha; ADD mode makes overlaps glow naturally
+    // Filled petal - low alpha; ADD mode makes overlaps glow naturally
     pg.noStroke();
     pg.fill(hue, sat, bri * 0.65, alpha * 0.35);
     

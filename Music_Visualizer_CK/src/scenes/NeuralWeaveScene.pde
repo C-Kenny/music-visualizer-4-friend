@@ -1,4 +1,4 @@
-// Neural Weave — state 14
+// Neural Weave - state 14
 // See documentation/neural_weave.md for behaviour, controls, and main-sketch integration.
 //
 // Biology + instrumentation: a woven mesh with metabolic haze (LT), tech injection (RT),

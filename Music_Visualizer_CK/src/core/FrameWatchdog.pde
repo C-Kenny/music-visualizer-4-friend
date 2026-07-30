@@ -1,10 +1,10 @@
 /**
- * FrameWatchdog — detects render-thread stalls and attributes them to the
+ * FrameWatchdog - detects render-thread stalls and attributes them to the
  * scene that was on screen when the stall began.
  *
  * Why a watchdog when SceneGuard already wraps draw in try/catch?
  * SceneGuard catches *exceptions*. A scene that hangs in an infinite loop or
- * blocks on I/O never throws — the render thread just stops. The watchdog
+ * blocks on I/O never throws - the render thread just stops. The watchdog
  * runs on its own daemon thread, polling a volatile timestamp updated at the
  * top of every draw(). If the gap exceeds STALL_THRESHOLD_MS, the stall is
  * recorded.
@@ -66,7 +66,7 @@ class FrameWatchdog {
 
   // Walk every live thread, find the Processing animation thread, and dump
   // its stack to crash_log.txt. The animation thread is what's actually stuck
-  // — knowing where helps diagnose whether it's a scene loop, a blocking I/O
+  // - knowing where helps diagnose whether it's a scene loop, a blocking I/O
   // call, or something deeper in the render pipeline.
   void logRenderStack(long gap) {
     try {

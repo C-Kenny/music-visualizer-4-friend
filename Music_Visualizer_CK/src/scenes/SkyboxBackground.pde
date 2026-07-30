@@ -1,5 +1,5 @@
 /**
- * SkyboxBackground — IBackground wrapping the Skybox cubemap renderer.
+ * SkyboxBackground - IBackground wrapping the Skybox cubemap renderer.
  * Slowly pans the camera around the skybox; bass nudges speed.
  * Requires sceneBuffer to be P3D (it is).
  */
@@ -15,12 +15,12 @@ class SkyboxBackground implements IBackground {
     skybox      = new Skybox();
     dirName     = skyboxDirName;
     displayName = skyboxDirName;
-    // Lazy-load: don't call skybox.load() here — deferred to first drawBackground()
+    // Lazy-load: don't call skybox.load() here - deferred to first drawBackground()
   }
 
   void drawBackground(PGraphics pg) {
     // Load on first use so setup() doesn't block loading 150 PNGs at once.
-    // One attempt only — a missing pack must not retry disk IO every frame.
+    // One attempt only - a missing pack must not retry disk IO every frame.
     if (!skybox.loaded && !loadAttempted) {
       loadAttempted = true;
       loadSkyboxByName(skybox, dirName);

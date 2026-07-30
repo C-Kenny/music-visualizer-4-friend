@@ -1,4 +1,4 @@
-// KaleidoscopeScene — Scene 24
+// KaleidoscopeScene - Scene 24
 //
 // A GPU glass kaleidoscope.  A structured source buffer (concentric coloured
 // rings + radial spokes + caustic highlights) is folded by kaleidoscope.glsl
@@ -7,11 +7,11 @@
 // the result looks like a real stained-glass kaleidoscope toy.
 //
 // Source layout (half-res for performance):
-//   Rings   — thick concentric arcs of shifting HSB colour (the glass panels)
-//   Spokes  — thin radial lines (the lead / solder dividers between panels)
-//   Caustics— small bright soft blobs (focused light through glass)
-//   Core    — bass-driven central glow (the light source)
-//   Trail   — very slow fade for layered depth
+//   Rings - thick concentric arcs of shifting HSB colour (the glass panels)
+//   Spokes - thin radial lines (the lead / solder dividers between panels)
+//   Caustics - small bright soft blobs (focused light through glass)
+//   Core - bass-driven central glow (the light source)
+//   Trail - very slow fade for layered depth
 //
 // Audio:
 //   Bass  → core glow radius + zoom pulse
@@ -19,7 +19,7 @@
 //   High  → caustic brightness + chromatic aberration
 //   Beat  → soft warm pulse (no strobe)
 //
-// Controller (R-stick deliberately left unbound — too easy to spoil the look):
+// Controller (R-stick deliberately left unbound - too easy to spoil the look):
 //   L Stick X   → manual rotation
 //   L Stick Y   → zoom
 //   LT / RT     → slower / faster auto-rotation
@@ -121,7 +121,7 @@ class KaleidoscopeScene implements IScene {
     pg.rect(0, 0, pg.width, pg.height);
     pg.resetShader();
 
-    // Subtle warm beat pulse — no strobe
+    // Subtle warm beat pulse - no strobe
     if (beatFlash > 0.02) {
       pg.blendMode(ADD);
       pg.noStroke(); pg.fill(50, 25, 0, beatFlash * 16);
@@ -148,7 +148,7 @@ class KaleidoscopeScene implements IScene {
   }
 
   // ── Controller ──────────────────────────────────────────────────────────────
-  // R-stick intentionally unbound — it was too easy to accidentally change
+  // R-stick intentionally unbound - it was too easy to accidentally change
   // segments/trail and make the scene look wrong.
 
   void applyController(Controller c) {

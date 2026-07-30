@@ -1,5 +1,5 @@
 /**
- * RomanescoRenderer — phyllotaxis spiral with self-similar bumps per floret.
+ * RomanescoRenderer - phyllotaxis spiral with self-similar bumps per floret.
  */
 class RomanescoRenderer implements FractalRenderer {
   String name() { return "Romanesco Spiral"; }

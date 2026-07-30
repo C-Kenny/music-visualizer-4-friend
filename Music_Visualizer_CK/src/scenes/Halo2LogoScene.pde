@@ -1,14 +1,14 @@
-// Halo 2 Logo Mask Scene — state 9
+// Halo 2 Logo Mask Scene - state 9
 //
 // The Halo 2 logo is used as a mask so that plasma/color effects
 // show only through the logo shape. The rest of the screen stays dark.
 //
 // Keyboard controls (active when STATE == 9):
-//   B — cycle background effect (plasma, polar plasma, solid color)
-//   Up / Down — increase / decrease pulse sensitivity
+//   B - cycle background effect (plasma, polar plasma, solid color)
+//   Up / Down - increase / decrease pulse sensitivity
 //
 // The logo must be at:  data/images/halo2_logo.gif
-// It should be black logo on white (or white logo on black) — both work,
+// It should be black logo on white (or white logo on black) - both work,
 // the scene auto-detects and inverts if needed.
 
 class Halo2LogoScene implements IScene {
@@ -17,7 +17,7 @@ class Halo2LogoScene implements IScene {
   PImage maskImg;       // white-where-logo-is mask
   PGraphics canvas;     // off-screen buffer that gets masked each frame
 
-  // Render at reduced resolution then scale up — avoids per-pixel Java loop bottleneck.
+  // Render at reduced resolution then scale up - avoids per-pixel Java loop bottleneck.
   // RENDER_SCALE = 4 means 1/16th the pixels (e.g. 640×360 instead of 2560×1440).
   final int RENDER_SCALE = 4;
   int rW, rH;  // actual render dimensions
@@ -233,7 +233,7 @@ class Halo2LogoScene implements IScene {
     g.colorMode(RGB, 255);
   }
 
-  // Scrolling plasma-style colour sweep — rendered at rW×rH for performance
+  // Scrolling plasma-style colour sweep - rendered at rW×rH for performance
   void drawPlasmaSweep(PGraphics g, float bass, float mid, float high) {
     g.loadPixels();
     float t = config.logicalFrameCount * 0.015;
@@ -253,7 +253,7 @@ class Halo2LogoScene implements IScene {
     g.updatePixels();
   }
 
-  // Radial burst from center — rendered at rW×rH for performance
+  // Radial burst from center - rendered at rW×rH for performance
   void drawRadialBurst(PGraphics g, float bass, float mid, float high) {
     g.loadPixels();
     float cx = rW / 2.0;
@@ -319,7 +319,7 @@ class Halo2LogoScene implements IScene {
   SceneParam[] getParams() { return params; }
 
   void applyController(Controller c) {
-    // L Stick ↕ → pulse sensitivity (up = stronger pulse) — absolute, not a nudge
+    // L Stick ↕ → pulse sensitivity (up = stronger pulse) - absolute, not a nudge
     float ly = map(c.ly, 0, height, -1, 1);
     pPulse.set(map(ly, -1, 1, 1.0, 0.05));
 

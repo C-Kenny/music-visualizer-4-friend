@@ -53,7 +53,7 @@ class PolarPlasma {
   }
 
   void draw(PGraphics pg) {
-    // Cap internal buffer — polar plasma inner loop is O(w*h) per frame and
+    // Cap internal buffer - polar plasma inner loop is O(w*h) per frame and
     // the radius/angle init tables are even more expensive. Stage-size buffers
     // dragged fps from 900→15. Stretched via pg.image with bilinear.
     final int BMAX_W = 640, BMAX_H = 360;

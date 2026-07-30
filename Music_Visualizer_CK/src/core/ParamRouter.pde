@@ -1,15 +1,15 @@
 /**
- * ParamRouter — the single spine connecting every input source (controller,
+ * ParamRouter - the single spine connecting every input source (controller,
  * keyboard, web UI) to the active scene's SceneParam knobs.
  *
  * Scenes opt in by overriding IScene.getParams(). Everything here no-ops
  * gracefully for scenes that don't, so it's safe to call unconditionally.
  *
- *   activeParams()                 — knobs of the current scene (or empty)
- *   setParamNorm(id, t)            — web slider / absolute 0..1 set
- *   paramsToJson()                 — discovery payload for the web UI
- *   routeParamsToSticks(c, p)      — reusable default controller mapping
- *   handleParamKey(k)              — keyboard select + nudge HELPER (a scene's
+ *   activeParams() - knobs of the current scene (or empty)
+ *   setParamNorm(id, t) - web slider / absolute 0..1 set
+ *   paramsToJson() - discovery payload for the web UI
+ *   routeParamsToSticks(c, p) - reusable default controller mapping
+ *   handleParamKey(k) - keyboard select + nudge HELPER (a scene's
  *                                    own handleKey may call it; not global, so
  *                                    it never steals reserved global keys)
  */
@@ -93,7 +93,7 @@ void routeParamsToSticks(Controller c, SceneParam[] p) {
 }
 
 /**
- * Keyboard knob helper for scenes that want it — call from the scene's own
+ * Keyboard knob helper for scenes that want it - call from the scene's own
  * handleKey(char). NOT wired globally (the obvious keys [ ] - = \ are already
  * taken by setlist / gain / line-break). Returns true if the key was consumed.
  *   < >  select previous / next knob      (any of , . too)

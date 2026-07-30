@@ -36,15 +36,15 @@ class HourglassScene implements IScene {
     loadSkyboxByName(skybox, SKYBOX_PATHS[skyboxIndex]);
   }
 
-  // Neck trickle — grains through the narrow neck
+  // Neck trickle - grains through the narrow neck
   int TRICKLE_COUNT = 30;
   float[] trickleY, trickleX, trickleZ;
 
-  // Falling grains — from neck down through air gap to sand surface
+  // Falling grains - from neck down through air gap to sand surface
   int FALL_COUNT = 60;
   float[] fallY, fallX, fallZ, fallSpeed;
 
-  // Precomputed ring cos/sin tables — every ring loop in this scene iterates
+  // Precomputed ring cos/sin tables - every ring loop in this scene iterates
   // j=0..N computing cos(TWO_PI*j/N) / sin(...). Cache once at construction;
   // saves ~10k trig calls per frame across drawSandFill / drawSandySurface /
   // drawRevolvedBulb / drawCylinder.
@@ -92,7 +92,7 @@ class HourglassScene implements IScene {
   }
 
   void resetFallGrain(int i, boolean randomSpread, int dir) {
-    // Spawn tightly at neck center — looks like sand squeezing through the hole
+    // Spawn tightly at neck center - looks like sand squeezing through the hole
     fallX[i] = random(-neckWidth * 0.15, neckWidth * 0.15);
     fallZ[i] = random(-neckWidth * 0.15, neckWidth * 0.15);
     fallSpeed[i] = random(2.0, 4.5);
@@ -139,7 +139,7 @@ class HourglassScene implements IScene {
     canvas.translate(canvas.width / 2, canvas.height / 2);
     canvas.rotateX(camRotX);
     canvas.rotateY(camRotY);
-    skybox.draw(canvas);       // sky after orbit, before flip — doesn't flip with glass
+    skybox.draw(canvas);       // sky after orbit, before flip - doesn't flip with glass
     canvas.rotateZ(rotation);
     canvas.scale(zoomLevel);   // zoom applied after rotations, before all geometry
 
@@ -154,13 +154,13 @@ class HourglassScene implements IScene {
     float receivingNeckY  = posYIsBottom ? 5 : -5;
     float receivingSurfY  = lerp(receivingFloorY, receivingNeckY, sandFraction);
 
-    // Top (draining) bulb sand surface — grains spawn from here, not from air
+    // Top (draining) bulb sand surface - grains spawn from here, not from air
     float topFraction  = 1.0 - sandFraction;
     float topFloorY    = posYIsBottom ? -(bulbHeight + 2) :  (bulbHeight + 2);
     float topNeckY     = posYIsBottom ? -5 : 5;
     float topSurfY     = lerp(topFloorY, topNeckY, topFraction);
 
-    // Sand drawn first, full glass on top — correct from any camera angle
+    // Sand drawn first, full glass on top - correct from any camera angle
     if (posYIsBottom) {
       drawSandFill(canvas, sandFraction,       true);
       drawSandFill(canvas, 1 - sandFraction,   false);
@@ -171,7 +171,7 @@ class HourglassScene implements IScene {
 
     draw3DGlass(canvas); // full glass shell over sand
 
-    // Grains rendered AFTER glass with depth test OFF — inside the glass silhouette
+    // Grains rendered AFTER glass with depth test OFF - inside the glass silhouette
     // so they project correctly to screen regardless of depth buffer state.
     canvas.hint(DISABLE_DEPTH_TEST);
     drawTrickle(canvas, audioBoost, posYIsBottom, topSurfY, topFraction);
@@ -183,7 +183,7 @@ class HourglassScene implements IScene {
     drawBeatTimeline(canvas);
   }
 
-  // ── Sand fill — granular rings with noisy surface ─────────────────────────
+  // ── Sand fill - granular rings with noisy surface ─────────────────────────
 
   void drawSandFill(PGraphics canvas, float fraction, boolean isPositiveY) {
     if (fraction < 0.01) return;
@@ -197,7 +197,7 @@ class HourglassScene implements IScene {
     int ringDetail = 24;
     canvas.noStroke();
 
-    // Floor cap disc — seals the bottom of the sand solid
+    // Floor cap disc - seals the bottom of the sand solid
     float floorR = max(2, getRadiusAtY(floorY) - 6);
     canvas.fill(65, 45, 12);
     canvas.beginShape(TRIANGLE_FAN);
@@ -240,7 +240,7 @@ class HourglassScene implements IScene {
       }
       canvas.endShape();
 
-      // Inner fill disc at y2 — fills hollow interior, makes solid from any viewpoint
+      // Inner fill disc at y2 - fills hollow interior, makes solid from any viewpoint
       canvas.fill(
         (int)((185 + gm2 * 30) * bright2),
         (int)((130 + gm2 * 20) * bright2),
@@ -261,7 +261,7 @@ class HourglassScene implements IScene {
     drawSandySurface(canvas, surfY, surfR, dir);
   }
 
-  // Granular surface — noise-displaced fan + scattered grain dots
+  // Granular surface - noise-displaced fan + scattered grain dots
   void drawSandySurface(PGraphics canvas, float surfY, float surfR, int dir) {
     int ringDetail = 28;
     canvas.noStroke();
@@ -285,7 +285,7 @@ class HourglassScene implements IScene {
     }
     canvas.endShape();
 
-    // Scattered grain dots on surface — sandy stipple effect
+    // Scattered grain dots on surface - sandy stipple effect
     int grainCount = 60;
     for (int g = 0; g < grainCount; g++) {
       // Deterministic scatter via noise index (stable positions, not random each frame)
@@ -307,10 +307,10 @@ class HourglassScene implements IScene {
     canvas.noStroke();
   }
 
-  // ── Neck trickle — grains from top sand surface through neck ─────────────
+  // ── Neck trickle - grains from top sand surface through neck ─────────────
 
   void drawTrickle(PGraphics canvas, float audioBoost, boolean posYIsBottom, float topSurfY, float topFraction) {
-    if (topFraction < 0.01) return; // top empty — no sand left to pour
+    if (topFraction < 0.01) return; // top empty - no sand left to pour
     float neckDir  = posYIsBottom ? 1.0 : -1.0;
     float speed    = 1.5 + audioBoost * 0.6;
     float spawnY   = topSurfY; // spawn from where the top sand actually is
@@ -347,7 +347,7 @@ class HourglassScene implements IScene {
     canvas.noStroke();
   }
 
-  // ── Falling grains — through air gap in receiving bulb ────────────────────
+  // ── Falling grains - through air gap in receiving bulb ────────────────────
 
   void drawFallingGrains(PGraphics canvas, float audioBoost, boolean posYIsBottom, float receivingSurfY, float topFraction) {
     // Stop emitting when top bulb is nearly empty
@@ -362,7 +362,7 @@ class HourglassScene implements IScene {
       fallSpeed[i] += gravity;
       fallY[i] += fallSpeed[i] * dir;
 
-      // Tiny random horizontal drift — looks like a stream, not a blob
+      // Tiny random horizontal drift - looks like a stream, not a blob
       fallX[i] += random(-0.25, 0.25);
       fallZ[i] += random(-0.25, 0.25);
 
@@ -377,7 +377,7 @@ class HourglassScene implements IScene {
         continue;
       }
 
-      // Draw grain — drawn after glass with depth test OFF, always visible inside bulb
+      // Draw grain - drawn after glass with depth test OFF, always visible inside bulb
       float bright = 0.8 + noise(i * 0.4, frameCount * 0.02) * 0.2;
       canvas.stroke(
         (int)((235 + smoothBass * 20) * bright),
@@ -484,7 +484,7 @@ class HourglassScene implements IScene {
     canvas.strokeWeight(2);
     canvas.line(cx, barY, cx, barY + barH);
 
-    // Drop ticks — two tiers
+    // Drop ticks - two tiers
     if (dropPredictor.isReady) {
       // Tier 1: strong beats (orange, short ticks, lower half)
       for (float dropMs : dropPredictor.dropTimes) {
@@ -538,13 +538,13 @@ class HourglassScene implements IScene {
   // ── Input ─────────────────────────────────────────────────────────────────
 
   void applyController(Controller c) {
-    // Flip — preserve sand amounts (bottom 10% becomes top 10% after flip)
+    // Flip - preserve sand amounts (bottom 10% becomes top 10% after flip)
     if (c.aJustPressed) { targetRotation += PI; flipCount++; sandFraction = 1.0 - sandFraction; }
     // Cycle skybox
     if (c.yJustPressed || c.dpadRightJustPressed) loadSkybox(skyboxIndex + 1);
     if (c.dpadLeftJustPressed) loadSkybox(skyboxIndex - 1);
 
-    // Camera orbit via right stick — center is width/2, height/2
+    // Camera orbit via right stick - center is width/2, height/2
     float nx = (c.rx / (float)width)  - 0.5;
     float ny = (c.ry / (float)height) - 0.5;
     float deadzone = 0.12;

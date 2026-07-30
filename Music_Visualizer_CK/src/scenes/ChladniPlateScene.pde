@@ -1,5 +1,5 @@
 /**
- * ChladniPlateScene (scene 46) — Opus 4.7 showcase, skybox mode
+ * ChladniPlateScene (scene 46) - Opus 4.7 showcase, skybox mode
  *
  * Chladni 1787 plate physics, wrapped around the camera as a living skybox.
  * Six vibrating plates form a cube; camera sits at the centre and looks
@@ -34,7 +34,7 @@ class ChladniPlateScene implements IScene {
   static final float HALF       = PLATE_SIZE / 2.0;
 
   // ── Cube face basis vectors (outward normal, local x-axis, local y-axis) ──
-  // +Z, -Z, +X, -X, +Y, -Y — ordered so neighbouring faces share edges nicely.
+  // +Z, -Z, +X, -X, +Y, -Y - ordered so neighbouring faces share edges nicely.
   static final int N_FACES = 6;
   final float[][] FACE_N = {
     { 0,  0,  1},  // +Z (front)
@@ -108,7 +108,7 @@ class ChladniPlateScene implements IScene {
   // ── State flags ───────────────────────────────────────────────────────────
   int   paletteIdx   = 0;
   final String[] paletteNames = { "Heat", "Ice", "Acid", "Plasma" };
-  // 0 = wire, 1 = fill, 2 = both.  Wire default — user likes the mesh view.
+  // 0 = wire, 1 = fill, 2 = both.  Wire default - user likes the mesh view.
   int   renderMode   = 0;
   final String[] renderModeNames = { "wire", "fill", "both" };
   float   u_time     = 0;
@@ -440,13 +440,13 @@ class ChladniPlateScene implements IScene {
       float mag = abs(u);
       float t = constrain(mag * 0.8, 0, 1);
 
-      // Outer glow halo (low-alpha soft ring) — lets grains read over colored fill.
+      // Outer glow halo (low-alpha soft ring) - lets grains read over colored fill.
       pg.stroke(0, 0, 100, 35);
       pg.strokeWeight(9);
       faceVertex(vtmp, faceIdx, gx[i], gy[i], u * ampEff + 12.0);
       pg.point(vtmp[0], vtmp[1], vtmp[2]);
 
-      // Inner hot core — pure white near nodal lines, palette tone when agitated.
+      // Inner hot core - pure white near nodal lines, palette tone when agitated.
       pg.stroke(grainColor(t));
       pg.strokeWeight(5);
       pg.point(vtmp[0], vtmp[1], vtmp[2]);
@@ -456,7 +456,7 @@ class ChladniPlateScene implements IScene {
   // ── Palettes ──────────────────────────────────────────────────────────────
 
   int paletteColor(float u, float alpha) {
-    // Use sqrt for a gentler ramp — keeps high-amplitude bands saturated
+    // Use sqrt for a gentler ramp - keeps high-amplitude bands saturated
     // instead of washing out into pale pink.
     float m = constrain(sqrt(abs(u)) * 1.1, 0, 1);
     switch (paletteIdx) {

@@ -6,7 +6,7 @@ import javax.sound.midi.Sequencer;
 import javax.sound.midi.Synthesizer;
 
 /**
- * MidiBridge — note-driven scene select from any MIDI input device.
+ * MidiBridge - note-driven scene select from any MIDI input device.
  *
  * Uses javax.sound.midi (JVM built-in) so no extra contributed library is
  * required. On start(), scans every MidiDevice that supports input, opens
@@ -15,13 +15,13 @@ import javax.sound.midi.Synthesizer;
  *
  * Mapping: note 36..(36 + SCENE_ORDER.length - 1) → SCENE_ORDER[note - 36].
  * Note 36 is the bottom-left pad on a Novation Launchpad / Mk2 / Mini and
- * the C in MPK pad banks A/B. Channel is ignored — any channel triggers.
+ * the C in MPK pad banks A/B. Channel is ignored - any channel triggers.
  *
  * Velocity 0 (note-on with vel=0 is the canonical note-off) is treated as
  * note-off and ignored, so a pad release doesn't double-fire.
  *
  * Hotkey (wired in main keyPressed):
- *   F4   toggle MIDI bridge — re-scan devices on enable
+ *   F4   toggle MIDI bridge - re-scan devices on enable
  *
  * The receiver runs on the JVM MIDI thread; it forwards work to the main
  * thread via a flag the draw loop polls, so scene switches still go through
@@ -51,7 +51,7 @@ class MidiBridge {
       for (MidiDevice.Info info : infos) {
         try {
           MidiDevice dev = MidiSystem.getMidiDevice(info);
-          // Skip outputs / sequencers — we want devices that source events.
+          // Skip outputs / sequencers - we want devices that source events.
           if (dev.getMaxTransmitters() == 0) continue;
           if (dev instanceof Sequencer)   continue;
           if (dev instanceof Synthesizer) continue;
@@ -63,7 +63,7 @@ class MidiBridge {
           dev.getTransmitter().setReceiver(new MidiReceiver());
           openDevices.add(dev);
           opened++;
-          println("[MIDI] opened: " + info.getName() + " — " + info.getDescription());
+          println("[MIDI] opened: " + info.getName() + " - " + info.getDescription());
         } catch (Throwable t) {
           // One bad device shouldn't stop the rest
         }
@@ -77,7 +77,7 @@ class MidiBridge {
       return;
     }
     enabled = true;
-    println("[MIDI] bridge ON — " + opened + " device(s)");
+    println("[MIDI] bridge ON - " + opened + " device(s)");
   }
 
   void stop() {
@@ -90,7 +90,7 @@ class MidiBridge {
     println("[MIDI] bridge OFF");
   }
 
-  // Polled by main draw() — applies any queued scene jump on the render thread.
+  // Polled by main draw() - applies any queued scene jump on the render thread.
   void drainPending() {
     if (!enabled) return;
     int target = pendingSceneId;
@@ -109,7 +109,7 @@ class MidiBridge {
   }
 
   // ── Inner Receiver ─────────────────────────────────────────────────────────
-  // Non-static inner class — outer MidiBridge instance is implicit.
+  // Non-static inner class - outer MidiBridge instance is implicit.
   class MidiReceiver implements javax.sound.midi.Receiver {
     public void send(MidiMessage msg, long timestamp) {
       if (!(msg instanceof ShortMessage)) return;

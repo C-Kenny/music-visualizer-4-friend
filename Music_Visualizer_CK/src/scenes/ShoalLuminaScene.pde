@@ -1,4 +1,4 @@
-// Shoal Lumina — state 15
+// Shoal Lumina - state 15
 // Night sea: stacked FFT wave trains (bioluminescent ADD), starfield twinkles with highs,
 // beat surge, foam sparks on mids. LT/RT = glow vs sparkle; sticks = drift, tide, hue, density.
 
@@ -108,7 +108,7 @@ class ShoalLuminaScene implements IScene {
 
     pg.blendMode(ADD);
 
-    // Wave stacks — each layer samples a band; deeper layers = lower bands
+    // Wave stacks - each layer samples a band; deeper layers = lower bands
     int layers = constrain(waveLayers, 14, 44);
     float layerBoost = layerScale * (0.92 + glow * 0.35 + surge * 0.4);
     for (int layer = 0; layer < layers; layer++) {
@@ -138,7 +138,7 @@ class ShoalLuminaScene implements IScene {
     pg.strokeWeight(1 + bass * 3);
     pg.line(0, horizon, pg.width, horizon);
 
-    // Foam sparks — drift with mids
+    // Foam sparks - drift with mids
     for (int i = 0; i < NUM_SPARKS; i++) {
       float sx = sparkX[i] * pg.width;
       float baseY = horizon + sparkY[i] * (pg.height - horizon) * 0.92;
@@ -166,7 +166,7 @@ class ShoalLuminaScene implements IScene {
     pg.fill(160, 235, 255);
     pg.textSize(ts);
     pg.textAlign(LEFT, TOP);
-    pg.text("Shoal Lumina  —  bioluminescent wave shoals", 12, 8 + mg);
+    pg.text("Shoal Lumina - bioluminescent wave shoals", 12, 8 + mg);
     pg.fill(190, 210, 225);
     pg.text("Layers " + layers + "   [`] adjust   - / = speed", 12, 8 + mg + lh);
     pg.text("LT glow " + nf(glow, 1, 2) + "   RT sparkle " + nf(sparkle, 1, 2), 12, 8 + mg + lh * 2);

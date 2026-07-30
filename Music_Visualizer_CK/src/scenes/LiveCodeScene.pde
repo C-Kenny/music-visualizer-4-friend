@@ -1,5 +1,5 @@
 /**
- * LiveCodeScene — live Java playground (Janino-backed).
+ * LiveCodeScene - live Java playground (Janino-backed).
  *
  * Edits to `live_code.java` in the user data dir hot-reload on save. Compile
  * failures display a red banner with the error; the previous good snippet
@@ -135,7 +135,7 @@ class LiveCodeScene implements IScene {
     pg.fill(255, 200, 200);
     pg.textAlign(LEFT, TOP);
     pg.textSize(ets);
-    pg.text("JANINO ERROR — " + console.filePath(), 12, y + 6);
+    pg.text("JANINO ERROR - " + console.filePath(), 12, y + 6);
     for (int i = 0; i < maxLines; i++) {
       pg.text(lines[i], 12, y + 6 + lh * (i + 1));
     }
@@ -155,7 +155,7 @@ class LiveCodeScene implements IScene {
       "//",
       "// Watchdog stalls (>2s) blacklist the scene. Y = force reload.",
       "//",
-      "// LStick: audio boost (↔) / time speed (↕) — applied before the snippet"
+      "// LStick: audio boost (↔) / time speed (↕) - applied before the snippet"
     };
   }
 

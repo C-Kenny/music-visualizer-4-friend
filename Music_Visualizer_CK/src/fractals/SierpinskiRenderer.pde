@@ -1,5 +1,5 @@
 /**
- * SierpinskiRenderer — recursive subdivision of an equilateral triangle into
+ * SierpinskiRenderer - recursive subdivision of an equilateral triangle into
  * 3 corner sub-triangles. Bass scales depth; level drives hue cycling.
  */
 class SierpinskiRenderer implements FractalRenderer {

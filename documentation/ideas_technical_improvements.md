@@ -1,6 +1,6 @@
 # Technical Improvements
 
-These are improvements to the codebase infrastructure — things that would make building new
+These are improvements to the codebase infrastructure - things that would make building new
 scenes faster, make the live experience better, and reduce the number of bugs per session.
 
 ---
@@ -49,7 +49,7 @@ the incoming scene. This is closer to how a DJ mixer works.
 ```
 
 Alternatively, introduce a `transitionProgress` (0..1) that scenes can query to draw
-themselves fading in — e.g. the worms could spawn from the center on entry, or the FFT worm
+themselves fading in - e.g. the worms could spawn from the center on entry, or the FFT worm
 could coil into a circle on entry.
 
 **Even better:** a dedicated "transition scene" drawn between the two states. A white flash,
@@ -119,7 +119,7 @@ The Java code becomes ~10 lines and the effect runs at full 4K resolution.
 
 ## 5. Beat history / pattern detection (medium impact, high effort)
 
-**Problem:** All beat reactions are instantaneous — they don't know about the rhythm structure.
+**Problem:** All beat reactions are instantaneous - they don't know about the rhythm structure.
 A bassline that hits every 4 beats looks the same as random noise to the current code.
 
 **Solution:** Store the last N beat timestamps and compute a BPM estimate. Then predict
@@ -162,7 +162,7 @@ This lets you build a "library" of tuned configurations for your favourite track
 
 ## 7. Joystick input recording and playback (fun, medium effort)
 
-**Problem:** When you're watching the visualizer, you want to drive it with the controller —
+**Problem:** When you're watching the visualizer, you want to drive it with the controller - 
 but if you want to screen-record a clean take, you have to play the controller perfectly every
 time.
 
@@ -175,7 +175,7 @@ time.
 ```
 
 A `ControllerSnapshot` is just the struct of stick positions and button states at one frame.
-At 60fps for 3 minutes, that's 10,800 snapshots — trivial memory.
+At 60fps for 3 minutes, that's 10,800 snapshots - trivial memory.
 
 This was suggested earlier and is worth doing. It's the feature that turns this visualizer
 into a performable, repeatable show piece.
@@ -216,7 +216,7 @@ I'm not touching the stick" problems.
 recompilation. The `watch.sh` script automates this but the feedback loop is still slow.
 
 **Partial solution:** Keep scene parameters in the Config class and expose them via the HUD.
-Changing a float in `Config.pde` only requires recompiling Config, not the whole sketch —
+Changing a float in `Config.pde` only requires recompiling Config, not the whole sketch - 
 Processing is smart about incremental compilation.
 
 **Better solution (requires work):** Extract scene parameters into a JSON file that's

@@ -1,11 +1,11 @@
 /**
- * CosmicLatticeScene (scene 39) — Alex Grey "Cosmic Lattice"
+ * CosmicLatticeScene (scene 39) - Alex Grey "Cosmic Lattice"
  *
  * Undulating pseudo-3D grid of friendly energy figures holding hands across
  * a luminous web. Beats fire a shockwave ring that punches nodes forward in
  * depth. A rotating mandala yantra glows behind the lattice. Figures carry a
  * vertical chakra column that pulses to the spectrum, and their pupils
- * collectively gaze toward the center — hive-mind effect.
+ * collectively gaze toward the center - hive-mind effect.
  *
  * Visual layers:
  *   1. Rotating mandala backdrop (concentric yantra + glow core)
@@ -14,19 +14,19 @@
  *   4. Figures (round/star/flower buddy) with 7-dot chakra column, gazing eyes
  *
  * Audio:
- *   Bass  — lattice breathing + mandala pulse + figure scale
- *   Mid   — thread turbulence + packet speed
- *   High  — orbital shimmer + chakra glow
- *   Beat  — shockwave ring + node flash
+ *   Bass - lattice breathing + mandala pulse + figure scale
+ *   Mid - thread turbulence + packet speed
+ *   High - orbital shimmer + chakra glow
+ *   Beat - shockwave ring + node flash
  *
  * Controller:
- *   LStick ↕    — zoom
- *   LStick ↔    — horizontal drift
- *   RStick ↔    — hue shift
- *   RStick ↕    — thread turbulence
- *   LT / RT     — lattice density
- *   LB / RB     — figure style (round / star / flower)
- *   A           — reset
+ *   LStick ↕ - zoom
+ *   LStick ↔ - horizontal drift
+ *   RStick ↔ - hue shift
+ *   RStick ↕ - thread turbulence
+ *   LT / RT - lattice density
+ *   LB / RB - figure style (round / star / flower)
+ *   A - reset
  */
 class CosmicLatticeScene implements IScene {
 
@@ -428,7 +428,7 @@ class CosmicLatticeScene implements IScene {
       drawFigureChakra(pg, n, halfH, alphaFrac, figHue, centerX, centerY, distWorld, ts);
     }
 
-    // Chakra column — skip for round buddy (too dominant on small body).
+    // Chakra column - skip for round buddy (too dominant on small body).
     // Star/flower buddies carry it as a subtle internal accent.
     if (figureStyle != 0) {
       drawChakraColumn(pg, n, halfH, alphaFrac);

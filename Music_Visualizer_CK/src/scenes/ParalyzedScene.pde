@@ -1,56 +1,56 @@
 /**
- * ParalyzedScene — inspired by NF's "Paralyzed" (severe depression, emotional
+ * ParalyzedScene - inspired by NF's "Paralyzed" (severe depression, emotional
  * numbness, feeling frozen). No figure. The screen itself is a pane of glass
  * under pressure: hairline fractures spread from random points, live for a
- * while, and fade away as new ones take their place — a restless, healing-
+ * while, and fade away as new ones take their place - a restless, healing-
  * never-quite-happening network rather than a frozen picture. A soft glow
  * sits behind the glass, out of reach, dimming as the pressure rises and
  * drifting on a slow arc across the sky (song position, or a ~90s loop for
- * device input) — the world keeps moving while nothing in here does.
+ * device input) - the world keeps moving while nothing in here does.
  *
  * Hidden in the middle is a body-shaped no-go zone cracks simply won't grow
- * through — never drawn directly, but as the rest of the pane fills in it
+ * through - never drawn directly, but as the rest of the pane fills in it
  * reads like a chalk outline left behind by everything growing around it.
  *
  * No hard-coded timestamps: the arc rides a slow-following energy envelope
  * normalised against its own running min/max, so it adapts to whatever song
  * is loaded, not just this one.
  *
- *   pressure — 0..1, "the weight". Rises fast (spawns new fractures), holds
- *              once reached — a dip alone doesn't undo accumulated damage.
- *   collapse — detected as a real sustained fade after having been deep.
+ *   pressure - 0..1, "the weight". Rises fast (spawns new fractures), holds
+ *              once reached - a dip alone doesn't undo accumulated damage.
+ *   collapse - detected as a real sustained fade after having been deep.
  *              Existing cracks stay; their light fades instead.
  *
  * Knobs (controller sticks / web sliders / autopilot):
- *   pressure — manual pull on the pressure envelope
- *   hue      — cold (numb blue) .. warm (panic amber) bias on the crack glow
- *   glow     — overall brightness
- *   grain    — static/noise density (the "can't feel anything" texture)
- *   crack    — beat-flash intensity on individual fractures
+ *   pressure - manual pull on the pressure envelope
+ *   hue - cold (numb blue) .. warm (panic amber) bias on the crack glow
+ *   glow - overall brightness
+ *   grain - static/noise density (the "can't feel anything" texture)
+ *   crack - beat-flash intensity on individual fractures
  *
  * Buttons: A resets knobs, X triggers a manual gasp (+ spark burst), Y forces
  * the collapse (drains the light early, for cueing the ending live), B wipes
  * the pane.
  *
- * Foreground: a single spark — the one piece of this scene you actually
+ * Foreground: a single spark - the one piece of this scene you actually
  * pilot. Left stick flies it anywhere on the pane (inertial, drags to a
  * stop rather than snapping); right stick aims a Tesla-coil discharge out
  * from it when nothing's nearby to ground on. Fly close enough to an
- * existing crack and the discharge grabs it instead — grounding onto the
+ * existing crack and the discharge grabs it instead - grounding onto the
  * network, sending a glint down it, riding along as you move past. Hard
  * bass hits jolt the spark off course mid-flight, same restlessness as the
  * rest of the pane. L3 freezes it in place, R3 snaps it back to center
- * with a burst. 10s with no stick/button input and it flies itself —
- * Perlin-drift wander, aimed the way it's headed — same fade-out-on-touch
+ * with a burst. 10s with no stick/button input and it flies itself - 
+ * Perlin-drift wander, aimed the way it's headed - same fade-out-on-touch
  * handover as ParamAutoPilot, but scene-local since the spark isn't a
  * SceneParam.
  */
 
-// A body-shaped no-go zone, never drawn — cracks simply refuse to grow
+// A body-shaped no-go zone, never drawn - cracks simply refuse to grow
 // through it. As the rest of the pane fills in, the untouched silhouette
 // reads like a chalk outline left behind by everything growing around it.
 // Fallen pose: head + torso diagonal, both arms flung up past the head,
-// legs splayed (one bent, one straight) — see documentation reference art.
+// legs splayed (one bent, one straight) - see documentation reference art.
 float silDistToSeg(float px, float py, float x1, float y1, float x2, float y2) {
   float dx = x2 - x1, dy = y2 - y1;
   float lenSq = dx * dx + dy * dy;
@@ -58,7 +58,7 @@ float silDistToSeg(float px, float py, float x1, float y1, float x2, float y2) {
   return dist(px, py, x1 + t * dx, y1 + t * dy);
 }
 
-// Closest point on segment (x1,y1)-(x2,y2) to (px,py), plus the distance —
+// Closest point on segment (x1,y1)-(x2,y2) to (px,py), plus the distance - 
 // used by the foreground spark to find a nearby crack to ground onto.
 float[] closestPointOnSegment(float px, float py, float x1, float y1, float x2, float y2) {
   float dx = x2 - x1, dy = y2 - y1;
@@ -95,7 +95,7 @@ class GlassCrack {
 
   GlassCrack(float x, float y, int maxDepth, int now, float pgW, float pgH) {
     birthFrame = now;
-    lifeFrames = (int) random(500, 1400); // ~8-23s at 60fps — cracks come and go
+    lifeFrames = (int) random(500, 1400); // ~8-23s at 60fps - cracks come and go
     shimmerSeed = random(1000);
     this.pgW = pgW; this.pgH = pgH;
     grow(x, y, random(TWO_PI), random(70, 150) * uiScale(), 0, maxDepth);
@@ -104,7 +104,7 @@ class GlassCrack {
   void grow(float x, float y, float angle, float len, int depth, int maxDepth) {
     float nx = x + cos(angle) * len, ny = y + sin(angle) * len;
     float mx = (x + nx) * 0.5, my = (y + ny) * 0.5;
-    // The silhouette is a wall cracks refuse to cross — they simply stop.
+    // The silhouette is a wall cracks refuse to cross - they simply stop.
     if (inCrimeSceneSilhouette(nx, ny, pgW, pgH) || inCrimeSceneSilhouette(mx, my, pgW, pgH)) return;
     segments.add(new float[]{x, y, nx, ny, depth});
     if (depth >= maxDepth) return;
@@ -121,7 +121,7 @@ class ParalyzedScene implements IScene {
 
   // ── Tuning ──────────────────────────────────────────────────────────────
   final float ENERGY_FOLLOW   = 0.003;  // long-term energy smoothing (slow)
-  final float TREND_FOLLOW    = 0.0006; // even slower — for real trend reversals
+  final float TREND_FOLLOW    = 0.0006; // even slower - for real trend reversals
   final float RANGE_ADAPT     = 0.0006; // running min/max adaptation speed
   final float PRESSURE_RISE   = 0.02;
   final float FADE_ONLY_ON_COLLAPSE = 0.006; // how fast light drains, collapse only
@@ -145,7 +145,7 @@ class ParalyzedScene implements IScene {
   float runningMax    = 0;
   boolean rangeSeeded = false;
 
-  float pressure     = 0;   // the weight — mostly one-way
+  float pressure     = 0;   // the weight - mostly one-way
   boolean everDeep   = false;
   boolean manualCollapse = false; // Y toggles a performer-forced collapse
   float lightFade    = 1;   // 1 = full light, drains only on real collapse
@@ -157,7 +157,7 @@ class ParalyzedScene implements IScene {
   float beatPulse = 0;   // fast-decaying whole-screen "heartbeat" hit
   float smoothBass = 0, smoothMid = 0, smoothHigh = 0;
 
-  // ── Foreground: the free-flying spark — the one thing you actually pilot ─
+  // ── Foreground: the free-flying spark - the one thing you actually pilot ─
   final int   SPARK_TRAIL_LEN = 36;
   final float BOLT_MAX_LEN_FRACTION = 0.26; // discharge reach as a fraction of min(w,h)
   final float SNAP_RADIUS_FRACTION  = 0.15; // how close to a crack before the spark grounds onto it
@@ -166,8 +166,8 @@ class ParalyzedScene implements IScene {
   int lastSparkInputMillis = 0;              // real-input timestamp; drives the 10s idle autopilot
   float moveInputX = 0, moveInputY = 0;  // raw left-stick reading, set in applyController
   float aimAngle = 0, aimMag = 0;        // right-stick direction/magnitude for the discharge
-  boolean sparkFrozen = false;           // L3 — freeze movement in place
-  boolean recenterRequested = false;     // R3 — consumed in drawScene (needs pg dims)
+  boolean sparkFrozen = false;           // L3 - freeze movement in place
+  boolean recenterRequested = false;     // R3 - consumed in drawScene (needs pg dims)
   float sparkX = -1, sparkY = -1;        // -1 = not yet placed; lazy-inits to screen center
   float sparkVX = 0, sparkVY = 0;
   float sparkBurst = 0;                  // decaying release/gasp flash
@@ -193,19 +193,19 @@ class ParalyzedScene implements IScene {
 
     float target = constrain(intensity + pPressure.value, 0, 1);
     if (target > pressure) pressure = lerp(pressure, target, PRESSURE_RISE);
-    // else: holds — cracks don't un-happen just because it got quieter for a moment
+    // else: holds - cracks don't un-happen just because it got quieter for a moment
 
     // Light only ever drains during a genuine collapse; otherwise it holds.
     if (collapsing) lightFade = lerp(lightFade, 0.15, FADE_ONLY_ON_COLLAPSE);
 
-    // Cracks live, fade, and retire — the network keeps moving instead of
+    // Cracks live, fade, and retire - the network keeps moving instead of
     // freezing solid. Pressure sets how busy it stays, not a fixed picture.
     for (int i = cracks.size() - 1; i >= 0; i--) {
       if (frameCount - cracks.get(i).birthFrame > cracks.get(i).lifeFrames) cracks.remove(i);
     }
 
     // Spawn new fractures as accumulated pressure demands more of them.
-    // A small baseline exists from the start — the pane was never whole.
+    // A small baseline exists from the start - the pane was never whole.
     int wantCracks = 3 + (int) (pressure * (MAX_CRACKS - 3));
     int spawnTries = 0;
     while (cracks.size() < wantCracks && spawnTries < 40) {
@@ -227,7 +227,7 @@ class ParalyzedScene implements IScene {
     smoothHigh = lerp(smoothHigh, analyzer.high, 0.22);
 
     // Beat = a gasp: a handful of existing fractures flicker bright and a
-    // glint races along them — trapped energy hunting for a way out, still
+    // glint races along them - trapped energy hunting for a way out, still
     // contained by the pane. Harder hits wake more of the network at once.
     if (analyzer.isBeat && !cracks.isEmpty() && pressure > 0.08) {
       int flashes = 1 + (int) constrain(smoothBass * 4, 0, cracks.size() - 1);
@@ -256,7 +256,7 @@ class ParalyzedScene implements IScene {
       sparkVX = 0; sparkVY = 0; sparkBurst = 1;
       recenterRequested = false;
     }
-    // No controller input for a while — the spark flies itself, wandering
+    // No controller input for a while - the spark flies itself, wandering
     // the pane on slow Perlin drift instead of just sitting there.
     boolean autoFlight = (millis() - lastSparkInputMillis) > IDLE_SECONDS_BEFORE_AUTOFLIGHT * 1000;
     if (autoFlight && !sparkFrozen) {
@@ -271,14 +271,14 @@ class ParalyzedScene implements IScene {
     if (!sparkFrozen) {
       sparkVX = constrain(sparkVX + moveInputX * moveAccel, -moveMaxSpeed, moveMaxSpeed);
       sparkVY = constrain(sparkVY + moveInputY * moveAccel, -moveMaxSpeed, moveMaxSpeed);
-      sparkVX *= 0.92; sparkVY *= 0.92; // drag — release the stick and it glides to a stop
+      sparkVX *= 0.92; sparkVY *= 0.92; // drag - release the stick and it glides to a stop
       sparkX += sparkVX; sparkY += sparkVY;
       if (sparkX < margin)            { sparkX = margin;            sparkVX =  abs(sparkVX) * 0.3; }
       if (sparkX > pg.width - margin) { sparkX = pg.width - margin;  sparkVX = -abs(sparkVX) * 0.3; }
       if (sparkY < margin)            { sparkY = margin;            sparkVY =  abs(sparkVY) * 0.3; }
       if (sparkY > pg.height - margin){ sparkY = pg.height - margin; sparkVY = -abs(sparkVY) * 0.3; }
     }
-    // A hard bass hit jolts the spark off course mid-flight — restless, same
+    // A hard bass hit jolts the spark off course mid-flight - restless, same
     // as the rest of the pane never quite settling.
     if (analyzer.isBeat && smoothBass > 0.32 && !sparkFrozen) {
       float joltA = random(TWO_PI);
@@ -302,7 +302,7 @@ class ParalyzedScene implements IScene {
     sparkTrailFilled = min(sparkTrailFilled + 1, SPARK_TRAIL_LEN);
 
     // Fly close enough to an existing crack and the discharge grounds onto
-    // it instead of free-aiming — snapping to the network as you move.
+    // it instead of free-aiming - snapping to the network as you move.
     for (GlassCrack cr : cracks) cr.liveThisFrame = false;
     GlassCrack nearestCrack = null;
     float nearestX = 0, nearestY = 0, nearestDist = Float.MAX_VALUE;
@@ -320,17 +320,17 @@ class ParalyzedScene implements IScene {
       bx2 = nearestX; by2 = nearestY;
       nearestCrack.liveThisFrame = true;
       if (nearestCrack != lastAttachedCrack) {
-        // Just grounded on a new crack — a bright jolt down it.
+        // Just grounded on a new crack - a bright jolt down it.
         nearestCrack.flash = 1;
         nearestCrack.sparkPos = 0;
         sparkBurst = max(sparkBurst, 0.5);
       } else if (frameCount % 25 == 0) {
-        // Stayed attached — keep recharging it rather than going dark.
+        // Stayed attached - keep recharging it rather than going dark.
         nearestCrack.flash = max(nearestCrack.flash, 0.6);
         if (nearestCrack.sparkPos < 0) nearestCrack.sparkPos = 0;
       }
     } else {
-      // Nothing to ground on — free-aim discharge (right stick), bass swells its reach.
+      // Nothing to ground on - free-aim discharge (right stick), bass swells its reach.
       float boltLen = min(pg.width, pg.height) * BOLT_MAX_LEN_FRACTION * aimMag * (0.65 + 0.35 * smoothBass);
       bx2 = sparkX + cos(aimAngle) * boltLen;
       by2 = sparkY + sin(aimAngle) * boltLen;
@@ -338,14 +338,14 @@ class ParalyzedScene implements IScene {
     lastAttachedCrack = attached ? nearestCrack : null;
 
     // Tesla-coil discharge: a jittery, occasionally-branching arc instead of
-    // a plain line — rebuilt fresh every frame so it crackles rather than sits.
+    // a plain line - rebuilt fresh every frame so it crackles rather than sits.
     buildTeslaBolt(sparkX, sparkY, bx2, by2);
 
     render(pg, intensity, sparkX, sparkY, aimMag, attached);
   }
 
   // Jagged mid-point-displacement bolt from (x1,y1) to (x2,y2), with small
-  // side-branches near the live end — a Tesla coil discharge, not a wire.
+  // side-branches near the live end - a Tesla coil discharge, not a wire.
   void buildTeslaBolt(float x1, float y1, float x2, float y2) {
     teslaBolt.clear();
     int segs = 7;
@@ -374,7 +374,7 @@ class ParalyzedScene implements IScene {
     pg.background(rC * 0.3, gC * 0.3, bC * 0.35);
     pg.pushStyle();
 
-    // ── Heartbeat wash — the whole pane answers a hit, then settles ─────
+    // ── Heartbeat wash - the whole pane answers a hit, then settles ─────
     pg.blendMode(ADD);
     pg.noStroke();
     if (beatPulse > 0.02) {
@@ -382,10 +382,10 @@ class ParalyzedScene implements IScene {
       pg.rect(0, 0, pg.width, pg.height);
     }
 
-    // ── Something behind the glass — a soft glow, out of reach ──────────
+    // ── Something behind the glass - a soft glow, out of reach ──────────
     // Smooth continuous falloff (many thin steps, Gaussian-ish) instead of a
-    // handful of big jumps — that's what reads as "rings" instead of a glow.
-    // It also drifts on a slow arc like the sun crossing the sky — the world
+    // handful of big jumps - that's what reads as "rings" instead of a glow.
+    // It also drifts on a slow arc like the sun crossing the sky - the world
     // keeps moving on the other side of the glass while nothing in here does.
     float arcT;
     int songLen = (audio != null) ? audio.getLength() : 0;
@@ -409,7 +409,7 @@ class ParalyzedScene implements IScene {
     pg.ellipse(glowX, glowY, maxR * 0.045, maxR * 0.045);
     pg.blendMode(BLEND);
 
-    // ── Static grain — "can't feel anything" texture, alive not just noise ─
+    // ── Static grain - "can't feel anything" texture, alive not just noise ─
     if (grainX == null) {
       grainX = new float[GRAIN_COUNT]; grainY = new float[GRAIN_COUNT]; grainPhase = new float[GRAIN_COUNT];
       for (int i = 0; i < GRAIN_COUNT; i++) {
@@ -427,7 +427,7 @@ class ParalyzedScene implements IScene {
     }
     pg.blendMode(BLEND);
 
-    // ── The glass pane, under pressure — livelier: shimmer + traveling sparks
+    // ── The glass pane, under pressure - livelier: shimmer + traveling sparks
     float glowAmt = pGlow.value * lightFade;
     for (GlassCrack c : cracks) {
       float fadeIn  = constrain((frameCount - c.birthFrame) / 30.0, 0, 1);           // grows in over 0.5s
@@ -447,7 +447,7 @@ class ParalyzedScene implements IScene {
         pg.line(seg[0], seg[1], seg[2], seg[3]);
       }
     }
-    // Traveling glints — trapped energy racing along a fracture, contained.
+    // Traveling glints - trapped energy racing along a fracture, contained.
     pg.blendMode(ADD);
     pg.noStroke();
     for (GlassCrack c : cracks) {
@@ -461,7 +461,7 @@ class ParalyzedScene implements IScene {
     }
     pg.blendMode(BLEND);
 
-    // ── Vignette — tightens with tension, never fully releases ─────────
+    // ── Vignette - tightens with tension, never fully releases ─────────
     pg.noStroke();
     int vigSteps = 5;
     for (int i = 0; i < vigSteps; i++) {
@@ -479,7 +479,7 @@ class ParalyzedScene implements IScene {
     // Grounded on a crack, the discharge runs at full charge regardless of aim.
     float chargeLevel = attached ? 1.0 : constrain(0.18 + 0.82 * aimMag, 0, 1);
 
-    // Tesla-coil arc — bright core + soft outer glow, flickering with tension.
+    // Tesla-coil arc - bright core + soft outer glow, flickering with tension.
     for (float[] b : teslaBolt) {
       boolean isBranch = b.length > 4;
       float flicker = 0.6 + 0.4 * noise(b[0] * 0.01, frameCount * 0.3);
@@ -506,7 +506,7 @@ class ParalyzedScene implements IScene {
       }
     }
 
-    // The spark itself — layered glow, brighter on release/gasp bursts.
+    // The spark itself - layered glow, brighter on release/gasp bursts.
     pg.noStroke();
     float sparkGlow = 1 + sparkBurst * 1.8;
     for (int layer = 4; layer >= 1; layer--) {
@@ -523,7 +523,7 @@ class ParalyzedScene implements IScene {
   }
 
   void onEnter() {
-    // Deliberately do not clear cracks/pressure history — carried damage
+    // Deliberately do not clear cracks/pressure history - carried damage
     // persists like the feeling does. Only reset the purely visual decay.
     lastSparkInputMillis = millis(); // fresh idle window on entry
   }
@@ -531,7 +531,7 @@ class ParalyzedScene implements IScene {
   void onExit() {}
 
   void applyController(Controller c) {
-    // Both sticks are dedicated to the foreground spark — that's the one
+    // Both sticks are dedicated to the foreground spark - that's the one
     // thing in this scene you actually drive in real time. The ambient
     // knobs (pressure/hue/glow/grain/crack) stay reachable via keyboard
     // < > - + or the web UI, same as any SceneParam.
@@ -552,14 +552,14 @@ class ParalyzedScene implements IScene {
     if (abs(lx) > dz || abs(ly) > dz || rmag > dz || anyButton) lastSparkInputMillis = millis();
 
     if (c.aJustPressed) for (SceneParam q : params) q.reset();
-    if (c.leftStickClickJustPressed)  sparkFrozen = !sparkFrozen;      // L3 — freeze in place
-    if (c.rightStickClickJustPressed) recenterRequested = true;        // R3 — snap back to center + burst
+    if (c.leftStickClickJustPressed)  sparkFrozen = !sparkFrozen;      // L3 - freeze in place
+    if (c.rightStickClickJustPressed) recenterRequested = true;        // R3 - snap back to center + burst
     if (c.xJustPressed) triggerGasp();
     if (c.yJustPressed) manualCollapse = !manualCollapse;
     if (c.bJustPressed) resetPane();
   }
 
-  // A performer-triggered gasp — same shape as a beat hit, on demand, plus a
+  // A performer-triggered gasp - same shape as a beat hit, on demand, plus a
   // burst on the foreground spark.
   void triggerGasp() {
     beatPulse = 1;
@@ -598,9 +598,9 @@ class ParalyzedScene implements IScene {
       "=== Paralyzed ===",
       "// the pane cracks under pressure, but never shatters",
       "intensity = normalize(longFollow(RMS), runningMin, runningMax)",
-      "pressure  = rise fast toward intensity, holds — never un-cracks",
+      "pressure  = rise fast toward intensity, holds - never un-cracks",
       "cracks    = live ~10-20s, fade, retire; pressure sets how many at once",
-      "silhouette= body-shaped void, never drawn — cracks refuse to cross it",
+      "silhouette= body-shaped void, never drawn - cracks refuse to cross it",
       "collapse  = everDeep && (trend - long) > threshold * range",
       "lightFade = drains only on real collapse  // network stays, light leaves",
       "beat      = several cracks flicker + a glint races along  // a gasp",
@@ -620,7 +620,7 @@ class ParalyzedScene implements IScene {
       new ControllerLayout("A", "Reset knobs to default"),
       new ControllerLayout("X", "Trigger a gasp (crack flash + spark burst)"),
       new ControllerLayout("Y", "Toggle forced collapse"),
-      new ControllerLayout("B", "Wipe the pane — reset pressure, cracks & spark"),
+      new ControllerLayout("B", "Wipe the pane - reset pressure, cracks & spark"),
     };
   }
 }

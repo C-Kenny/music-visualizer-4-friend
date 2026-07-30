@@ -224,7 +224,7 @@ void drawGridNodes(PGraphics pg, float originX, float originY, float stepX, floa
         boolean isLetter = isLetterNode(x, y);
         float r = energised ? (isLetter ? 7.0 : 4.0) : 3.0; // Scale nodes
         
-        // (Battery column dots removed — flow itself shows energy)
+        // (Battery column dots removed - flow itself shows energy)
         if (x == cols - 1 && y == rows - 1) {
           float lamp = constrain(lampGlow * 255.0, 0, 255);
           pg.fill(30, 255, 220, 80 + lamp); // Gold Lamp

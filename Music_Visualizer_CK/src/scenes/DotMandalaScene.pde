@@ -1,5 +1,5 @@
 /**
- * DotMandalaScene (scene 41) — v2
+ * DotMandalaScene (scene 41) - v2
  *
  * Concentric rings of dots forming a sacred geometry mandala.
  * Each ring maps to a distinct band of the frequency spectrum so individual
@@ -9,23 +9,23 @@
  *   Outer 2 rings → sub-bass/bass  (analyzer.spectrum bands 0–5)
  *   Middle 4 rings → mid           (bands 6–15)
  *   Inner 4 rings  → high          (bands 16–41)
- *   Beat bloom wave — radial shockwave expanding outward from center
- *   Polar waveform ring — raw oscilloscope at circumference (toggle with B)
+ *   Beat bloom wave - radial shockwave expanding outward from center
+ *   Polar waveform ring - raw oscilloscope at circumference (toggle with B)
  *
  * Audio:
- *   Bass        — outer ring size + rotation speed boost
- *   Mid         — mid ring brightness + inner rotation reversal
- *   High        — inner ring sparkle + waveform amplitude
- *   Beat        — bloom shockwave propagating outward
+ *   Bass - outer ring size + rotation speed boost
+ *   Mid - mid ring brightness + inner rotation reversal
+ *   High - inner ring sparkle + waveform amplitude
+ *   Beat - bloom shockwave propagating outward
  *
  * Controller:
- *   LStick ↕    — zoom
- *   LT (hold)   — slow rotation
- *   RT (hold)   — fast rotation
- *   A           — cycle colour mode (blue/gold → rainbow → ice → ember)
- *   B           — toggle waveform ring
- *   X           — manual beat burst
- *   LB / RB     — reverse / step ring count
+ *   LStick ↕ - zoom
+ *   LT (hold) - slow rotation
+ *   RT (hold) - fast rotation
+ *   A - cycle colour mode (blue/gold → rainbow → ice → ember)
+ *   B - toggle waveform ring
+ *   X - manual beat burst
+ *   LB / RB - reverse / step ring count
  */
 class DotMandalaScene implements IScene, IForeground {
 
@@ -293,7 +293,7 @@ class DotMandalaScene implements IScene, IForeground {
         pg.fill((int)(ic * 0.65f), (int)(ic * 0.88f), (int)ic,
                 155 + (int)(bright * 100) + (int)(wave * 60));
         break;
-      case 3: // ember — outer cool, inner hot
+      case 3: // ember - outer cool, inner hot
         float t = 1.0 - (float)(ri) / RINGS.length;
         int er = (int)(200 + t * 55);
         int eg = (int)(60 + t * 80 + bright * 60);

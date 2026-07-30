@@ -1,11 +1,11 @@
 /**
  * SriYantraScene (scene 36)
  *
- * The Sri Yantra — a 2000-year-old sacred geometry diagram composed of
+ * The Sri Yantra - a 2000-year-old sacred geometry diagram composed of
  * nine interlocking triangles (4 pointing up / Shiva, 5 pointing down / Shakti),
  * surrounded by lotus petals and a square outer boundary.
  *
- * Construction (approximate — true Sri Yantra requires solving a 5-variable
+ * Construction (approximate - true Sri Yantra requires solving a 5-variable
  * nonlinear system; this uses a high-quality numerical approximation):
  *
  *   • 4 upward isosceles triangles  (masculine principle)
@@ -18,12 +18,12 @@
  * Each concentric region responds to a different audio band.
  *
  * Controller:
- *   RStick ↕  — zoom
- *   A          — toggle slow rotation
- *   B          — toggle colour mode (gold / rainbow / monochrome)
- *   Bass       — triangles pulse outward
- *   Mid        — lotus petals bloom
- *   Beat       — full flash
+ *   RStick ↕ - zoom
+ *   A - toggle slow rotation
+ *   B - toggle colour mode (gold / rainbow / monochrome)
+ *   Bass - triangles pulse outward
+ *   Mid - lotus petals bloom
+ *   Beat - full flash
  */
 class SriYantraScene implements IScene, IForeground {
 
@@ -48,26 +48,26 @@ class SriYantraScene implements IScene, IForeground {
   PShape[] triShapes;
 
   // ── Triangle data ─────────────────────────────────────────────────────────
-  // Each row: [tip_x, tip_y, base_y, half_width]  — normalized, y-up, unit=1
+  // Each row: [tip_x, tip_y, base_y, half_width] - normalized, y-up, unit=1
   // Positive tip_y = upward triangle; tip_y < base_y = downward triangle.
   // These are approximate but produce a visually convincing Sri Yantra.
 
-  // Upward triangles (tip at top — negative screen y)
+  // Upward triangles (tip at top - negative screen y)
   // [tip_x, tip_y, base_y, base_half_width]  (y-up convention)
   float[][] upTri = {
-    { 0,  0.955f, -0.440f,  0.810f },   // U1 — outermost
+    { 0,  0.955f, -0.440f,  0.810f },   // U1 - outermost
     { 0,  0.560f, -0.730f,  0.605f },   // U2
     { 0,  0.235f, -0.370f,  0.370f },   // U3
-    { 0, -0.050f, -0.555f,  0.215f },   // U4 — innermost upward
+    { 0, -0.050f, -0.555f,  0.215f },   // U4 - innermost upward
   };
 
-  // Downward triangles (tip at bottom — positive screen y)
+  // Downward triangles (tip at bottom - positive screen y)
   float[][] downTri = {
-    { 0, -0.940f,  0.460f,  0.830f },   // D1 — outermost
+    { 0, -0.940f,  0.460f,  0.830f },   // D1 - outermost
     { 0, -0.555f,  0.695f,  0.610f },   // D2
     { 0, -0.240f,  0.460f,  0.455f },   // D3
     { 0,  0.060f,  0.590f,  0.295f },   // D4
-    { 0,  0.185f,  0.080f,  0.125f },   // D5 — innermost downward (central triangle)
+    { 0,  0.185f,  0.080f,  0.125f },   // D5 - innermost downward (central triangle)
   };
 
   // ── IScene lifecycle ──────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ class SriYantraScene implements IScene, IForeground {
 
   void onEnter() {
     rotation = 0;
-    // Build normalized (S=1) triangle PShapes — vertex coords are fixed,
+    // Build normalized (S=1) triangle PShapes - vertex coords are fixed,
     // only scale changes per frame. Caller applies pg.scale(S*(1+pulse)).
     triShapes = new PShape[downTri.length + upTri.length];
     for (int i = 0; i < downTri.length; i++)
@@ -148,7 +148,7 @@ class SriYantraScene implements IScene, IForeground {
     pg.endDraw();
   }
 
-  // Draw only the yantra geometry — no background, no blend mode changes.
+  // Draw only the yantra geometry - no background, no blend mode changes.
   // Used by combo scenes that supply their own background layer.
   void drawForeground(PGraphics pg) {
     sBass = lerp(sBass, analyzer.bass, 0.06);
@@ -247,7 +247,7 @@ class SriYantraScene implements IScene, IForeground {
       case 0: // gold palette
         float g = 180 + bright * 75;
         pg.stroke(g, g * 0.84, g * 0.2, alpha * 220); break;
-      case 1: // rainbow — hue by element index
+      case 1: // rainbow - hue by element index
         pg.colorMode(HSB, 360, 100, 100, 100);
         float h = ((idx + 5) * 37) % 360;
         pg.stroke(h, 70, 60 + bright * 40, alpha * 90);

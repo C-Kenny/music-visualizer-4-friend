@@ -7,7 +7,7 @@ state. This doc surveys cleaner approaches so we can pick a long-term path.
 
 > **Status:** 2026-05-10. Current production path is `loopback.sh` (hardened
 > for reboot survival in `59e70c9`) + `run-with-loopback.sh` wrapper for trap
-> guarantees. Both are stopgaps — the global mutation is still the root issue.
+> guarantees. Both are stopgaps - the global mutation is still the root issue.
 
 ---
 
@@ -19,7 +19,7 @@ PipeWire system, `pipewire-alsa` provides ONE virtual ALSA device named
 to surface the desired capture as ALSA `default` (globally or per-process)
 or replace the audio backend entirely.
 
-This is why "just set `PULSE_SOURCE=...`" doesn't work — that only affects
+This is why "just set `PULSE_SOURCE=...`" doesn't work - that only affects
 native Pulse clients, and JVM is not one.
 
 ---
@@ -39,7 +39,7 @@ PIPEWIRE_NODE="alsa_output.pci-0000_0e_00.4.analog-stereo.monitor" ./run.sh
 ```
 
 **Pros:**
-- Per-process — zero blast radius on crash, reboot, terminal close.
+- Per-process - zero blast radius on crash, reboot, terminal close.
 - No state file, no `off` step, no wireplumber cache pollution.
 - Trivial to wrap (`run-with-pw-node.sh` resolves current sink monitor →
   exports env var → exec run.sh).
@@ -72,16 +72,16 @@ pactl unload-module <module-id>
 ```
 
 Creates a named virtual source we own. Loading/unloading is fully scoped to
-our session — no persistent state in wireplumber's `default-nodes` cache.
+our session - no persistent state in wireplumber's `default-nodes` cache.
 
 **Pros:**
 - Survives sink changes (master can be re-set without changing source name).
-- Cleanup is by module ID, not by reading saved-prior state — much harder to
+- Cleanup is by module ID, not by reading saved-prior state - much harder to
   desync.
 - Doesn't need the user to know about monitor sources.
 
 **Cons:**
-- Doesn't solve "JVM only sees ALSA default" — still need `PIPEWIRE_NODE` or
+- Doesn't solve "JVM only sees ALSA default" - still need `PIPEWIRE_NODE` or
   a default-source flip to make JVM actually pick this source.
 - So it's a complement to A or C, not a replacement.
 - Slightly more state to track (module ID).
@@ -100,7 +100,7 @@ Wrapper traps EXIT/INT/TERM.
 - Already shipping.
 
 **Cons:**
-- Global mutation. WirePlumber persists it to `default-nodes` — survives
+- Global mutation. WirePlumber persists it to `default-nodes` - survives
   reboot if cleanup is missed (kernel panic, OOM kill, machine yanked).
 - Hardening reduces but doesn't eliminate the wedge risk. If the saved
   prior source is gone *and* every available source is a monitor, fallback
@@ -131,7 +131,7 @@ dialog the portal shows.
 - Permission dialog every launch unless persisted (and we can't persist
   programmatically without being a sandboxed app).
 - Returns a PipeWire node, not an ALSA device. JVM still can't see it
-  directly — would need to bridge via `pw-loopback` or rewrite the audio
+  directly - would need to bridge via `pw-loopback` or rewrite the audio
   capture path to use `pw_stream` natively (JNI to libpipewire).
 - Way more code. Probably 3-5 days of work + ongoing maintenance.
 
@@ -147,7 +147,7 @@ written in C, called from Java via JNI. Same approach OBS takes internally
 (though OBS is C++ throughout).
 
 **Pros:**
-- Total control — per-process, named node, zero ALSA involvement.
+- Total control - per-process, named node, zero ALSA involvement.
 - Could expose device picker that lists PipeWire nodes by friendly name
   rather than the cryptic ALSA names today.
 
@@ -184,7 +184,7 @@ reasons (latency, multi-channel, stems). Not on the table today.
      legacy/Pulse-only fallback. Default to A in docs.
    - Fails → file the negative result here, fall through to B+A combined.
 3. **Long term, if we ever want per-app capture:** pursue D. It's also the
-   right shape if we ever ship a Mac/Windows port — every modern OS has an
+   right shape if we ever ship a Mac/Windows port - every modern OS has an
    equivalent system-audio-capture portal (CoreAudio tap on macOS 14.4+,
    ActivateAudioInterfaceAsync on Windows). All are per-app and crash-safe.
 4. **E only if** Minim itself becomes the bottleneck for an unrelated
@@ -194,8 +194,8 @@ reasons (latency, multi-channel, stems). Not on the table today.
 
 ## Related files
 
-- `loopback.sh` — current global-default-flip implementation.
-- `run-with-loopback.sh` — wrapper with trap guarantees.
-- `audio-probe.sh` — diagnostics; what sources/monitors exist + what JVM sees.
-- `Music_Visualizer_CK/src/core/Audio.pde` — Minim init + device selection.
-- `feature_audio_device_input.md` (memory) — the F10 device picker history.
+- `loopback.sh` - current global-default-flip implementation.
+- `run-with-loopback.sh` - wrapper with trap guarantees.
+- `audio-probe.sh` - diagnostics; what sources/monitors exist + what JVM sees.
+- `Music_Visualizer_CK/src/core/Audio.pde` - Minim init + device selection.
+- `feature_audio_device_input.md` (memory) - the F10 device picker history.

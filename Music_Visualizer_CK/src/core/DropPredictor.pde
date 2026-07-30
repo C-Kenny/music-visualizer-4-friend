@@ -6,7 +6,7 @@
  */
 class DropPredictor implements Runnable {
   ArrayList<Float> dropTimes;      // Strong peaks (top 18% energy)
-  ArrayList<Float> majorDropTimes; // Massive drops (top 5% energy) — flip candidates
+  ArrayList<Float> majorDropTimes; // Massive drops (top 5% energy) - flip candidates
   boolean isScanning = false;
   boolean isReady = false;
   String songPath;
@@ -67,7 +67,7 @@ class DropPredictor implements Runnable {
         }
       }
 
-      // Tier 2: adaptive — always pick the top 10 strongest peaks as major drop targets.
+      // Tier 2: adaptive - always pick the top 10 strongest peaks as major drop targets.
       // This ensures flip candidates exist for any song regardless of dynamic range.
       candidates.sort(new java.util.Comparator<float[]>() {
         public int compare(float[] a, float[] b) { return Float.compare(b[1], a[1]); }
@@ -108,7 +108,7 @@ class DropPredictor implements Runnable {
 
   /**
    * Same as imminentDropFactor but for the top-10 MAJOR drop targets only.
-   * Use this for flip triggers — guaranteed candidates for any song.
+   * Use this for flip triggers - guaranteed candidates for any song.
    */
   float majorImminentDropFactor(float currentTimeMs, float windowSeconds) {
     if (!isReady || majorDropTimes.isEmpty()) return 0;

@@ -1,5 +1,5 @@
 /**
- * ChromaticAberrationFX — RGB channel split + animated glitch band.
+ * ChromaticAberrationFX - RGB channel split + animated glitch band.
  *
  * Uses fx_chromatic.glsl. Intensity is audio-reactive:
  *   - Base split scales with bass energy

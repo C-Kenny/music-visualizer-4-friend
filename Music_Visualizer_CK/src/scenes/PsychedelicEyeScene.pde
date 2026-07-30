@@ -1,5 +1,5 @@
 /**
- * PsychedelicEyeScene (scene 38) — Alex Grey "Psychedelic Eye"
+ * PsychedelicEyeScene (scene 38) - Alex Grey "Psychedelic Eye"
  *
  * A single massive all-seeing eye dominates the screen. The iris is built
  * from concentric rings of sacred geometry (hexagons, triangles, circles).
@@ -11,12 +11,12 @@
  * characteristic refulgent glow of his anatomical light paintings.
  *
  * Controller:
- *   LStick ↕    — iris detail level
- *   RStick ↔    — hue rotation
- *   RStick ↕    — pupil size manual override
- *   LB / RB     — color scheme
- *   A           — reset
- *   B           — toggle geometry mode (hex/tri/circle)
+ *   LStick ↕ - iris detail level
+ *   RStick ↔ - hue rotation
+ *   RStick ↕ - pupil size manual override
+ *   LB / RB - color scheme
+ *   A - reset
+ *   B - toggle geometry mode (hex/tri/circle)
  */
 class PsychedelicEyeScene implements IScene {
 

@@ -1,4 +1,4 @@
-// Cat's Cradle scene — audio-reactive string web
+// Cat's Cradle scene - audio-reactive string web
 // Switch to it with the '4' key.
 // Strings vibrate perpendicular to their axis, driven by FFT bands.
 // Beat onsets pulse the anchor ring outward and spin it.
@@ -18,7 +18,7 @@ class CatsCradleScene implements IScene {
   float  breathPhase  = 0;
   int    paletteIdx   = 0;
   boolean trailMode   = false; // trail fade vs hard clear (default: hard clear)
-  boolean glowOn      = false; // opt-in — additive glow can saturate on bright frames
+  boolean glowOn      = false; // opt-in - additive glow can saturate on bright frames
 
   // Palettes: {hueStart, hueEnd} sweeps across skip levels
   final float[][] palettes = {
@@ -87,7 +87,7 @@ class CatsCradleScene implements IScene {
     }
 
     // Trail fade: low-alpha black rect instead of hard clear -> motion trails.
-    // Alpha scales with framerate — at 1000fps a low alpha never clears,
+    // Alpha scales with framerate - at 1000fps a low alpha never clears,
     // trails accumulate to white. Target ~20% decay per logical frame @ 60hz.
     if (trailMode) {
       float fadeAlpha = constrain(90.0 * (60.0 / max(30.0, frameRate)), 12, 160);
@@ -171,7 +171,7 @@ class CatsCradleScene implements IScene {
       pg.ellipse(ax[i], ay[i], glow * 0.4, glow * 0.4);
     }
 
-    // Glow shader disabled — additive blending on large halos causes white-out
+    // Glow shader disabled - additive blending on large halos causes white-out
     // The shader approach (8-tap ring sample + additive blend) compounds across the scene
     // even with minimal parameters. Disable L3 glow button for now.
     
@@ -199,7 +199,7 @@ class CatsCradleScene implements IScene {
   }
 
   // Draw one vibrating string between (x1,y1) and (x2,y2).
-  // Vibration is a sum of harmonics — richer for strings that cross more points.
+  // Vibration is a sum of harmonics - richer for strings that cross more points.
   void drawString(PGraphics pg, float x1, float y1, float x2, float y2,
                   float amplitude, int skip, int index) {
     float dx  = x2 - x1;

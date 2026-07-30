@@ -1,5 +1,5 @@
 /**
- * PixelSortFX — CPU-side pixel sort / glitch effect.
+ * PixelSortFX - CPU-side pixel sort / glitch effect.
  *
  * On beats, a number of random pixel columns in sceneBuffer are sorted by
  * brightness (descending), creating vertical streaks that look like digital
@@ -7,7 +7,7 @@
  * to give a "heal" effect.
  *
  * Performance: capped at MAX_COLS columns per frame.
- * Each column sort is O(height log height) — fast at sceneBuffer scale.
+ * Each column sort is O(height log height) - fast at sceneBuffer scale.
  */
 class PixelSortFX implements IPostFX {
   private boolean enabled;
@@ -66,7 +66,7 @@ class PixelSortFX implements IPostFX {
     }
 
     // Insertion sort (fast for nearly-sorted columns, correct for all)
-    // Only sort the brighter half so dark rows stay anchored — better glitch look
+    // Only sort the brighter half so dark rows stay anchored - better glitch look
     int splitRow = h / 2;
     for (int j = 1; j < splitRow; j++) {
       float keyB = brightness[j];

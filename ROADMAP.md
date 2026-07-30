@@ -22,10 +22,10 @@ operators. A `.deb` package collapses this to a single command.
 1. **Stop depending on the Processing IDE.** Today `run.sh` invokes
    `processing cli` which is the IDE's launcher. For packaging we need to
    either:
-   - **(a) Use processing-java standalone** — Processing ships a CLI-only
+   - **(a) Use processing-java standalone** - Processing ships a CLI-only
      `processing-java` build that compiles + runs sketches without the IDE.
      Bundle that with the package. Smaller, but still wraps the IDE codebase.
-   - **(b) Convert sketch to plain Java + Gradle** — strip Processing's
+   - **(b) Convert sketch to plain Java + Gradle** - strip Processing's
      preprocessor, make `Music_Visualizer_CK` a real Java project that
      `javac`/`gradle build` can produce a runnable JAR from. More work upfront,
      but eliminates Processing-IDE coupling entirely. Recommended long-term.
@@ -49,33 +49,33 @@ operators. A `.deb` package collapses this to a single command.
 
 ### Packaging plan (in order)
 
-1. **Phase 0 — keep current dev loop working.** All future steps must not
+1. **Phase 0 - keep current dev loop working.** All future steps must not
    break `./run.sh` for the dev workflow.
-2. **Phase 1 — Gradle build.** Add `build.gradle` that compiles the .pde files
+2. **Phase 1 - Gradle build.** Add `build.gradle` that compiles the .pde files
    (after preprocessing) into a runnable fat-JAR. Pull Processing core, Minim,
    Java-WebSocket, etc. from Maven Central.
-3. **Phase 2 — Strip preprocessor.** Replace Processing-only syntax (top-level
+3. **Phase 2 - Strip preprocessor.** Replace Processing-only syntax (top-level
    functions, `color` type alias) with plain Java. Sketch becomes a single
    `MusicVisualizerCK extends PApplet` class.
-4. **Phase 3 — `.deb` packaging.** Use `jpackage` (JDK 14+, ships native
+4. **Phase 3 - `.deb` packaging.** Use `jpackage` (JDK 14+, ships native
    bundles) or `dpkg-deb` directly. Produces `music-visualizer-ck_X.Y.Z_amd64.deb`
    with:
    - `/usr/bin/music-visualizer-ck` launcher
    - `/usr/share/music-visualizer-ck/` (assets, libraries)
    - `/usr/share/applications/music-visualizer-ck.desktop`
    - Depends: `default-jre-headless`, `libgl1`, `libpulse0`
-5. **Phase 4 — distribution.** GitHub Releases attaches the `.deb`; later, a
+5. **Phase 4 - distribution.** GitHub Releases attaches the `.deb`; later, a
    PPA on Launchpad for `apt update` semantics.
 
 ### Decision points to revisit when ready
 
-- **Native vs JVM bundle** — `jpackage` can produce a self-contained app with
+- **Native vs JVM bundle** - `jpackage` can produce a self-contained app with
   a bundled JRE (~50MB extra) or rely on system Java. Self-contained is more
   reliable but bigger.
-- **Snap vs deb** — snap solves the dependency story differently (sandbox,
+- **Snap vs deb** - snap solves the dependency story differently (sandbox,
   auto-updates), but harder to side-load. `.deb` is more universal for our
   audience.
-- **Code signing / repository hosting** — needed if we want `apt update`
+- **Code signing / repository hosting** - needed if we want `apt update`
   rather than manual `.deb` install.
 
 ### Anti-goals
@@ -83,7 +83,7 @@ operators. A `.deb` package collapses this to a single command.
 - Don't pivot to Electron or web-only. The Processing/JVM stack is what makes
   the rendering fast on modest GPUs.
 - Don't depend on Snap-only paths in the codebase (today `run.sh` already
-  falls back gracefully — keep that pattern).
+  falls back gracefully - keep that pattern).
 - Don't break the no-build-step `./run.sh` dev loop until Phase 1 is solid.
 
 ---
@@ -94,27 +94,27 @@ Small follow-ups identified at the close of the 2.4.0 release. Grouped by
 effort/payoff so the next session can grab the top of the list and ship.
 
 ### Shipped post-2.4.0
-- ~~Admin role-select flicker~~ — 96c10e5
-- ~~Cancel input poll on auth loss~~ — 96c10e5
-- ~~Lockdown HUD badge on the visualizer~~ — 96c10e5
-- ~~Lockdown timed-release~~ — 19c9c6e (5/15/30/60min presets + countdown)
-- ~~Kick cooldown countdown in admin~~ — fca0ba0 (status col + banlist row)
-- ~~PIN rotation button~~ — fca0ba0 + 91ab6ad
-- ~~Score reset hotkey in TableTennis~~ — bf86a27 (R/r resets match)
-- ~~gitignore `crash_log.txt`~~ — already present
-- ~~WS reconnect backoff in `controller.html`~~ — 043d25e (800ms→5s exp)
-- ~~Admin auth attempt rate-limit~~ — ac4e752 (5 wrong → 60s per-IP)
-- ~~WebRTC start-time hang~~ — 4b35a09 (gates on first ontrack, 5s timeout → HLS)
+- ~~Admin role-select flicker~~ - 96c10e5
+- ~~Cancel input poll on auth loss~~ - 96c10e5
+- ~~Lockdown HUD badge on the visualizer~~ - 96c10e5
+- ~~Lockdown timed-release~~ - 19c9c6e (5/15/30/60min presets + countdown)
+- ~~Kick cooldown countdown in admin~~ - fca0ba0 (status col + banlist row)
+- ~~PIN rotation button~~ - fca0ba0 + 91ab6ad
+- ~~Score reset hotkey in TableTennis~~ - bf86a27 (R/r resets match)
+- ~~gitignore `crash_log.txt`~~ - already present
+- ~~WS reconnect backoff in `controller.html`~~ - 043d25e (800ms→5s exp)
+- ~~Admin auth attempt rate-limit~~ - ac4e752 (5 wrong → 60s per-IP)
+- ~~WebRTC start-time hang~~ - 4b35a09 (gates on first ontrack, 5s timeout → HLS)
 
 ### Still open
 
-- **Skybox vendoring for .deb** — only `studio_09` ships because
+- **Skybox vendoring for .deb** - only `studio_09` ships because
   `media/skyboxes/` is gitignored. Vendor a CC0 set or build placeholder
   cubemaps so installed users see *something* in skybox scenes.
-- **Out-of-bounds enclosure (TableTennis 2-bounce rule)** — currently a
+- **Out-of-bounds enclosure (TableTennis 2-bounce rule)** - currently a
   point fires the moment the ball passes the table edge. Real rule: ball
   is live until it bounces twice on the floor or hits the back wall.
   `bounceCount` int per ball, score gate on `>= 2` floor bounces or
   far-Z exit.
-- **TriggerEngine: more scene wiring** — engine + bass→tunnel zoom in
+- **TriggerEngine: more scene wiring** - engine + bass→tunnel zoom in
   OriginalScene already shipped. Other scenes could opt-in.

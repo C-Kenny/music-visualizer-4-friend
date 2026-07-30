@@ -5,9 +5,9 @@
  * back to 0. Scenes poll getValue() each frame to drive large-scale effects.
  *
  * Two usage patterns:
- *   Level follower — call update(signal) every frame; value tracks when signal
+ *   Level follower - call update(signal) every frame; value tracks when signal
  *                    exceeds threshold, decays when it drops below.
- *   One-shot pulse — call fire() directly (e.g. on a beat onset); value snaps
+ *   One-shot pulse - call fire() directly (e.g. on a beat onset); value snaps
  *                    to 1 and decays at decayRate.
  *
  * Example:
@@ -34,7 +34,7 @@ class TriggerEngine {
     value = lerp(value, target, rate);
   }
 
-  // Snap value to 1.0 immediately — will decay each subsequent frame.
+  // Snap value to 1.0 immediately - will decay each subsequent frame.
   void fire() { value = 1.0; }
 
   float getValue() { return value; }

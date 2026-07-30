@@ -1,18 +1,18 @@
 /**
- * SimCubeScene (scene 54) — "Sim Cube"
+ * SimCubeScene (scene 54) - "Sim Cube"
  *
  * The Sim Lab (scene 53) laid out in 3D: many headless table-tennis matches
  * (TTSimGame), one at each cell of a cube-shaped lattice, floating as little
- * mini-court cards. Same genetic tuner as the 2D lab — each card is tinted by
+ * mini-court cards. Same genetic tuner as the 2D lab - each card is tinted by
  * fitness (red = unstable/moon, green = clean) and the population evolves on
  * each beat.
  *
- * Purely a visual sibling of scene 53 — it does NOT write tt_genome.cfg (the 2D
+ * Purely a visual sibling of scene 53 - it does NOT write tt_genome.cfg (the 2D
  * lab stays the canonical trainer so the two can't fight over the file).
  *
  * Two views (B / 'v' to toggle):
- *   CUBE   — the lattice of mini-courts in a rotating cube
- *   LADDER — king-of-the-hill: genomes sorted by fitness, fittest on top,
+ *   CUBE - the lattice of mini-courts in a rotating cube
+ *   LADDER - king-of-the-hill: genomes sorted by fitness, fittest on top,
  *            gliding to new slots each generation so you watch selection happen
  *
  * Audio:   bass → sim speed (x1..x8)   beat → advance a generation
@@ -69,7 +69,7 @@ class SimCubeScene implements IScene {
 
   // ── Legal-play box proportions (fractions of the cell pitch) ──────────────
   // Real table tennis: the table is only ~76 cm tall but the ceiling is 4–5 m,
-  // so the table sits LOW in the play volume — far more head-room than
+  // so the table sits LOW in the play volume - far more head-room than
   // floor-room (about 4.5 to 1). The table is drawn at the box's local y=0, and
   // up is the −y direction, so the ceiling reaches much further than the floor.
   static final float BOX_HALF_WIDTH    = 0.45;   // half the box width on X and Z
@@ -246,7 +246,7 @@ class SimCubeScene implements IScene {
     pg.pushMatrix();
     pg.translate(centerX, centerY, centerZ);
 
-    // Faint outer hull — built from the SAME box geometry as the cells, so a
+    // Faint outer hull - built from the SAME box geometry as the cells, so a
     // green box can never poke outside it: the spread across cells plus one box
     // on each face, sharing the box's upward offset.
     pg.noFill(); pg.stroke(40, 60, 80, 90); pg.strokeWeight(1);
@@ -319,7 +319,7 @@ class SimCubeScene implements IScene {
     pg.popMatrix();
   }
 
-  // Game indexes sorted best fitness first (selection sort — population ≤ 512).
+  // Game indexes sorted best fitness first (selection sort - population ≤ 512).
   Integer[] indexesSortedByFitness() {
     Integer[] ranking = new Integer[populationSize];
     float[] fitness = new float[populationSize];
@@ -352,7 +352,7 @@ class SimCubeScene implements IScene {
     float paddleDepth  = TableTennisSimScene.PADDLE_Z;
 
     // Fitness-tinted legal-play box (red = unstable/moon, green = clean). The
-    // table (y=0) sits low in it — short floor gap, tall head-room. Kept mostly
+    // table (y=0) sits low in it - short floor gap, tall head-room. Kept mostly
     // see-through (and fainter the more cells there are) so it doesn't distract.
     float boxOpacity = constrain(
         map(populationSize, BOX_FADE_START_SIMS, BOX_FADE_END_SIMS, BOX_OPACITY_FEW, BOX_OPACITY_PACKED),
@@ -392,7 +392,7 @@ class SimCubeScene implements IScene {
               game.rightPaddleZ * worldScale,
               paddleWidth * worldScale, paddleHeight * worldScale, paddleDepth * worldScale);
 
-    // Ball — turns red and pins to the table top when it "moons" (flies off).
+    // Ball - turns red and pins to the table top when it "moons" (flies off).
     float drawnBallY = constrain(game.ballY, -ballRadius, TableTennisSimScene.VH);
     boolean mooned = game.ballY < -ballRadius;
     pg.fill(mooned ? color(255, 60, 60) : color(255, 250, 200));
@@ -419,8 +419,8 @@ class SimCubeScene implements IScene {
     pg.textAlign(LEFT, TOP); pg.fill(60, 230, 120);
     pg.textSize(constrain(pg.height * HUD_TEXT_FACTOR, HUD_TEXT_MIN, HUD_TEXT_MAX));
     String heading = (view == VIEW_CUBE)
-      ? "SIM CUBE — " + latticeSide + "×" + latticeSide + "×" + latticeSide + " = " + populationSize + " sims"
-      : "SIM LADDER — " + populationSize + " genomes, fittest on top";
+      ? "SIM CUBE - " + latticeSide + "×" + latticeSide + "×" + latticeSide + " = " + populationSize + " sims"
+      : "SIM LADDER - " + populationSize + " genomes, fittest on top";
     pg.text(heading + "   gen " + generation
           + "   best " + nf(bestFitness < 0 ? 0 : bestFitness, 1, 3)
           + "   speed x" + simStepsThisFrame, HUD_MARGIN_X, HUD_MARGIN_Y);
@@ -473,7 +473,7 @@ class SimCubeScene implements IScene {
     if (c.bJustPressed) toggleView();
 
     // Triggers grow / shrink the lattice one shell at a time, only on the press
-    // (a held trigger shouldn't keep rebuilding). The D-pad is off-limits here —
+    // (a held trigger shouldn't keep rebuilding). The D-pad is off-limits here - 
     // it toggles backgrounds globally. drawScene() applies the resize.
     boolean leftTriggerDown  = c.lt > TRIGGER_PRESS_LEVEL;
     boolean rightTriggerDown = c.rt > TRIGGER_PRESS_LEVEL;
@@ -508,7 +508,7 @@ class SimCubeScene implements IScene {
 
   String[] getCodeLines() {
     return new String[] {
-      "SIM CUBE — " + populationSize + " matches in a "
+      "SIM CUBE - " + populationSize + " matches in a "
           + latticeSide + "×" + latticeSide + "×" + latticeSide + " lattice",
       "",
       "same headless physics + genetic tuner",

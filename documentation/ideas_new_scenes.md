@@ -12,11 +12,11 @@ At rest it looks like a Celtic knot or a pretzel. On beat it snaps into a new co
 
 **Why it works with music:** Lissajous figures are literally the shape of a ratio between two
 frequencies. Mapping bass to one axis frequency and treble to another creates a curve that
-*is* the music's harmonic relationship — not just reacting to it.
+*is* the music's harmonic relationship - not just reacting to it.
 
 **How to build it:**
 ```java
-// Parametric — t goes 0..TWO_PI
+// Parametric - t goes 0..TWO_PI
 x = sin(A * t + delta) * rx
 y = sin(B * t) * ry
 z = cos(C * t) * rz   // use PeasyCam for 3D, or project manually
@@ -31,7 +31,7 @@ a "favourite" ratio (you hardcode a list of beautiful ones).
 
 ## 2. Fluid Simulation (Reaction-Diffusion)
 
-**What it looks like:** Organic blobs that split, merge, and pulse — like a living petri dish.
+**What it looks like:** Organic blobs that split, merge, and pulse - like a living petri dish.
 Colours shift from deep ocean blue to hot magma depending on the music's energy.
 
 **Why it works:** Reaction-diffusion (Gray-Scott model) naturally produces the kinds of
@@ -45,12 +45,12 @@ nextA[x][y] = A + dA*laplaceA - A*B*B + f*(1 - A)
 nextB[x][y] = B + dB*laplaceB + A*B*B - (k + f)*B
 ```
 Parameters `f` (feed rate) and `k` (kill rate) determine the pattern type. Map them to
-bass and high FFT averages — small changes create large visual shifts.
+bass and high FFT averages - small changes create large visual shifts.
 
 On beat, inject a "seed" (set B=1) at a random worm position or the center of the screen.
 
 **Performance note:** 160×90 = 14,400 cells. This is feasible in Processing at 60fps.
-Full resolution is not — use the same RENDER_SCALE trick from Halo2LogoScene.
+Full resolution is not - use the same RENDER_SCALE trick from Halo2LogoScene.
 
 ---
 
@@ -61,7 +61,7 @@ gently wavering. Like the northern lights, but they pulse and shimmer with the m
 
 **Why it works:** Ribbons drawn with `beginShape(TRIANGLE_STRIP)` and alpha blending create
 a layered, atmospheric depth that feels totally different from the hard-edged geometric scenes.
-It's the "calm scene" the set needs — good contrast after the worms.
+It's the "calm scene" the set needs - good contrast after the worms.
 
 **How to build it:**
 ```java
@@ -89,7 +89,7 @@ classic aurora glow. Hue sweeps slowly through the spectrum driven by mids.
 gravity toward each other AND toward the music's beat. The whole web breathes and quivers.
 
 **Why it works:** String-spring physics is satisfying to watch because the motion has natural
-momentum and overshoot. The strings visually encode energy — a taut string looks quiet, a
+momentum and overshoot. The strings visually encode energy - a taut string looks quiet, a
 swinging one looks loud.
 
 **How to build it:**
@@ -113,10 +113,10 @@ On beat, randomly select a node and give it a velocity kick.
 ## 5. Pixel Sort / Glitch
 
 **What it looks like:** The screen looks mostly normal, then on a loud beat, columns of pixels
-get "sorted" by brightness — creating streaks of colour that shoot upward or sideways. Very
+get "sorted" by brightness - creating streaks of colour that shoot upward or sideways. Very
 glitchy, very 2010s internet art.
 
-**Why it works:** It's destructive by nature, which creates tension and release — perfect for
+**Why it works:** It's destructive by nature, which creates tension and release - perfect for
 drop moments. Between beats the image heals itself.
 
 **How to build it:**
@@ -127,7 +127,7 @@ the sorted column back. Over N frames, lerp back to unsorted.
 Can also be row-based or diagonal. Works best layered on top of another scene (treat it as
 an effect, not a standalone scene).
 
-**Implementation tip:** Don't sort every column every frame — that's O(width * height * log(height)).
+**Implementation tip:** Don't sort every column every frame - that's O(width * height * log(height)).
 Sort 10–20 random columns per frame for the glitchy effect without killing performance.
 
 ---
@@ -160,7 +160,7 @@ for (int i = 0; i < fftSize; i++) {
 ## 7. Spirograph / Hypotrochoid
 
 **What it looks like:** A pen tracing the path of a circle rolling inside another circle.
-The resulting curve is drawn incrementally — one point added per frame — so you watch the
+The resulting curve is drawn incrementally - one point added per frame - so you watch the
 pattern emerge. When it completes, it fades and starts a new one with different parameters.
 
 **Why it works:** The emergence is the show. Watching the curve slowly reveal its shape is
@@ -181,7 +181,7 @@ Keep a trail of the last N points and draw them with fading alpha.
 
 ## Things NOT worth building
 
-- **3D spinning cube** — it's been done to death and doesn't add new insight
-- **Bouncing ball frequency meter** — the bar chart is fine for analysis tools, not for a show
-- **Text / lyric scenes** — too dependent on a specific song, not general enough
-- **Camera feed / webcam effects** — interesting but requires additional hardware setup
+- **3D spinning cube** - it's been done to death and doesn't add new insight
+- **Bouncing ball frequency meter** - the bar chart is fine for analysis tools, not for a show
+- **Text / lyric scenes** - too dependent on a specific song, not general enough
+- **Camera feed / webcam effects** - interesting but requires additional hardware setup

@@ -1,11 +1,11 @@
 /**
- * Recorder — pipe the live composite to ffmpeg for mp4 capture.
+ * Recorder - pipe the live composite to ffmpeg for mp4 capture.
  *
  * Design constraints:
  *   - Cannot block the render thread. saveFrame() pauses every 16ms call,
  *     murders FPS. Instead we hand frame buffers to a worker thread that
  *     writes them to ffmpeg's stdin pipe.
- *   - 30 fps target, half-resolution. 1080p @ 30 raw is ~250 MB/s — too
+ *   - 30 fps target, half-resolution. 1080p @ 30 raw is ~250 MB/s - too
  *     hot for a single pipe. Halving each axis quarters the bandwidth.
  *   - Backpressure: if the writer falls behind, drop frames rather than
  *     stall. Recording an artistically-perfect file is less important than
@@ -149,7 +149,7 @@ class Recorder {
       buf[o + 3] = (byte)(p         & 0xff); // B
     }
 
-    // Non-blocking offer — drop frame on backpressure rather than stall draw.
+    // Non-blocking offer - drop frame on backpressure rather than stall draw.
     if (!queue.offer(buf)) framesDropped++;
   }
 

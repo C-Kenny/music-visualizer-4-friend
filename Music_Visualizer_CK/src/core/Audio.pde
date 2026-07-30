@@ -29,7 +29,7 @@ class Audio {
 
   // Master playback volume, linear 0..2.0 (1.0 = 100%, unchanged). Backed by
   // a persistent DevVolumeEffect in the player's effect chain rather than
-  // player.setGain() — setGain() only works if the underlying JavaSound line
+  // player.setGain() - setGain() only works if the underlying JavaSound line
   // exposes a MASTER_GAIN FloatControl, which PulseAudio's JavaSound bridge
   // commonly doesn't expose, so setGain() silently no-ops on many Linux
   // machines. The effect chain (AudioSource.stream.setAudioEffect) is wired
@@ -54,7 +54,7 @@ class Audio {
   }
 
   // Dev shortcut: if .devvolume exists in the sketch dir, start playback at
-  // that listening volume (0-100%) instead of full blast — handy for
+  // that listening volume (0-100%) instead of full blast - handy for
   // running locally at ~5% while you keep working.
   //   echo 5 > Music_Visualizer_CK/.devvolume
   void applyDevVolume() {
@@ -65,7 +65,7 @@ class Audio {
       float pct = Float.parseFloat(raw);
       setVolume(pct / 100.0);
       println("[Audio] DEVVOLUME: " + nf(pct, 0, 1) + "%");
-    } catch (Exception e) { /* ignore — missing or malformed file */ }
+    } catch (Exception e) { /* ignore - missing or malformed file */ }
   }
 
   void nudgeDeviceGain(float factor) {
@@ -148,7 +148,7 @@ class Audio {
           player = minim.loadFile(stub);
           if (player != null) {
             player.mute();
-            // Don't call play() — left/right buffers stay zero, position() = 0.
+            // Don't call play() - left/right buffers stay zero, position() = 0.
           }
         } catch (Throwable t) {
           System.err.println("[Audio] Could not load silent stub player: " + t.getMessage());
@@ -178,7 +178,7 @@ class Audio {
     return getAudioBuffer();
   }
 
-  // Active buffers — file player when in FILE mode, audioInput when capturing
+  // Active buffers - file player when in FILE mode, audioInput when capturing
   // from a device. Use these in scenes instead of `audio.player.left` so
   // oscilloscope/waveform scenes work in both modes.
   AudioBuffer left() {
@@ -196,7 +196,7 @@ class Audio {
     if (isUsingDeviceInput && audioInput != null) return audioInput.bufferSize();
     return player != null ? player.bufferSize() : 0;
   }
-  // Per-sample value — applies device gain so waveform scenes pop with quiet
+  // Per-sample value - applies device gain so waveform scenes pop with quiet
   // monitor sources too.
   float leftSample(int i) {
     AudioBuffer b = left();
@@ -221,14 +221,14 @@ class Audio {
     }
   }
 
-  // True when audio is "playing" — file is mid-track, or device input is open
+  // True when audio is "playing" - file is mid-track, or device input is open
   // and listening. Lets callers skip the player.isPlaying() NPE in DEVICE mode.
   boolean isPlaying() {
     if (isUsingDeviceInput) return audioInput != null;
     return player != null && player.isPlaying();
   }
 
-  // Minim's AudioPlayer.isPlaying() is unreliable at EOF — has been observed to
+  // Minim's AudioPlayer.isPlaying() is unreliable at EOF - has been observed to
   // keep returning true after the last sample drained. Auto-advance polling
   // isPlaying() alone misses the end-of-track and the show goes silent.
   // This combines both signals: true when track ran out OR was paused at end.
@@ -237,7 +237,7 @@ class Audio {
     if (player == null) return true;            // closed/torn-down counts as done
     int len = player.length();
     int pos = player.position();
-    if (len <= 0) return false;                 // unknown length — can't tell
+    if (len <= 0) return false;                 // unknown length - can't tell
     // 250ms tolerance for Minim's per-buffer position jitter at EOF.
     if (pos >= len - 250) return true;
     return !player.isPlaying();
@@ -371,7 +371,7 @@ class Audio {
 // AudioSource's effect chain (which feeds the actual output line) rather
 // than player.setGain() (which requires JavaSound MASTER_GAIN line support
 // that PulseAudio's JavaSound bridge commonly doesn't expose). `gain` is
-// mutated live by Audio.setVolume() — one instance lives for the player's
+// mutated live by Audio.setVolume() - one instance lives for the player's
 // whole lifetime.
 class DevVolumeEffect implements AudioEffect {
   float gain;

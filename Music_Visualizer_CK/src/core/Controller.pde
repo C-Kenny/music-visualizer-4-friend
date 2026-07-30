@@ -4,7 +4,7 @@ import net.java.games.input.*;
 import java.lang.reflect.*;
 
 /**
- * Controller — Robust gamepad handling for Processing.
+ * Controller - Robust gamepad handling for Processing.
  * 
  * Supports hot-plugging, calibration, and advanced chord detection.
  * Chords (multiple buttons) mark participating buttons as 'wasChorded'
@@ -311,7 +311,7 @@ class Controller {
 
   boolean isConnected() { return stick != null; }
 
-  // Print matched device name and all its controls — call once from setup for debugging
+  // Print matched device name and all its controls - call once from setup for debugging
   void debugPrintControls() {
     if (stick == null) return;
     println("=== Controller matched: " + stick.getName() + " ===");
@@ -446,7 +446,7 @@ class Controller {
   }
 
   /**
-   * chord — Returns true if all passed buttons are held.
+   * chord - Returns true if all passed buttons are held.
    * Participants should be manually marked as 'wasChorded' in the sketch
    * to suppress their individual actions on release.
    */

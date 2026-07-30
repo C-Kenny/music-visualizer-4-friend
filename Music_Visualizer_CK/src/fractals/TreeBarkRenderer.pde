@@ -1,5 +1,5 @@
 /**
- * TreeBarkRenderer — recursive rectangle subdivision with offset cracks,
+ * TreeBarkRenderer - recursive rectangle subdivision with offset cracks,
  * giving a bark-like cell pattern.
  */
 class TreeBarkRenderer implements FractalRenderer {

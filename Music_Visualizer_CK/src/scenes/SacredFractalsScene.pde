@@ -5,7 +5,7 @@
  * src/fractals/. Cycles through the renderers; wraps each in a Flower of
  * Life halo (also reusable).
  *
- * The renderers are decoupled — any other scene can pull one in standalone.
+ * The renderers are decoupled - any other scene can pull one in standalone.
  *
  * Audio mapping (interpreted per-renderer):
  *   bass  -> recursion depth / iteration / point count

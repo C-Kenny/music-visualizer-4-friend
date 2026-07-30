@@ -1,5 +1,5 @@
 /**
- * ControllerLayout — structured controller guide system
+ * ControllerLayout - structured controller guide system
  *
  * Each scene returns ControllerLayout[] from getControllerLayout() describing
  * its controls. drawControllerGuide() renders a dynamic diagram using real
@@ -38,7 +38,7 @@ static final float FRONT_SVG_H = 580.032;
 // Front view (580 × 580). Face button centres are exact (read from SVG <circle>
 // elements). LB/RB/D-pad are estimated from body path geometry.
 
-PVector[] FRONT_BTN_KEYS_VEC;   // parallel arrays — Processing has no easy HashMap literal
+PVector[] FRONT_BTN_KEYS_VEC;   // parallel arrays - Processing has no easy HashMap literal
 String[]  FRONT_BTN_KEYS;
 
 void initButtonPositions() {
@@ -63,7 +63,7 @@ void initButtonPositions() {
   };
 }
 
-// Back view is drawn programmatically — no SVG.
+// Back view is drawn programmatically - no SVG.
 // Button screen positions are computed in getBackScreenPos().
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ void drawControllerGuide(ControllerLayout[] layouts) {
     backCX  = 0; backCY = 0;
   }
 
-  // Full-screen dim — makes the overlay legible regardless of scene
+  // Full-screen dim - makes the overlay legible regardless of scene
   noStroke();
   fill(0, 0, 0, 150);
   rect(0, 0, width, height);
@@ -271,7 +271,7 @@ void drawXboxBack(float cx, float cy, float dispW, float dispH,
   stroke(95, 100, 115, 170);
   strokeWeight(1.5);
 
-  // Body (darkest layer — at the back)
+  // Body (darkest layer - at the back)
   fill(148, 152, 162, 200);
   rect(cx - bodyW*0.5, bodyCY - bodyH*0.5, bodyW, bodyH, bodyH * 0.25);
 
@@ -280,7 +280,7 @@ void drawXboxBack(float cx, float cy, float dispW, float dispH,
   rect(ltCX - bumpW*0.5, bumpCY - bumpH*0.5, bumpW, bumpH, bumpH * 0.5);
   rect(rtCX - bumpW*0.5, bumpCY - bumpH*0.5, bumpW, bumpH, bumpH * 0.5);
 
-  // Triggers (lightest — closest to viewer)
+  // Triggers (lightest - closest to viewer)
   fill(180, 184, 194, 220);
   rect(ltCX - trigW*0.5, trigCY - trigH*0.5, trigW, trigH, trigW * 0.35);
   rect(rtCX - trigW*0.5, trigCY - trigH*0.5, trigW, trigH, trigW * 0.35);
@@ -312,7 +312,7 @@ void drawXboxBack(float cx, float cy, float dispW, float dispH,
   }
 }
 
-// ─── Pointer labels — front view ──────────────────────────────────────────────
+// ─── Pointer labels - front view ──────────────────────────────────────────────
 
 void drawFrontPointers(float cx, float cy, float dispW, float dispH,
                        ControllerLayout[] layouts, boolean dualMode) {
@@ -325,7 +325,7 @@ void drawFrontPointers(float cx, float cy, float dispW, float dispH,
   ArrayList<PointerLabel> leftL   = new ArrayList<PointerLabel>();
   ArrayList<PointerLabel> rightL  = new ArrayList<PointerLabel>();
 
-  // Edge exit positions — where lines leave the controller body horizontally
+  // Edge exit positions - where lines leave the controller body horizontally
   float edgeL = cx - dispW * 0.47;
   float edgeR = cx + dispW * 0.47;
   float edgeB = cy + dispH * 0.43;
@@ -362,7 +362,7 @@ void drawFrontPointers(float cx, float cy, float dispW, float dispH,
   }
 
   // Sort each rail by button position before distributing so labels are assigned
-  // in the same spatial order as their origins — prevents line crossings.
+  // in the same spatial order as their origins - prevents line crossings.
   sortByFromY(leftL);
   sortByFromY(rightL);
   sortByFromX(bottomL);
@@ -376,7 +376,7 @@ void drawFrontPointers(float cx, float cy, float dispW, float dispH,
   for (PointerLabel pl : rightL)  drawPointerLabel(pl);
 }
 
-// ─── Pointer labels — back view ───────────────────────────────────────────────
+// ─── Pointer labels - back view ───────────────────────────────────────────────
 
 void drawBackPointers(float cx, float cy, float dispW, float dispH,
                       ControllerLayout[] layouts) {
@@ -483,7 +483,7 @@ void drawPointerLabel(PointerLabel pl) {
   popStyle();
 }
 
-// ─── Sort helpers (bubble sort — lists are tiny, simplicity wins) ─────────────
+// ─── Sort helpers (bubble sort - lists are tiny, simplicity wins) ─────────────
 
 void sortByFromY(ArrayList<PointerLabel> labels) {
   for (int i = 0; i < labels.size() - 1; i++)

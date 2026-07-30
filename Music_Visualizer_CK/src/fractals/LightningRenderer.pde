@@ -1,5 +1,5 @@
 /**
- * LightningRenderer — recursive midpoint-displacement bolts. Bass adds bolts;
+ * LightningRenderer - recursive midpoint-displacement bolts. Bass adds bolts;
  * high boosts jitter / weight.
  */
 class LightningRenderer implements FractalRenderer {
