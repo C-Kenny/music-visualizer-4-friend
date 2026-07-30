@@ -1037,6 +1037,7 @@ void keyPressed() {
   if (key == 'O') selectInput("Pick any song in the folder to shuffle", "folderSelected");
   if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
   if (key == 'm' || key == 'M') config.SHOW_METADATA = !config.SHOW_METADATA;
+  if (key == 'V') config.SHOW_VOLUME_HUD = !config.SHOW_VOLUME_HUD;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
   if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
   // G cycles PostFX stack (enable next effect); Shift+G disables all
@@ -1107,14 +1108,10 @@ void keyPressed() {
   if (key == CODED) {
     if (keyCode == LEFT)  audio.skip(-10000);
     if (keyCode == RIGHT) audio.skip(10000);
-    if (keyCode == UP) {
-      float current_gain = audio.getGain();
-      audio.setGain(current_gain + 5);
-    }
-    if (keyCode == DOWN) {
-      float current_gain = audio.getGain();
-      audio.setGain(current_gain - 5);
-    }
+    // Volume via Audio.volume/DevVolumeEffect, not player.setGain() — see
+    // Audio.pde's volume field comment for why setGain() is unreliable here.
+    if (keyCode == UP)   audio.nudgeVolume(5);
+    if (keyCode == DOWN) audio.nudgeVolume(-5);
   }
 }
 
@@ -1604,8 +1601,23 @@ void draw() {
 
   // mp4 capture — pipes the post-FX composite to ffmpeg via worker thread.
   // Excludes HUDs and text overlay (they sit on top of the window blit).
-  if (recorder != null) recorder.tick(toDisplay);
-  if (streamer != null) streamer.tick(toDisplay);
+  // Guarded independently: a PGraphics/GL failure in either subsystem must
+  // disable that subsystem only, never crash the render loop mid-show.
+  if (recorder != null) {
+    try { recorder.tick(toDisplay); }
+    catch (Throwable t) {
+      logSubsystemCrash("recorder", t);
+      try { recorder.stop(); } catch (Throwable ignored) {}
+    }
+  }
+  if (streamer != null) {
+    try { streamer.tick(toDisplay); }
+    catch (Throwable t) {
+      logSubsystemCrash("streamer", t);
+      streamer.lastError = t.getClass().getSimpleName() + ": " + t.getMessage();
+      try { streamer.stop(); } catch (Throwable ignored) {}
+    }
+  }
 
   // Headache-free wash: dim brightness + soft warm tint to round off harshness.
   // Applied in window space so it covers anything in the scene chain. HUD/overlays
@@ -2013,6 +2025,12 @@ float drawAudioSourceBadge(float startY) {
   String l2 = src;
   String l3 = audio.isDeviceInput() ? "'  source    +/-  gain" : "'  open source picker";
 
+  // Volume icon row — toggle with 'V'. Folded into this badge rather than
+  // living as its own box (file-mode only; device-mode has no player gain).
+  boolean showVol  = config.SHOW_VOLUME_HUD && !audio.isDeviceInput();
+  float   iconH    = 20 * uiScale();
+  float   volRowH  = showVol ? (iconH + 14 * uiScale()) : 0;
+
   float pad   = 14 * uiScale();
   float lineH = 18 * uiScale();
   float[] b = hudWidthBounds();
@@ -2023,7 +2041,7 @@ float drawAudioSourceBadge(float startY) {
   for (String l : lines) { float w = textWidth(l); if (w > maxW) maxW = w; }
   float textW = constrain(maxW, b[0], b[1]);
   float boxW = textW + pad * 2;
-  float boxH = pad * 2 + lines.length * lineH + 12; // +12 for RMS bar
+  float boxH = pad * 2 + lines.length * lineH + 12 + volRowH; // +12 for RMS bar
   float boxX = width - boxW - 12 * uiScale();
   float boxY = startY - boxH;
 
@@ -2041,6 +2059,11 @@ float drawAudioSourceBadge(float startY) {
   for (int i = 0; i < lines.length; i++) {
     text(lines[i], boxX + pad, ty);
     ty += lineH;
+  }
+
+  if (showVol) {
+    float rowTop = ty - lineH * 0.8 + 5 * uiScale();
+    drawSpeakerVolumeIcon(boxX + pad, rowTop + iconH, iconH, audio.volume);
   }
 
   // Live RMS bar — pulled from FFT band energies (no extra audio touch needed).
@@ -2062,6 +2085,53 @@ float drawAudioSourceBadge(float startY) {
 
   popStyle();
   return boxY - 10 * uiScale(); // Return Y position for next badge above
+}
+
+// Speaker glyph + a right-triangle "ramp" that fills in as volume rises —
+// a similar triangle scaled by volFrac, so it visibly grows rather than
+// just a bar/percentage. (x, yBottom) is the icon's bottom-left corner;
+// `h` is its full height. volume is linear 0..2.0 (1.0 = 100%), display
+// caps visual growth at 100% since the ramp reads as "full" there.
+void drawSpeakerVolumeIcon(float x, float yBottom, float h, float volume) {
+  pushStyle();
+  noStroke();
+  float bodyW = h * 0.30, bodyH = h * 0.62;
+  float midY  = yBottom - h * 0.5;
+
+  // Speaker body + cone (dim green when muted, bright otherwise).
+  boolean muted = volume < 0.02;
+  fill(muted ? color(90, 90, 90) : color(0, 220, 0));
+  rectMode(CORNER);
+  rect(x, midY - bodyH / 2, bodyW, bodyH, 1);
+  triangle(x + bodyW, midY - bodyH / 2, x + bodyW, midY + bodyH / 2, x + bodyW * 2.3, midY);
+
+  // Ramp: dim outline at full height, bright fill scaled by volume fraction
+  // (uniform scale keeps it a similar triangle — grows in both W and H).
+  // Gap after the cone tip keeps the two glyphs visually distinct.
+  float rampX0 = x + bodyW * 2.3 + h * 0.22;
+  float rampW  = h * 2.3;
+  float frac   = constrain(volume, 0, 1); // ramp reads "full" at 100%
+
+  noFill();
+  stroke(0, 110, 0);
+  strokeWeight(1);
+  triangle(rampX0, yBottom, rampX0 + rampW, yBottom, rampX0 + rampW, yBottom - h);
+
+  if (!muted) {
+    noStroke();
+    fill(0, 255, 0);
+    triangle(rampX0, yBottom, rampX0 + rampW * frac, yBottom, rampX0 + rampW * frac, yBottom - h * frac);
+  }
+
+  // Boost past 100% shown as a small overshoot mark above the ramp.
+  if (volume > 1.0) {
+    float boostFrac = constrain(volume - 1.0, 0, 1);
+    stroke(0, 255, 0);
+    strokeWeight(2);
+    line(rampX0 + rampW, yBottom - h, rampX0 + rampW, yBottom - h - h * 0.4 * boostFrac);
+  }
+
+  popStyle();
 }
 
 float drawAutoSwitcherBadge(float startY) {

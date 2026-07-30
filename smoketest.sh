@@ -51,6 +51,14 @@ if [[ -f "Music_Visualizer_CK/.devsong" ]]; then
   ln -s "$ORIGIN_DIR/.devsong" "$BUILD_DIR/.devsong"
 fi
 
+# Link .devvolume if it exists, defaulting to 5% so repeated smoke-test runs
+# don't blast real audio at full volume.
+if [[ -f "Music_Visualizer_CK/.devvolume" ]]; then
+  ln -s "$ORIGIN_DIR/.devvolume" "$BUILD_DIR/.devvolume"
+else
+  echo "5" > "$BUILD_DIR/.devvolume"
+fi
+
 touch "$TRIGGER"
 touch "$DEVMODE"
 

@@ -45,7 +45,38 @@ class GravityStringsScene implements IScene {
   float[] rippleAge = new float[MAX_RIPPLES];
   int rippleHead = 0;
 
-  GravityStringsScene() {}
+  // Cached (i,j) pair list — pairsForPreset() only rebuilds when the topology
+  // preset or anchor count actually changes, instead of every frame.
+  int   pairsCachePreset  = -1;
+  int   pairsCacheAnchors = -1;
+  int[][] pairsCache;
+
+  // sin(t*PI*h) depends only on subdivision index s and harmonic h, both
+  // fixed per-scene (subdivisions never changes, harmonics capped at
+  // MAX_SKIP) — precompute once instead of recomputing every subdivision of
+  // every string every frame. sinTPi[s] = sin(t*PI), the h-independent term
+  // used for the sag envelope.
+  float[]   sinTPi;
+  float[][] sinTPiH;
+
+  GravityStringsScene() {
+    sinTPi  = new float[subdivisions + 1];
+    sinTPiH = new float[subdivisions + 1][MAX_SKIP + 1];
+    for (int s = 0; s <= subdivisions; s++) {
+      float t = (float)s / subdivisions;
+      sinTPi[s] = sin(t * PI);
+      for (int h = 1; h <= MAX_SKIP; h++) {
+        sinTPiH[s][h] = sin(t * PI * h);
+      }
+    }
+  }
+
+  // Small point-cloud + midpoint result shared by a string's halo and color
+  // draw passes so the subdivision loop only runs once per pair per frame.
+  class StringPath {
+    float[] pts;      // interleaved x,y, (subdivisions+1) vertices
+    float   tetherX, tetherY;
+  }
 
   void applyController(Controller c) {
     float ly = map(c.ly, 0, height, -1, 1);
@@ -160,36 +191,52 @@ class GravityStringsScene implements IScene {
       wy[w] = pg.height / 2.0 + sin(a) * wr;
     }
 
-    // Strings — preset selects which (i,j) pairs
-    int[][] pairs = pairsForPreset(presetIdx, numAnchors);
+    // Strings — preset selects which (i,j) pairs. Cached: only rebuild when
+    // the topology preset or anchor count changes, not every frame.
+    if (presetIdx != pairsCachePreset || numAnchors != pairsCacheAnchors) {
+      pairsCache = pairsForPreset(presetIdx, numAnchors);
+      pairsCachePreset  = presetIdx;
+      pairsCacheAnchors = numAnchors;
+    }
+    int[][] pairs = pairsCache;
+
+    // HSB colorMode set once for the whole loop — color() below returns a
+    // fully-resolved packed color regardless of ambient mode, so stroke()
+    // doesn't need colorMode toggled back and forth per pair.
+    pg.colorMode(HSB, 360, 255, 255, 255);
+    pg.noFill();
     for (int p = 0; p < pairs.length; p++) {
       int i = pairs[p][0], j = pairs[p][1];
       int skip = ((j - i) + numAnchors) % numAnchors;
       if (skip > maxSkip) skip = maxSkip;
+      skip = max(1, skip);
       int band = (p * 7) % analyzer.spectrum.length;
       float bandAmp = analyzer.spectrum[band] * 3.0;
 
-      pg.colorMode(HSB, 360, 255, 255, 255);
       float hue    = map(skip, 1, maxSkip, 270, 180);
       float alpha  = map(skip, 1, maxSkip, 240, 160);
       float weight = map(skip, 1, maxSkip, 4.0, 1.8);
-      pg.colorMode(RGB, 255);
-      pg.noFill();
+      int strokeColor = pg.color((int)hue, 210, 255, (int)alpha);
+
+      StringPath path = buildStringPath(pg, ax[i], ay[i], ax[j], ay[j], bandAmp, skip, i,
+                 sag[max(0, min(MAX_SKIP - 1, skip - 1))], wx, wy);
+      if (path == null) continue;
 
       // Dark halo pass for skybox contrast
       pg.stroke(0, 0, 0, 180);
       pg.strokeWeight(weight + 2.5);
-      drawString(pg, ax[i], ay[i], ax[j], ay[j], bandAmp, max(1, skip), i,
-                 sag[max(0, min(MAX_SKIP - 1, skip - 1))], wx, wy);
+      drawPath(pg, path.pts);
 
       // Colored stroke on top
-      pg.colorMode(HSB, 360, 255, 255, 255);
-      pg.stroke((int)hue, 210, 255, (int)alpha);
+      pg.stroke(strokeColor);
       pg.strokeWeight(weight);
-      pg.colorMode(RGB, 255);
-      drawString(pg, ax[i], ay[i], ax[j], ay[j], bandAmp, max(1, skip), i,
-                 sag[max(0, min(MAX_SKIP - 1, skip - 1))], wx, wy);
+      drawPath(pg, path.pts);
+
+      if (tetheredSolids) {
+        drawTetheredSolid(pg, path.tetherX, path.tetherY, 8 + skip * 2, skip);
+      }
     }
+    pg.colorMode(RGB, 255);
 
     // Anchors
     pg.noStroke();
@@ -208,7 +255,10 @@ class GravityStringsScene implements IScene {
       if (pol > 0) pg.fill(120, 180, 255, 180); else pg.fill(255, 110, 140, 180);
       pg.ellipse(wx[w], wy[w], 14, 14);
       pg.noFill();
-      pg.stroke(pg.red(pg.get((int)wx[w], (int)wy[w])), 200);
+      // Ring stroke tracks the same polarity color used above — no need to
+      // read the pixel back off the GPU buffer (pg.get() every well every
+      // frame is a slow readback); red channel of that fill is 120 or 255.
+      pg.stroke(pol > 0 ? 120 : 255, 200);
       pg.strokeWeight(1.0);
       pg.ellipse(wx[w], wy[w], 26 + pulse * 12, 26 + pulse * 12);
     }
@@ -311,14 +361,16 @@ class GravityStringsScene implements IScene {
     pg.blendMode(BLEND);
   }
 
-  // Draw one string with sag, ripple boost, well-warped sag direction,
-  // optional magnetic curl, and optional tethered solid at midpoint.
-  void drawString(PGraphics pg, float x1, float y1, float x2, float y2,
+  // Compute one string's sagged/vibrating point path once (sag, ripple
+  // boost, well-warped sag direction, optional magnetic curl). Shared by
+  // the halo and color draw passes so the subdivision loop runs once per
+  // pair per frame instead of twice.
+  StringPath buildStringPath(PGraphics pg, float x1, float y1, float x2, float y2,
                   float amplitude, int skip, int index, float sagOffset,
                   float[] wx, float[] wy) {
     float dx = x2 - x1, dy = y2 - y1;
     float len = sqrt(dx * dx + dy * dy);
-    if (len < 0.001) return;
+    if (len < 0.001) return null;
 
     float nx = -dy / len, ny = dx / len;        // perpendicular unit
     float mx = (x1 + x2) * 0.5, my = (y1 + y2) * 0.5;
@@ -352,20 +404,22 @@ class GravityStringsScene implements IScene {
 
     float phaseOff = phase * (1 + skip * 0.3) + index * 0.5;
 
-    pg.beginShape();
+    StringPath path = new StringPath();
+    path.pts = new float[(subdivisions + 1) * 2];
     for (int s = 0; s <= subdivisions; s++) {
       float t  = (float)s / subdivisions;
       float bx = lerp(x1, x2, t);
       float by = lerp(y1, y2, t);
 
-      // Lateral standing-wave vibration
+      // Lateral standing-wave vibration. sin(t*PI*h) is precomputed
+      // (sinTPiH) — only sin(phaseOff*h) is genuinely frame-dependent.
       float vib = 0;
       for (int h = 1; h <= skip; h++) {
-        vib += sin(t * PI * h) * sin(phaseOff * h) * amplitude / h;
+        vib += sinTPiH[s][h] * sin(phaseOff * h) * amplitude / h;
       }
 
       // Sag envelope (max at midpoint), boosted by ripples
-      float env = sin(t * PI);
+      float env = sinTPi[s];
       float sagMag = env * sagOffset * len * SAG_SCALE * (1.0 + rippleBoost);
 
       float ox, oy;
@@ -378,17 +432,20 @@ class GravityStringsScene implements IScene {
         ox = nx * vib + pullX * sagMag;
         oy = ny * vib + pullY * sagMag;
       }
-      pg.vertex(bx + ox, by + oy);
+      path.pts[s * 2]     = bx + ox;
+      path.pts[s * 2 + 1] = by + oy;
     }
-    pg.endShape();
 
-    // Tethered solid at midpoint, swung by sag
-    if (tetheredSolids) {
-      float sagMid = sagOffset * len * SAG_SCALE * (1.0 + rippleBoost);
-      float tx = mx + pullX * sagMid;
-      float ty = my + pullY * sagMid;
-      drawTetheredSolid(pg, tx, ty, 8 + skip * 2, skip);
-    }
+    float sagMid = sagOffset * len * SAG_SCALE * (1.0 + rippleBoost);
+    path.tetherX = mx + pullX * sagMid;
+    path.tetherY = my + pullY * sagMid;
+    return path;
+  }
+
+  void drawPath(PGraphics pg, float[] pts) {
+    pg.beginShape();
+    for (int s = 0; s < pts.length; s += 2) pg.vertex(pts[s], pts[s + 1]);
+    pg.endShape();
   }
 
   void drawTetheredSolid(PGraphics pg, float x, float y, float r, int sides) {

@@ -45,6 +45,7 @@ class HelpOverlay {
     "?\ttoggle this help",
     "i\tcontroller guide",
     "m\tmetadata HUD",
+    "V\tvolume HUD",
     "`\tcode overlay (when scene exposes it)",
     "",
     "SCENE-LOCAL\t",

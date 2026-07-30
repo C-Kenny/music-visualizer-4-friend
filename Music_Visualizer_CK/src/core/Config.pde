@@ -108,6 +108,7 @@ class Config {
   boolean SCREEN_RECORDING;
   boolean SHOW_CODE;
   boolean SHOW_METADATA;
+  boolean SHOW_VOLUME_HUD;  // Toggle with 'V' key
   boolean BLOOM_ENABLED;
 
   boolean LOW_POWER_MODE;
@@ -216,6 +217,7 @@ class Config {
     LOGGING_ENABLED = false;
     BLOOM_ENABLED = false;
     SHOW_METADATA = false;
+    SHOW_VOLUME_HUD = false;
 
     LOW_POWER_MODE = false;
     LOW_POWER_SCALE = 2;
