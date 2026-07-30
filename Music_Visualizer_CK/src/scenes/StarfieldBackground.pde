@@ -1,5 +1,5 @@
 /**
- * StarfieldBackground — IBackground wrapping DeepSpaceScene's star warp effect.
+ * StarfieldBackground - IBackground wrapping DeepSpaceScene's star warp effect.
  * Bass doubles speed, beat spikes it briefly. Very cheap (800 particles).
  */
 class StarfieldBackground implements IBackground {

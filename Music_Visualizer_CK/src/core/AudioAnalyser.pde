@@ -38,7 +38,7 @@ class AudioAnalyser {
     // The main sketch should have called audio.forward() and
     // audio.beat.detect() before calling this.
 
-    // When TempoLock is locked, the metronome grid is authoritative — onsets
+    // When TempoLock is locked, the metronome grid is authoritative - onsets
     // are ignored to keep visual sync stable on tracks where Minim's onset
     // detector drifts (four-on-the-floor, dense kicks).
     if (tempoLock != null && tempoLock.isLocked()) {

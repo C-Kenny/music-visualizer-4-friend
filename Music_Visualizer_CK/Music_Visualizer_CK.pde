@@ -41,7 +41,7 @@ int previousState = -1;
 boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
 
 AudioAnalyser analyzer;
-SpatialAudio spatial;     // 8D-audio pan/orbit tracker — scenes read spatial.pan/azimuth
+SpatialAudio spatial;     // 8D-audio pan/orbit tracker - scenes read spatial.pan/azimuth
 DropPredictor dropPredictor;
 PFont monoFont;
 PGraphics sceneBuffer;
@@ -70,7 +70,7 @@ void loadSongToVisualize() {
   logToStdout("Loading audio source (mode: " + config.AUDIO_INPUT_MODE + ")");
   
   if (config.AUDIO_INPUT_MODE.equals("DEVICE")) {
-    // DEVICE INPUT MODE — auto-pick `default` entry on first entry so user
+    // DEVICE INPUT MODE - auto-pick `default` entry on first entry so user
     // doesn't have to F1/F2 cycle past suspended USB mics.
     if (config.SELECTED_AUDIO_DEVICE_INDEX == 0) pickPreferredAudioDevice();
     audio = new Audio(this, "", config.bandsPerOctave, true, config.SELECTED_AUDIO_DEVICE_INDEX);
@@ -78,7 +78,7 @@ void loadSongToVisualize() {
     config.SONG_NAME = "Live Audio: " + config.audioDeviceSelector.getSelectedDeviceName();
     
     if (audio.audioInput == null) {
-      System.err.println("[Audio] Device init failed — falling back to FILE mode so the show keeps running.");
+      System.err.println("[Audio] Device init failed - falling back to FILE mode so the show keeps running.");
       config.AUDIO_INPUT_MODE = "FILE";
       audio = new Audio(this, config.SONG_TO_VISUALIZE, config.bandsPerOctave);
       config.SONG_PLAYING = (audio.player != null);
@@ -89,7 +89,7 @@ void loadSongToVisualize() {
     }
     
     // Note: DropPredictor cannot scan live audio (it's real-time, not seekable)
-    logToStdout("[Audio] Running in DEVICE mode — DropPredictor disabled (look-ahead not possible)");
+    logToStdout("[Audio] Running in DEVICE mode - DropPredictor disabled (look-ahead not possible)");
     
   } else {
     // FILE INPUT MODE (original behavior)
@@ -191,7 +191,7 @@ boolean hasDevAudioFlag() {
 
 // Snap selector to the first device whose name starts with "default" (Pulse/
 // PipeWire-routable on Linux, "Primary Sound Capture Driver" on Windows).
-// Falls through silently if no match — caller can still F1/F2.
+// Falls through silently if no match - caller can still F1/F2.
 void pickPreferredAudioDevice() {
   if (config.audioDeviceSelector == null) return;
   for (int i = 0; i < config.audioDeviceSelector.getDeviceCount(); i++) {
@@ -243,7 +243,7 @@ void initializeGlobals() {
 }
 
 boolean isDevMode() {
-  // Check several locations — sketchPath() can vary depending on how Processing CLI is invoked
+  // Check several locations - sketchPath() can vary depending on how Processing CLI is invoked
   String[] candidates = {
     sketchPath() + "/.devmode",
     sketchPath() + "/../.devmode",
@@ -260,7 +260,7 @@ boolean isDevMode() {
 }
 
 // Verbose stdout heartbeat (SCENE/CONTROLLER/FPS once per second).
-// Off by default — drop a `.devverbose` file in the sketch dir to re-enable
+// Off by default - drop a `.devverbose` file in the sketch dir to re-enable
 // for debugging. HUD + /operator already show this info live.
 boolean isDevVerbose() {
   String[] candidates = {
@@ -272,7 +272,7 @@ boolean isDevVerbose() {
   return false;
 }
 
-// Explicit opt-in for frame preview saves — separate from devmode so it never
+// Explicit opt-in for frame preview saves - separate from devmode so it never
 // runs unless you specifically need Claude to see the visuals.
 // Enable:  touch Music_Visualizer_CK/.devpreview
 // Disable: rm Music_Visualizer_CK/.devpreview
@@ -307,7 +307,7 @@ void setSongToVisualize() {
     return;
   }
 
-  // Dev / smoke-test shortcuts — skip the dialog
+  // Dev / smoke-test shortcuts - skip the dialog
   if (isDevMode() || SMOKE_TEST_MODE) {
     try {
       java.io.File devSongFile = new java.io.File(sketchPath(".devsong"));
@@ -362,7 +362,7 @@ void setSongToVisualize() {
   );
 
   if (choice == 2) {
-    // Live audio device — no mp3 will be loaded.
+    // Live audio device - no mp3 will be loaded.
     config.AUDIO_INPUT_MODE = "DEVICE";
     config.STATE = SCENE_ORIGINAL;
     config.SONG_NAME = "Live Audio (pending device)";
@@ -416,7 +416,7 @@ void loadSongByPath(String path) {
   // Re-entrancy guard. With the pending-load queue this should only ever fire
   // if loadSongByPath itself recurses; keeping it as a belt-and-suspenders.
   if (_loadingSong) {
-    logToStdout("[Audio] loadSongByPath ignored — load already in flight: " + path);
+    logToStdout("[Audio] loadSongByPath ignored - load already in flight: " + path);
     return;
   }
   _loadingSong = true;
@@ -479,7 +479,7 @@ void folderSelected(File selection) {
   if (!dir.isDirectory()) {
     File parent = dir.getParentFile();
     if (parent != null && parent.isDirectory()) {
-      logToStdout("[FolderPicker] selection was a file — falling back to parent: " + parent.getAbsolutePath());
+      logToStdout("[FolderPicker] selection was a file - falling back to parent: " + parent.getAbsolutePath());
       dir = parent;
     } else {
       logToStdout("[FolderPicker] selection is not a folder and has no usable parent. Aborting.");
@@ -520,7 +520,7 @@ void fileSelected(File selection) {
   config.currentSongIndex = config.songList.indexOf(path);
   if (config.currentSongIndex < 0) config.currentSongIndex = 0;
 
-  // At runtime (audio already exists) enqueue — the picker callback runs on
+  // At runtime (audio already exists) enqueue - the picker callback runs on
   // AWT-EDT, so doing the Minim teardown/init here would race the draw thread.
   // At startup the setSongToVisualize() while-loop picks up SONG_TO_VISUALIZE instead.
   if (audio != null) {
@@ -559,7 +559,7 @@ String getSongNameFromFilePath(String song_path, String osType) {
 void settings() {
   // Some sandboxed environments (e.g. Flatpak-packaged Processing blocking the
   // AWT/X11 portal call) can't query the display at settings()-time and report
-  // 0x0 here. size() only works in settings() — if we let a 0 through, the OS
+  // 0x0 here. size() only works in settings() - if we let a 0 through, the OS
   // clamps it to a tiny sliver window for the whole run. Fall back to a sane
   // default so at least the window is usable; see documentation for the real
   // fix (running a non-sandboxed Processing install).
@@ -611,7 +611,7 @@ void setup() {
   // Detect smoke test early so setSongToVisualize() skips the file picker
   if (isSmokeTestMode()) {
     SMOKE_TEST_MODE = true;
-    println("[SMOKE TEST] Detected — will exercise all " + SCENE_COUNT + " scenes");
+    println("[SMOKE TEST] Detected - will exercise all " + SCENE_COUNT + " scenes");
   }
   setSongToVisualize();
   surface.setResizable(true);
@@ -690,7 +690,7 @@ void setup() {
   scenes[56] = new SpatialOrbitScene();
   scenes[57] = new ParalyzedScene();
 
-  // SceneSwitcher — must be created AFTER scenes[] is populated
+  // SceneSwitcher - must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
   audioSwitcher  = new AudioSourceSwitcher();
   autoSwitcher   = new AutoSwitcher();
@@ -715,7 +715,7 @@ void setup() {
       String raw = join(loadStrings(devStreamFile.getAbsolutePath()), "").trim();
       if (raw.equalsIgnoreCase("venue")) streamer.profile = Streamer.PROFILE_VENUE;
     }
-  } catch (Exception e) { /* ignore — missing or malformed file */ }
+  } catch (Exception e) { /* ignore - missing or malformed file */ }
   midiBridge     = new MidiBridge();
   helpOverlay    = new HelpOverlay();
   displayManager = new DisplayManager();
@@ -726,7 +726,7 @@ void setup() {
   // Initialise smoke test runner after all scenes exist
   if (SMOKE_TEST_MODE) {
     smokeTestRunner = new SmokeTestRunner();
-    println("[SMOKE TEST] Runner initialised — starting on next draw()");
+    println("[SMOKE TEST] Runner initialised - starting on next draw()");
     runAudioModeTests(smokeTestRunner);
   }
 
@@ -748,9 +748,9 @@ void setup() {
                 + scenes[sceneIndex].getClass().getSimpleName());
       }
     }
-  } catch (Exception e) { /* ignore — missing or malformed file */ }
+  } catch (Exception e) { /* ignore - missing or malformed file */ }
 
-  // Initial lifecycle trigger (skipped in smoke test — runner manages this)
+  // Initial lifecycle trigger (skipped in smoke test - runner manages this)
   previousState = config.STATE;
   if (!SMOKE_TEST_MODE) scenes[config.STATE].onEnter();
   // load Halo 3 emblem used as reference for colors and texture
@@ -810,7 +810,7 @@ void stop() {
   super.stop();
 }
 
-// Buffer-resize path disabled pending scene refactor — scenes draw in display
+// Buffer-resize path disabled pending scene refactor - scenes draw in display
 // coords (width/height globals), so a smaller buffer makes geometry centre at
 // (display_w/2, display_h/2) which lands at the buffer's bottom-right corner.
 // MSAA reduction + bloom-off still apply in LOW_POWER_MODE.
@@ -877,7 +877,7 @@ void mouseWheel(MouseEvent event) {
 }
 
 void keyPressed() {
-  // Any keystroke means a human is at the desk — pause autopilot drift.
+  // Any keystroke means a human is at the desk - pause autopilot drift.
   if (paramAutoPilot != null) paramAutoPilot.noteActivity();
 
   // Tab always toggles scene switcher (checked before anything else)
@@ -889,7 +889,7 @@ void keyPressed() {
     if (key == '-' || key == '_') { audio.nudgeDeviceGain(1.0f / 1.5f); return; }
   }
 
-  // ' (apostrophe) toggles audio source switcher. F-keys are unreliable —
+  // ' (apostrophe) toggles audio source switcher. F-keys are unreliable - 
   // many WMs (GNOME/KDE) grab F10/F11 for menu/fullscreen before the sketch.
   if (audioSwitcher != null && key == '\'') {
     audioSwitcher.toggle();
@@ -926,7 +926,7 @@ void keyPressed() {
     return;
   }
 
-  // Ctrl+Enter: "showtime" macro — flip everything safety-relevant on at once.
+  // Ctrl+Enter: "showtime" macro - flip everything safety-relevant on at once.
   // Idempotent: re-pressing is safe. Pairs with Esc kill switch for emergencies.
   if (keyCode == java.awt.event.KeyEvent.VK_ENTER
       && keyEvent != null && keyEvent.isControlDown()) {
@@ -948,12 +948,12 @@ void keyPressed() {
     return;
   }
 
-  // Stream toggle: F6 OR F7 — F6 gets eaten by some WMs (GNOME).
+  // Stream toggle: F6 OR F7 - F6 gets eaten by some WMs (GNOME).
   // If both fail, use the operator dashboard button (no auth needed on localhost).
   if (keyCode == java.awt.event.KeyEvent.VK_F6 || keyCode == java.awt.event.KeyEvent.VK_F7) {
     boolean shift = (keyEvent != null && keyEvent.isShiftDown());
     if (shift) {
-      // Shift+F6/F7 — cycle stream bandwidth profile NORMAL <-> VENUE (weak WiFi)
+      // Shift+F6/F7 - cycle stream bandwidth profile NORMAL <-> VENUE (weak WiFi)
       if (streamer != null) streamer.cycleProfile();
     } else {
       println("[STREAM] toggle hotkey pressed (key=" + key + " code=" + keyCode + ")");
@@ -1031,7 +1031,7 @@ void keyPressed() {
   if (key == 'N') shuffleSong();
   if (key == 'o') selectInput("Select song to visualize", "fileSelected");
   // selectInput uses the native GTK picker on Linux (has bookmarks); selectFolder
-  // falls back to Swing (no bookmarks). So we use selectInput for both — the
+  // falls back to Swing (no bookmarks). So we use selectInput for both - the
   // folder version asks for any song *inside* the desired folder, and
   // folderSelected() walks up to the parent directory.
   if (key == 'O') selectInput("Pick any song in the folder to shuffle", "folderSelected");
@@ -1057,7 +1057,7 @@ void keyPressed() {
     }
   }
 
-  // Keyboard equivalent of controller LB/RB. Use '<' / '>' as primary —
+  // Keyboard equivalent of controller LB/RB. Use '<' / '>' as primary - 
   // ASCII keys can't be intercepted by the WM. PageUp/PageDown also work
   // when available; we accept multiple keyCode aliases because Processing's
   // NEWT backend uses 11/12 while AWT uses 33/34 (and X11 may map differently).
@@ -1108,7 +1108,7 @@ void keyPressed() {
   if (key == CODED) {
     if (keyCode == LEFT)  audio.skip(-10000);
     if (keyCode == RIGHT) audio.skip(10000);
-    // Volume via Audio.volume/DevVolumeEffect, not player.setGain() — see
+    // Volume via Audio.volume/DevVolumeEffect, not player.setGain() - see
     // Audio.pde's volume field comment for why setGain() is unreliable here.
     if (keyCode == UP)   audio.nudgeVolume(5);
     if (keyCode == DOWN) audio.nudgeVolume(-5);
@@ -1264,10 +1264,10 @@ final int[] SCENE_ORDER = {
   SCENE_RECURSIVE_MANDALA,
   SCENE_KALEIDOSCOPE,
   SCENE_VOID_BLOOM,
-  // SCENE_CIRCUIT_MAZE,        // disabled — dynamic circuit maze, revisit later
+  // SCENE_CIRCUIT_MAZE,        // disabled - dynamic circuit maze, revisit later
   SCENE_HOURGLASS,
   SCENE_SACRED_GEOMETRY,
-  // SCENE_MATH_WAVE — hotkey-only ('w'), excluded from rotation
+  // SCENE_MATH_WAVE - hotkey-only ('w'), excluded from rotation
   SCENE_TORUS_KNOT,
   SCENE_ROSE_CURVE,
   // SCENE_SRI_YANTRA,          // disabled, revisit later
@@ -1277,17 +1277,17 @@ final int[] SCENE_ORDER = {
   // SCENE_DOT_MANDALA,         // disabled, revisit later
   SCENE_MERKABA_STAR,
   SCENE_PENTAGONAL_VORTEX,
-  // SCENE_TUNNEL_YANTRA,       // disabled — combo layer scene, revisit later
-  // SCENE_CHLADNI_PLATE,       // disabled — chladni skybox, revisit later
+  // SCENE_TUNNEL_YANTRA,       // disabled - combo layer scene, revisit later
+  // SCENE_CHLADNI_PLATE,       // disabled - chladni skybox, revisit later
   SCENE_STRANGE_ATTRACTOR,
   SCENE_HYPERSPACE_BLOOM,
   SCENE_FABLE_MURMURATION,
   SCENE_SPATIAL_ORBIT,
   SCENE_PARALYZED,
   SCENE_SACRED_FRACTALS,
-  // SCENE_EXPLAINER — hotkey-only ('v'), excluded from rotation
+  // SCENE_EXPLAINER - hotkey-only ('v'), excluded from rotation
   // SCENE_THEY_DONT_KNOW,      // disabled, revisit later
-  // SCENE_LIVE_CODE,           // disabled — live code console, revisit later
+  // SCENE_LIVE_CODE,           // disabled - live code console, revisit later
   // SCENE_SILHOUETTE_PAINTING  // disabled, revisit later
 };
 
@@ -1338,7 +1338,7 @@ void switchScene(int newState) {
   if (SMOKE_TEST_MODE) return; // runner manages scene state directly
   // Allow any scene in the switcher's active order (or direct calls from switcher itself)
   if (!sceneSwitcher.isInRotation(newState) && newState != config.STATE) {
-    // Also allow direct jumps — just let it through if it's a valid scene index
+    // Also allow direct jumps - just let it through if it's a valid scene index
     if (newState < 0 || newState >= SCENE_COUNT) return;
   }
   if (config.STATE == newState) return;
@@ -1347,7 +1347,7 @@ void switchScene(int newState) {
   pendingFrameCount = 0;
 }
 
-// Execute a queued scene switch — captures snapshot and updates state.
+// Execute a queued scene switch - captures snapshot and updates state.
 void commitPendingScene() {
   if (pendingScene < 0) return;
   // Snapshot the upscaled main canvas, not the raw sceneBuffer, so the
@@ -1362,7 +1362,7 @@ void commitPendingScene() {
 
 // Walks the active rotation forward from `from`, returning the first scene
 // that isn't blacklisted by SceneGuard. Falls back to `from` when every scene
-// in rotation is blacklisted (pathological — caller should render a card).
+// in rotation is blacklisted (pathological - caller should render a card).
 int nextNonBlacklistedScene(int from) {
   if (sceneSwitcher == null) return from;
   int n = sceneSwitcher.activeOrder.size();
@@ -1375,7 +1375,7 @@ int nextNonBlacklistedScene(int from) {
   return from;
 }
 
-// Direct switch called from SceneSwitcher — bypasses rotation guard
+// Direct switch called from SceneSwitcher - bypasses rotation guard
 void switchSceneDirect(int newState) {
   if (SMOKE_TEST_MODE) return;
   if (newState < 0 || newState >= SCENE_COUNT) return;
@@ -1407,7 +1407,7 @@ void draw() {
     return;
   }
   // ────────────────────────────────────────────────────────────────────────
-  // Per-second SCENE/CONTROLLER/FPS heartbeat removed — same info is in the HUD
+  // Per-second SCENE/CONTROLLER/FPS heartbeat removed - same info is in the HUD
   // and on /operator. Set .devverbose in the sketch dir to re-enable.
   if (config.VERBOSE_LOG && frameCount % 60 == 0) {
     println("SCENE: " + config.STATE + " | CONTROLLER: " + config.USING_CONTROLLER + " | FPS: " + int(frameRate));
@@ -1510,7 +1510,7 @@ void draw() {
     didRenderScene = true;
   } // End Fixed Timestep
 
-  // 3. Render Active Scene to Buffer — once per display frame (after all logic ticks)
+  // 3. Render Active Scene to Buffer - once per display frame (after all logic ticks)
   if (didRenderScene && config.STATE >= 0 && config.STATE < SCENE_COUNT) {
     int targetW = sceneBufferRenderWidth();
     int targetH = sceneBufferRenderHeight();
@@ -1562,7 +1562,7 @@ void draw() {
     try { sceneBuffer.endDraw(); } catch (Throwable ignored) {}
 
     if (sceneThrew) {
-      // P3D renderer state may be corrupt mid-draw — recreate buffer fresh.
+      // P3D renderer state may be corrupt mid-draw - recreate buffer fresh.
       sceneBuffer = createGraphics(sceneBufferRenderWidth(), sceneBufferRenderHeight(), P3D);
       sceneBuffer.smooth(config.LOW_POWER_MODE ? 2 : 4);
       sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
@@ -1585,21 +1585,21 @@ void draw() {
   blendMode(REPLACE); // Massive Performance improvement for laptops
   imageMode(CORNER);
   // Run enabled PostFX (CPU in-place, then GLSL ping-pong). Returns the
-  // final buffer to blit — may be sceneBuffer itself or a temp FX buffer.
+  // final buffer to blit - may be sceneBuffer itself or a temp FX buffer.
   if (frameBudget != null) frameBudget.begin(FrameBudget.P_POSTFX);
   PGraphics toDisplay = postFX.process(sceneBuffer);
   if (frameBudget != null) frameBudget.end();
   if (frameBudget != null) frameBudget.begin(FrameBudget.P_COMPOSE);
   image(toDisplay, 0, 0, width, height);
 
-  // Strobe safety cap — measures luma jumps + flash rate on the final
+  // Strobe safety cap - measures luma jumps + flash rate on the final
   // composite, blends prior frame back over to flatten unsafe spikes.
   if (strobeSafety != null) {
     strobeSafety.maybeDampen(toDisplay, width, height);
     strobeSafety.snapshot(toDisplay);
   }
 
-  // mp4 capture — pipes the post-FX composite to ffmpeg via worker thread.
+  // mp4 capture - pipes the post-FX composite to ffmpeg via worker thread.
   // Excludes HUDs and text overlay (they sit on top of the window blit).
   // Guarded independently: a PGraphics/GL failure in either subsystem must
   // disable that subsystem only, never crash the render loop mid-show.
@@ -1711,18 +1711,18 @@ void draw() {
     audioSwitcher.drawOverlay();
   }
 
-  // Scene switcher overlay — drawn last so it always floats on top
+  // Scene switcher overlay - drawn last so it always floats on top
   if (sceneSwitcher.isOpen) {
     sceneSwitcher.update();
     sceneSwitcher.drawOverlay();
   }
 
-  // Stage hotkey help (?) — sits above HUDs but below kill switch fade.
+  // Stage hotkey help (?) - sits above HUDs but below kill switch fade.
   if (helpOverlay != null) helpOverlay.draw(width, height, monoFont);
 
   if (frameBudget != null) frameBudget.end(); // close P_HUD
 
-  // KillSwitch composites a black quad over EVERYTHING — must be the very last draw.
+  // KillSwitch composites a black quad over EVERYTHING - must be the very last draw.
   killSwitch.tick();
   killSwitch.draw();
 
@@ -1760,7 +1760,7 @@ String[] wrapHUDLines(String[] lines, float maxTextW) {
       if (textWidth(candidate) <= maxTextW) {
         cur = candidate;
       } else if (cur.length() == 0) {
-        // Single token wider than maxTextW — hard-break by characters.
+        // Single token wider than maxTextW - hard-break by characters.
         String chunk = "";
         for (int i = 0; i < w.length(); i++) {
           String next = chunk + w.charAt(i);
@@ -1846,7 +1846,7 @@ void drawMetadataOverlay() {
 void sceneHUD(PGraphics pg, String title, String[] lines) {
   if (isProjecting) return;
   if (demoInput != null && demoInput.isActive()) return;
-  // Unified terminal style — matches SYSTEM METADATA / WEB CONTROL / AUDIO HUDs.
+  // Unified terminal style - matches SYSTEM METADATA / WEB CONTROL / AUDIO HUDs.
   // Title is "=== TITLE ===" centered as the first row of the lines block.
   String[] composed = new String[lines.length + 1];
   composed[0] = "=== " + title.toUpperCase() + " ===";
@@ -1860,7 +1860,7 @@ void sceneHUD(PGraphics pg, String title, String[] lines) {
   float pad   = 14 * uiScale();
   float minTextW = HUD_MIN_W * uiScale(), maxTextW = HUD_MAX_W * uiScale();
   // PGraphics textWidth uses pg's font metrics; wrapHUDLines uses the global
-  // canvas font. They're the same monoFont so widths match — wrap then size.
+  // canvas font. They're the same monoFont so widths match - wrap then size.
   String[] wrapped = wrapHUDLines(composed, maxTextW);
   float maxW = 0;
   for (String l : wrapped) { float w = pg.textWidth(l); if (w > maxW) maxW = w; }
@@ -1886,7 +1886,7 @@ void sceneHUD(PGraphics pg, String title, String[] lines) {
   pg.popStyle();
 }
 
-// Generic right-side terminal HUD — used by worm scenes (and any future scene).
+// Generic right-side terminal HUD - used by worm scenes (and any future scene).
 void drawSceneControlsHUD(String[] rawLines) {
   blendMode(BLEND);
   pushStyle();
@@ -1910,10 +1910,10 @@ void drawSceneControlsHUD(String[] rawLines) {
 
 // Draws a terminal-style code overlay showing the formulas a scene uses.
 // Each scene passes in plain-English lines explaining its maths.
-// Controls HUD for scene 1 — shown on the right side when ` is pressed.
+// Controls HUD for scene 1 - shown on the right side when ` is pressed.
 // Toggle with the backtick key (`).
 void drawCodeOverlay(String[] lines) {
-  // Unified terminal style — left-anchored, vertically centered.
+  // Unified terminal style - left-anchored, vertically centered.
   blendMode(BLEND);
   pushStyle();
   textFont(monoFont);
@@ -1940,7 +1940,7 @@ void drawWebControlBadge() {
   boolean haveUrls = featureFlagServer.lanUrls != null && featureFlagServer.lanUrls.size() > 0;
   boolean haveErr  = featureFlagServer.startError != null && featureFlagServer.startError.length() > 0;
   if (!haveUrls && !haveErr) return;
-  // Unified terminal style — bottom-left anchored.
+  // Unified terminal style - bottom-left anchored.
   pushStyle();
   textFont(monoFont);
   textAlign(LEFT, BASELINE);
@@ -1970,7 +1970,7 @@ void drawWebControlBadge() {
   float boxX = margin;
   float boxY = height - boxH - margin;
 
-  // Body — bright-green border + bright-green text on black, like SYSTEM METADATA.
+  // Body - bright-green border + bright-green text on black, like SYSTEM METADATA.
   fill(0, 200);
   stroke(0, 255, 0);
   strokeWeight(2);
@@ -2016,7 +2016,7 @@ float drawAudioSourceBadge(float startY) {
   if (audio.isDeviceInput()) {
     src = config.audioDeviceSelector != null ? config.audioDeviceSelector.getSelectedDeviceName() : "default";
   } else {
-    src = config.SONG_NAME != null ? config.SONG_NAME : "—";
+    src = config.SONG_NAME != null ? config.SONG_NAME : "-";
   }
   String l1 = "AUDIO  " + mode;
   if (audio.isDeviceInput()) {
@@ -2025,7 +2025,7 @@ float drawAudioSourceBadge(float startY) {
   String l2 = src;
   String l3 = audio.isDeviceInput() ? "'  source    +/-  gain" : "'  open source picker";
 
-  // Volume icon row — toggle with 'V'. Folded into this badge rather than
+  // Volume icon row - toggle with 'V'. Folded into this badge rather than
   // living as its own box (file-mode only; device-mode has no player gain).
   boolean showVol  = config.SHOW_VOLUME_HUD && !audio.isDeviceInput();
   float   iconH    = 20 * uiScale();
@@ -2045,7 +2045,7 @@ float drawAudioSourceBadge(float startY) {
   float boxX = width - boxW - 12 * uiScale();
   float boxY = startY - boxH;
 
-  // Unified terminal style — bright green border + text, black bg.
+  // Unified terminal style - bright green border + text, black bg.
   fill(0, 200);
   stroke(0, 255, 0);
   strokeWeight(2);
@@ -2066,7 +2066,7 @@ float drawAudioSourceBadge(float startY) {
     drawSpeakerVolumeIcon(boxX + pad, rowTop + iconH, iconH, audio.volume);
   }
 
-  // Live RMS bar — pulled from FFT band energies (no extra audio touch needed).
+  // Live RMS bar - pulled from FFT band energies (no extra audio touch needed).
   float rms = 0;
   if (audio.fft != null) {
     int n = audio.fft.avgSize();
@@ -2087,7 +2087,7 @@ float drawAudioSourceBadge(float startY) {
   return boxY - 10 * uiScale(); // Return Y position for next badge above
 }
 
-// Speaker glyph + a right-triangle "ramp" that fills in as volume rises —
+// Speaker glyph + a right-triangle "ramp" that fills in as volume rises - 
 // a similar triangle scaled by volFrac, so it visibly grows rather than
 // just a bar/percentage. (x, yBottom) is the icon's bottom-left corner;
 // `h` is its full height. volume is linear 0..2.0 (1.0 = 100%), display
@@ -2106,7 +2106,7 @@ void drawSpeakerVolumeIcon(float x, float yBottom, float h, float volume) {
   triangle(x + bodyW, midY - bodyH / 2, x + bodyW, midY + bodyH / 2, x + bodyW * 2.3, midY);
 
   // Ramp: dim outline at full height, bright fill scaled by volume fraction
-  // (uniform scale keeps it a similar triangle — grows in both W and H).
+  // (uniform scale keeps it a similar triangle - grows in both W and H).
   // Gap after the cone tip keeps the two glyphs visually distinct.
   float rampX0 = x + bodyW * 2.3 + h * 0.22;
   float rampW  = h * 2.3;
@@ -2158,7 +2158,7 @@ float drawAutoSwitcherBadge(float startY) {
   return boxY - 6 * uiScale();
 }
 
-// Knob autopilot badge — visible only while drift is actually moving knobs,
+// Knob autopilot badge - visible only while drift is actually moving knobs,
 // so the operator can tell at a glance why params are changing on their own.
 float drawAutoPilotBadge(float startY) {
   String line = paramAutoPilot.hudLine();
@@ -2232,7 +2232,7 @@ float drawMidiBadge(float startY) {
   textAlign(LEFT, TOP);
 
   String line1 = "[MIDI] F4=toggle";
-  String line2 = midiBridge.openDevices.size() + " device(s) — pad note 36+ -> scene order";
+  String line2 = midiBridge.openDevices.size() + " device(s) - pad note 36+ -> scene order";
 
   float pad      = 8 * uiScale();
   float outerPad = 10 * uiScale();
@@ -2418,7 +2418,7 @@ float drawTempoLockBadge(float startY) {
   if (tempoLock.isLocked()) fill(120, 255, 160); else fill(255, 220, 120);
   text(line2, boxX + pad, boxY + pad + lineH);
 
-  // Metronome pulse — visible verification that locked BPM matches the track.
+  // Metronome pulse - visible verification that locked BPM matches the track.
   if (tempoLock.isLocked() && tempoLock.beatPeriodMs > 0) {
     long elapsed = System.currentTimeMillis() - tempoLock.lockEpochMs;
     float phase  = (elapsed % tempoLock.beatPeriodMs) / (float) tempoLock.beatPeriodMs;
@@ -2495,7 +2495,7 @@ float drawPostFXBadge(float startY) {
 
   fill(180, 130, 255);   // purple label row
   text(line1, boxX + pad, boxY + pad);
-  fill(230, 200, 255);   // lighter purple — active effects
+  fill(230, 200, 255);   // lighter purple - active effects
   text(line2, boxX + pad, boxY + pad + lineH);
 
   popStyle();

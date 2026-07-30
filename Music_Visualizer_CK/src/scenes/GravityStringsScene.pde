@@ -1,4 +1,4 @@
-// Gravity Strings — anchor strings sag under simulated gravity.
+// Gravity Strings - anchor strings sag under simulated gravity.
 // Extended: sacred-geometry attractors, multi-body wells, cradle presets,
 // skybox, gravity ripples, magnetic dipole mode, tethered solids.
 
@@ -45,7 +45,7 @@ class GravityStringsScene implements IScene {
   float[] rippleAge = new float[MAX_RIPPLES];
   int rippleHead = 0;
 
-  // Cached (i,j) pair list — pairsForPreset() only rebuilds when the topology
+  // Cached (i,j) pair list - pairsForPreset() only rebuilds when the topology
   // preset or anchor count actually changes, instead of every frame.
   int   pairsCachePreset  = -1;
   int   pairsCacheAnchors = -1;
@@ -53,7 +53,7 @@ class GravityStringsScene implements IScene {
 
   // sin(t*PI*h) depends only on subdivision index s and harmonic h, both
   // fixed per-scene (subdivisions never changes, harmonics capped at
-  // MAX_SKIP) — precompute once instead of recomputing every subdivision of
+  // MAX_SKIP) - precompute once instead of recomputing every subdivision of
   // every string every frame. sinTPi[s] = sin(t*PI), the h-independent term
   // used for the sag envelope.
   float[]   sinTPi;
@@ -191,7 +191,7 @@ class GravityStringsScene implements IScene {
       wy[w] = pg.height / 2.0 + sin(a) * wr;
     }
 
-    // Strings — preset selects which (i,j) pairs. Cached: only rebuild when
+    // Strings - preset selects which (i,j) pairs. Cached: only rebuild when
     // the topology preset or anchor count changes, not every frame.
     if (presetIdx != pairsCachePreset || numAnchors != pairsCacheAnchors) {
       pairsCache = pairsForPreset(presetIdx, numAnchors);
@@ -200,7 +200,7 @@ class GravityStringsScene implements IScene {
     }
     int[][] pairs = pairsCache;
 
-    // HSB colorMode set once for the whole loop — color() below returns a
+    // HSB colorMode set once for the whole loop - color() below returns a
     // fully-resolved packed color regardless of ambient mode, so stroke()
     // doesn't need colorMode toggled back and forth per pair.
     pg.colorMode(HSB, 360, 255, 255, 255);
@@ -255,7 +255,7 @@ class GravityStringsScene implements IScene {
       if (pol > 0) pg.fill(120, 180, 255, 180); else pg.fill(255, 110, 140, 180);
       pg.ellipse(wx[w], wy[w], 14, 14);
       pg.noFill();
-      // Ring stroke tracks the same polarity color used above — no need to
+      // Ring stroke tracks the same polarity color used above - no need to
       // read the pixel back off the GPU buffer (pg.get() every well every
       // frame is a slow readback); red channel of that fill is 120 or 255.
       pg.stroke(pol > 0 ? 120 : 255, 200);
@@ -316,13 +316,13 @@ class GravityStringsScene implements IScene {
       case 1: // adjacent only
         for (int i = 0; i < n; i++) out.add(new int[]{i, (i + 1) % n});
         break;
-      case 2: // star — every-other
+      case 2: // star - every-other
         for (int i = 0; i < n; i++) out.add(new int[]{i, (i + 2) % n});
         break;
-      case 3: // hexagram-ish — skip n/3
+      case 3: // hexagram-ish - skip n/3
         for (int i = 0; i < n; i++) out.add(new int[]{i, (i + max(1, n / 3)) % n});
         break;
-      case 4: // jacobs ladder — adjacent + cross rungs
+      case 4: // jacobs ladder - adjacent + cross rungs
         for (int i = 0; i < n - 1; i++) out.add(new int[]{i, i + 1});
         for (int i = 0; i < n - 2; i += 2) out.add(new int[]{i, i + 2});
         break;
@@ -412,7 +412,7 @@ class GravityStringsScene implements IScene {
       float by = lerp(y1, y2, t);
 
       // Lateral standing-wave vibration. sin(t*PI*h) is precomputed
-      // (sinTPiH) — only sin(phaseOff*h) is genuinely frame-dependent.
+      // (sinTPiH) - only sin(phaseOff*h) is genuinely frame-dependent.
       float vib = 0;
       for (int h = 1; h <= skip; h++) {
         vib += sinTPiH[s][h] * sin(phaseOff * h) * amplitude / h;

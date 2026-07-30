@@ -1,4 +1,4 @@
-// FFT Worm Scene — state 11
+// FFT Worm Scene - state 11
 //
 // One enormous worm whose body IS the frequency spectrum.
 // Head = sub-bass, tail = air-highs. Each segment's radius and colour

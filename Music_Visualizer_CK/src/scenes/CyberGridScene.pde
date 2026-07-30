@@ -7,7 +7,7 @@ class CyberGridScene implements IScene {
   float flying = 0;
   float[][] terrain;
 
-  // Live knobs — driven by controller sticks, keyboard, or web sliders via the
+  // Live knobs - driven by controller sticks, keyboard, or web sliders via the
   // ParamRouter spine. The scene reads .value directly each frame.
   SceneParam pSpeed  = new SceneParam("speed",  "Scroll Speed", 0,    3,   1);
   SceneParam pRelief = new SceneParam("relief", "Hill Height",  0,    2.5, 1);
@@ -50,7 +50,7 @@ class CyberGridScene implements IScene {
 
     pg.strokeWeight(1.5);
     for (int y = 0; y < rows - 1; y++) {
-      // Color based on row position (gradient pink→cyan) — set once per row,
+      // Color based on row position (gradient pink→cyan) - set once per row,
       // not per vertex, to avoid GPU state flush on every vertex.
       float t = (float)y / (rows - 1);
       pg.stroke(255 * t, 255 * (1 - t), 255, 200);

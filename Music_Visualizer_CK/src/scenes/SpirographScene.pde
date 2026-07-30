@@ -1,6 +1,6 @@
-// Spirograph Scene — state 12
+// Spirograph Scene - state 12
 //
-// A hypotrochoid drawn incrementally — one point per frame — so you watch
+// A hypotrochoid drawn incrementally - one point per frame - so you watch
 // the pattern emerge in real time. When the curve closes it fades out and
 // a new one begins with different parameters.
 //
@@ -18,7 +18,7 @@
 //
 // Controller:
 //   L Stick ↕   → trace speed
-//   R Stick ↔   → nudge d (pen offset) — thickens/thins the curve
+//   R Stick ↔   → nudge d (pen offset) - thickens/thins the curve
 //   R Stick ↕   → scale
 //   A           → force new curve now
 //   Y           → cycle colour palette
@@ -36,7 +36,7 @@ class SpirographScene implements IScene {
   int   smallR   = 3;
   float penD;               // d = pen offset from center of rolling circle
 
-  // Preset ratios — chosen for beautiful closed curves
+  // Preset ratios - chosen for beautiful closed curves
   int[][] presets = {
     {5, 3}, {7, 3}, {8, 3}, {7, 4}, {9, 4},
     {11, 4}, {7, 5}, {9, 5}, {11, 6}, {13, 5},
@@ -44,7 +44,7 @@ class SpirographScene implements IScene {
   };
   int presetIdx = 0;
 
-  // Trail — store the last MAX_TRAIL points
+  // Trail - store the last MAX_TRAIL points
   final int MAX_TRAIL = 8000;
   float[]  trailX  = new float[MAX_TRAIL];
   float[]  trailY  = new float[MAX_TRAIL];

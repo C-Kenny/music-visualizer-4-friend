@@ -1,5 +1,5 @@
 /**
- * StrangeAttractorScene (scene 47) — Opus 4.7 showcase v2
+ * StrangeAttractorScene (scene 47) - Opus 4.7 showcase v2
  *
  * 25,000 particles live inside a 3D vector field defined by one of six
  * classical strange attractors from dynamical systems theory:
@@ -54,7 +54,7 @@ class StrangeAttractorScene implements IScene {
   // ── Particle cloud ────────────────────────────────────────────────────────
   static final int N = 25000;             // array capacity (max particles)
   // Particles actually simulated/drawn each frame. Defaults to N (no
-  // behavior change) — a future perf/venue-conditions knob can lower this
+  // behavior change) - a future perf/venue-conditions knob can lower this
   // without touching array allocation, since the O(N) centroid+integrate
   // passes are this scene's real cost driver.
   int activeN = N;
@@ -84,7 +84,7 @@ class StrangeAttractorScene implements IScene {
   float camAzim = 0.4, camPitch = 0.25;
   float targetAzim = 0.4, targetPitch = 0.25;
   float camDist = 1200, targetDist = 1200;
-  // Smoothed centroid of the particle cloud — used to keep the attractor
+  // Smoothed centroid of the particle cloud - used to keep the attractor
   // centred on screen since several systems (Chen, Aizawa, Lorenz) orbit
   // around a non-zero point in world space and would otherwise drift off
   // to the side under autoOrbit.
@@ -375,7 +375,7 @@ class StrangeAttractorScene implements IScene {
         dzW = deltaA[2] * scaleA;
       }
 
-      // Explode kick — shove particles outward radially.
+      // Explode kick - shove particles outward radially.
       if (kick > 0) {
         float rr = sqrt(px[i]*px[i] + py[i]*py[i] + pz[i]*pz[i]) + 1e-3;
         dxW += kick * px[i] / rr;
@@ -383,7 +383,7 @@ class StrangeAttractorScene implements IScene {
         dzW += kick * pz[i] / rr;
       }
 
-      // Velocity clamp — chaotic systems can spike briefly; cap so a frame
+      // Velocity clamp - chaotic systems can spike briefly; cap so a frame
       // doesn't throw a particle halfway to the moon.
       float maxStep = 60.0;
       if (dxW >  maxStep) dxW =  maxStep; else if (dxW < -maxStep) dxW = -maxStep;
@@ -438,7 +438,7 @@ class StrangeAttractorScene implements IScene {
           sat = 95; bri = 70 + sBass * 20; alp = 75;
           break;
         }
-        default: { // Phase — static per-particle hue cycling with time
+        default: { // Phase - static per-particle hue cycling with time
           hue = (phase[i] * 360 + frameCount * 0.6) % 360;
           sat = 90; bri = 70 + sHigh * 25; alp = 70;
           break;

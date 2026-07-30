@@ -12,7 +12,7 @@ an issue.
 
 ## handy.zip
 
-**Handy** — sketchy/hand-drawn rendering aesthetic for Processing.
+**Handy** - sketchy/hand-drawn rendering aesthetic for Processing.
 
 - Author: Jo Wood, giCentre
 - Source: https://www.gicentre.net/handy
@@ -22,7 +22,7 @@ an issue.
 
 ## minim.zip
 
-**Minim** — audio playback, FFT, and beat detection.
+**Minim** - audio playback, FFT, and beat detection.
 
 - Authors: Damien Di Fede, Anderson Mills
 - Source: https://github.com/ddf/Minim · http://code.compartmental.net/minim/
@@ -37,7 +37,7 @@ intact.
 
 ## GameControlPlus.zip
 
-**Game Control Plus** — Xbox/joystick/gamepad input.
+**Game Control Plus** - Xbox/joystick/gamepad input.
 
 - Author: Peter Lager (lagers.org.uk)
 - Source: https://lagers.org.uk/gamecontrol/
@@ -61,7 +61,7 @@ We have not modified the library; this attribution preserves origin.
 
 ## peasycam.zip
 
-**PeasyCam** — mouse-driven 3D camera control.
+**PeasyCam** - mouse-driven 3D camera control.
 
 - Author: Jonathan Feinberg
 - Source: https://github.com/jdf/peasycam · http://mrfeinberg.com/peasycam/
@@ -72,7 +72,7 @@ We have not modified the library; this attribution preserves origin.
 
 ## dashedlines.zip
 
-**Dashed Lines** — dashed-stroke geometry rendering.
+**Dashed Lines** - dashed-stroke geometry rendering.
 
 - Author: Jose Luis Garcia del Castillo
 - Source: https://github.com/garciadelcastillo/-dashed-lines-for-processing-

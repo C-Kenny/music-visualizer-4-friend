@@ -1,5 +1,5 @@
 /**
- * MandelbrotRenderer — escape-time fractal rendered to a low-res PGraphics
+ * MandelbrotRenderer - escape-time fractal rendered to a low-res PGraphics
  * buffer, then upscaled. Owns its own pan/zoom state since those are not
  * driven by audio (interactive). Caller wires controller input via the
  * pan()/zoom()/setView() helpers.

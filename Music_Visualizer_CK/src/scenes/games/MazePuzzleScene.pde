@@ -6,7 +6,7 @@ import java.util.Queue;
 enum MazeState { STATIONARY, MOVING, TURNING, JUMPING, FALLING }
 
 /**
- * MazePuzzleScene — Kula World Mechanics Restoration
+ * MazePuzzleScene - Kula World Mechanics Restoration
  *
  * Features:
  *   - 3 levels of increasing difficulty
@@ -202,7 +202,7 @@ class MazePuzzleScene implements IScene {
     }
   }
 
-  // Level 1 — Tutorial: open platform, one ramp, one bridge, one spike.
+  // Level 1 - Tutorial: open platform, one ramp, one bridge, one spike.
   // Navigate north to the goal.
   void setupLevel0() {
     for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) addBlock(x, 0, z);
@@ -216,7 +216,7 @@ class MazePuzzleScene implements IScene {
     startForward = new PVector(0, 0, 1);
   }
 
-  // Level 2 — The L-Track: single-tile path forming an L-shape.
+  // Level 2 - The L-Track: single-tile path forming an L-shape.
   // Dodge 3 spikes, turn right at the junction, reach the end.
   void setupLevel1() {
     for (int z = -4; z <= 4; z++) addBlock(0, 0, z);   // vertical leg
@@ -229,13 +229,13 @@ class MazePuzzleScene implements IScene {
     startForward = new PVector(0, 0, 1);
   }
 
-  // Level 3 — The Ring: outer square ring with a center cross.
-  // Gaps in the ring require jumping. Center cross is spiked — use the ring.
+  // Level 3 - The Ring: outer square ring with a center cross.
+  // Gaps in the ring require jumping. Center cross is spiked - use the ring.
   void setupLevel2() {
     // Outer ring
     for (int x = -4; x <= 4; x++) { addBlock(x, 0, 4); addBlock(x, 0, -4); }
     for (int z = -3; z <= 3; z++) { addBlock(-4, 0, z); addBlock(4, 0, z); }
-    // Gaps in ring sides — must be jumped
+    // Gaps in ring sides - must be jumped
     blocks.remove("0,0,4");   // top gap
     blocks.remove("0,0,-4");  // bottom gap
     blocks.remove("-4,0,0");  // left gap
@@ -243,7 +243,7 @@ class MazePuzzleScene implements IScene {
     // Inner cross
     for (int x = -2; x <= 2; x++) addBlock(x, 0, 0);
     for (int z = -2; z <= 2; z++) addBlock(0, 0, z);
-    // Spike the entire inner cross — player must stay on outer ring
+    // Spike the entire inner cross - player must stay on outer ring
     for (int x = -2; x <= 2; x++) spikes.add(x + ",1,0");
     for (int z = -1; z <= 1; z++) spikes.add("0,1," + z);
     // Additional ring spikes for challenge
@@ -473,7 +473,7 @@ class MazePuzzleScene implements IScene {
     if (state == MazeState.STATIONARY) {
       // Death check
       if (hasSpike(round(pos.x), round(pos.y), round(pos.z))) resetPlayer();
-      // Goal check — standing on a goal block?
+      // Goal check - standing on a goal block?
       int floorX = round(pos.x - up.x);
       int floorY = round(pos.y - up.y);
       int floorZ = round(pos.z - up.z);
@@ -815,7 +815,7 @@ class MazePuzzleScene implements IScene {
     if (autoPathIdx < autoPath.size()) {
       move = autoPath.get(autoPathIdx++);
     } else {
-      // BFS failed — fall back to greedy
+      // BFS failed - fall back to greedy
       ArrayList<Integer> choices = getValidAutoMoves();
       if (choices.size() == 0) return;
       move = choices.get(chooseAutoMove(choices));

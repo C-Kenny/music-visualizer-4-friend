@@ -1,4 +1,4 @@
-// ClientRegistry — per-client identity, metadata, bans, rate limiting.
+// ClientRegistry - per-client identity, metadata, bans, rate limiting.
 //
 // Identity comes from the browser (UUID in localStorage) sent via the "hello"
 // handshake. We trust that as a stable handle for kick/ban; IP is the secondary
@@ -41,7 +41,7 @@ class ClientRegistry {
   // Bans
   java.util.Set<String> bannedIds = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
   java.util.Set<String> bannedIps = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
-  // Soft bans applied by KICK — block reconnect for a window without polluting persistent bans.
+  // Soft bans applied by KICK - block reconnect for a window without polluting persistent bans.
   ConcurrentHashMap<String, Long> tempBanIds = new ConcurrentHashMap<String, Long>();
   ConcurrentHashMap<String, Long> tempBanIps = new ConcurrentHashMap<String, Long>();
   static final long KICK_COOLDOWN_MS = 5 * 60_000L;
@@ -59,7 +59,7 @@ class ClientRegistry {
 
   // Register from WS onOpen. Returns false if banned (caller should close).
   boolean registerWs(WebSocket conn, String ip) {
-    if (lockdownMode) { println("[REG] reject — lockdown active, ip=" + ip); return false; }
+    if (lockdownMode) { println("[REG] reject - lockdown active, ip=" + ip); return false; }
     if (bannedIps.contains(ip)) {
       println("[REG] reject banned IP " + ip);
       return false;
@@ -95,7 +95,7 @@ class ClientRegistry {
     if (id == null || id.length() == 0) {
       id = "anon-" + java.util.UUID.randomUUID().toString().substring(0, 8);
     }
-    if (lockdownMode) { println("[REG] reject — lockdown active, id=" + id); return "lockdown"; }
+    if (lockdownMode) { println("[REG] reject - lockdown active, id=" + id); return "lockdown"; }
     if (bannedIds.contains(id) || bannedIps.contains(ip)) {
       println("[REG] reject banned id=" + id + " ip=" + ip);
       return "banned";

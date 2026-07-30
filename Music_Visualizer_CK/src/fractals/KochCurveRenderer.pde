@@ -1,5 +1,5 @@
 /**
- * KochCurveRenderer — Koch construction repeated as a 6-armed star.
+ * KochCurveRenderer - Koch construction repeated as a 6-armed star.
  */
 class KochCurveRenderer implements FractalRenderer {
   String name() { return "Koch Curve"; }

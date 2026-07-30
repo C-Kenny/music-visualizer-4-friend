@@ -1,6 +1,6 @@
 class Config {
   // Verbose runtime logging (per-second SCENE/CONTROLLER/FPS heartbeat).
-  // Set true via .devverbose file in sketch dir. Off by default — same info
+  // Set true via .devverbose file in sketch dir. Off by default - same info
   // is in the HUD and on /operator.
   boolean VERBOSE_LOG = false;
 

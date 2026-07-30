@@ -1,5 +1,5 @@
 /**
- * PlasmaBackground — IBackground wrapper around Plasma.
+ * PlasmaBackground - IBackground wrapper around Plasma.
  * config.PLASMA_SEED drives palette animation (same as OriginalScene).
  */
 class PlasmaBackground implements IBackground {

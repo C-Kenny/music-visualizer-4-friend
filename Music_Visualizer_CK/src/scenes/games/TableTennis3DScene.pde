@@ -1,4 +1,4 @@
-// Table Tennis 3D Scene — state 25
+// Table Tennis 3D Scene - state 25
 //
 // Extends TableTennisScene: inherits all physics, rules, AI, scoring,
 // beat-glow, power shots, and bass breathing.
@@ -87,7 +87,7 @@ class TableTennis3DScene extends TableTennisScene {
   float playerTargetZ = 0;
 
   // ── environment (expanded skybox) ─────────────────────────────────────────
-  // Generous space — table is ~1689 × 680 at 1920p, so 4× that gives breathing room
+  // Generous space - table is ~1689 × 680 at 1920p, so 4× that gives breathing room
   final float ENV_HW         = 2800;   // half-width  (X)  was 1400
   final float ENV_HD         = 1400;   // half-depth  (Z)  was 600
   final float ENV_TOP        = -900;   // ceiling Y        was -400
@@ -186,7 +186,7 @@ class TableTennis3DScene extends TableTennisScene {
   void ensureResources(PGraphics pg) {
     if (innerBuf == null || innerBuf.width != pg.width || innerBuf.height != pg.height) {
       innerBuf = createGraphics(pg.width, pg.height, P3D);
-      innerBuf.smooth(4); // MSAA — removes jagged edges on net, table, paddles
+      innerBuf.smooth(4); // MSAA - removes jagged edges on net, table, paddles
     }
     if (tableTexture == null) {
       tableTexture = createGraphics(1024, 1024, P3D);
@@ -266,7 +266,7 @@ class TableTennis3DScene extends TableTennisScene {
     if (wasServeDrop && !inServeDrop) reshapeServeLaunch();
 
     // ── Physical table-top collision (after parent physics) ─────────────────
-    // PURE physical constraint — NO rally/escape/pause/serve state gates. The
+    // PURE physical constraint - NO rally/escape/pause/serve state gates. The
     // ball simply cannot occupy the solid table volume while it is over the
     // table footprint (X and Z), full stop. This fixes the fall-through that
     // happened (a) when a netted ball passed the paddle while still over the
@@ -448,7 +448,7 @@ class TableTennis3DScene extends TableTennisScene {
     float yMin = PADDLE_H / 2;
     float yMax = tableY - PADDLE_H / 2 - 4;
     playerTargetY = constrain(playerTargetY, yMin, yMax);
-    // The human side must stay snappy — override any slow evolved aiSpeed style
+    // The human side must stay snappy - override any slow evolved aiSpeed style
     // (paddleSpeedL/R) with a responsive tracking lerp just for that paddle.
     final float HUMAN_SPEED = 0.5;
     if (playerSide == 1) {
@@ -487,7 +487,7 @@ class TableTennis3DScene extends TableTennisScene {
 
     // ITTF: toss must originate behind the server's end line. Vary the
     // standing depth more aggressively so the server isn't always at the
-    // same distance — combined with the style switch below this kills the
+    // same distance - combined with the style switch below this kills the
     // monotonous "vertical bounce every time" feel.
     float backOffset = random(40, 220);
     float paddleX = leftServes ? (leftHomeX - backOffset) : (rightHomeX + backOffset);
@@ -507,7 +507,7 @@ class TableTennis3DScene extends TableTennisScene {
     // being struck. Always give the toss a solid upward velocity so the rise is
     // unmistakable; the parent auto-hits when it falls back to paddle height,
     // and reshapeServeLaunch() then sets the actual (flat, controlled) launch.
-    // ballVY ≈ -8 rises ~115px under g=0.28 — an obvious, legal toss every time.
+    // ballVY ≈ -8 rises ~115px under g=0.28 - an obvious, legal toss every time.
     float netX = sceneBuffer.width / 2.0;
     float toNetSign = (netX > paddleX) ? 1 : -1;
     ballY  = tableY - 60 + random(-6, 6);
@@ -519,7 +519,7 @@ class TableTennis3DScene extends TableTennisScene {
   //
   // The serve's POST-bounce arc is set by the parent's onTableBounce(), which
   // pops ballVY upward (clamped -5..-22) to clear the net. The steepness of
-  // that pop is atan(popVY / ballVX) — so a low horizontal speed makes the
+  // that pop is atan(popVY / ballVX) - so a low horizontal speed makes the
   // serve shoot up vertically (the "too wild/vertical" complaint). The fix is a
   // brisk, FLAT horizontal drive: high ballVX + small downward ballVY. That
   // both (a) carries the first bounce well toward the net and (b) keeps the
@@ -527,7 +527,7 @@ class TableTennis3DScene extends TableTennisScene {
   void reshapeServeLaunch() {
     float netX = sceneBuffer.width / 2.0;
     float dir  = (netX > ballX) ? 1 : -1;          // toward the net
-    // Moderate flat drive — just enough to land the first bounce around the
+    // Moderate flat drive - just enough to land the first bounce around the
     // middle of the server's half (good distance-to-net headroom). The actual
     // net-clearing arc is computed in onTableBounce() below.
     ballVX = dir * 10.0;
@@ -538,7 +538,7 @@ class TableTennis3DScene extends TableTennisScene {
   // Override the serve's first-bounce handling so the serve RELIABLY clears the
   // net and lands on the receiver's half. The parent's version pops ballVY just
   // barely over the net (critVY-4), and that margin shrinks toward zero as the
-  // bounce nears the net — so fast/flat serves clip the net and fault, which is
+  // bounce nears the net - so fast/flat serves clip the net and fault, which is
   // why the AI was losing so many serve points. Here we aim a proper arc: peak
   // exactly at the net, NET_H + margin above the table, landing mirrored onto
   // the receiver's side. Rally bounces (serveBounced==true) defer to the parent.
@@ -656,7 +656,7 @@ class TableTennis3DScene extends TableTennisScene {
     float scanAlpha = 22 + bassSmooth * 60;
 
     pg.colorMode(HSB, 360, 255, 255, 255);
-    // Slow hue drift — 8°/sec feels smooth without flickering
+    // Slow hue drift - 8°/sec feels smooth without flickering
     float scanHue = (sceneTime * 8) % 360;
     pg.fill((int)scanHue, 200, 255, (int)scanAlpha);
 
@@ -935,7 +935,7 @@ class TableTennis3DScene extends TableTennisScene {
   void drawBall(PGraphics pg) {
     pg.pushStyle();
 
-    // ── Shadow on table surface — shows exact X/Z position ───────────────────
+    // ── Shadow on table surface - shows exact X/Z position ───────────────────
     // Scales down as ball rises; disappears above roughly 3× ball radius off table.
     float ballAbove = tableY - ballY;   // >0 means ball is above table (Y goes down)
     if (ballAbove > 0 && ballAbove < 500) {

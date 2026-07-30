@@ -1,4 +1,4 @@
-// Aurora Ribbons Scene — state 10
+// Aurora Ribbons Scene - state 10
 // Atmospheric triangle-strip curtains driven by low/mid/high energy.
 
 class AuroraRibbonsScene implements IScene {
@@ -74,7 +74,7 @@ class AuroraRibbonsScene implements IScene {
   }
 
   void drawScene(PGraphics pg) {
-    pg.background(4, 6, 14);  // clear in RGB before switching colorMode — prevents previous-scene bleed
+    pg.background(4, 6, 14);  // clear in RGB before switching colorMode - prevents previous-scene bleed
     pg.blendMode(BLEND);
     float low = analyzer.bass;
     float mid = analyzer.mid;

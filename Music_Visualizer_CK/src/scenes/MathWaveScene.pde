@@ -7,25 +7,25 @@ import ddf.minim.ugens.*;
  * and visualises the waveform it's producing. Meta: the same functions that drive
  * every other scene are here made audible and visible simultaneously.
  *
- * Top panel  — analytical waveform of f(t) drawn across the screen
- * Bottom panel — oscilloscope of the actual PCM samples being synthesised
+ * Top panel - analytical waveform of f(t) drawn across the screen
+ * Bottom panel - oscilloscope of the actual PCM samples being synthesised
  *
  * The two panels should be identical. That's the point.
  *
  * Wave timbres:
- *   Sine     — pure tone, 1 harmonic
- *   Square   — hollow/buzzy, odd harmonics at 1/n amplitude
- *   Triangle — soft/mellow, odd harmonics at 1/n² amplitude
- *   Sawtooth — bright/rich, all harmonics at 1/n amplitude
+ *   Sine - pure tone, 1 harmonic
+ *   Square - hollow/buzzy, odd harmonics at 1/n amplitude
+ *   Triangle - soft/mellow, odd harmonics at 1/n² amplitude
+ *   Sawtooth - bright/rich, all harmonics at 1/n amplitude
  *
  * Controller:
- *   LStick ↕   — frequency (80–2400 Hz, log scale)
- *   RStick ↕   — amplitude (0–100%)
- *   A           — Sine
- *   B           — Square
- *   X           — Triangle
- *   Y           — Sawtooth
- *   LB / RB     — octave down / up (×0.5 / ×2)
+ *   LStick ↕ - frequency (80–2400 Hz, log scale)
+ *   RStick ↕ - amplitude (0–100%)
+ *   A - Sine
+ *   B - Square
+ *   X - Triangle
+ *   Y - Sawtooth
+ *   LB / RB - octave down / up (×0.5 / ×2)
  */
 class MathWaveScene implements IScene {
 
@@ -54,19 +54,19 @@ class MathWaveScene implements IScene {
   final String[] WAVE_NAME    = {"Sine",          "Square",              "Triangle",           "Sawtooth"};
   final String[] WAVE_FORMULA = {"sin(2\u03c0t)", "sgn(sin(2\u03c0t))", "\u222bsquare(t) dt", "2(t mod 1) \u2212 1"};
   final color[]  WAVE_COLOR   = {
-    color(0, 220, 255),   // sine     — cyan
-    color(0, 255, 140),   // square   — green
-    color(255, 140, 0),   // triangle — amber
-    color(220, 0, 255)    // saw      — magenta
+    color(0, 220, 255),   // sine - cyan
+    color(0, 255, 140),   // square - green
+    color(255, 140, 0),   // triangle - amber
+    color(220, 0, 255)    // saw - magenta
   };
 
   // ── onEnter / onExit ─────────────────────────────────────────────────────────
 
   void onEnter() {
     prevGain = audio.getGain();
-    audio.setGain(-80);      // mute song — safer than pause(), no stream lifecycle change
+    audio.setGain(-80);      // mute song - safer than pause(), no stream lifecycle change
 
-    needsAudioInit = true;  // always re-init on entry — out is closed in onExit()
+    needsAudioInit = true;  // always re-init on entry - out is closed in onExit()
   }
 
   // Spawns a daemon thread to call getLineOut() so the render loop never blocks.
@@ -99,7 +99,7 @@ class MathWaveScene implements IScene {
     needsAudioInit   = false;
     audioInitRunning = false;             // signal background thread to abort
     if (wave != null && out != null) wave.unpatch(out);
-    if (out  != null) { out.close(); out = null; }  // close — no background thread while idle
+    if (out  != null) { out.close(); out = null; }  // close - no background thread while idle
     wave = null;
     audio.setGain(prevGain);
   }
@@ -139,7 +139,7 @@ class MathWaveScene implements IScene {
   // ── Controller ────────────────────────────────────────────────────────────────
 
   void applyController(Controller c) {
-    // Wave type — rising edge only
+    // Wave type - rising edge only
     if (c.aJustPressed) switchWave(0);
     if (c.bJustPressed) switchWave(1);
     if (c.xJustPressed) switchWave(2);
@@ -149,13 +149,13 @@ class MathWaveScene implements IScene {
     if (c.lbJustPressed) targetFreq = constrain(targetFreq * 0.5, 80, 2400);
     if (c.rbJustPressed) targetFreq = constrain(targetFreq * 2.0, 80, 2400);
 
-    // Frequency — LStick Y, log scale 80..2400 Hz
+    // Frequency - LStick Y, log scale 80..2400 Hz
     float lStick = 1.0 - (c.ly / (float) height); // 0=bottom 1=top
     float logMin = log(80)   / log(2);
     float logMax = log(2400) / log(2);
     targetFreq = pow(2, lerp(logMin, logMax, lStick));
 
-    // Amplitude — RStick Y
+    // Amplitude - RStick Y
     float rStick = 1.0 - (c.ry / (float) height);
     targetAmp = constrain(rStick, 0.0, 1.0);
   }
@@ -205,7 +205,7 @@ class MathWaveScene implements IScene {
     pg.strokeWeight(1);
     pg.line(0, splitY, pg.width, splitY);
 
-    // ── Oscilloscope panel — actual PCM buffer ─────────────────────────────────
+    // ── Oscilloscope panel - actual PCM buffer ─────────────────────────────────
     drawOscilloscope(pg, splitY, wCol);
 
     // ── Labels ────────────────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ class MathWaveScene implements IScene {
     pg.text("-1", 6, midY + ampH);
   }
 
-  // ── Oscilloscope — actual audio buffer ────────────────────────────────────────
+  // ── Oscilloscope - actual audio buffer ────────────────────────────────────────
 
   void drawOscilloscope(PGraphics pg, float startY, color wCol) {
     if (out == null) return;
@@ -329,30 +329,30 @@ class MathWaveScene implements IScene {
     float ts = uiScale();
     pg.textFont(monoFont);
 
-    // Wave name — top left, large
+    // Wave name - top left, large
     pg.fill(red(wCol), green(wCol), blue(wCol), 220);
     pg.textSize(22 * ts);
     pg.textAlign(LEFT, TOP);
     pg.text(WAVE_NAME[waveType], 18 * ts, 14 * ts);
 
-    // Formula — centre, semi-transparent
+    // Formula - centre, semi-transparent
     pg.fill(255, 255, 255, 100);
     pg.textSize(16 * ts);
     pg.textAlign(CENTER, TOP);
     pg.text("f(t) = " + WAVE_FORMULA[waveType], pg.width * 0.5, 16 * ts);
 
-    // Frequency + note name — top right
+    // Frequency + note name - top right
     pg.fill(255, 255, 255, 180);
     pg.textSize(14 * ts);
     pg.textAlign(RIGHT, TOP);
     pg.text(nf(currentFreq, 0, 1) + " Hz  " + freqToNote(currentFreq), pg.width - 14 * ts, 14 * ts);
 
-    // Amplitude — below freq
+    // Amplitude - below freq
     pg.fill(255, 255, 255, 120);
     pg.textSize(11 * ts);
     pg.text("amp " + nf(currentAmp * 100, 0, 0) + "%", pg.width - 14 * ts, 34 * ts);
 
-    // Bottom legend — wave type selector
+    // Bottom legend - wave type selector
     String[] labels = {"[A] sine", "[B] square", "[X] triangle", "[Y] saw"};
     float gap = pg.width / 5.0;
     for (int i = 0; i < 4; i++) {

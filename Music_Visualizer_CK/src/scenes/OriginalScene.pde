@@ -18,7 +18,7 @@ class OriginalScene implements IScene {
   // Background cycling (D-pad L/R)
   int backgroundMode = 4; // 0=None(Stacking), 1=Clear, 2=Tunnel, 3=Plasma, 4=Polar, 5=All
 
-  // Square scratch buffer for Tunnel — Tunnel's lookup table is keyed to the
+  // Square scratch buffer for Tunnel - Tunnel's lookup table is keyed to the
   // PGraphics it's handed, so a square buffer makes the radial pattern fit the
   // square pillarbox region instead of being compressed into a center slice.
   PGraphics tunnelBuf;
@@ -67,7 +67,7 @@ class OriginalScene implements IScene {
   }
   
   void cycleBackgroundMode(int dir) {
-    // Skip mode 0 (Stacking) in dpad cycle — landing on it disables bg overlay
+    // Skip mode 0 (Stacking) in dpad cycle - landing on it disables bg overlay
     // entirely, which reads as a "flash off" mid-cycle. Reachable via keyboard.
     backgroundMode = ((backgroundMode - 1 + dir + 5) % 5) + 1;
     config.BACKGROUND_ENABLED = (backgroundMode != 0);
@@ -116,7 +116,7 @@ class OriginalScene implements IScene {
 
   void drawBezierFins(PGraphics pg, float redness, float fins, boolean finRotationClockWise) {
     pg.strokeWeight(5);
-    pg.bezierDetail(10); // default 20 — fins are small, halving detail cuts JOGL tessellation
+    pg.bezierDetail(10); // default 20 - fins are small, halving detail cuts JOGL tessellation
     float xOffset = -20;
     float yOffset = config.BEZIER_Y_OFFSET;
 
@@ -168,7 +168,7 @@ class OriginalScene implements IScene {
 
   void drawScene(PGraphics pg) {
     // Belt-and-suspenders: force CORNER modes in case a prior scene left
-    // imageMode/rectMode in CENTER. resetMatrix is NOT safe here — it wipes
+    // imageMode/rectMode in CENTER. resetMatrix is NOT safe here - it wipes
     // P3D's default camera and leaves scene blank.
     pg.imageMode(CORNER);
     pg.rectMode(CORNER);
@@ -181,7 +181,7 @@ class OriginalScene implements IScene {
 
     // Recompute diamond layout every frame from current s1Size. Frozen init
     // values (constructor-time) caused quad vertices to misalign whenever
-    // the buffer differed from setup-time dimensions — diamonds rendered
+    // the buffer differed from setup-time dimensions - diamonds rendered
     // as triangles because one corner shot off the square.
     config.DIAMOND_RIGHT_EDGE_X = s1Size * 0.92;
     config.DIAMOND_LEFT_EDGE_X  = s1Size * 0.74;
@@ -212,7 +212,7 @@ class OriginalScene implements IScene {
 
     // Tunnel renders into a square scratch buffer, then we blit it into the
     // pillarbox region. Tunnel keys its radial lookup off the buffer it's
-    // given — a square buffer gives a square radial pattern.
+    // given - a square buffer gives a square radial pattern.
     if (config.DRAW_TUNNEL) {
       int sq = (int)s1Size;
       if (tunnelBuf == null || tunnelBuf.width != sq) {
@@ -270,11 +270,11 @@ class OriginalScene implements IScene {
       pg.fill(255, 76, 52);
     } else {
       pg.fill(255);
-      // NOTE: do NOT call pg.background() here — the tunnel/plasma was already
+      // NOTE: do NOT call pg.background() here - the tunnel/plasma was already
       // rendered above the translate. A second background clear would wipe it.
     }
     
-    // Plasma fills full pg — clipped back to square by final pillarbox overlay.
+    // Plasma fills full pg - clipped back to square by final pillarbox overlay.
     if (config.DRAW_PLASMA) {
       pg.pushMatrix(); pg.translate(-s1OffsetX, -s1OffsetY);
       plasma.draw(pg, config.PLASMA_SEED);
@@ -420,7 +420,7 @@ class OriginalScene implements IScene {
       config.TUNNEL_ZOOM_INCREMENT += (int)(bassTrigger.getValue() * 6);
     }
 
-    // Beat only accelerates zoom (see isBeat branch above). Twist disabled —
+    // Beat only accelerates zoom (see isBeat branch above). Twist disabled - 
     // rotating the tunnel angle on every beat looked twitchy.
     tunnelTwistOff = 0;
 

@@ -1,5 +1,5 @@
 /**
- * PostFXStack — Global post-processing pipeline manager.
+ * PostFXStack - Global post-processing pipeline manager.
  *
  * Usage in draw():
  *   PGraphics toDisplay = postFX.process(sceneBuffer);
@@ -97,14 +97,14 @@ class PostFXStack {
       if (fx.isEnabled() && !suppressedInCalm(fx, calm)) fx.onUpdate();
     }
 
-    // 1. CPU pass — modifies src pixels in-place
+    // 1. CPU pass - modifies src pixels in-place
     for (IPostFX fx : effects) {
       if (fx.isEnabled() && fx.isCPUEffect() && !suppressedInCalm(fx, calm)) {
         fx.applyCPU(src);
       }
     }
 
-    // 2. GLSL pass — ping-pong between temp buffers
+    // 2. GLSL pass - ping-pong between temp buffers
     ensureBuffers(src.width, src.height);
 
     PGraphics current = src;
@@ -125,7 +125,7 @@ class PostFXStack {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  // Glitch / VHS / chromatic aberration spike visual intensity — skip when
+  // Glitch / VHS / chromatic aberration spike visual intensity - skip when
   // the user wants a calm session. Bloom and Vignette are softening and stay on.
   private boolean suppressedInCalm(IPostFX fx, boolean calm) {
     if (!calm) return false;

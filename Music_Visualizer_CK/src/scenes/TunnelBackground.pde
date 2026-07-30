@@ -1,14 +1,14 @@
 /**
- * TunnelBackground — IBackground wrapper around Tunnel.
+ * TunnelBackground - IBackground wrapper around Tunnel.
  *
  * Audio reactivity:
  *   Sustained bass (above 0.55 for ~1s) → zoomSustain ramps up and accelerates
  *   tunnel zoom. Every beat onset fires a short twist spike. If a beat hits
- *   while sustain is already loaded, a larger "drop twist" fires — the tunnel
+ *   while sustain is already loaded, a larger "drop twist" fires - the tunnel
  *   wrings sharply, then eases back. This matches how live drops feel.
  *
  * Tunnel.pde renders at 1/3 resolution internally (RENDER_SCALE=3) and
- * upscales itself — no additional buffer needed here.
+ * upscales itself - no additional buffer needed here.
  */
 class TunnelBackground implements IBackground {
   Tunnel tunnel;

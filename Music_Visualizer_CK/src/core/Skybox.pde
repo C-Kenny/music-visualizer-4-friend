@@ -9,13 +9,13 @@
  *   // inside drawScene, after camera rotations, before geometry:
  *   skybox.draw(canvas);
  *
- * Pass an absolute path — relative paths won't resolve from inside a class.
+ * Pass an absolute path - relative paths won't resolve from inside a class.
  * Processing builds to .build/Music_Visualizer_CK/ so use sketchPath("../../media/...")
  * to reach the project media folder.
  */
 class Skybox {
   PImage[] faces = new PImage[6]; // order: px, nx, py, ny, pz, nz
-  float size     = 2000;          // cube half-extent — stays within far-clip for all resolutions
+  float size     = 2000;          // cube half-extent - stays within far-clip for all resolutions
   boolean loaded = false;
 
   void load(String dirPath) {
@@ -43,7 +43,7 @@ class Skybox {
     canvas.noStroke();
     canvas.textureMode(IMAGE);
 
-    // Full ambient so textures render at true color — noLights() would make them black
+    // Full ambient so textures render at true color - noLights() would make them black
     canvas.ambientLight(255, 255, 255);
     canvas.fill(255);
 

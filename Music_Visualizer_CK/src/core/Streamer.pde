@@ -1,5 +1,5 @@
 /**
- * Streamer — push live composite + audio to MediaMTX so any browser on the
+ * Streamer - push live composite + audio to MediaMTX so any browser on the
  * LAN can watch (TV, phone, second laptop). No Chromecast needed.
  *
  * Pipeline:
@@ -24,14 +24,14 @@
  */
 class Streamer {
   // Deeper queue absorbs sketch frame-pacing hitches (~0.4s at 30fps) so the
-  // video pipe to ffmpeg never starves — a starved video input is what stalls
+  // video pipe to ffmpeg never starves - a starved video input is what stalls
   // the shared muxer and makes the AUDIO stutter on the listener's end.
   static final int   QUEUE_CAPACITY     = 12;
   static final String STREAM_NAME       = "visualizer";
 
   // --- Profiles ------------------------------------------------------------
   // NORMAL: high quality for good LAN. VENUE: low-bandwidth for congested/weak
-  // venue WiFi — smaller frame, fewer fps, much lower bitrate. Switch with F7.
+  // venue WiFi - smaller frame, fewer fps, much lower bitrate. Switch with F7.
   static final int PROFILE_NORMAL = 0;
   static final int PROFILE_VENUE  = 1;
   int profile = PROFILE_NORMAL;
@@ -89,7 +89,7 @@ class Streamer {
 
     mediamtxPath = locateMediaMTX();
     if (mediamtxPath == null) {
-      lastError = "MediaMTX not found — run ./install-stream.sh";
+      lastError = "MediaMTX not found - run ./install-stream.sh";
       println("[STREAM] " + lastError);
       return;
     }
@@ -124,7 +124,7 @@ class Streamer {
     final int fw = w, fh = h;
     writer = new Thread(new Runnable() {
       public void run() {
-        byte[] buf = new byte[fw * fh * 4];   // reused — no per-frame allocation
+        byte[] buf = new byte[fw * fh * 4];   // reused - no per-frame allocation
         try {
           while (running || !queue.isEmpty()) {
             int[] px = queue.poll(200, java.util.concurrent.TimeUnit.MILLISECONDS);
@@ -140,7 +140,7 @@ class Streamer {
             }
             pipe.write(buf, 0, n * 4);
             framesPushed++;
-            framePool.offer(px);   // recycle (drop if pool full — never blocks)
+            framePool.offer(px);   // recycle (drop if pool full - never blocks)
           }
         } catch (Throwable t) {
           if (running) println("[STREAM] writer error: " + t);
@@ -199,7 +199,7 @@ class Streamer {
       args.add("-b:a"); args.add("128k");
       args.add("-ac"); args.add("2");
       args.add("-ar"); args.add("48000");
-      args.add("-application"); args.add("audio");      // full-quality (not lowdelay) — smoother
+      args.add("-application"); args.add("audio");      // full-quality (not lowdelay) - smoother
       args.add("-frame_duration"); args.add("20");
       // async=1000 lets the resampler stretch/squeeze up to 1000 samples/sec to
       // track drift WITHOUT dropping/inserting silence (the audible stutter).
@@ -207,7 +207,7 @@ class Streamer {
     }
     // CRITICAL for smooth audio: never let the muxer hold back one stream
     // waiting to interleave the other. Without this, a late video frame freezes
-    // the audio too — the "stop/start" the listener hears. flush_packets pushes
+    // the audio too - the "stop/start" the listener hears. flush_packets pushes
     // each packet out immediately for low latency.
     args.add("-max_interleave_delta"); args.add("0");
     args.add("-flush_packets"); args.add("1");
@@ -317,7 +317,7 @@ class Streamer {
     // Detect dead ffmpeg (broken pipe, MediaMTX evicted publisher, etc.) and
     // stop cleanly so the operator dashboard surfaces the failure.
     if (ffmpeg != null && !ffmpeg.isAlive()) {
-      lastError = "ffmpeg exited (code " + ffmpeg.exitValue() + ") — see stream_ffmpeg.log";
+      lastError = "ffmpeg exited (code " + ffmpeg.exitValue() + ") - see stream_ffmpeg.log";
       println("[STREAM] " + lastError);
       stop();
       return;

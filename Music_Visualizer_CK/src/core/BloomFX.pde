@@ -1,5 +1,5 @@
 /**
- * BloomFX — Wraps the existing bloom.glsl as an IPostFX GLSL effect.
+ * BloomFX - Wraps the existing bloom.glsl as an IPostFX GLSL effect.
  *
  * Migrated from the hardcoded bloom pass in Music_Visualizer_CK.pde.
  * Behavior is identical; it just lives in the PostFX stack now.

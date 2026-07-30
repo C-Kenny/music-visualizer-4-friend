@@ -1,12 +1,12 @@
 /**
- * TunnelYantraScene (scene 44) — Combo layering scene
+ * TunnelYantraScene (scene 44) - Combo layering scene
  *
  * Swappable background + swappable foreground with selectable blend mode.
  *
  * Keys:
- *   [ / ]   — cycle background
- *   { / }   — cycle foreground
- *   =       — cycle blend mode (ADD → SCREEN → MULTIPLY → EXCLUSION)
+ *   [ / ] - cycle background
+ *   { / } - cycle foreground
+ *   = - cycle blend mode (ADD → SCREEN → MULTIPLY → EXCLUSION)
  *
  * Controller delegated to active foreground scene (if it's SriYantraScene).
  */
@@ -24,7 +24,7 @@ class TunnelYantraScene implements IScene {
 
   // Stepped knobs (ParamRouter spine): value rounds to a layer index, so web
   // sliders and the idle autopilot can slowly morph the bg/fg/blend combo.
-  // Created in the constructor — bg count isn't known until skyboxes are found.
+  // Created in the constructor - bg count isn't known until skyboxes are found.
   SceneParam pBg, pFg, pBlend;
   SceneParam[] params;
 

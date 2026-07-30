@@ -27,7 +27,7 @@ class FluidSimScene implements IScene {
   // A/X are already reset/seed, so sticks map by hand in applyController
   // rather than via routeParamsToSticks' default A-reset binding. Feed/kill
   // are the Gray-Scott knobs where tiny shifts cause completely different
-  // emergent patterns (spots vs. mazes vs. worms) — genuinely fun to drive live.
+  // emergent patterns (spots vs. mazes vs. worms) - genuinely fun to drive live.
   SceneParam pFeedBias = new SceneParam("feedBias", "Feed Bias", -0.02, 0.02, 0);
   SceneParam pKillBias = new SceneParam("killBias", "Kill Bias", -0.02, 0.02, 0);
   SceneParam pSimSpeed = new SceneParam("simSpeed", "Sim Speed", 1, 4, 2);

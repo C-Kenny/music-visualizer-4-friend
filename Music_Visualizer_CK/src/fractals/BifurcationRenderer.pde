@@ -1,5 +1,5 @@
 /**
- * BifurcationRenderer — logistic map x_{n+1} = r·x·(1-x) sweep over r,
+ * BifurcationRenderer - logistic map x_{n+1} = r·x·(1-x) sweep over r,
  * showing period-doubling cascade into chaos. Bass adds samples.
  */
 class BifurcationRenderer implements FractalRenderer {

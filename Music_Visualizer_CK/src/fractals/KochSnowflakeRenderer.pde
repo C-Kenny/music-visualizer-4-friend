@@ -1,5 +1,5 @@
 /**
- * KochSnowflakeRenderer — equilateral triangle, each edge replaced recursively
+ * KochSnowflakeRenderer - equilateral triangle, each edge replaced recursively
  * by 4 segments forming the Koch bump. Bass scales recursion depth.
  */
 class KochSnowflakeRenderer implements FractalRenderer {

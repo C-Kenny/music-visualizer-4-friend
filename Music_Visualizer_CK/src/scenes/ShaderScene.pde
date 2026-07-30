@@ -1,5 +1,5 @@
 /**
- * ShaderScene — live GLSL playground.
+ * ShaderScene - live GLSL playground.
  *
  * Edits to `live_shader.glsl` in the user data dir hot-reload on save (mtime
  * poll). Compile failures display a red banner with the GLSL error; the last
@@ -82,7 +82,7 @@ class ShaderScene implements IScene {
     pg.fill(255, 90, 90);
     pg.textAlign(CENTER, CENTER);
     pg.textSize(28 * uiScale());
-    pg.text("shader compile failed — see banner", pg.width / 2.0, pg.height / 2.0);
+    pg.text("shader compile failed - see banner", pg.width / 2.0, pg.height / 2.0);
   }
 
   void drawErrorBanner(PGraphics pg) {
@@ -90,7 +90,7 @@ class ShaderScene implements IScene {
     long  since = millis() - console.lastReloadMs;
     boolean justReloaded = console.reloadCount > 0 && since < 1500 && !console.hasError();
 
-    // Top-right persistent status pill — always visible, never covered by song
+    // Top-right persistent status pill - always visible, never covered by song
     // name / ticker / setlist badge at bottom edge.
     pg.pushStyle();
     float ts = 14 * scale;
@@ -127,7 +127,7 @@ class ShaderScene implements IScene {
     pg.text(pillText, pillX + padX, pillY + padY - 1);
     pg.popStyle();
 
-    // Full error banner across the TOP — top edge is mostly clear (only scene
+    // Full error banner across the TOP - top edge is mostly clear (only scene
     // HUD top-left, which we offset around).
     if (!console.hasError()) return;
 
@@ -144,7 +144,7 @@ class ShaderScene implements IScene {
     pg.fill(255, 200, 200);
     pg.textAlign(LEFT, TOP);
     pg.textSize(ets);
-    pg.text("GLSL ERROR — " + console.filePath(), 12, y + 6);
+    pg.text("GLSL ERROR - " + console.filePath(), 12, y + 6);
     for (int i = 0; i < lines.length; i++) {
       pg.text(lines[i], 12, y + 6 + lh * (i + 1));
     }

@@ -14,7 +14,7 @@ sound, so chop is from two remaining causes:
 **Root causes**
 - **Render-thread stall.** `tick()` does `scaleBuf.loadPixels()` (full GPU→CPU
   `glReadPixels`) + `scaleBuf.pixels.clone()` every stream frame on the render
-  thread. At 0.6×1080p that's ~3MB readback+copy 30×/s — visible sketch
+  thread. At 0.6×1080p that's ~3MB readback+copy 30×/s - visible sketch
   stutter AND it caps how fast frames reach ffmpeg.
 - **Bitrate vs venue WiFi.** 4000k CBR is fat. On congested/weak venue WiFi the
   WebRTC path drops packets → the chop the viewer sees. Encode is fine; the
@@ -27,11 +27,11 @@ sound, so chop is from two remaining causes:
 2. **Double-buffer the snapshot** to kill per-frame `clone()` GC churn: keep two
    reusable int[] buffers, copy into the idle one, hand reference to queue.
 3. **Adaptive drop.** When `framesDropped` climbs (writer can't keep up / pipe
-   blocking), auto-step fps down 30→24→20 instead of dropping randomly — smooth
+   blocking), auto-step fps down 30→24→20 instead of dropping randomly - smooth
    degradation beats jitter.
 4. **Prefer HLS for "just watching" screens.** WebRTC for low-latency operator
    view; passive TVs tolerate 1-3s HLS lag and it survives packet loss better.
-5. Verify on the ACTUAL venue network before tuning further — most chop is the
+5. Verify on the ACTUAL venue network before tuning further - most chop is the
    link, not the code.
 
 **Risk:** low. All in Streamer.pde + config. No scene changes.
@@ -45,22 +45,22 @@ sound, so chop is from two remaining causes:
 Skybox*, BezierHeart). So the gap is **shallow hooks + not surfaced to keyboard
 / web UI**, not missing hooks.
 
-**Depth tiers** (by controller touchpoints — `c.lx`/buttons/triggers refs):
+**Depth tiers** (by controller touchpoints - `c.lx`/buttons/triggers refs):
 - **Zero input despite being a scene (fix first):** CyberGrid, DeepSpace, RIP,
   TheyDontKnow, TunnelYantra, VisualizerExplainer.
 - **Thin (1-3):** LiveCode, SacredGeometry, CircuitMaze, FluidSim, Halo2Logo,
   HeartGrid, SriYantra.
-- **Rich (8+) — use as the template:** PentagonalVortex(13), TorusKnot(12),
+- **Rich (8+) - use as the template:** PentagonalVortex(13), TorusKnot(12),
   MerkabaStar(11), Worm/NeuralWeave/Lissajous/HyperspaceBloom(10).
 
-**Plan — three layers**
+**Plan - three layers**
 1. **Audit depth per scene.** For each scene, list what params exist vs what's
    wired to input. Most map only camera or 1 knob; the rest are audio-only.
    Target: every scene exposes 3-4 live params (e.g. color/palette, density,
    speed, shape morph).
 2. **Standardize a param interface.** Add a light contract so a scene can
    declare named params (name, range, current). Lets ONE code path drive them
-   from controller, keyboard, AND web — instead of bespoke `applyController`
+   from controller, keyboard, AND web - instead of bespoke `applyController`
    each time. Reduces per-scene work for the ~28 audio-only scenes.
 3. **Wire web UI sliders.** Extend `WebController` / `ControllerWebSocket` to
    send generic `setParam(scene, name, value)` → router applies to active
@@ -71,18 +71,18 @@ Skybox*, BezierHeart). So the gap is **shallow hooks + not surfaced to keyboard
 first (most-shown), then long tail. Each scene: pick 3-4 meaningful knobs, map
 to sticks/triggers + key bindings + web params.
 
-**Watch out (from CLAUDE.md):** held-state vs rising-edge button rules — lerp
+**Watch out (from CLAUDE.md):** held-state vs rising-edge button rules - lerp
 continuous modifiers, JustPressed only for one-frame events. Scene 14 has
 special global-key exclusions.
 
 **Risk:** medium. Touches many files; the param-interface refactor is the
-de-risking move — build it once, apply mechanically.
+de-risking move - build it once, apply mechanically.
 
 ---
 
 ## 3. Some scenes feel "basic" / 2D, no skyboxes
 
-(User note: basic is good *sometimes* — this is selective polish, not a mandate
+(User note: basic is good *sometimes* - this is selective polish, not a mandate
 to 3D-ify everything.)
 
 **State:** most scenes are pure 2D. 3D already exists in Hourglass, Lissajous,
@@ -100,7 +100,7 @@ StrangeAttractor. Skybox infra exists (`SkyboxBackground`, `SkyboxPicker`,
    project_packaging_followups). Resolve asset delivery before relying on
    skyboxes live, or they'll be blank at the venue.
 4. **Cheap depth tricks for true-2D scenes** that shouldn't go 3D: layered
-   parallax, fake fog/vignette via PostFX, additive bloom — adds richness
+   parallax, fake fog/vignette via PostFX, additive bloom - adds richness
    without a renderer change.
 
 **Risk:** medium. P3D + skybox can cost FPS; gate behind LOW_POWER awareness.
@@ -134,8 +134,8 @@ backlog memory). The queue is a layer over ClientRegistry, not new from zero.
    `activeDriver` connection. Waiting clients' inputs are ignored server-side
    (don't trust client to self-mute).
 4. **Feedback to web UI** (push over WS):
-   - "You're driving — 4:12 left" with countdown.
-   - "You're #3 in queue — ~10 min wait." Live position updates.
+   - "You're driving - 4:12 left" with countdown.
+   - "You're #3 in queue - ~10 min wait." Live position updates.
    - Toast on promotion: "You're in control!"
 5. **Like / dislike (troll-finding).** While someone drives, other web users can
    👍/👎 the *current driver*. Aggregate per session/client id.
@@ -157,32 +157,32 @@ input-gating change is small and high-value; the UI/voting is the bulk.
 
 ## Status (2026-06-10)
 
-- #1 stream venue-mode + adaptive fps — **SHIPPED** (2.5.10)
-- #4 web control queue + voting — **SHIPPED** (2.5.10)
-- #2 param spine — **SHIPPED**; zero-input scene wave swept (DeepSpace, RIP,
-  TheyDontKnow, TunnelYantra, Explainer) + **ParamAutoPilot** added (`:` —
+- #1 stream venue-mode + adaptive fps - **SHIPPED** (2.5.10)
+- #4 web control queue + voting - **SHIPPED** (2.5.10)
+- #2 param spine - **SHIPPED**; zero-input scene wave swept (DeepSpace, RIP,
+  TheyDontKnow, TunnelYantra, Explainer) + **ParamAutoPilot** added (`:` - 
   drifts knobs to the music when all input idle 30s, for sit-back viewing).
   New flagships: **Fable Murmuration** (state 55), **Spatial Orbit** (state 56),
   **Paralyzed** (state 57, ships its own scene-local 10s idle autopilot on top
-  of the spine — see `ParalyzedScene.pde`). Thin-scene wave **SHIPPED**:
+  of the spine - see `ParalyzedScene.pde`). Thin-scene wave **SHIPPED**:
   LiveCode, SacredGeometry, CircuitMaze, FluidSim, Halo2Logo, HeartGrid,
   SriYantra all now expose 2-4 real SceneParam knobs (controller+keyboard+web),
   each mapped around whatever buttons/sticks the scene already used (custom
   hand-mapping where A/B/X/Y were taken, `routeParamsToSticks` where free).
-  Next: long-tail audio-only scenes (~20 remaining, lower priority — least
+  Next: long-tail audio-only scenes (~20 remaining, lower priority - least
   shown).
-- #3 skyboxes — **RESOLVED via BYO**: no assets ship (copyright); venue drops
+- #3 skyboxes - **RESOLVED via BYO**: no assets ship (copyright); venue drops
   own packs in user dir, procedural `auto_*` skyboxes always available.
   See `skybox_assets.md`. Flagship 2D depth-polish still open, deprioritised.
 
 ## Suggested sequencing
 
-1. **Stream venue-mode + double-buffer** — small, high impact, de-risks the
+1. **Stream venue-mode + double-buffer** - small, high impact, de-risks the
    booking. Do first.
-2. **Param interface + web sliders** — the reusable spine for interactivity.
+2. **Param interface + web sliders** - the reusable spine for interactivity.
    Build before the per-scene sweep.
-3. **Web control queue** — input-gating first (small, fixes the "too many
+3. **Web control queue** - input-gating first (small, fixes the "too many
    drivers" complaint immediately), then queue UI + voting.
 4. **Per-scene interactivity sweep** (waves: zero-input scenes → thin → rest).
-5. **Skybox assets + flagship 3D polish** — parallel track; gated on asset
+5. **Skybox assets + flagship 3D polish** - parallel track; gated on asset
    delivery.

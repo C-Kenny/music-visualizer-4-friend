@@ -1,34 +1,34 @@
 /**
- * PentagonalVortexScene (scene 43) — v3
+ * PentagonalVortexScene (scene 43) - v3
  *
  * Two modes (B to toggle), 3D is the default:
  *
- *   3D TUNNEL — camera sits INSIDE the vortex, looking forward.
+ *   3D TUNNEL - camera sits INSIDE the vortex, looking forward.
  *   Pentagons scroll toward the viewer and wrap for an infinite loop.
  *   RStick spins the tunnel around you; tilt to look off-axis.
  *   LT/RT throttle the scroll speed. Beat lurches the camera forward.
  *   Bass breathes the ring size; mid spins the helix; high adds layers.
  *
- *   2D TOP-DOWN — phi-scaled nested polygons, beat shockwave, waveform ring.
+ *   2D TOP-DOWN - phi-scaled nested polygons, beat shockwave, waveform ring.
  *
  * Controller (3D):
- *   LStick ↕    — zoom (move camera forward / back in tunnel)
- *   RStick ↔    — orbit: spin the tunnel around camera (twist)
- *   RStick ↕    — tilt: look up / down off the tunnel axis
- *   LT (hold)   — slow crawl
- *   RT (hold)   — warp speed
- *   A           — cycle colour (Rainbow → Fire → Ice → Deep Space)
- *   B           — switch to 2D top-down mode
- *   X           — beat burst (speed lurch + camera shake)
- *   LB / RB     — n-fold symmetry 5 → 6 → 7 → 8
+ *   LStick ↕ - zoom (move camera forward / back in tunnel)
+ *   RStick ↔ - orbit: spin the tunnel around camera (twist)
+ *   RStick ↕ - tilt: look up / down off the tunnel axis
+ *   LT (hold) - slow crawl
+ *   RT (hold) - warp speed
+ *   A - cycle colour (Rainbow → Fire → Ice → Deep Space)
+ *   B - switch to 2D top-down mode
+ *   X - beat burst (speed lurch + camera shake)
+ *   LB / RB - n-fold symmetry 5 → 6 → 7 → 8
  *
  * Controller (2D):
- *   LStick ↕    — zoom
- *   LT / RT     — phi exponent (spiral tightness)
- *   A           — colour mode
- *   B           — switch to 3D
- *   X           — beat burst
- *   LB / RB     — symmetry
+ *   LStick ↕ - zoom
+ *   LT / RT - phi exponent (spiral tightness)
+ *   A - colour mode
+ *   B - switch to 3D
+ *   X - beat burst
+ *   LB / RB - symmetry
  */
 class PentagonalVortexScene implements IScene {
 
@@ -47,19 +47,19 @@ class PentagonalVortexScene implements IScene {
   float tunnelOffset = 0;
   float tunnelSpeed  = 8;       // current scroll speed (units / frame)
   float targetSpeed  = 8;       // user-chosen target speed
-  float hueOffset    = 0;       // cumulative hue shift — advances on each beat
+  float hueOffset    = 0;       // cumulative hue shift - advances on each beat
 
   float camZ         = -380;    // eye z position  (negative = behind z=0 plane)
   float targetCamZ   = -380;
 
-  float camAzim      = 0;       // world spin around Z — RStick X, accumulates
-  float camElev      = 0;       // world tilt around X — RStick Y, clamped
+  float camAzim      = 0;       // world spin around Z - RStick X, accumulates
+  float camElev      = 0;       // world tilt around X - RStick Y, clamped
   float globalRot    = 0;       // overall helix twist accumulated per frame
 
   // Tunnel geometry
   static final int   N_TUNNEL = 42;            // number of pentagon rings
   static final float ZSTEP    = 36.0;          // z spacing between rings
-  static final float TOTAL_Z  = N_TUNNEL * ZSTEP;  // = 1512 — wrap length
+  static final float TOTAL_Z  = N_TUNNEL * ZSTEP;  // = 1512 - wrap length
 
   // ── 2D state ──────────────────────────────────────────────────────────────
   float rotation    = 0;
@@ -150,7 +150,7 @@ class PentagonalVortexScene implements IScene {
   }
 
   void fireBurst() {
-    // Beat → advance hue palette (no speed change — speed is always smooth)
+    // Beat → advance hue palette (no speed change - speed is always smooth)
     hueOffset += 55 + sBass * 35;
     wavePhase  = 0.0;
     waveAlpha  = 1.0;
@@ -185,12 +185,12 @@ class PentagonalVortexScene implements IScene {
       buf.smooth(4);
     }
 
-    // Scroll — constant speed, no audio speed changes
+    // Scroll - constant speed, no audio speed changes
     tunnelSpeed   = lerp(tunnelSpeed, targetSpeed, 0.04);
     tunnelOffset += tunnelSpeed;
     tunnelOffset  = tunnelOffset % TOTAL_Z;
 
-    // Helix twist: constant rate only — sMid contribution caused counter-rotation illusion
+    // Helix twist: constant rate only - sMid contribution caused counter-rotation illusion
     globalRot += 0.005;
 
     camZ = lerp(camZ, targetCamZ, 0.05);
@@ -202,7 +202,7 @@ class PentagonalVortexScene implements IScene {
     buf.camera(0, 0, camZ,   0, 0, 2500,   0, 1, 0);
     buf.perspective(PI / 2.2, (float)buf.width / buf.height, 8, 9000);
 
-    // Rotate the WORLD instead of moving the camera — gives the "spin around you" feel
+    // Rotate the WORLD instead of moving the camera - gives the "spin around you" feel
     buf.rotateZ(camAzim);
     buf.rotateX(camElev * 0.38);
 
@@ -354,27 +354,27 @@ class PentagonalVortexScene implements IScene {
   void setStroke(PGraphics b, int idx, float bright, float alpha) {
     bright = constrain(bright, 0, 1);
     alpha  = constrain(alpha,  0, 1);
-    // hueOffset shifts all colours on beat — permanent cumulative advance
+    // hueOffset shifts all colours on beat - permanent cumulative advance
     float ho = hueOffset;
     switch (colorMode) {
-      case 0: // rainbow — hue cycles per-ring + time + beat offset
+      case 0: // rainbow - hue cycles per-ring + time + beat offset
         b.colorMode(HSB, 360, 100, 100, 255);
         float h = (idx * 22 + config.logicalFrameCount * 0.7f + ho) % 360;
         b.stroke(h, 74, 52 + (int)(bright * 48), (int)(alpha * 200));
         b.colorMode(RGB, 255);
         break;
-      case 1: // fire — beat shifts toward hotter hues
+      case 1: // fire - beat shifts toward hotter hues
         b.colorMode(HSB, 360, 100, 100, 255);
         b.stroke(((int)(idx * 5 + ho * 0.3f)) % 58, 88, 50 + (int)(bright * 50), (int)(alpha * 215));
         b.colorMode(RGB, 255);
         break;
-      case 2: // ice — beat cycles through cool tones
+      case 2: // ice - beat cycles through cool tones
         b.colorMode(HSB, 360, 100, 100, 255);
         float hi = (185 + (idx * 4) % 60 + ho * 0.4f) % 360;
         b.stroke(hi, 55 - (int)(bright * 22), 62 + (int)(bright * 38), (int)(alpha * 200));
         b.colorMode(RGB, 255);
         break;
-      case 3: // deep space — beat rotates the purple/blue palette
+      case 3: // deep space - beat rotates the purple/blue palette
         b.colorMode(HSB, 360, 100, 100, 255);
         b.stroke((265 + idx * 6 + ho * 0.5f) % 360, 68, 46 + (int)(bright * 54), (int)(alpha * 205));
         b.colorMode(RGB, 255);

@@ -1,20 +1,20 @@
-// RIP Sam Tribute — state 0
+// RIP Sam Tribute - state 0
 // A dedicated scene for the visualizer's "resting" state.
 // This is a tribute to the creator's friend, Sam.
 //
 // Kept deliberately quiet: soft breathing glow behind the text and a few
 // ember motes drifting upward, swaying gently with the music. The knobs
-// only adjust how much warmth surrounds the words — never the words.
+// only adjust how much warmth surrounds the words - never the words.
 
 class RIPScene implements IScene {
 
-  // Live knobs (ParamRouter spine — sticks, keyboard, web, idle autopilot).
+  // Live knobs (ParamRouter spine - sticks, keyboard, web, idle autopilot).
   SceneParam pGlow    = new SceneParam("glow",    "Glow Warmth",   0,   2,   0.8);
   SceneParam pEmbers  = new SceneParam("embers",  "Ember Count",   0,   60,  24);
   SceneParam pBreathe = new SceneParam("breathe", "Breathe Speed", 0.2, 2,   0.7);
   SceneParam[] params = { pGlow, pEmbers, pBreathe };
 
-  // Ember motes — small warm points born at the bottom, fading as they rise.
+  // Ember motes - small warm points born at the bottom, fading as they rise.
   int MAX_EMBERS = 60;
   float[] emberX     = new float[MAX_EMBERS];
   float[] emberY     = new float[MAX_EMBERS];
@@ -43,7 +43,7 @@ class RIPScene implements IScene {
   void drawScene(PGraphics pg) {
     pg.background(0);
 
-    // Soft breathing halo behind the text. Audio leans on it very lightly —
+    // Soft breathing halo behind the text. Audio leans on it very lightly - 
     // this scene should feel calm even on a loud track.
     breathePhase += 0.008 * pBreathe.value;
     float breathe = 0.5 + 0.5 * sin(breathePhase * TWO_PI);

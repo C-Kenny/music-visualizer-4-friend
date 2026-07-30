@@ -1,4 +1,4 @@
-// Prism Orbit scene — audio-reactive lattice intended to feel pleasing to both
+// Prism Orbit scene - audio-reactive lattice intended to feel pleasing to both
 // humans and machines. Switch to it with the '7' key.
 
 class PrismCodexScene implements IScene {
@@ -17,7 +17,7 @@ class PrismCodexScene implements IScene {
   float spinSpeed   = 0.0025; // controllable (default matches original)
   float driftSpeed  = 0.35;   // controllable latticeDrift increment
 
-  // Pre-allocated node buffers — reused every frame to avoid per-frame array allocation
+  // Pre-allocated node buffers - reused every frame to avoid per-frame array allocation
   float[][] nodeX = { new float[6], new float[10], new float[14] };
   float[][] nodeY = { new float[6], new float[10], new float[14] };
 
@@ -68,7 +68,7 @@ class PrismCodexScene implements IScene {
       beatFlash = 1.0;
       spinKick = 1.0;
       beatCounter++;
-      // Every 4th beat: hard hit — flip rotation direction + radial burst
+      // Every 4th beat: hard hit - flip rotation direction + radial burst
       if (beatCounter % 4 == 0) {
         ringDirSign = -ringDirSign;
         burstPhase = 1.0;
@@ -168,7 +168,7 @@ class PrismCodexScene implements IScene {
       }
     }
 
-    // beams between neighboring rings — RT trigger and burst add cross-links
+    // beams between neighboring rings - RT trigger and burst add cross-links
     int extraLinks = (int)(triggerDensity * 3 + burstPhase * 2);
     for (int ring = 0; ring < 2; ring++) {
       int nextLen = nodeX[ring + 1].length;

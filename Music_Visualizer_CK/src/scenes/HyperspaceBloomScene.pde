@@ -1,14 +1,14 @@
 /**
- * HyperspaceBloomScene (scene 52) — Superformula Bloom
+ * HyperspaceBloomScene (scene 52) - Superformula Bloom
  *
  * A living 3D organic bloom generated entirely from Johan Gielis's
- * "superformula" — a single equation that describes an astonishing range of
+ * "superformula" - a single equation that describes an astonishing range of
  * natural forms (flowers, starfish, diatoms, crystals) as you sweep its
  * parameters:
  *
  *     r(θ) = ( |cos(m·θ/4) / a|^n2  +  |sin(m·θ/4) / b|^n3 ) ^ (-1/n1)
  *
- * The 3D surface is the spherical product of two superformulas — one sweeping
+ * The 3D surface is the spherical product of two superformulas - one sweeping
  * latitude, one sweeping longitude. We morph the parameters live with the
  * music so the shape continually "blooms":
  *
@@ -22,19 +22,19 @@
  * outward before fading. The camera orbits slowly; the right stick steers it.
  *
  * Controller:
- *   LStick ↕    — n1 spikiness
- *   LStick ↔    — m symmetry (petal count)
- *   RStick ↔↕   — orbit camera (disables auto-orbit)
- *   LB / RB     — palette
- *   A           — bloom burst (manual)
- *   B           — toggle face fill / wireframe-only
- *   X           — reset params + recentre camera
- *   Y           — toggle auto-orbit
+ *   LStick ↕ - n1 spikiness
+ *   LStick ↔ - m symmetry (petal count)
+ *   RStick ↔↕ - orbit camera (disables auto-orbit)
+ *   LB / RB - palette
+ *   A - bloom burst (manual)
+ *   B - toggle face fill / wireframe-only
+ *   X - reset params + recentre camera
+ *   Y - toggle auto-orbit
  */
 class HyperspaceBloomScene implements IScene {
 
   // ── Mesh resolution ─────────────────────────────────────────────────────────
-  // LAT bands × LON segments. 40×80 ≈ 3200 verts — cheap because the two
+  // LAT bands × LON segments. 40×80 ≈ 3200 verts - cheap because the two
   // superformulas are evaluated only once per row/column (120 evals/frame),
   // then combined as a spherical product.
   static final int LAT = 40;
@@ -51,7 +51,7 @@ class HyperspaceBloomScene implements IScene {
   float[] vy = new float[(LAT + 1) * (LON + 1)];
   float[] vz = new float[(LAT + 1) * (LON + 1)];
   // Same grid pre-multiplied by the on-screen world radius. We emit THESE so the
-  // matrix carries only translate+rotate — never scale(). In P3D a strokeWeight
+  // matrix carries only translate+rotate - never scale(). In P3D a strokeWeight
   // > 1 is built as triangulated geometry in model space, so a matrix scale()
   // would balloon every stroke to hundreds of px (the white-out bug). Baking the
   // scale into the coordinates keeps strokeWeight in honest pixels.
@@ -85,7 +85,7 @@ class HyperspaceBloomScene implements IScene {
   boolean autoOrbit = true;
   float orbit = 0;
 
-  // Largest vertex radius in the current mesh — used to normalize on-screen
+  // Largest vertex radius in the current mesh - used to normalize on-screen
   // size so spiky/low-n1 params can't overflow the screen.
   float meshMaxR = 1;
 
@@ -213,7 +213,7 @@ class HyperspaceBloomScene implements IScene {
     }
 
     pg.beginDraw();
-    // Additive glow reads best with depth test off — overlapping wireframe and
+    // Additive glow reads best with depth test off - overlapping wireframe and
     // pollen sum into light instead of z-fighting. Re-enabled before endDraw.
     pg.hint(DISABLE_DEPTH_TEST);
     pg.background(2, 2, 7 + (int)(beatFlash * 6));
@@ -223,7 +223,7 @@ class HyperspaceBloomScene implements IScene {
     pg.translate(pg.width * 0.5, pg.height * 0.5, 0);
     pg.rotateY(camAzim);
     pg.rotateX(camPitch);
-    // NOTE: no scale() here — vertices are pre-scaled (sx/sy/sz) so strokeWeight
+    // NOTE: no scale() here - vertices are pre-scaled (sx/sy/sz) so strokeWeight
     // stays in pixels. See the sx[] field comment.
 
     float hueA = palettes[palette][0];
@@ -231,7 +231,7 @@ class HyperspaceBloomScene implements IScene {
     float hueSpd = palettes[palette][2];
     float hueRot = phase * hueSpd;
 
-    // Inner core glow — a soft additive sphere pulsing with bass. Low detail
+    // Inner core glow - a soft additive sphere pulsing with bass. Low detail
     // + few layers keeps it cheap (sphere() at default detail is costly).
     pg.blendMode(ADD);
     pg.noStroke();
@@ -265,7 +265,7 @@ class HyperspaceBloomScene implements IScene {
     }
 
     // ── Wireframe (latitude rings) ────────────────────────────────────────────
-    // BLEND, not ADD — additive lines pile up to solid white where rings
+    // BLEND, not ADD - additive lines pile up to solid white where rings
     // overlap. BLEND keeps each ring a crisp colored stroke over the dark bg.
     pg.blendMode(BLEND);
     pg.noFill();
@@ -282,7 +282,7 @@ class HyperspaceBloomScene implements IScene {
       }
       pg.endShape();
     }
-    // Longitude ribs (sparser — every 4th column) for a woven look.
+    // Longitude ribs (sparser - every 4th column) for a woven look.
     pg.strokeWeight((0.9 + bloom * 0.6) * ts);
     for (int lo = 0; lo <= LON; lo += 4) {
       float fLon = (float) lo / LON;
@@ -297,7 +297,7 @@ class HyperspaceBloomScene implements IScene {
     }
 
     // ── Glowing vertices on the bloom edge ───────────────────────────────────
-    // Batched into one beginShape(POINTS) per row — individual point() calls
+    // Batched into one beginShape(POINTS) per row - individual point() calls
     // are a separate GL draw each and were the main FPS sink. ADD here is fine:
     // sparse points, so they sparkle rather than fill.
     pg.blendMode(ADD);
@@ -368,7 +368,7 @@ class HyperspaceBloomScene implements IScene {
       sinP[lo] = sin(p);
     }
     // Spherical product of the two superformulas. Track the largest radius so
-    // the whole bloom can be normalized to a fixed on-screen size — otherwise
+    // the whole bloom can be normalized to a fixed on-screen size - otherwise
     // a low-n1 (spiky) frame produces radii up to the clamp and overflows.
     float maxR2 = 1e-4;
     for (int la = 0; la <= LAT; la++) {

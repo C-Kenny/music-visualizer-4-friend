@@ -1,16 +1,16 @@
 /**
- * FableMurmurationScene — Fable 5's signature scene.
+ * FableMurmurationScene - Fable 5's signature scene.
  *
  * A murmuration of 2,400 points flying spring-flock physics between four
  * mathematical formations. Each particle owns a slot in every formation, so
- * the swarm never teleports — it FLIES from shape to shape, and the morph
+ * the swarm never teleports - it FLIES from shape to shape, and the morph
  * knob can hold it mid-transformation indefinitely (half bloom, half galaxy).
  *
- *   0 BLOOM   — phyllotaxis sphere: the golden angle spread onto a sphere,
+ *   0 BLOOM - phyllotaxis sphere: the golden angle spread onto a sphere,
  *               the same packing sunflowers use.
- *   1 GALAXY  — three-arm logarithmic spiral disk with noise thickness.
- *   2 KNOT    — a (3,2) torus knot threaded as a particle ribbon.
- *   3 SPECTRA — a live FFT ridge: ring position = frequency band, height =
+ *   1 GALAXY - three-arm logarithmic spiral disk with noise thickness.
+ *   2 KNOT - a (3,2) torus knot threaded as a particle ribbon.
+ *   3 SPECTRA - a live FFT ridge: ring position = frequency band, height =
  *               that band's energy right now. The music sculpts the shape.
  *
  * Audio wiring: bass tightens the formation spring, mids feed the orbital
@@ -20,7 +20,7 @@
  * Built spine-native: all five knobs are SceneParams, so controller sticks,
  * keyboard, web sliders, AND the idle autopilot all drive it. Left alone,
  * the autopilot slowly drags the morph knob and the swarm keeps reforming
- * itself to the music — designed to be watched hands-off.
+ * itself to the music - designed to be watched hands-off.
  *
  * Perf: positions batched into one beginShape(POINTS) + one (LINES) pass
  * (see reference: per-point point() calls are a P3D bottleneck). No PeasyCam,
@@ -37,17 +37,17 @@ class FableMurmurationScene implements IScene {
   final float SHOCK_DECAY       = 0.86;
   final float HUE_DRIFT_PER_SEC = 0.012; // palette slowly walks the color wheel
 
-  // Drop burst — the "spread across the whole scene" moment. Fires when bass
+  // Drop burst - the "spread across the whole scene" moment. Fires when bass
   // spikes well above its own slow-moving average (a drop, not just a beat):
   // the formation spring lets go, the flock blows outward, then reforms.
   final float BURST_TRIGGER_RATIO   = 1.55; // bass vs slow average to call it a drop
   final float BURST_MIN_BASS        = 0.45; // and it must be genuinely loud
   final float BURST_KICK            = 26.0; // initial outward velocity
-  final float BURST_DECAY           = 0.94; // slower than beat shock — it blooms
+  final float BURST_DECAY           = 0.94; // slower than beat shock - it blooms
   final int   BURST_COOLDOWN_FRAMES = 240;  // ≥4s apart so only real drops fire
   final float BURST_HUE_JUMP        = 0.09; // palette shifts on every drop
 
-  // Breathing — the whole formation rides the track's loudness.
+  // Breathing - the whole formation rides the track's loudness.
   final float BREATHE_MIN  = 0.74;  // radius scale in silence
   final float BREATHE_GAIN = 0.34;  // + this much at full loudness
 
@@ -58,15 +58,15 @@ class FableMurmurationScene implements IScene {
   final int SHAPE_COUNT = 4;
   final String[] SHAPE_NAMES = { "BLOOM", "GALAXY", "KNOT", "SPECTRA" };
 
-  float beatShock   = 0;   // 1 on beat, decays — radial kick + flash
-  float burst       = 0;   // 1 on drop, decays slowly — full-scene scatter
+  float beatShock   = 0;   // 1 on beat, decays - radial kick + flash
+  float burst       = 0;   // 1 on drop, decays slowly - full-scene scatter
   int   burstCooldown = 0;
   float orbitAngle  = 0;   // camera orbit
   float hueBase     = 0.62; // start in the blue-violet range
   float smoothBass  = 0, smoothMid = 0, smoothHigh = 0;
   float smoothLoud  = 0;   // overall level, breathing input
-  float slowBass    = 0.2; // very slow bass average — drop detection baseline
-  float[] smoothSpectrum = new float[48]; // per-band lerp — raw FFT flickers
+  float slowBass    = 0.2; // very slow bass average - drop detection baseline
+  float[] smoothSpectrum = new float[48]; // per-band lerp - raw FFT flickers
 
   // ── Live knobs (ParamRouter spine: sticks, keyboard, web, autopilot) ──────
   SceneParam pMorph = new SceneParam("morph", "Shape Morph",    0,    SHAPE_COUNT - 1, 0);
@@ -101,16 +101,16 @@ class FableMurmurationScene implements IScene {
 
   // ── Formation slot math ───────────────────────────────────────────────────
   // Slot i of shape s, written into slotOut[0..2]. Pure functions of (i, time,
-  // live spectrum) — particles chase these, which is what makes morphs fly.
+  // live spectrum) - particles chase these, which is what makes morphs fly.
   float[] slotOut = new float[3];
 
-  // (if/else, not switch — the Processing preprocessor chokes on declarations
+  // (if/else, not switch - the Processing preprocessor chokes on declarations
   // inside switch-case bodies; see smoke-test notes.)
   void formationSlot(int shape, int i, float t) {
     float n = (float) i / FLOCK_SIZE;          // 0..1 along the flock
     float R = FORMATION_RADIUS;
 
-    if (shape == 0) { // BLOOM — phyllotaxis sphere (golden angle 137.5°)
+    if (shape == 0) { // BLOOM - phyllotaxis sphere (golden angle 137.5°)
       float goldenAngle = PI * (3 - sqrt(5.0));
       float yLat  = 1 - 2 * n;                 // -1..1 pole to pole
       float ringR = sqrt(max(0, 1 - yLat * yLat));
@@ -119,7 +119,7 @@ class FableMurmurationScene implements IScene {
       slotOut[1] = yLat * R;
       slotOut[2] = sin(a) * ringR * R;
 
-    } else if (shape == 1) { // GALAXY — three-arm logarithmic spiral disk
+    } else if (shape == 1) { // GALAXY - three-arm logarithmic spiral disk
       int   arm      = i % 3;
       float along    = n;                       // 0 core → 1 rim
       float spiralA  = along * 4.2 + arm * TWO_PI / 3 + t * 0.05;
@@ -129,7 +129,7 @@ class FableMurmurationScene implements IScene {
       slotOut[1] = thick;
       slotOut[2] = sin(spiralA) * spiralR;
 
-    } else if (shape == 2) { // KNOT — (3,2) torus knot ribbon with tube width
+    } else if (shape == 2) { // KNOT - (3,2) torus knot ribbon with tube width
       float a    = n * TWO_PI;
       float tube = R * 0.10;
       float wob  = i * 2.39996; // de-correlate tube offsets, golden-ish step
@@ -138,7 +138,7 @@ class FableMurmurationScene implements IScene {
       slotOut[1] = R * 0.28 * sin(2 * a) + tube * sin(wob);
       slotOut[2] = cx * sin(3 * a) + tube * cos(wob * 1.7);
 
-    } else { // SPECTRA — ring of FFT bands, height = live band energy
+    } else { // SPECTRA - ring of FFT bands, height = live band energy
       int   bands  = smoothSpectrum.length;             // 48
       int   band   = (int) (n * bands) % bands;
       float a      = n * TWO_PI;
@@ -162,7 +162,7 @@ class FableMurmurationScene implements IScene {
       smoothSpectrum[b] = lerp(smoothSpectrum[b], analyzer.spectrum[b], 0.25);
     }
 
-    // Beat shock strength rides the actual kick energy — soft onsets nudge,
+    // Beat shock strength rides the actual kick energy - soft onsets nudge,
     // hard kicks slam. Stops dense tracks turning into constant mush.
     if (analyzer.isBeat) beatShock = max(beatShock, 0.25 + smoothBass * 0.75);
 
@@ -247,7 +247,7 @@ class FableMurmurationScene implements IScene {
     pg.colorMode(HSB, 1.0);
     pg.blendMode(ADD);
 
-    // Pass 1 — velocity streaks: a line from just-behind to now. Reads as
+    // Pass 1 - velocity streaks: a line from just-behind to now. Reads as
     // motion blur and shows the flock's flow direction for free.
     float streak = pTrail.value * 2.2;
     if (streak > 0.05) {
@@ -264,7 +264,7 @@ class FableMurmurationScene implements IScene {
       pg.endShape();
     }
 
-    // Pass 2 — the stars themselves. Fast movers go white-hot when the highs
+    // Pass 2 - the stars themselves. Fast movers go white-hot when the highs
     // bite, and every star flares during a drop burst.
     pg.strokeWeight(max(1.5, (2.2 + smoothBass * 2.5) * pGlow.value * fit));
     pg.beginShape(POINTS);
@@ -317,7 +317,7 @@ class FableMurmurationScene implements IScene {
   String[] getCodeLines() {
     return new String[] {
       "=== Fable Murmuration ===",
-      "// one flock, four formations — it flies between them",
+      "// one flock, four formations - it flies between them",
       "slot[i] = lerp(shapeA(i), shapeB(i), morph)",
       "vel += (slot - pos) * spring(bass)",
       "vel += tangent(pos) * swirl(mid)      // orbit as one body",

@@ -1,5 +1,5 @@
 /**
- * DemoInputDriver — synthetic controller input for unattended demo capture.
+ * DemoInputDriver - synthetic controller input for unattended demo capture.
  *
  * When enabled, overrides the live Controller fields each frame with a slow
  * Lissajous stick sweep plus beat-reactive button taps and direction snaps.
@@ -11,7 +11,7 @@
  *   .devdemo           file in sketch dir (gitignored)
  *
  * Suppressed inputs: LB/RB (scene cycle), Back/Start (song stop/start),
- * stick-clicks (auto-switcher) — capture must stay on the chosen scene.
+ * stick-clicks (auto-switcher) - capture must stay on the chosen scene.
  */
 class DemoInputDriver {
   boolean enabled    = false;
@@ -25,7 +25,7 @@ class DemoInputDriver {
     boolean fileOn = new java.io.File(sketchPath(".devdemo")).exists();
     enabled = envOn || fileOn;
     startMs = millis();
-    if (enabled) println("[DEMO] DemoInputDriver active — synthetic controller input ON");
+    if (enabled) println("[DEMO] DemoInputDriver active - synthetic controller input ON");
   }
 
   boolean isActive() { return enabled; }
@@ -55,7 +55,7 @@ class DemoInputDriver {
     // Hold A briefly after each beat for continuous-modifier scenes.
     c.aButton = sinceBeat < 0.22;
 
-    // Rotate face-button rising edges across A/B/X/Y on every beat —
+    // Rotate face-button rising edges across A/B/X/Y on every beat - 
     // many scenes use these to cycle colour palette / blend mode.
     c.aJustPressed = false;
     c.bJustPressed = false;

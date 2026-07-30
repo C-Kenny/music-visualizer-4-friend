@@ -1,4 +1,4 @@
-// WebQueueManager — turn-based web controller queue, crowd moderation, and operator controls.
+// WebQueueManager - turn-based web controller queue, crowd moderation, and operator controls.
 
 import org.java_websocket.WebSocket;
 import java.util.ArrayList;

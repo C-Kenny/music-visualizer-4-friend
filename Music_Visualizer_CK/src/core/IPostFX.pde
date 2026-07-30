@@ -1,9 +1,9 @@
 /**
- * IPostFX — Interface for all post-processing effects in the PostFX stack.
+ * IPostFX - Interface for all post-processing effects in the PostFX stack.
  *
  * Two effect types:
- *   CPU effects  (isCPUEffect() == true):  call applyCPU(pg) — modifies pg pixels in-place.
- *   GLSL effects (isCPUEffect() == false): call applyGLSL(src, dst) — blits src → dst via shader.
+ *   CPU effects  (isCPUEffect() == true):  call applyCPU(pg) - modifies pg pixels in-place.
+ *   GLSL effects (isCPUEffect() == false): call applyGLSL(src, dst) - blits src → dst via shader.
  *
  * CPU effects run first (directly on sceneBuffer), then GLSL effects are
  * ping-ponged through temp buffers. The stack returns the final buffer to blit.

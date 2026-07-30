@@ -54,7 +54,7 @@ class Tunnel {
   }
 
   // twistOffset shifts the angle dimension of the texture independently of
-  // the zoom — a value of ~32 produces a visible ~90° rotation twist.
+  // the zoom - a value of ~32 produces a visible ~90° rotation twist.
   void draw(PGraphics pg, int tunnelZoomIncrement, int twistOffset, int xOffset, int squareSize) {
     int renderWidth = pg.width / RENDER_SCALE;
     int renderHeight = pg.height / RENDER_SCALE;
@@ -73,7 +73,7 @@ class Tunnel {
       for (int columnIndex = scaledXOffset; columnIndex < scanEndLimit; columnIndex++) {
         int pixelIndex  = rowIndex * renderWidth + columnIndex;
         int lookupValue = lookUpTable[pixelIndex];
-        // Negate frame progression so texture flows outward from center —
+        // Negate frame progression so texture flows outward from center - 
         // viewer feels like they're zooming INTO the tunnel rather than away.
         int colorTexel = texture[
           ((lookupValue & 0x0000ffff) - ((config.logicalFrameCount + tunnelZoomIncrement) << 1) + (twistOffset << 8)) & ((128*128)-1)

@@ -1,4 +1,4 @@
-// Worm Colony Scene — state 10
+// Worm Colony Scene - state 10
 //
 // A colony of neon worms slithers across a dark screen.
 // Each worm is a chain of glowing segments driven by Perlin-noise wandering.

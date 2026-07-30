@@ -1,5 +1,5 @@
 /**
- * StrobeSafety — photosensitive-seizure protection filter.
+ * StrobeSafety - photosensitive-seizure protection filter.
  *
  * Photosensitive epilepsy thresholds (UK Ofcom / W3C WCAG):
  *   - No more than 3 full-screen flashes per second.
@@ -10,7 +10,7 @@
  * one. The blend ratio scales with how far the spike exceeds the cap, so a
  * gentle pulse passes through and only hard flashes get flattened.
  *
- * Off by default for private/home use. Auto-enables on fullscreen toggle —
+ * Off by default for private/home use. Auto-enables on fullscreen toggle - 
  * if you're plugged into a venue projector, the cap should be on.
  *
  * Wired into the main draw() loop:
@@ -30,7 +30,7 @@ class StrobeSafety {
 
   boolean enabled = false;
 
-  // Downscaled luminance probe — avoids full-resolution loadPixels readback.
+  // Downscaled luminance probe - avoids full-resolution loadPixels readback.
   PGraphics analyzeBuf;
   // Snapshot of last frame's final composite, used as the damping source.
   PGraphics prevBuf;
@@ -39,7 +39,7 @@ class StrobeSafety {
   boolean lastWasBright = false;
   ArrayList<Long> flashTimes = new ArrayList<Long>();
 
-  // Diagnostic — last computed dampening alpha (0..1). HUD reads this.
+  // Diagnostic - last computed dampening alpha (0..1). HUD reads this.
   float lastDampAlpha = 0;
 
   static final String PREFS_FILE = ".strobe";
@@ -106,7 +106,7 @@ class StrobeSafety {
   }
 
   // Save the current composite for next frame's damping source.
-  // Skipped when disabled — the full-frame image copy was ~3% CPU on
+  // Skipped when disabled - the full-frame image copy was ~3% CPU on
   // profile sampling, and maybeDampen() already early-exits on !enabled.
   void snapshot(PGraphics src) {
     if (!enabled || src == null) return;

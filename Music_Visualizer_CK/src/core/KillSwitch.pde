@@ -1,12 +1,12 @@
 /**
- * KillSwitch — instant fade-to-black for live-show emergencies.
+ * KillSwitch - instant fade-to-black for live-show emergencies.
  *
  * Bypasses all scene logic: a single black quad is composited over the final
  * frame (after scene render, crossfade, HUD overlays) with animated alpha.
  * Toggled via Esc on keyboard or Back+Start chord on the controller.
  *
  * The fade itself is time-based (not frame-based), so a hitch in the render
- * loop doesn't stretch the transition — fade-in/out always completes in
+ * loop doesn't stretch the transition - fade-in/out always completes in
  * FADE_SECONDS regardless of current FPS.
  */
 class KillSwitch {

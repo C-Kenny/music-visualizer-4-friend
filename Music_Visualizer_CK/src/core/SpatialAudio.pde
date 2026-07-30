@@ -1,5 +1,5 @@
 /**
- * SpatialAudio — detects "8D audio": tracks where in the stereo field the
+ * SpatialAudio - detects "8D audio": tracks where in the stereo field the
  * sound currently sits and whether it is circling the listener's head.
  *
  * How it works, in plain words:
@@ -18,7 +18,7 @@
  *     Validated offline against real tracks: a true 8D mix scores ~0.8 for
  *     ~90% of its runtime; five ordinary tracks (live, slowed+reverb,
  *     city pop, OST, hardstyle) all stay at 0%.
- *  4. Full 360° angle — pan alone can't tell front from behind, but while
+ *  4. Full 360° angle - pan alone can't tell front from behind, but while
  *     orbiting, pan traces a sine wave and the DIRECTION pan is moving
  *     disambiguates: rising through center = crossing in front, falling
  *     through center = crossing behind.
@@ -109,7 +109,7 @@ class SpatialAudio {
       width        = lerp(width, 0, 0.02);
     }
 
-    // History + rhythm check run on EVERY tick (silence counts as pan 0 —
+    // History + rhythm check run on EVERY tick (silence counts as pan 0 - 
     // a long quiet break should erode the orbit, not freeze it).
     _frameCounter++;
     if (_frameCounter % HISTORY_EVERY_N_FRAMES == 0) {
@@ -131,7 +131,7 @@ class SpatialAudio {
     // While orbiting, the angle comes from a phase-locked spin: a phase that
     // turns at the song's lap rate on its own momentum, gently nudged so its
     // sine stays matched to the heard pan. The momentum is what keeps the
-    // comet from wiggling — deriving the angle directly from pan + its
+    // comet from wiggling - deriving the angle directly from pan + its
     // per-frame speed flaps between front and behind whenever the pan
     // pauses at the sides (measured: 13% of frames reversed direction;
     // phase-locked: 0.2%).
@@ -148,7 +148,7 @@ class SpatialAudio {
       _orbitPhase += phaseNudge;
       targetAngle = wrapAngle(_orbitPhase);
     } else {
-      // No orbit — just place the sound in the front half, left to right.
+      // No orbit - just place the sound in the front half, left to right.
       targetAngle = asin(constrain(pan, -1, 1));
       _orbitPhase = azimuth;   // stay synced for a clean handover when an orbit starts
     }

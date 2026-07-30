@@ -1,7 +1,7 @@
 /**
  * TorusKnotScene (scene 34)
  *
- * A (p, q) torus knot — a closed curve that winds p times around the
+ * A (p, q) torus knot - a closed curve that winds p times around the
  * torus longitudinally and q times meridionally.
  *
  * Parametric equations (φ ∈ [0, 2π]):
@@ -11,21 +11,21 @@
  *   z(φ) = −sin(q·φ)
  *
  * Controller:
- *   LB / RB      — p winding number (2–9)
- *   X  / Y       — q winding number (2–9)
- *   LStick ↕     — zoom in / out
- *   LStick ↔     — hue offset (shift rainbow palette)
- *   RStick ↔↕   — orbit camera
- *   LT (held)    — slow auto-rotation
- *   RT (held)    — speed up auto-rotation
- *   A            — reset camera + rotation speed
- *   B            — cycle colour mode (rainbow / heat / neon / mono)
+ *   LB / RB - p winding number (2–9)
+ *   X  / Y - q winding number (2–9)
+ *   LStick ↕ - zoom in / out
+ *   LStick ↔ - hue offset (shift rainbow palette)
+ *   RStick ↔↕ - orbit camera
+ *   LT (held) - slow auto-rotation
+ *   RT (held) - speed up auto-rotation
+ *   A - reset camera + rotation speed
+ *   B - cycle colour mode (rainbow / heat / neon / mono)
  *
  * Audio:
- *   Bass  — knot scale pulse + glow boost
- *   Mid   — auto-rotation speed
- *   High  — line brightness boost
- *   Beat  — scale spike + white flash
+ *   Bass - knot scale pulse + glow boost
+ *   Mid - auto-rotation speed
+ *   High - line brightness boost
+ *   Beat - scale spike + white flash
  */
 class TorusKnotScene implements IScene {
 
@@ -209,7 +209,7 @@ class TorusKnotScene implements IScene {
     buf.colorMode(HSB, 360, 100, 100, 100);
 
     // Scale all points by scaleMult inline
-    // Glow pass — thick, translucent
+    // Glow pass - thick, translucent
     buf.strokeWeight(10);
     for (int i = 0; i < n; i++) {
       float h = segHue(i, n);
@@ -219,7 +219,7 @@ class TorusKnotScene implements IScene {
                cx[i+1]*scaleMult, cy[i+1]*scaleMult, cz[i+1]*scaleMult);
     }
 
-    // Core pass — thin, bright
+    // Core pass - thin, bright
     buf.strokeWeight(2.2);
     for (int i = 0; i < n; i++) {
       float h = segHue(i, n);

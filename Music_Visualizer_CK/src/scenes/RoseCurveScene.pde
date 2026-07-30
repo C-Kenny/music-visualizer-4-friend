@@ -1,5 +1,5 @@
 /**
- * RoseCurveScene (scene 35) — Spirograph Sacred Geometry
+ * RoseCurveScene (scene 35) - Spirograph Sacred Geometry
  *
  * Hypotrochoid / epitrochoid parametric curves with rainbow-gradient strokes,
  * layered at different scales with audio-reactive breathing and rotation.
@@ -12,19 +12,19 @@
  *   Presets pick visually striking (R, r, d) combos.
  *
  * Controller:
- *   LB / RB      — prev / next preset
- *   X  / Y       — d (pen distance) ±0.1
- *   LStick ↕     — overall scale
- *   RStick ↔     — hue offset
- *   RStick ↕     — rotation speed multiplier
- *   A            — reset to default preset
- *   B            — next preset (same as RB)
+ *   LB / RB - prev / next preset
+ *   X  / Y - d (pen distance) ±0.1
+ *   LStick ↕ - overall scale
+ *   RStick ↔ - hue offset
+ *   RStick ↕ - rotation speed multiplier
+ *   A - reset to default preset
+ *   B - next preset (same as RB)
  *
  * Audio:
- *   Bass  — scale breathing + stroke weight
- *   Mid   — rotation speed
- *   High  — saturation + brightness
- *   Beat  — rotation snap + flash
+ *   Bass - scale breathing + stroke weight
+ *   Mid - rotation speed
+ *   High - saturation + brightness
+ *   Beat - rotation snap + flash
  */
 class RoseCurveScene implements IScene {
 
@@ -32,7 +32,7 @@ class RoseCurveScene implements IScene {
   // Hypotrochoid: outer radius R, inner radius r, pen distance d
   float spiroR = 5, spiror = 3, spirod = 3;
 
-  // Presets: { R, r, d } — visually striking combos
+  // Presets: { R, r, d } - visually striking combos
   float[][] presets = {
     {5, 3, 3},       // classic 5-lobe star
     {7, 4, 2.5f},    // 7-lobe weave

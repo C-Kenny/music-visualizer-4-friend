@@ -27,7 +27,7 @@ class Plasma {
   }
 
   void draw(PGraphics pg, int plasmaSeed) {
-    // Fixed-size internal buffer — plasma inner loop is O(w*h) with per-pixel
+    // Fixed-size internal buffer - plasma inner loop is O(w*h) with per-pixel
     // sqrt; scaling the buffer with pg tanked fps at stage resolution (900→15).
     // 640×360 stretched via P3D bilinear stays smooth and keeps cost constant.
     final int BMAX_W = 640, BMAX_H = 360;

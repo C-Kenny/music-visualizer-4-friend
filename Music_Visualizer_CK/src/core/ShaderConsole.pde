@@ -1,11 +1,11 @@
 /**
- * ShaderConsole — hot-reload GLSL editor backend.
+ * ShaderConsole - hot-reload GLSL editor backend.
  *
  * Watches a user-editable .glsl file (mtime poll). On change, recompiles via
  * loadShader(). Compile errors are captured (parse-time and first-use) and
  * exposed for HUD display while the previous good shader keeps rendering.
  *
- * Compile cost: GLSL is sandboxed by the driver — a syntax error never crashes
+ * Compile cost: GLSL is sandboxed by the driver - a syntax error never crashes
  * the JVM, just throws RuntimeException out of loadShader() / pg.shader().
  *
  *   ShaderConsole sc = new ShaderConsole("live_shader.glsl", "milkdrop_lesson.glsl");

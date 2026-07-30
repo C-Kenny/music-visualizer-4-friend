@@ -10,7 +10,7 @@ class HeartGridScene implements IScene {
   float heartFocusNY   = 0.0;
 
   // Both sticks are already busy (grid density, zoom+pan), so these live on
-  // the triggers instead — still on the SceneParam spine for keyboard/web.
+  // the triggers instead - still on the SceneParam spine for keyboard/web.
   SceneParam pFlash  = new SceneParam("flash",  "Beat Flash",    0.3, 2.5, 1);
   SceneParam pBreath = new SceneParam("breath", "Breath Amount", 0,   2.5, 1);
   SceneParam[] params = { pFlash, pBreath };
@@ -42,7 +42,7 @@ class HeartGridScene implements IScene {
 
     if (c.lt > 0.15) pFlash.nudgeNorm(-0.02 * c.lt);
     if (c.rt > 0.15) pFlash.nudgeNorm( 0.02 * c.rt);
-    // Held (not JustPressed) — a sustained modifier, per the held-vs-edge rule.
+    // Held (not JustPressed) - a sustained modifier, per the held-vs-edge rule.
     if (c.xButton) pBreath.nudgeNorm(-0.02);
     if (c.yButton) pBreath.nudgeNorm( 0.02);
     if (c.aJustPressed) for (SceneParam q : params) q.reset();

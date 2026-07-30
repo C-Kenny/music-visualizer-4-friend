@@ -5,7 +5,7 @@ Audio-reactive scene that blends a **woven FFT mesh** with **biological** cues (
 ## How to open
 
 - **LB / RB** cycle `SCENE_ORDER` in `Music_Visualizer_CK.pde`; Neural Weave is **state 14** (after Gravity Strings).
-- **Number keys 1–9 / 0** jump by position in `SCENE_ORDER`, not by state id — there is **no** dedicated key for state 14. Use LB/RB or dev override `.devscene` with value `14`.
+- **Number keys 1–9 / 0** jump by position in `SCENE_ORDER`, not by state id - there is **no** dedicated key for state 14. Use LB/RB or dev override `.devscene` with value `14`.
 
 ## Audio
 
@@ -48,9 +48,9 @@ Triggers are read on `Controller` as **`lt` / `rt`** in `0…1` (see `Controller
 
 ## Growth stages
 
-1. **Mesh** — lattice only (H/V/diagonal weave).  
-2. **Synapse web** — adds quadratic **bridges** between distant nodes (periodic reshuffle).  
-3. **Tissue bloom** — more bridges + larger vesicle halos under nodes.
+1. **Mesh** - lattice only (H/V/diagonal weave).  
+2. **Synapse web** - adds quadratic **bridges** between distant nodes (periodic reshuffle).  
+3. **Tissue bloom** - more bridges + larger vesicle halos under nodes.
 
 ## Integration with the main sketch
 
@@ -60,7 +60,7 @@ Neural Weave is **self-contained** in `NeuralWeaveScene`. The main file only:
 - **`keyPressed`**: block `// Neural weave keys (state 14 only)` for scene-local keys.
 - **Global shortcuts that are skipped on state 14** so they do not fight scene bindings:
   - **`b`** (blend cycle), **`g`** (background toggle)
-  - **`controller`**: **B** (blend), **X** (background), **L3/R3** (background / inner diamonds), **Y** (fin rotation — unchanged for all other scenes; only state 14 is excluded so **Y** = palette here)
+  - **`controller`**: **B** (blend), **X** (background), **L3/R3** (background / inner diamonds), **Y** (fin rotation - unchanged for all other scenes; only state 14 is excluded so **Y** = palette here)
 - **`controller.a`**: `switch` includes **`case 14`** for ripple instead of toggling rainbow fins.
 
 Removing Neural Weave later: delete `NeuralWeaveScene.pde`, strip `14` from `SCENE_ORDER`, remove the `case`, variable, `applyController` block, `keyPressed` block, and the `STATE != 14` / `case 14` branches listed above.

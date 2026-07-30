@@ -1,5 +1,5 @@
 /**
- * SceneParam — one named, bounded, live-tweakable knob a scene exposes.
+ * SceneParam - one named, bounded, live-tweakable knob a scene exposes.
  *
  * The param IS the source of truth: a scene holds SceneParam fields and reads
  * `param.value` in drawScene(). Controller, keyboard, and the web UI all drive
@@ -10,10 +10,10 @@
  * existing scenes need no changes). See ParamRouter.pde for the input plumbing.
  *
  * Conventions:
- *   id    — stable lowercase key, used over the wire + for keyboard cycling
- *   label — short human text for HUD / web slider
- *   value — current, always within [min,max]
- *   norm  — value expressed as 0..1 (what sliders and stick axes speak)
+ *   id - stable lowercase key, used over the wire + for keyboard cycling
+ *   label - short human text for HUD / web slider
+ *   value - current, always within [min,max]
+ *   norm - value expressed as 0..1 (what sliders and stick axes speak)
  */
 class SceneParam {
   String id;

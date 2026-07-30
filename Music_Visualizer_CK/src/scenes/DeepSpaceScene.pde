@@ -45,7 +45,7 @@ class DeepSpaceScene implements IScene {
   float speed;
   float nebulaPhase = 0;
 
-  // Live knobs — driven by controller sticks, keyboard, web sliders, or the
+  // Live knobs - driven by controller sticks, keyboard, web sliders, or the
   // idle autopilot via the ParamRouter spine.
   SceneParam pWarp   = new SceneParam("warp",   "Warp Factor",    0.2, 3,   1);
   SceneParam pStars  = new SceneParam("stars",  "Star Density",   100, 800, 800);

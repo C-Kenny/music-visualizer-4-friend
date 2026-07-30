@@ -1,4 +1,4 @@
-// AutoSwitcher — beat-synced auto scene switching on major drops.
+// AutoSwitcher - beat-synced auto scene switching on major drops.
 //
 // Gated by dropPredictor: only fires when majorImminentDropFactor crosses
 // a threshold. Has cooldown + recent-history so switches feel deliberate
@@ -7,7 +7,7 @@
 class AutoSwitcher {
 
   // ── Modes ─────────────────────────────────────────────────────────────────
-  // (no `static` — Processing classes are inner classes of PApplet)
+  // (no `static` - Processing classes are inner classes of PApplet)
   final int MODE_OFF            = 0;
   final int MODE_FAVS_ONLY      = 1;
   final int MODE_FAVS_WEIGHTED  = 2;

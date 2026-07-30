@@ -1,5 +1,5 @@
 /**
- * TheyDontKnowScene — "they don't know" party meme.
+ * TheyDontKnowScene - "they don't know" party meme.
  *
  * Pure black-outline-on-paper, hand-drawn meme aesthetic:
  *   - Lonely wojak guy (party hat, sad face, holding drink) isolated on the
@@ -30,7 +30,7 @@ class TheyDontKnowScene implements IScene {
   Figure dancer;
 
   // Lonely-guy idle: slow sway + occasional sip cycle (reaches cup to lips
-  // and back). Sip phase 0..1 — 0=resting, 1=at lips.
+  // and back). Sip phase 0..1 - 0=resting, 1=at lips.
   float lonelySway = 0;
   float sipPhase = 0;
   float sipCooldown = 4.0;
@@ -44,13 +44,13 @@ class TheyDontKnowScene implements IScene {
   static final int MOVE_HEAD_BANG  = 4;
   static final int MOVE_COUNT      = 5;
   int   dancerMove = 0;
-  // Use wall-clock millis for cycle timing — frameRate-based accumulation
+  // Use wall-clock millis for cycle timing - frameRate-based accumulation
   // was unreliable (the global frameRate doesn't always match actual render
   // rate, so timer drifted way slower than intended).
   int   dancerMoveLastMs = 0;
   int   dancerMoveDurationMs = 1500;
 
-  // Sketchy renderer seed — keep it stable per scene-entry so jitter doesn't
+  // Sketchy renderer seed - keep it stable per scene-entry so jitter doesn't
   // crawl every frame (Handy's per-call randomness already adds life).
   int sketchSeed = 42;
 
@@ -69,7 +69,7 @@ class TheyDontKnowScene implements IScene {
   int   thoughtIndex = 0;
   float thoughtTimer = 0;
 
-  // Live knobs (ParamRouter spine — sticks, keyboard, web, idle autopilot).
+  // Live knobs (ParamRouter spine - sticks, keyboard, web, idle autopilot).
   SceneParam pHype  = new SceneParam("hype",  "Crowd Hype",        0,   2.5, 1);
   SceneParam pSway  = new SceneParam("sway",  "Crowd Sway",        0,   2.5, 1);
   SceneParam pDance = new SceneParam("dance", "Move Hold (s)",     0.5, 4,   1.5);
@@ -114,14 +114,14 @@ class TheyDontKnowScene implements IScene {
   }
 
   // ── Sketchy renderer setup ──────────────────────────────────────────────────
-  // h2 is the global plain HandyRenderer — re-bind to our buffer each frame
+  // h2 is the global plain HandyRenderer - re-bind to our buffer each frame
   // and re-apply roughness so other scenes can't leave it in a weird state.
   void setupSketchy(PGraphics pg) {
     h2.setGraphics(pg);
     h2.setSeed(sketchSeed);
     h2.setIsHandy(true);
     h2.setRoughness(1.4);
-    // (Handy 2012 bundled jar lacks setBowing — would no-op anyway at default 1.0)
+    // (Handy 2012 bundled jar lacks setBowing - would no-op anyway at default 1.0)
   }
 
   // ── Frame ──────────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ class TheyDontKnowScene implements IScene {
     crowdEnergy = lerp(crowdEnergy, constrain(kick * pHype.value, 0, 1.5), 0.30);
     crowdSway   = lerp(crowdSway,   constrain(mid  * pSway.value, 0, 1.5), 0.18);
 
-    // Paper background — meme is pure white sketch.
+    // Paper background - meme is pure white sketch.
     pg.background(245, 243, 238);
 
     // Subtle kick flash (paper-warm so we don't break the white-paper feel).
@@ -194,7 +194,7 @@ class TheyDontKnowScene implements IScene {
     lonely.update(0, 0);
     drawLonelyGuy(pg, lonely);
 
-    // Foreground crouched dancer — drawn AFTER lonely guy because the dancer
+    // Foreground crouched dancer - drawn AFTER lonely guy because the dancer
     // is closer to the camera (would occlude any crowd member at this Y).
     if (dancerMoveLastMs == 0) dancerMoveLastMs = millis();
     dancerMoveDurationMs = (int) (pDance.value * 1000);
@@ -239,7 +239,7 @@ class TheyDontKnowScene implements IScene {
     float eyeY  = headY + headR * 0.05;
     h2.ellipse(eyeLx, eyeY, headR * 0.45, headR * 0.32);
     h2.ellipse(eyeRx, eyeY, headR * 0.45, headR * 0.32);
-    // pupils — solid dots, low in the eye for "looking down/sad"
+    // pupils - solid dots, low in the eye for "looking down/sad"
     pg.pushStyle();
     pg.fill(20); pg.noStroke();
     pg.ellipse(eyeLx + headR * 0.04, eyeY + headR * 0.03, headR * 0.10, headR * 0.10);
@@ -297,7 +297,7 @@ class TheyDontKnowScene implements IScene {
     h2.line(d.x + sx + halfShoulder * 0.75, chestY, d.x + sx + halfWaist, hemY);
     h2.line(d.x + sx - halfWaist, hemY, d.x + sx + halfWaist, hemY);
 
-    // Pants: simple — outer leg lines from hem to feet, single center seam.
+    // Pants: simple - outer leg lines from hem to feet, single center seam.
     // Source meme has clean pants without the prior crotch-split detail.
     h2.line(d.x + sx - halfWaist, hemY, d.x + sx - d.h * 0.09, d.y);
     h2.line(d.x + sx + halfWaist, hemY, d.x + sx + d.h * 0.09, d.y);
@@ -345,7 +345,7 @@ class TheyDontKnowScene implements IScene {
 
     h2.ellipse(d.x, headY, headR * 1.9, headR * 2.0);
 
-    // Anime spikes — start/end on the head silhouette (upper temples) so
+    // Anime spikes - start/end on the head silhouette (upper temples) so
     // the hair attaches to the head instead of floating above it. Valleys
     // dip down onto the head crown; tips reach high.
     float hairBaseY = headY - headR * 0.95;             // head crown (top of ellipse)
@@ -373,7 +373,7 @@ class TheyDontKnowScene implements IScene {
     pg.strokeWeight(2.5 * uiScale());
     h2.arc(d.x - headR * 0.80, headY + headR * 0.10, headR * 0.30, headR * 0.45, PI * 0.55, PI * 1.45);
 
-    // T-shirt — back view
+    // T-shirt - back view
     pg.strokeWeight(3.2 * uiScale());
     float shoulderY = neckY + d.h * 0.05;
     float waistY    = d.y - d.h * 0.35 + bounce;
@@ -392,7 +392,7 @@ class TheyDontKnowScene implements IScene {
             d.x + halfShoulder + d.h * 0.18 + armSway, shoulderY + d.h * 0.10);
     h2.line(d.x + halfShoulder + d.h * 0.18 + armSway, shoulderY + d.h * 0.10,
             d.x + halfShoulder + d.h * 0.30 + armSway, shoulderY + d.h * 0.18);
-    // Left arm — tucked behind
+    // Left arm - tucked behind
     h2.line(d.x - halfShoulder, shoulderY + d.h * 0.02,
             d.x - halfShoulder - d.h * 0.06, shoulderY + d.h * 0.20);
 
@@ -435,7 +435,7 @@ class TheyDontKnowScene implements IScene {
     pg.strokeWeight(3.2 * uiScale());
     h2.ellipse(d.x, headY, headR * 1.85, headR * 2.0);
 
-    // Closed-eye smile — both eyes drawn so face reads as a face. Right eye
+    // Closed-eye smile - both eyes drawn so face reads as a face. Right eye
     // is the "nearer" one (slightly larger), left eye is partially behind
     // the cheek (smaller). Lashes on the larger eye.
     pg.strokeWeight(2.5 * uiScale());
@@ -487,7 +487,7 @@ class TheyDontKnowScene implements IScene {
 
     h2.ellipse(d.x, headY, headR * 1.85, headR * 2.0);
 
-    // Short messy hair — squiggly top. Endpoints land on the head ellipse
+    // Short messy hair - squiggly top. Endpoints land on the head ellipse
     // at upper temples; peaks rise just above the head crown so hair
     // visibly attaches to the head.
     pg.strokeWeight(2.5 * uiScale());
@@ -598,13 +598,13 @@ class TheyDontKnowScene implements IScene {
   // ── Foreground crouched dancer ─────────────────────────────────────────────
   // Closer-to-camera figure mid-dance: feet planted wide, knees bent, arms
   // out, body leaning slightly side-to-side on `legPhase`. Drawn from the
-  // back so we don't have to commit to a face — keeps eyes on the pair.
+  // back so we don't have to commit to a face - keeps eyes on the pair.
   void drawCrouchedDancer(PGraphics pg, Figure d) {
     pg.pushStyle();
     pg.stroke(20); pg.strokeWeight(3.5 * uiScale()); pg.noFill();
 
     float bounce = d.bounce();
-    // Per-move body lean. Different moves move the torso differently —
+    // Per-move body lean. Different moves move the torso differently - 
     // shimmy is bigger side-to-side; head-bang dips forward on beat;
     // raise-roof and fist-pump stay mostly upright.
     float bodyLean = 0;
@@ -624,7 +624,7 @@ class TheyDontKnowScene implements IScene {
     // Head
     h2.ellipse(cx, headY, headR * 1.9, headR * 2.0);
 
-    // Hair — short messy fringe (back view)
+    // Hair - short messy fringe (back view)
     pg.strokeWeight(2.5 * uiScale());
     pg.beginShape();
     pg.noFill();
@@ -638,7 +638,7 @@ class TheyDontKnowScene implements IScene {
     pg.vertex(cx + headR * 0.92, headY - headR * 0.10);
     pg.endShape();
 
-    // Torso — wide back, crouched (shorter neck-to-waist than upright figs)
+    // Torso - wide back, crouched (shorter neck-to-waist than upright figs)
     pg.strokeWeight(3.5 * uiScale());
     float shoulderY = neckY + d.h * 0.04;
     float waistY    = d.y - d.h * 0.30 + bounce;
@@ -703,7 +703,7 @@ class TheyDontKnowScene implements IScene {
         break;
       }
       case MOVE_SHIMMY: {
-        // Both hands on hips — elbows out, forearms angled to waist.
+        // Both hands on hips - elbows out, forearms angled to waist.
         float waistEdgeL = cx - halfWaist;
         float waistEdgeR = cx + halfWaist;
         float lElbX = lShX - d.h * 0.10, lElbY = shAY + d.h * 0.10;
@@ -715,7 +715,7 @@ class TheyDontKnowScene implements IScene {
         break;
       }
       case MOVE_HEAD_BANG: {
-        // Arms swing back loosely — exaggerated when head dips forward.
+        // Arms swing back loosely - exaggerated when head dips forward.
         float swing = sin(d.legPhase + PI) * d.intensity;
         float lEx = lShX - d.h * 0.18 - swing * d.h * 0.06;
         float lEy = shAY + d.h * 0.32 + swing * d.h * 0.04;
@@ -727,7 +727,7 @@ class TheyDontKnowScene implements IScene {
       }
     }
 
-    // Bent legs — knees flared out, feet planted wide. Crouch depth pulses
+    // Bent legs - knees flared out, feet planted wide. Crouch depth pulses
     // with the kick so the figure visibly grooves.
     float crouch = 1.0 + d.bounceLerp * 0.15;
     float kneeY  = d.y - d.h * 0.16 / crouch + bounce;
@@ -746,7 +746,7 @@ class TheyDontKnowScene implements IScene {
   }
 
   // ── Thought bubble ─────────────────────────────────────────────────────────
-  // Drawn with plain pg primitives (not Handy) — keeps the bubble readable
+  // Drawn with plain pg primitives (not Handy) - keeps the bubble readable
   // and visually distinct from the sketchy figures.
   void drawThoughtBubble(PGraphics pg, String text, float bx, float by, float tx, float ty) {
     pg.pushStyle();

@@ -1,5 +1,5 @@
 /**
- * BarnsleyFernRenderer — chaos-game IFS fern. Bass scales point count.
+ * BarnsleyFernRenderer - chaos-game IFS fern. Bass scales point count.
  */
 class BarnsleyFernRenderer implements FractalRenderer {
   String name() { return "Barnsley Fern"; }
@@ -11,7 +11,7 @@ class BarnsleyFernRenderer implements FractalRenderer {
     pg.translate(0, -pg.height * 0.35);
     randomSeed(p.seed);
     pg.colorMode(HSB, 360, 255, 255, 255);
-    // Dot radius only depends on this frame's `high`, not on i — constant
+    // Dot radius only depends on this frame's `high`, not on i - constant
     // across all points, so the whole cloud batches into one draw call via
     // beginShape(POINTS) instead of one ellipse() call per point (was up to
     // 20000 individual draw calls/frame).

@@ -1,4 +1,4 @@
-# Skybox Assets — Bring Your Own (BYO)
+# Skybox Assets - Bring Your Own (BYO)
 
 The visualizer ships **zero skybox image assets**. The packs in
 `media/skyboxes/` on dev machines have unclear licensing, so they are
@@ -7,7 +7,7 @@ app supports two licensing-safe sources:
 
 ## 1. Generated skyboxes (always available)
 
-Three procedural cubemaps are built at runtime — pure code, owned by this
+Three procedural cubemaps are built at runtime - pure code, owned by this
 project, present on every install with no files needed:
 
 | Name | Look |
@@ -31,7 +31,7 @@ Windows: %APPDATA%\MusicVisualizer\skyboxes\<pack-name>\
 ```
 
 (The `skyboxes/` folder is created automatically on first launch. Dev runs via
-`./run.sh` use the repo dir instead — `MV_USER_DATA_DIR` override.)
+`./run.sh` use the repo dir instead - `MV_USER_DATA_DIR` override.)
 
 Each pack is one folder with **six PNG faces, exact names**:
 
@@ -47,21 +47,21 @@ Each pack is one folder with **six PNG faces, exact names**:
 - Any cubemap from a "skybox pack" download in this face convention works.
   Equirectangular panoramas must be converted to faces first (e.g.
   `py360convert`, see `media/skyboxes/convert_skybox.py` on dev machines).
-- Packs are discovered at app launch — restart after adding one.
+- Packs are discovered at app launch - restart after adding one.
 - A user pack with the same folder name as a bundled dev pack wins.
 
 ## Licensing note
 
 Whoever drops files into the skyboxes folder is responsible for having the
 rights to display them. The app never uploads, copies, or redistributes
-them — they are read straight from the user folder at runtime.
+them - they are read straight from the user folder at runtime.
 
 ## For maintainers
 
 - Discovery: `discoverSkyboxNames()` in `SkyboxPicker.pde` (generated names
   first, then user dir, then dev-only `media/skyboxes/`).
 - Routing: `loadSkyboxByName()` / `skyboxPath()` in
-  `src/core/ProceduralSkybox.pde`. All scenes go through these — never call
+  `src/core/ProceduralSkybox.pde`. All scenes go through these - never call
   `skybox.load(resourcePath(...))` directly.
 - Generation: `ProceduralSkybox.pde`. Faces are colored purely by view
   direction (corner tables copied from `Skybox.draw()`), which is what makes

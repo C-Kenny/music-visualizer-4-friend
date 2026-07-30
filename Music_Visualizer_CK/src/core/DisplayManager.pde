@@ -1,5 +1,5 @@
 /**
- * DisplayManager — runtime display selection and fullscreen for live shows.
+ * DisplayManager - runtime display selection and fullscreen for live shows.
  *
  * Hotkeys (wired in main keyPressed()):
  *   F11           toggle "fill current display" mode (borderless-style fullscreen)
@@ -10,7 +10,7 @@
  *
  * Note: P3D's true OS-fullscreen toggle requires a sketch restart (fullScreen()
  * is settings()-only). This class instead resizes the window to fill the chosen
- * display's bounds — same visual result for venue use, fully runtime-toggleable.
+ * display's bounds - same visual result for venue use, fully runtime-toggleable.
  */
 import java.awt.GraphicsEnvironment;
 import java.awt.GraphicsDevice;

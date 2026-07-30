@@ -1,6 +1,6 @@
 # Audio-Reactive Design Principles
 
-These are lessons learned from building the scenes in this visualizer. They're not rules —
+These are lessons learned from building the scenes in this visualizer. They're not rules - 
 they're heuristics that explain *why* some things look great and others look like a screensaver.
 
 ---
@@ -14,9 +14,9 @@ Better: map different *structural features* of the audio to different *visual di
 
 | Audio feature | Good visual mapping |
 |--------------|---------------------|
-| Bass energy  | Scale, thickness, weight — things that feel *heavy* |
+| Bass energy  | Scale, thickness, weight - things that feel *heavy* |
 | Mid energy   | Movement speed, number of elements, complexity |
-| High energy  | Glow, sparkle, shimmer — things that feel *bright* |
+| High energy  | Glow, sparkle, shimmer - things that feel *bright* |
 | Beat onset   | Sudden positional change, burst, colour snap |
 | Beat absence | Slow drift, fade, settle |
 
@@ -28,15 +28,15 @@ and shimmers fast. You can *see* the frequency spectrum in the worm's shape.
 ## 2. Smooth it, then add a fast layer on top
 
 Raw FFT values flicker too fast to read visually. `lerp(current, target, 0.3)` is the standard
-smoothing tool — but if you smooth too much, beats look mushy.
+smoothing tool - but if you smooth too much, beats look mushy.
 
 The pattern that works best:
 
 ```java
-// Slow-smoothed value — drives scale, colour
+// Slow-smoothed value - drives scale, colour
 float smoothBass = lerp(smoothBass, rawBass, 0.15);
 
-// Fast-decaying impulse — drives beat flash, particle burst
+// Fast-decaying impulse - drives beat flash, particle burst
 if (isBeat) beatImpulse = 1.0;
 beatImpulse *= 0.85;  // decays to 0 within ~20 frames
 ```
@@ -49,7 +49,7 @@ through the chain. The ripple is the fast layer on top of the slow bandAmp smoot
 
 ---
 
-## 3. Beat detection is unreliable — design for it
+## 3. Beat detection is unreliable - design for it
 
 Minim's beat detector has false positives and missed beats. This is not a bug to fix; it's
 a constraint to design around.
@@ -58,7 +58,7 @@ a constraint to design around.
 twice in a row or is missed entirely.
 
 **Do:** use beat onset to *nudge* continuous state. The worm colour jolt (`hue += random(40)`)
-is a good example — if it fires twice, the colour shifts twice, which is fine. If it misses a
+is a good example - if it fires twice, the colour shifts twice, which is fine. If it misses a
 beat, the worm still moves. Nothing breaks.
 
 Also: beat detection works much better on music with a clear kick drum. Ambient or complex
@@ -75,7 +75,7 @@ The Worm Colony at silence: worms still wander via Perlin noise. The FFT Worm at
 the worm still slithers around the screen.
 
 If your scene collapses to a dot or blank screen at low energy, it looks broken. The wander
-behaviour, rotation, or drift should always be running — the audio just *modulates* it.
+behaviour, rotation, or drift should always be running - the audio just *modulates* it.
 
 ---
 
@@ -106,13 +106,13 @@ In `colorMode(HSB, 360, 255, 255, 255)`:
 
 This is natural for audio-reactive work because:
 - **Hue** can be driven by time/mids and will always look coherent (no ugly colour mixing)
-- **Saturation** mapped to energy means quiet = pastel, loud = vivid — which feels right
+- **Saturation** mapped to energy means quiet = pastel, loud = vivid - which feels right
 - **Brightness** on beat creates a flash without changing the hue
 
 RGB arithmetic creates colour mud. `lerp(red, blue, t)` goes through purple. In HSB,
 `lerp(hue1, hue2, t)` glides cleanly around the colour wheel.
 
-Always reset with `colorMode(RGB, 255)` at the end of your `draw()` — otherwise other scenes
+Always reset with `colorMode(RGB, 255)` at the end of your `draw()` - otherwise other scenes
 will inherit your colour mode.
 
 ---
@@ -120,7 +120,7 @@ will inherit your colour mode.
 ## 7. Perlin noise for organic motion
 
 `noise(x, y, t)` returns a smooth pseudo-random value in [0, 1]. The key insight is that
-nearby inputs give nearby outputs — so incrementing `t` each frame gives smooth temporal flow,
+nearby inputs give nearby outputs - so incrementing `t` each frame gives smooth temporal flow,
 and using the position as spatial input ties the motion to place.
 
 For worm wandering:
@@ -134,14 +134,14 @@ The `* 0.004` scales control the "zoom level" of the noise field:
 - 0.003–0.006 is a good range for smooth organic wandering
 
 The `seed` (a random offset per worm) ensures each worm has a unique path through the same
-noise field — they won't clump together.
+noise field - they won't clump together.
 
 ---
 
 ## 8. The "intensity dial" problem
 
 Almost every effect has a range from "barely visible" to "overwhelming". Finding the right
-value by hardcoding it is slow and fragile — it changes with the song, the room, the screen.
+value by hardcoding it is slow and fragile - it changes with the song, the room, the screen.
 
 **Short-term fix:** controller knob (R stick or trigger) for intensity, shown in HUD.
 
@@ -174,5 +174,5 @@ Rules of thumb:
 If a scene idea requires per-pixel computation, plan it at reduced resolution from the start.
 The `RENDER_SCALE` pattern (render at 1/N, draw scaled up) is the right tool.
 
-Alternatively, look into PShader — Processing supports GLSL fragment shaders, and a reaction-
+Alternatively, look into PShader - Processing supports GLSL fragment shaders, and a reaction-
 diffusion simulation or plasma effect on the GPU runs at 60fps even at 4K.

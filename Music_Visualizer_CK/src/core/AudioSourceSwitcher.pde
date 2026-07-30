@@ -1,4 +1,4 @@
-// AudioSourceSwitcher — matrix terminal overlay for picking the audio source.
+// AudioSourceSwitcher - matrix terminal overlay for picking the audio source.
 //
 // Toggle with F11. Lists:
 //   • [FILE]   Random song / Browse / current song
@@ -160,7 +160,7 @@ class AudioSourceSwitcher {
       }
       return;
     }
-    // Already in DEVICE mode — try to find the active row.
+    // Already in DEVICE mode - try to find the active row.
     String active = pactlGetDefaultSource();
     for (int i = 0; i < entries.size(); i++) {
       Entry e = entries.get(i);
@@ -221,7 +221,7 @@ class AudioSourceSwitcher {
     cursor = (cursor + dir + n) % n;
   }
 
-  // ' / Esc / Enter routing — returns true if consumed.
+  // ' / Esc / Enter routing - returns true if consumed.
   boolean handleKey(char k, int kc) {
     if (!isOpen) {
       if (k == '\'') { toggle(); return true; }
@@ -402,7 +402,7 @@ class AudioSourceSwitcher {
   void applyPulseSource(String name) {
     if (savedPulseDefault == null) {
       String prior = pactlGetDefaultSource();
-      // Don't preserve a `.monitor` as the "real" default — it usually means
+      // Don't preserve a `.monitor` as the "real" default - it usually means
       // a previous run died before restoring. Pick the first plain input
       // instead so we land back on a real mic on exit.
       if (prior == null || prior.endsWith(".monitor")) {

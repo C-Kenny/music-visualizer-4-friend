@@ -1,9 +1,9 @@
 /**
- * NetOfBeingScene (scene 37) — Alex Grey "Net of Being"
+ * NetOfBeingScene (scene 37) - Alex Grey "Net of Being"
  *
  * Tessellated grid of luminous eye/face nodes connected by glowing energy
  * threads. Inspired by Grey's dense decorative linear webs and his painting
- * "Net of Being" — an infinite lattice of interconnected consciousness.
+ * "Net of Being" - an infinite lattice of interconnected consciousness.
  *
  * Visual layers:
  *   1. Background grid of hexagonal cells
@@ -12,17 +12,17 @@
  *   4. Radiating aura halos on beat
  *
  * Audio:
- *   Bass  — grid breathing (scale pulse) + node size
- *   Mid   — thread brightness + connection density
- *   High  — iris detail + color saturation
- *   Beat  — aura flash + ripple wave
+ *   Bass - grid breathing (scale pulse) + node size
+ *   Mid - thread brightness + connection density
+ *   High - iris detail + color saturation
+ *   Beat - aura flash + ripple wave
  *
  * Controller:
- *   LStick ↕    — zoom
- *   RStick ↔    — hue shift
- *   RStick ↕    — grid density
- *   LB / RB     — palette cycle
- *   A           — reset
+ *   LStick ↕ - zoom
+ *   RStick ↔ - hue shift
+ *   RStick ↕ - grid density
+ *   LB / RB - palette cycle
+ *   A - reset
  */
 class NetOfBeingScene implements IScene, IForeground {
 
@@ -221,7 +221,7 @@ class NetOfBeingScene implements IScene, IForeground {
 
   // ── Googly eye node ────────────────────────────────────────────────────────
   // Draws a cute googly eye at (cx, cy) with radius r. The pupil wobbles
-  // around based on audio and phase — friendly, not creepy!
+  // around based on audio and phase - friendly, not creepy!
   void drawEyeNode(PGraphics pg, float cx, float cy, float r, float distC, float ts) {
     float nodePhase = phase + distC * 0.005;
 
@@ -245,7 +245,7 @@ class NetOfBeingScene implements IScene, IForeground {
     pg.stroke(hueBase, 30, 60, 40);
     pg.ellipse(cx, cy, r * 2, r * 2);
 
-    // Wobbling pupil — bounces around inside the eye
+    // Wobbling pupil - bounces around inside the eye
     float wobbleX = sin(nodePhase * 1.3 + sBass * 3) * r * 0.28;
     float wobbleY = cos(nodePhase * 1.7 + sMid * 2) * r * 0.28;
     float pupilR = r * (0.45 + sBass * 0.15);
@@ -262,7 +262,7 @@ class NetOfBeingScene implements IScene, IForeground {
     pg.fill(0, 0, 3, 90);
     pg.ellipse(px, py, pupilR * 1.1, pupilR * 1.1);
 
-    // Specular highlight — makes it look glossy and alive
+    // Specular highlight - makes it look glossy and alive
     pg.fill(0, 0, 100, 50 + sBeat * 25);
     float hlSize = pupilR * 0.35;
     pg.ellipse(px - pupilR * 0.25, py - pupilR * 0.25, hlSize, hlSize);

@@ -3,7 +3,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * InputChord — generic chord/buffer helper for scene input.
+ * InputChord - generic chord/buffer helper for scene input.
  *
  * Buffers named input intents for a short window so near-simultaneous presses
  * can resolve as a chord (e.g. "moveFwd" + "jumpUp" → "jumpFwd"). Decouples

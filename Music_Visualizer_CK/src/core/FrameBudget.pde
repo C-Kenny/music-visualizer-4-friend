@@ -1,18 +1,18 @@
 /**
- * FrameBudget — per-phase frametime probe.
+ * FrameBudget - per-phase frametime probe.
  *
  * Wraps phases of draw() with nanoTime taps. Renders a small bottom-left
  * panel showing rolling avg ms/frame per phase + total. F8 toggles.
  *
  * Phases:
- *   AUDIO   — audio.forward + detectBeat + analyzer.update
- *   INPUT   — getUserInput (controller poll + key routing)
- *   SCENE   — scenes[STATE].drawScene(sceneBuffer)
- *   POSTFX  — postFX.process
- *   COMPOSE — image() blit + strobe + recorder/streamer ticks
- *   HUD     — overlays, badges, web-control badge, text overlay
+ *   AUDIO - audio.forward + detectBeat + analyzer.update
+ *   INPUT - getUserInput (controller poll + key routing)
+ *   SCENE - scenes[STATE].drawScene(sceneBuffer)
+ *   POSTFX - postFX.process
+ *   COMPOSE - image() blit + strobe + recorder/streamer ticks
+ *   HUD - overlays, badges, web-control badge, text overlay
  *
- * Cost: ~6 nanoTime calls per frame, <1us total. Zero when hidden — phase
+ * Cost: ~6 nanoTime calls per frame, <1us total. Zero when hidden - phase
  * start/stop still increments counters but the draw path is skipped.
  */
 class FrameBudget {
@@ -58,7 +58,7 @@ class FrameBudget {
 
   void frameEnd() {
     long frameUs = (System.nanoTime() - frameStartNs) / 1000L;
-    final float a = 0.08;   // EMA — ~12-frame window
+    final float a = 0.08;   // EMA - ~12-frame window
     long total = 0;
     for (int i = 0; i < N_PHASES; i++) {
       avgUs[i] = avgUs[i] * (1 - a) + curUs[i] * a;

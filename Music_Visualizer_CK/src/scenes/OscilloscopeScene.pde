@@ -1,4 +1,4 @@
-// Oscilloscope / Lissajous scene  — state 5
+// Oscilloscope / Lissajous scene - state 5
 // Left audio channel → X axis, right channel → Y axis.
 //
 // Frequency modulation:

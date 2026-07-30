@@ -5,9 +5,9 @@
  * Four pages, each demonstrating a core concept with live audio.
  *
  * Navigation:
- *   , / D-pad left    — prev page
- *   . / D-pad right   — next page
- *   Space             — next page
+ *   , / D-pad left - prev page
+ *   . / D-pad right - next page
+ *   Space - next page
  */
 class VisualizerExplainerScene implements IScene {
 
@@ -30,7 +30,7 @@ class VisualizerExplainerScene implements IScene {
   // Audio smoothing
   float sBass = 0, sMid = 0, sHigh = 0, sBeat = 0;
 
-  // Live knobs (ParamRouter spine — sticks, keyboard, web, idle autopilot).
+  // Live knobs (ParamRouter spine - sticks, keyboard, web, idle autopilot).
   SceneParam pSmooth = new SceneParam("smooth", "Meter Smoothing", 0.02, 0.4, 0.10);
   SceneParam pSpin   = new SceneParam("spin",   "Demo Spin",       0,    3,   1);
   SceneParam[] params = { pSmooth, pSpin };
@@ -91,11 +91,11 @@ class VisualizerExplainerScene implements IScene {
     pg.rect(0, 0, W, 48 * ts);
 
     String[] titles = {
-      "01 / 05  —  Raw Audio Signal & FFT Spectrum",
-      "02 / 05  —  Beat Detection",
-      "03 / 05  —  Frequency Bands in Action",
-      "04 / 05  —  Coordinate System",
-      "05 / 05  —  3D Scenes & Transformations",
+      "01 / 05 - Raw Audio Signal & FFT Spectrum",
+      "02 / 05 - Beat Detection",
+      "03 / 05 - Frequency Bands in Action",
+      "04 / 05 - Coordinate System",
+      "05 / 05 - 3D Scenes & Transformations",
     };
 
     pg.textFont(monoFont);
@@ -585,7 +585,7 @@ class VisualizerExplainerScene implements IScene {
       pg.box(s * 1.4 + 2, s * 0.9 + 2, s * 0.9 + 2);
       pg.popMatrix();
 
-      // Axis arrow — shows the actual axis direction, not motion
+      // Axis arrow - shows the actual axis direction, not motion
       float arrowLen = boxUnit * 0.75;
       pg.stroke(cr, cg, cb2, 200);
       pg.strokeWeight(2 * ts);

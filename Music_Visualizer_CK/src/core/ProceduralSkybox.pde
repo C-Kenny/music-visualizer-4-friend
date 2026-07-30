@@ -1,20 +1,20 @@
 /**
- * ProceduralSkybox — copyright-free cubemaps generated at runtime, plus the
+ * ProceduralSkybox - copyright-free cubemaps generated at runtime, plus the
  * path routing that lets venues drop in their own licensed skybox packs.
  *
  * Why: the bundled media/skyboxes/ assets have unclear licensing, so they are
  * gitignored and must NOT ship in releases (.deb etc). Instead:
  *
- *   1. User-supplied packs — <userDataDir>/skyboxes/<name>/px.png..nz.png.
+ *   1. User-supplied packs - <userDataDir>/skyboxes/<name>/px.png..nz.png.
  *      The venue provides assets THEY have rights to. User dir shadows any
  *      same-named bundled pack.
- *   2. Generated fallbacks — three "auto_*" skyboxes below are pure code, so
+ *   2. Generated fallbacks - three "auto_*" skyboxes below are pure code, so
  *      skybox scenes always have something to show on a fresh install.
  *
  * Seamlessness: every pixel is colored purely as a function of its view
  * DIRECTION on the unit sphere. Face corner tables are copied verbatim from
  * Skybox.draw()'s cube geometry, so adjacent faces sample identical directions
- * along shared edges — no visible seams, and orientation matches loaded packs.
+ * along shared edges - no visible seams, and orientation matches loaded packs.
  *
  * Cost: each style renders once per run (~0.9M px), then is cached. Palettes
  * are seeded from the first song's name, so every show gets its own tint.
@@ -76,7 +76,7 @@ PImage[] autoSkyboxFaces(String name) {
   return faces;
 }
 
-// Face corner tables — same order Skybox stores faces (px,nx,py,ny,pz,nz) and
+// Face corner tables - same order Skybox stores faces (px,nx,py,ny,pz,nz) and
 // the same cube corners Skybox.draw() textures them onto (TL,TR,BR,BL).
 final float[][][] AUTO_FACE_CORNERS = {
   { {-1,-1,-1}, { 1,-1,-1}, { 1, 1,-1}, {-1, 1,-1} },  // px → front  (-Z)
@@ -127,7 +127,7 @@ float autoCellHash(int x, int y, int z) {
   return ((h ^ (h >> 16)) & 0x7fffffff) / (float) 0x7fffffff;
 }
 
-// STARS — two layers of hashed point stars + a whisper of milky tint.
+// STARS - two layers of hashed point stars + a whisper of milky tint.
 int autoStarsPixel(float dx, float dy, float dz, float seedHue) {
   float bright = 0;
 
@@ -160,7 +160,7 @@ int autoStarsPixel(float dx, float dy, float dz, float seedHue) {
   return 0xff000000 | (min(255, (int) r) << 16) | (min(255, (int) g) << 8) | min(255, (int) b);
 }
 
-// NEBULA — 4-octave fbm over the sphere mapped through a 3-stop palette.
+// NEBULA - 4-octave fbm over the sphere mapped through a 3-stop palette.
 int autoNebulaPixel(float dx, float dy, float dz, float seedHue) {
   float amp = 0.5, freq = 1.3, sum = 0;
   for (int o = 0; o < 4; o++) {
@@ -186,7 +186,7 @@ int autoNebulaPixel(float dx, float dy, float dz, float seedHue) {
   return 0xff000000 | ((int) r << 16) | ((int) g << 8) | (int) b;
 }
 
-// HORIZON — synthwave: gradient sky, sun disk with scanlines, neon floor grid.
+// HORIZON - synthwave: gradient sky, sun disk with scanlines, neon floor grid.
 // Processing Y points DOWN, so dy<0 is sky and dy>0 is ground.
 int autoHorizonPixel(float dx, float dy, float dz, float seedHue) {
   float r, g, b;

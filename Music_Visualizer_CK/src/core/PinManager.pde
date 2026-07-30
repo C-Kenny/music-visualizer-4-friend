@@ -1,4 +1,4 @@
-// PinManager — venue master PIN + per-person named PINs + brute-force lockout.
+// PinManager - venue master PIN + per-person named PINs + brute-force lockout.
 //
 // Master PIN: regenerated each launch, displayed on screen + admin panel + QR.
 //   Anyone with it connects as role="guest". Rotates every restart.
@@ -9,7 +9,7 @@
 //   Carries a role (primary/co1/co2/admin), persisted to pins.json.
 //
 // Lockout: per-IP. 5 wrong attempts → 60s. Each subsequent failure during
-// lockout extends. Crude but enough — the alphabet is ~32^6 = 1B combos.
+// lockout extends. Crude but enough - the alphabet is ~32^6 = 1B combos.
 //
 // Alphabet: 32 chars, no 0/O/1/I/l/B/8 ambiguity, easy on phone keyboards.
 

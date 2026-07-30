@@ -1,5 +1,5 @@
 /**
- * SkyboxPicker — lightweight skybox-cycling helper for individual scenes.
+ * SkyboxPicker - lightweight skybox-cycling helper for individual scenes.
  *
  * Holds one active Skybox at a time (loaded on cycle).
  * Index 0 = none.  Indices 1..N = discovered cubemap directories.
@@ -14,11 +14,11 @@
  * Controller: dpad right = next, dpad left = prev
  */
 
-// ── Top-level helper — list every available cubemap ─────────────────────────
+// ── Top-level helper - list every available cubemap ─────────────────────────
 // Sources, in order:
-//   1. generated auto_* skyboxes (always present — pure code, no assets)
+//   1. generated auto_* skyboxes (always present - pure code, no assets)
 //   2. user/venue packs in <userDataDir>/skyboxes/  (the licensing-safe path)
-//   3. bundled media/skyboxes/ (dev machines only — gitignored, never shipped)
+//   3. bundled media/skyboxes/ (dev machines only - gitignored, never shipped)
 // User packs shadow bundled ones with the same name.
 String[] discoverSkyboxNames() {
   java.util.TreeSet<String> onDisk = new java.util.TreeSet<String>();

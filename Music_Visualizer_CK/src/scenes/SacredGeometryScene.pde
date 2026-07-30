@@ -56,7 +56,7 @@ class SacredGeometryScene implements IScene {
   // each petal containing its own sub-flower at half scale.
   // depth=3 is the outermost (always visible).
   // depth=2 fades in with mid energy.
-  // depth=1 fades in with bass — the "innermost bloom".
+  // depth=1 fades in with bass - the "innermost bloom".
   void drawFlowerOfLife(PGraphics pg, float cx, float cy, float r, int depth) {
     if (depth <= 0 || r < 5) return;
 

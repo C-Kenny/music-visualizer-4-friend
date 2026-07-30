@@ -1,5 +1,5 @@
 /**
- * TempoLock — tap tempo + locked metronome grid.
+ * TempoLock - tap tempo + locked metronome grid.
  *
  * Minim's onset detector is good at finding kicks but drifts on
  * four-on-the-floor house/techno (every kick is a "beat" so the running
@@ -8,16 +8,16 @@
  *
  * Workflow:
  *   T          register a tap
- *   T x4       lock — average gap of last 4 taps becomes the BPM
+ *   T x4       lock - average gap of last 4 taps becomes the BPM
  *   Shift+T    clear lock, return to onset following
  *
- * Locked grid uses millis() so it survives FPS variance — a frame stutter
+ * Locked grid uses millis() so it survives FPS variance - a frame stutter
  * doesn't shift the downbeat.
  *
  * Read state:
- *   tempoLock.isLocked()         — true if grid is authoritative
- *   tempoLock.gridBeatThisFrame()— true once per metronome tick (locked only)
- *   tempoLock.bpm                — current locked BPM (0 if unlocked)
+ *   tempoLock.isLocked() - true if grid is authoritative
+ *   tempoLock.gridBeatThisFrame() - true once per metronome tick (locked only)
+ *   tempoLock.bpm - current locked BPM (0 if unlocked)
  */
 class TempoLock {
   static final int   MAX_TAPS         = 8;

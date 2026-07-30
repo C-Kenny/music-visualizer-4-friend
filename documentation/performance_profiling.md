@@ -1,10 +1,10 @@
-# Performance Profiling — methodology & worked examples
+# Performance Profiling - methodology & worked examples
 
 How the perf wins in 2.5.6/2.5.7/2.5.8 were found, so the next session can
 do more of the same. Two layers: live in-sketch HUD, then sampling
 profiler.
 
-## Layer 1 — in-sketch `FrameBudget` HUD
+## Layer 1 - in-sketch `FrameBudget` HUD
 
 `Music_Visualizer_CK/src/core/FrameBudget.pde`. Toggle with **F8**.
 
@@ -32,12 +32,12 @@ If `compose` is red and recorder is running, the encode pipeline is the
 problem. Quick triage, no profiler needed.
 
 **Limit:** phase totals only. Doesn't tell you which method inside the
-scene is hot — that's Layer 2.
+scene is hot - that's Layer 2.
 
-## Layer 2 — async-profiler
+## Layer 2 - async-profiler
 
 `profile.sh` is a wrapper. Wants `tools/async-profiler-3.0-linux-x64/`
-installed (one-time `wget` + untar — see comments at the top of the
+installed (one-time `wget` + untar - see comments at the top of the
 script).
 
 ### Run
@@ -49,24 +49,24 @@ script).
 ```
 
 Wrapper auto-finds the sketch PID via `pgrep`, attaches via JVMTI,
-samples at ~50Hz (using `itimer` event — works without kernel perms),
+samples at ~50Hz (using `itimer` event - works without kernel perms),
 writes a flame graph HTML.
 
 ### Caveats on the dev box
 
 - **CPU event needs `kernel.perf_event_paranoid=1`** (one-time sudo
   sysctl, lasts until reboot). Without it, async-profiler falls back to
-  `itimer` (signal-based) — slightly lower fidelity but no sudo needed.
+  `itimer` (signal-based) - slightly lower fidelity but no sudo needed.
   `profile.sh` defaults to whatever it can get.
-- **Sampling**, not tracing — methods that allocate get under-counted
+- **Sampling**, not tracing - methods that allocate get under-counted
   vs. methods that loop. For allocation pressure use `-e alloc`.
-- **Dev box vs X1 ThinkPad** — CPU hotspots translate; GPU
+- **Dev box vs X1 ThinkPad** - CPU hotspots translate; GPU
   hotspots do not. Profile on the target hardware when possible.
 
 ### Reading the collapsed output
 
 `profile.sh` writes both `flame.html` (visual) and the underlying
-**collapsed** text file. Collapsed format is grep/awk-friendly — each
+**collapsed** text file. Collapsed format is grep/awk-friendly - each
 line is `frame1;frame2;...;leafFrame count`. Self-time of a method =
 sum of counts where it's the leaf.
 
@@ -102,20 +102,20 @@ The "who calls X" form is the most useful: collapsed format preserves
 the full stack, so you can ask "where does CPU spent in `cos()`
 actually come *from*" and get scene-level attribution.
 
-## Worked examples — 2.5.7 + 2.5.8
+## Worked examples - 2.5.7 + 2.5.8
 
-### Win #1 — StrobeSafety.snapshot ~3% CPU (2.5.7)
+### Win #1 - StrobeSafety.snapshot ~3% CPU (2.5.7)
 
 **Symptom (in flame data):**
 ```
 99  Music_Visualizer_CK$StrobeSafety.snapshot   (3.3% of samples)
 ```
 
-Surprising — strobe safety is **disabled by default**. Why is it eating
+Surprising - strobe safety is **disabled by default**. Why is it eating
 CPU at all?
 
 **Read the code.** `maybeDampen()` early-exits when `!enabled`, but
-`snapshot()` — called immediately after — didn't have the same guard. It
+`snapshot()` - called immediately after - didn't have the same guard. It
 was doing a full-frame `image()` copy into a backing buffer every frame
 regardless.
 
@@ -126,7 +126,7 @@ regardless.
 running at all* before optimizing it. Cheapest CPU is the one you don't
 spend.
 
-### Win #2 — Mandala bezier detail 20 → 10 (2.5.7)
+### Win #2 - Mandala bezier detail 20 → 10 (2.5.7)
 
 **Symptom:**
 ```
@@ -142,7 +142,7 @@ Mandala (the most-watched scene) was the heaviest caller.
 **Read the code.** `drawBezierFins` draws 3 `pg.bezier()` curves per
 fin × `fins` count per frame. Processing's default `bezierDetail` is
 **20 segments** per curve. For tiny fin curves at ~140px on screen,
-that's gross overkill — 10 segments looks identical.
+that's gross overkill - 10 segments looks identical.
 
 **Fix:** one line. `pg.bezierDetail(10);` at the top of the function.
 Halves vertex emission for that draw path.
@@ -151,7 +151,7 @@ Halves vertex emission for that draw path.
 arbitrary sizes. When you know the geometry is small or stylised,
 override.
 
-### Win #3 — Chladni cos() cache, ~100k calls/frame → 24 (2.5.8)
+### Win #3 - Chladni cos() cache, ~100k calls/frame → 24 (2.5.8)
 
 **Symptom:**
 ```
@@ -170,7 +170,7 @@ eval over 6 faces). Inside, this line:
 s += modeAmp[k] * cos(u_time * 0.5 + phase * (k + 1)) * a;
 ```
 
-The `cos(...)` only depends on `(faceIdx, k)` — **not** on the grid
+The `cos(...)` only depends on `(faceIdx, k)` - **not** on the grid
 position `(i, j)`. So it's computed redundantly ~100k times per frame
 when it only needs 6 × ACTIVE_MODES = 24 evals.
 
@@ -184,7 +184,7 @@ be larger on the X1 (CPU-bound win scales harder when CPU is the
 bottleneck).
 
 **Lesson:** look for **loop-invariant computation in inner loops**.
-Profiler shows you *that* `cos()` is hot — you have to read the code to
+Profiler shows you *that* `cos()` is hot - you have to read the code to
 see *why* and confirm the value doesn't actually vary at the inner
 loop's frequency.
 
@@ -198,7 +198,7 @@ Based on the 240s flame data:
 | `OriginalScene.drawScene` trig (233 cos/sin) | 233 | Find loop-invariant `cos`/`sin` in Mandala (likely particles or stacking transforms); same pattern as the Chladni fix. |
 | Strange Attractor (488 inclusive) | second-worst scene | Read `drawParticles` for allocation in hot path (HashMap iterator showed up here). Likely a per-particle `HashSet.iterator()` or similar. |
 | HashMap iterator allocation (404 self) | scattered | Replace `for (X x : map.values())` patterns with index-based iteration over an `ArrayList` cache, or use `EntrySet` with reusable iterator. |
-| `libgallium` GPU driver (~15%) | unavoidable until pixel budget drops | Only addressable by reducing rendered pixel count. The proper LOW_POWER_MODE fix (scenes using `pg.width`/`pg.height` so buffer resize doesn't break geometry) is the real lever — see [[feedback_lowpower_geometry]]. |
+| `libgallium` GPU driver (~15%) | unavoidable until pixel budget drops | Only addressable by reducing rendered pixel count. The proper LOW_POWER_MODE fix (scenes using `pg.width`/`pg.height` so buffer resize doesn't break geometry) is the real lever - see [[feedback_lowpower_geometry]]. |
 
 ## TL;DR workflow
 
@@ -209,6 +209,6 @@ Based on the 240s flame data:
 4. For each top hotspot, **read the code** before "optimizing". Ask:
    should this run at all? Is the inner loop doing work that doesn't
    depend on the inner variable?
-5. Smoke test (`./smoketest.sh`) — confirms no regression and gives a
+5. Smoke test (`./smoketest.sh`) - confirms no regression and gives a
    leaderboard delta.
 6. Release via git-flow.

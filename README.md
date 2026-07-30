@@ -7,7 +7,7 @@ Real-time audio-reactive music visualizer in [Processing 4](https://processing.o
 
 ### Why
 
-A friend of mine passed away — we used to play a lot of Halo together. This visualizer is dedicated to him, using his Halo 3 emblem as inspiration.
+A friend of mine passed away - we used to play a lot of Halo together. This visualizer is dedicated to him, using his Halo 3 emblem as inspiration.
 
 ![Halo 3 Emblem](media/h3_emblem.jpg)
 
@@ -15,7 +15,7 @@ A friend of mine passed away — we used to play a lot of Halo together. This vi
 
 ### Preview
 
-Sample scenes (synthetic controller input + auto-played track — see `capture.sh`):
+Sample scenes (synthetic controller input + auto-played track - see `capture.sh`):
 
 | | | |
 |---|---|---|
@@ -24,7 +24,7 @@ Sample scenes (synthetic controller input + auto-played track — see `capture.s
 | ![Worm Colony](media/previews/scene_19_worm.gif)<br>Worm Colony | ![Recursive Mandala](media/previews/scene_23_recursive_mandala.gif)<br>Recursive Mandala | ![Sacred Geometry](media/previews/scene_32_sacred_geometry.gif)<br>Sacred Geometry |
 | ![Torus Knot](media/previews/scene_34_torus_knot.gif)<br>Torus Knot | ![Merkaba](media/previews/scene_42_merkaba.gif)<br>Merkaba | ![Pentagonal Vortex](media/previews/scene_43_pentagonal_vortex.gif)<br>Pentagonal Vortex |
 
-> Many scenes are far more dynamic with live controller input — the previews above use a synthetic stick + beat-driven button driver, but a human at the pad changes colours, sweeps the kaleidoscope, drives the worm colony, etc.
+> Many scenes are far more dynamic with live controller input - the previews above use a synthetic stick + beat-driven button driver, but a human at the pad changes colours, sweeps the kaleidoscope, drives the worm colony, etc.
 
 Hand-recorded HD walkthroughs (with controller overlay): _coming back soon, see [issues](https://github.com/C-Kenny/music-visualizer-4-friend/issues)._
 
@@ -47,9 +47,9 @@ music-visualizer
 
 Pick the one that matches what you're doing:
 
-- **[Just want to enjoy it at home?](documentation/guide_casual.md)** — install, run, basic controls, nothing technical.
-- **[Performing live (VJ)?](documentation/guide_vj.md)** — live audio input, setlists, scene control, safety hotkeys, what to do if something breaks mid-set.
-- **[Setting up / running the tech at a venue?](documentation/guide_venue_admin.md)** — network setup, streaming, phone control, PIN/admin, show-night checklist.
+- **[Just want to enjoy it at home?](documentation/guide_casual.md)** - install, run, basic controls, nothing technical.
+- **[Performing live (VJ)?](documentation/guide_vj.md)** - live audio input, setlists, scene control, safety hotkeys, what to do if something breaks mid-set.
+- **[Setting up / running the tech at a venue?](documentation/guide_venue_admin.md)** - network setup, streaming, phone control, PIN/admin, show-night checklist.
 
 ---
 
@@ -64,24 +64,24 @@ Pick the one that matches what you're doing:
 | `1`–`9`, `0` | Jump to scene at that slot in `SCENE_ORDER` |
 | `<` / `>` | Previous / next scene |
 | `Tab` | Scene switcher overlay |
-| `w` / `v` | Jump to hotkey-only scenes (Math Wave / Explainer) — not in the rotation |
+| `w` / `v` | Jump to hotkey-only scenes (Math Wave / Explainer) - not in the rotation |
 
 **Stage**
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+Enter` | Showtime macro — fullscreen + strobe safety on, one shot |
+| `Ctrl+Enter` | Showtime macro - fullscreen + strobe safety on, one shot |
 | `F11` | Toggle fullscreen on current display |
 | `Ctrl+1`..`Ctrl+9` | Move window to display N |
-| `Esc` | **Kill switch** — emergency fade-to-black (re-press to restore) |
+| `Esc` | **Kill switch** - emergency fade-to-black (re-press to restore) |
 | `F12` | Toggle strobe safety cap |
 | `F3` / `Shift+F3` | Toggle live text overlay (DJ name / track title) / cycle layout |
-| `F4` | MIDI bridge — scan + open inputs |
+| `F4` | MIDI bridge - scan + open inputs |
 | `F5` | Start / stop mp4 recording |
 | `F6` / `F7` | Toggle LAN stream (`F7` is the fallback if the WM eats `F6`); `Shift+F6`/`F7` cycles bandwidth profile |
 | `F8` | Toggle per-phase frame budget HUD |
 | `F9` / `Shift+F9` | Toggle auto-switcher / cycle mode |
-| `:` | Toggle knob autopilot — drifts scene params when idle |
+| `:` | Toggle knob autopilot - drifts scene params when idle |
 
 **Tempo & setlist**
 
@@ -135,12 +135,12 @@ Pick the one that matches what you're doing:
 
 ![Xbox 360 Controller Layout](documentation/xbox-360-controller.png)
 
-- **LB / RB** — previous / next scene
-- **LB + Y** — cycle PostFX  ·  **LB + X** — disable PostFX
-- **D-pad up/left/right** — toggle tunnel / plasma / polar-plasma background  ·  **D-pad down** — clear all three
-- **Back** — stop song  ·  **Start** — start song  ·  **Back + Start** — kill switch (fade-to-black)
-- **Sticks / triggers** — per-scene; press `i` for the in-sketch guide
-- **L3** — toggle auto-switcher  ·  **R3** — cycle auto-switcher mode
+- **LB / RB** - previous / next scene
+- **LB + Y** - cycle PostFX  ·  **LB + X** - disable PostFX
+- **D-pad up/left/right** - toggle tunnel / plasma / polar-plasma background  ·  **D-pad down** - clear all three
+- **Back** - stop song  ·  **Start** - start song  ·  **Back + Start** - kill switch (fade-to-black)
+- **Sticks / triggers** - per-scene; press `i` for the in-sketch guide
+- **L3** - toggle auto-switcher  ·  **R3** - cycle auto-switcher mode
 
 #### Phone controller (WiFi)
 
@@ -168,9 +168,9 @@ Low-power machines:
 ```
 
 Both drop MSAA (4x→2x) and disable bloom. `--lowpower-scale` doesn't currently
-shrink the actual render resolution — that path is disabled pending a
+shrink the actual render resolution - that path is disabled pending a
 scene-wide refactor (scenes draw in display coordinates, not buffer
-coordinates, so a smaller buffer currently misplaces geometry) — so expect
+coordinates, so a smaller buffer currently misplaces geometry) - so expect
 the MSAA/bloom savings only, not a full resolution cut.
 
 #### Dev overrides
@@ -182,10 +182,10 @@ All gitignored, all live in `Music_Visualizer_CK/`:
 | `.devmode` | Skip file picker, use random song from `~/Music` |
 | `.devsong` | Override song path |
 | `.devscene` | Start on a specific scene index or name (e.g. `echo 25 > .devscene` or `echo SimCube > .devscene`) |
-| `.devvolume` | Start playback at a given listening volume, 0-100% (e.g. `echo 5 > .devvolume` for 5%) — handy for running locally at low volume |
-| `.devdemo` | Run with synthetic controller input (Lissajous sweep + beat-driven button taps) — same as `MV_DEMO_MODE=1` |
-| `.devpreview` | Save a frame to `/tmp/vis_preview.png` every 5s. **Do not leave on** — `saveFrame()` blocks the render thread |
-| `.smoketest` | Headless pass through every scene (exceptions + per-scene frame-time), write `.smoketest_result`, exit — same harness `smoketest.sh` runs |
+| `.devvolume` | Start playback at a given listening volume, 0-100% (e.g. `echo 5 > .devvolume` for 5%) - handy for running locally at low volume |
+| `.devdemo` | Run with synthetic controller input (Lissajous sweep + beat-driven button taps) - same as `MV_DEMO_MODE=1` |
+| `.devpreview` | Save a frame to `/tmp/vis_preview.png` every 5s. **Do not leave on** - `saveFrame()` blocks the render thread |
+| `.smoketest` | Headless pass through every scene (exceptions + per-scene frame-time), write `.smoketest_result`, exit - same harness `smoketest.sh` runs |
 | `.display` | Persisted display index + fullscreen flag (managed by `F11` / `Ctrl+1..9`) |
 | `featureflags.json` | Per-machine flag overrides (HEADACHE_FREE_MODE, BLOOM_ENABLED, AUTO_SWITCH_MODE, etc.) |
 
@@ -212,22 +212,22 @@ Needs `xdotool`, `ffmpeg`, `pactl`. Outputs `media/previews/scene_NN_*.{mp4,gif}
 
 Built-in features for performing in front of an audience:
 
-- **Crash resilience** — scene exceptions are caught, logged to `crash_log.txt`, blacklisted after 3 failures, and auto-skipped (`SceneGuard` + `FrameWatchdog` frame-stall detection).
-- **Emergency kill switch** — `Esc` (or controller Back+Start) fades to black for wardrobe / safety.
-- **Display select + fullscreen** — `F11` and `Ctrl+1..9`; preference persists in `.display`.
-- **Strobe safety cap** — `F12`, auto-enables with fullscreen; dampens unsafe flash rate / luma jumps.
-- **Tap tempo / BPM lock** — `` \ `` to tap (4 taps locks), `|` to clear.
-- **MIDI bridge** — `F4`; pad notes map to `SCENE_ORDER`.
-- **Setlist** — `]` `[` `}` `{`; supports per-entry duration, auto-advance, reload from disk.
-- **Live text overlay** — `F3` (DJ name / track title, `Shift+F3` cycles layout).
-- **mp4 recording** — `F5`, half-res ffmpeg pipe.
-- **LAN streaming** (phone / TV) — `F6`/`F7`, WebRTC + HLS via MediaMTX, with a low-bandwidth venue profile (`Shift+F6`/`F7`).
-- **Web control + queue** — phone controller over WiFi, admin lockdown/kick, PIN auth.
-- **Headache-free mode** — calmer palette / dimmer composite for long sets, toggleable via `featureflags.json` or the admin web UI.
-- **Auto-switcher** — `F9` cycles scenes automatically (time-based or beat-aware modes).
-- **Knob autopilot** — `:` drifts scene parameters when idle, for unattended "sit back" viewing.
+- **Crash resilience** - scene exceptions are caught, logged to `crash_log.txt`, blacklisted after 3 failures, and auto-skipped (`SceneGuard` + `FrameWatchdog` frame-stall detection).
+- **Emergency kill switch** - `Esc` (or controller Back+Start) fades to black for wardrobe / safety.
+- **Display select + fullscreen** - `F11` and `Ctrl+1..9`; preference persists in `.display`.
+- **Strobe safety cap** - `F12`, auto-enables with fullscreen; dampens unsafe flash rate / luma jumps.
+- **Tap tempo / BPM lock** - `` \ `` to tap (4 taps locks), `|` to clear.
+- **MIDI bridge** - `F4`; pad notes map to `SCENE_ORDER`.
+- **Setlist** - `]` `[` `}` `{`; supports per-entry duration, auto-advance, reload from disk.
+- **Live text overlay** - `F3` (DJ name / track title, `Shift+F3` cycles layout).
+- **mp4 recording** - `F5`, half-res ffmpeg pipe.
+- **LAN streaming** (phone / TV) - `F6`/`F7`, WebRTC + HLS via MediaMTX, with a low-bandwidth venue profile (`Shift+F6`/`F7`).
+- **Web control + queue** - phone controller over WiFi, admin lockdown/kick, PIN auth.
+- **Headache-free mode** - calmer palette / dimmer composite for long sets, toggleable via `featureflags.json` or the admin web UI.
+- **Auto-switcher** - `F9` cycles scenes automatically (time-based or beat-aware modes).
+- **Knob autopilot** - `:` drifts scene parameters when idle, for unattended "sit back" viewing.
 
-Still open: operator HUD on a second display, per-scene preset snapshots, and verifying live DJ-mixer input end-to-end — tracked in [`documentation/production_readiness_for_live_shows.md`](documentation/production_readiness_for_live_shows.md).
+Still open: operator HUD on a second display, per-scene preset snapshots, and verifying live DJ-mixer input end-to-end - tracked in [`documentation/production_readiness_for_live_shows.md`](documentation/production_readiness_for_live_shows.md).
 
 ---
 
@@ -247,8 +247,8 @@ Install via Processing's **Contribution Manager** (Sketch → Import Library →
 
 ### Credits
 
-- [Luis Gonzalez](https://luis.net/) — Processing tunnels + plasma backgrounds
-- ttaM — incredible help on Bezier curves (fins)
+- [Luis Gonzalez](https://luis.net/) - Processing tunnels + plasma backgrounds
+- ttaM - incredible help on Bezier curves (fins)
 
 ---
 

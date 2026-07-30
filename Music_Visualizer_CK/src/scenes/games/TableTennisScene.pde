@@ -1,4 +1,4 @@
-// Table Tennis Scene — state 6
+// Table Tennis Scene - state 6
 //
 // Two AI paddles rally. First to 11 wins (must lead by 2).
 // Serve alternates every 2 points.
@@ -27,7 +27,7 @@ class TableTennisScene implements IScene {
   float leftPaddleVY, rightPaddleVY;   // per-frame paddle vertical velocity (for spin)
   final float PADDLE_W      = 16;
   final float PADDLE_H      = 110;
-  final float PADDLE_SPEED   = 0.38;   // bumped up — paddle waits for bounce so needs faster catch-up
+  final float PADDLE_SPEED   = 0.38;   // bumped up - paddle waits for bounce so needs faster catch-up
   final float PADDLE_X_SPEED = 0.28;
 
   // ── AI miss system ────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ class TableTennisScene implements IScene {
   boolean inServeDrop  = true;   // ball aloft before being struck (legal toss-up)
   boolean serveBounced = false;  // ball has completed its server-side bounce
 
-  // Post-point pause — lets the viewer breathe before next serve.
+  // Post-point pause - lets the viewer breathe before next serve.
   // Set by awardPoint(); when it hits 0, serve() runs.
   int pointPauseFrames = 0;
   final int POINT_PAUSE_FRAMES = 150; // ~2.5s at 60fps
@@ -86,7 +86,7 @@ class TableTennisScene implements IScene {
   // gravity (0.28) and bleed spin off mid-flight (previously spin only decayed
   // on a table bounce, so a long flight kept full spin the whole way up).
   // Tuned via tools/tt_sim: 0.10 cap + 0.98 decay → 0% moon over 200k trials.
-  // NOT final — the Sim Lab (scene 53) evolves these and writes tt_genome.cfg;
+  // NOT final - the Sim Lab (scene 53) evolves these and writes tt_genome.cfg;
   // loadGenomeFile() overrides them on onEnter. Defaults = shipped tuned values.
   float MAGNUS_TERM_MAX   = 0.10;
   float SPIN_FLIGHT_DECAY = 0.98;
@@ -99,14 +99,14 @@ class TableTennisScene implements IScene {
   float paddleBrushL  = 0.015, paddleBrushR = 0.015;  // paddle-brush spin coefficient
   float paddleSpeedL  = PADDLE_SPEED, paddleSpeedR = PADDLE_SPEED;  // Y tracking lerp
   float[][] styleRoster = null;   // each row = { launchVy, brush, aiSpeed }
-  float speedMult      = 1.3;    // global speed multiplier — adjustable in-game
+  float speedMult      = 1.3;    // global speed multiplier - adjustable in-game
   final float DRAG     = 0.999;
 
   // ── visuals ───────────────────────────────────────────────────────────────
   float ballHue     = 40;
   float impactFlash = 0;
-  float beatGlow    = 0;   // 1.0 on beat, decays — drives paddle aura
-  float bassSmooth  = 0;   // smoothed bass level — drives paddle height breathing
+  float beatGlow    = 0;   // 1.0 on beat, decays - drives paddle aura
+  float bassSmooth  = 0;   // smoothed bass level - drives paddle height breathing
   boolean powerReady = false; // true while beatGlow is hot enough for a power shot
   float powerFlash  = 0;   // extra burst when power shot lands
   ArrayList<PVector> trail = new ArrayList<PVector>();
@@ -129,7 +129,7 @@ class TableTennisScene implements IScene {
 
   // Re-derive table layout from buffer dimensions. Called from ctor and from
   // drawScene() so resize / render-cap changes propagate. Skips the slide-on-
-  // resize for game state — paddles can drift but rally physics stays valid.
+  // resize for game state - paddles can drift but rally physics stays valid.
   void relayoutForBuffer(int w, int h) {
     tableY     = h * 0.68;
     leftHomeX  = w * 0.20;
@@ -139,7 +139,7 @@ class TableTennisScene implements IScene {
   // ── serve ─────────────────────────────────────────────────────────────────
 
   void serve() {
-    // Reset paddles to home X before using their positions — they may have
+    // Reset paddles to home X before using their positions - they may have
     // retreated during the previous rally, which would place the serve ball
     // at the wrong X and trigger a spurious "ball escaped" point.
     leftPaddleX  = leftHomeX;  rightPaddleX  = rightHomeX;
@@ -147,7 +147,7 @@ class TableTennisScene implements IScene {
 
     // Legal serve: ball rests on server's open palm (just above paddle), then is
     // tossed straight up. Falls under gravity; when it descends back to paddle
-    // height, the paddle auto-strikes. ITTF requires a visible vertical toss —
+    // height, the paddle auto-strikes. ITTF requires a visible vertical toss - 
     // no drop-serving.
     // Dynamic serve: jitter the server's stance + toss so each rally opens
     // differently (different angle, height, and starting X within server's half).
@@ -238,7 +238,7 @@ class TableTennisScene implements IScene {
     float restY = tableY - 120;
 
     // During serve drop, and while the ball is heading to the server's own side
-    // for the mandatory first bounce, prediction is unreliable — the actual
+    // for the mandatory first bounce, prediction is unreliable - the actual
     // serve bounce applies a critVY override that the step sim doesn't know about.
     // Both paddles stay at restY until serveBounced=true so the first real
     // prediction uses the corrected velocity.
@@ -270,12 +270,12 @@ class TableTennisScene implements IScene {
     float xMargin = PADDLE_W * 2;
 
     if (ballVX < 0) {
-      // Ball heading left — right paddle rests
+      // Ball heading left - right paddle rests
       rightTargetX = rightHomeX;
       rightTargetY = constrain(restY, yMin, yMax);
       // Left paddle only tracks AFTER ball has bounced on the left side.
-      // lastBounceSide == -1 means it already landed there — legal to return.
-      // If lastBounceSide is 0 or 1 the ball hasn't touched left's court yet — wait.
+      // lastBounceSide == -1 means it already landed there - legal to return.
+      // If lastBounceSide is 0 or 1 the ball hasn't touched left's court yet - wait.
       if (lastBounceSide == -1) {
         // Step IN toward the ball to meet it instead of waiting at the baseline.
         // Track the ball's X up to a forward limit that stays on the left half
@@ -289,7 +289,7 @@ class TableTennisScene implements IScene {
         leftTargetY  = constrain(restY, yMin, yMax);
       }
     } else {
-      // Ball heading right — left paddle rests
+      // Ball heading right - left paddle rests
       leftTargetX  = leftHomeX;
       leftTargetY  = constrain(restY, yMin, yMax);
       // Right paddle only tracks AFTER ball has bounced on the right side.
@@ -305,7 +305,7 @@ class TableTennisScene implements IScene {
     }
   }
 
-  // Step simulation — correctly handles any number of table bounces
+  // Step simulation - correctly handles any number of table bounces
   float predictBallY(float frames) {
     float py = ballY;
     float vy = ballVY;
@@ -329,7 +329,7 @@ class TableTennisScene implements IScene {
 
   void movePaddles() {
     // Remember pre-move Y so the per-frame paddle vertical velocity can be read
-    // by checkPaddleCollision — a paddle brushing up/down imparts top/backspin.
+    // by checkPaddleCollision - a paddle brushing up/down imparts top/backspin.
     float pLY = leftPaddleY, pRY = rightPaddleY;
     leftPaddleY  += (leftTargetY  - leftPaddleY)  * paddleSpeedL;
     rightPaddleY += (rightTargetY - rightPaddleY) * paddleSpeedR;
@@ -379,14 +379,14 @@ class TableTennisScene implements IScene {
 
     // ── Normal physics ────────────────────────────────────────────────────────
     ballVY += constrain(spin * abs(ballVX) * magnusStrength, -MAGNUS_TERM_MAX, MAGNUS_TERM_MAX);
-    spin   *= SPIN_FLIGHT_DECAY;   // bleed spin mid-flight — prevents Magnus runaway
+    spin   *= SPIN_FLIGHT_DECAY;   // bleed spin mid-flight - prevents Magnus runaway
     ballVY += gravity;
     ballVX *= DRAG;
     float prevBallX = ballX;
     ballX  += ballVX;
     ballY  += ballVY;
 
-    // Net collision — block ball if it crosses the centre line below net height.
+    // Net collision - block ball if it crosses the centre line below net height.
     // Skip during serve drop (ball is above the table, can't hit the net yet).
     // Ball body overlaps net if ball-bottom > netTop AND ball-top < tableY.
     // Previous code used ball-bottom for both checks, leaving a ~BALL_RADIUS gap
@@ -411,7 +411,7 @@ class TableTennisScene implements IScene {
       ballVX *= 0.96;
       spin   *= 0.76;
       onTableBounce();
-      // onTableBounce may have awarded a point — bail out so the escape/paddle
+      // onTableBounce may have awarded a point - bail out so the escape/paddle
       // checks don't run on a ball whose rally just ended (prevents double-score).
       if (inServeDrop || pointPauseFrames > 0) {
         trail.add(new PVector(ballX, ballY));
@@ -426,7 +426,7 @@ class TableTennisScene implements IScene {
       ballVY *= -0.75;
     }
 
-    // Speed floor — ball must keep moving after serve bounce
+    // Speed floor - ball must keep moving after serve bounce
     float speedFloor = MIN_SPEED_X * speedMult;
     if (serveBounced && abs(ballVX) < speedFloor) {
       ballVX = (ballVX >= 0 ? 1 : -1) * speedFloor;
@@ -440,7 +440,7 @@ class TableTennisScene implements IScene {
       if (inServeDrop || pointPauseFrames > 0) { trail.add(new PVector(ballX, ballY)); if (trail.size() > MAX_TRAIL) trail.remove(0); return; }
     }
 
-    // Ball escaped past a paddle — virtual so 3D subclass can override
+    // Ball escaped past a paddle - virtual so 3D subclass can override
     checkEscape();
 
     trail.add(new PVector(ballX, ballY));
@@ -482,7 +482,7 @@ class TableTennisScene implements IScene {
         ballVY = constrain(critVY - 4, -22, -5);
         serveBounced = true;
       } else {
-        // Wrong side — serve fault, server loses point
+        // Wrong side - serve fault, server loses point
         awardPoint(!leftServes);
       }
       return;
@@ -492,12 +492,12 @@ class TableTennisScene implements IScene {
     if (!rallyStarted) {
       int opponentSide = leftServes ? 1 : -1;
       if (side == opponentSide) {
-        // Good serve — receiver must now return it
+        // Good serve - receiver must now return it
         rallyStarted       = true;
         lastBounceSide     = side;
         consecutiveBounces = 1;
       } else {
-        // Ball landed on server's side again — serve fault
+        // Ball landed on server's side again - serve fault
         awardPoint(!leftServes);
       }
       return;
@@ -505,9 +505,9 @@ class TableTennisScene implements IScene {
 
     // ── Normal rally bounce counting ──────────────────────────────────────────
     if (lastBounceSide == 0) {
-      // First bounce after a paddle hit — ball must land on the OPPONENT's side
+      // First bounce after a paddle hit - ball must land on the OPPONENT's side
       if (side == lastHitSide) {
-        // Bounced back on the hitter's own side (didn't clear the net) — fault
+        // Bounced back on the hitter's own side (didn't clear the net) - fault
         // lastHitSide > 0 means right hit and bounced right → left wins (true)
         // lastHitSide < 0 means left hit and bounced left  → right wins (false)
         awardPoint(lastHitSide > 0);
@@ -537,7 +537,7 @@ class TableTennisScene implements IScene {
     boolean inY = abs(ballY - paddleY) <= PADDLE_H / 2 + BALL_RADIUS + 4;
     if (!inX || !inY) return;
 
-    // No volleying during a rally — ball must bounce on this player's side first
+    // No volleying during a rally - ball must bounce on this player's side first
     if (rallyStarted) {
       int playerSide = isLeft ? -1 : 1;
       if (lastBounceSide != playerSide) {
@@ -556,7 +556,7 @@ class TableTennisScene implements IScene {
     ballVX = isLeft ? newSpeed : -newSpeed;
     float styleLaunch = isLeft ? paddleLaunchL : paddleLaunchR;   // per-paddle style
     float styleBrush  = isLeft ? paddleBrushL  : paddleBrushR;
-    ballVY = constrain(hitPos * 2 + random(-14, -1), -styleLaunch, -2);   // cap upward launch — keeps lobs on-screen
+    ballVY = constrain(hitPos * 2 + random(-14, -1), -styleLaunch, -2);   // cap upward launch - keeps lobs on-screen
     // Spin physics: imparted by WHERE on the paddle the ball hits (hitPos) and
     // by the paddle's vertical brush at contact. Paddle moving UP (Y decreasing,
     // so paddleVY < 0) brushes topspin (positive spin → ball dips via Magnus);
@@ -627,7 +627,7 @@ class TableTennisScene implements IScene {
       scoreLog.println("=== session " + ts + " ===");
       scoreLog.flush();
     } catch (Exception e) {
-      println("TableTennis: could not open score log — " + e.getMessage());
+      println("TableTennis: could not open score log - " + e.getMessage());
     }
   }
 
@@ -741,7 +741,7 @@ class TableTennisScene implements IScene {
     float lx = leftPaddleX  + leftLungeX;
     float rx = rightPaddleX - rightLungeX;
 
-    // Bass breathing — visual height only, not hitbox
+    // Bass breathing - visual height only, not hitbox
     float breathe = bassSmooth * 18;
     float lh = PADDLE_H + breathe;
     float rh = PADDLE_H + breathe;
@@ -765,7 +765,7 @@ class TableTennisScene implements IScene {
         }
       }
 
-      // Power-shot burst — wide radial flash at both paddles
+      // Power-shot burst - wide radial flash at both paddles
       if (powerFlash > 0.05) {
         float spread = powerFlash * 60;
         pg.fill(45, 255, 255, powerFlash * 90);
@@ -792,7 +792,7 @@ class TableTennisScene implements IScene {
       pg.fill(70, 70, 220, 140);
       pg.rect(rx - 1, rightPaddleY, PADDLE_W * 0.4, rh * 0.85, 2);
 
-      // Serve indicator — small dot above the serving paddle
+      // Serve indicator - small dot above the serving paddle
       pg.fill(255, 220, 0, 180);
       float dotY = tableY - 150;
       pg.ellipse(leftServes  ? lx : rx, dotY, 8, 8);
@@ -848,7 +848,7 @@ class TableTennisScene implements IScene {
       pg.text(leftPoints,  cx - 110 * sc, sy);
       pg.fill(200, 200, 200, 130);
       pg.textSize(sf * 0.6);
-      pg.text("—", cx, sy);
+      pg.text("-", cx, sy);
       pg.fill(80, 80, 255);
       pg.textSize(sf);
       pg.text(rightPoints, cx + 110 * sc, sy);
@@ -932,7 +932,7 @@ class TableTennisScene implements IScene {
 
   void onExit() {}
 
-  // ── Evolved genome I/O — reads tt_genome.cfg written by the Sim Lab (53) ─────
+  // ── Evolved genome I/O - reads tt_genome.cfg written by the Sim Lab (53) ─────
   // Format (whitespace-separated, '#' comments):
   //   physics <magnusStrength> <magnusTermMax> <spinFlightDecay>
   //   style   <launchVy> <brush> <aiSpeed>     (one per roster entry)
@@ -959,7 +959,7 @@ class TableTennisScene implements IScene {
       }
       if (styles.size() > 0) styleRoster = styles.toArray(new float[0][]);
     } catch (Exception e) {
-      println("TableTennis: genome load failed — " + e.getMessage());
+      println("TableTennis: genome load failed - " + e.getMessage());
     }
   }
 

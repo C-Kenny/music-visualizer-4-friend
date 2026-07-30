@@ -13,7 +13,7 @@ class SilhouettePaintingScene implements IScene {
   static final int SDF_W = 256;
   static final int SDF_H = 256;
   static final int N    = SDF_W * SDF_H;
-  // Output buffer res — SDF is bilinearly sampled into this. Higher = smoother edges.
+  // Output buffer res - SDF is bilinearly sampled into this. Higher = smoother edges.
   static final int RENDER_RES = 768;
   static final int RN = RENDER_RES * RENDER_RES;
 
@@ -28,7 +28,7 @@ class SilhouettePaintingScene implements IScene {
 
   float[][] sdfs;            // [SHAPE_COUNT][N] signed distance fields
   float[] outMask;           // scratch foreground-mask 0..1 per OUTPUT pixel (size RN)
-  PImage outImg;             // RENDER_RES × RENDER_RES — drawn each frame
+  PImage outImg;             // RENDER_RES × RENDER_RES - drawn each frame
   int[] order;
   int cursor = 0;
   float morphT = 0;
@@ -43,11 +43,11 @@ class SilhouettePaintingScene implements IScene {
   float trCx = 0.5;      // iris center (normalized 0..1)
   float trCy = 0.5;
 
-  // Camera composition per shot — interpolated each frame
+  // Camera composition per shot - interpolated each frame
   float camX, camY;          // current center offset (px)
   float camScale;            // current zoom
   float camRot;              // current rotation (radians)
-  float camTgtX, camTgtY;    // shot target — Ken Burns endpoint
+  float camTgtX, camTgtY;    // shot target - Ken Burns endpoint
   float camTgtScale;
   float camTgtRot;
   float shotProgress = 0;    // 0..1 across the shot duration (used for ken-burns)
@@ -144,7 +144,7 @@ class SilhouettePaintingScene implements IScene {
   // Each shape advance picks a fresh shot: transition mode + camera framing.
 
   void pickNewShot() {
-    // Weighted transition pick — morph dominant, others sprinkle in.
+    // Weighted transition pick - morph dominant, others sprinkle in.
     float r = random(1);
     if      (r < 0.45) trMode = TR_MORPH;
     else if (r < 0.60) trMode = TR_CUT;
@@ -157,7 +157,7 @@ class SilhouettePaintingScene implements IScene {
     trCx = random(0.25, 0.75);
     trCy = random(0.25, 0.75);
 
-    // Composition — start frame and Ken-Burns target
+    // Composition - start frame and Ken-Burns target
     // Off-center allowed via offset fraction of screen
     camX = random(-0.18, 0.18);
     camY = random(-0.12, 0.12);
@@ -260,7 +260,7 @@ class SilhouettePaintingScene implements IScene {
   // ── transitions: each writes into outMask[i] (RN entries, 0=bg, 1=fg) ─────
   //
   // SDFs are bilinearly sampled at output resolution so edges stay smooth at
-  // any zoom — the curve isn't quantized to the 256² grid anymore.
+  // any zoom - the curve isn't quantized to the 256² grid anymore.
 
   // Bilinear sample of SDF at fractional grid coords (sx,sy in [0..SDF_W-1]).
   float bilin(float[] sdf, float sx, float sy) {
@@ -448,12 +448,12 @@ class SilhouettePaintingScene implements IScene {
       "",
       "// 16 silhouettes → SDFs",
       "// transition modes:",
-      "//   morph  — SDF interp",
-      "//   cut    — instant swap",
-      "//   whip   — directional slide",
-      "//   iris   — radial reveal",
-      "//   curtain— horiz sweep",
-      "//   flash  — invert spike",
+      "//   morph - SDF interp",
+      "//   cut - instant swap",
+      "//   whip - directional slide",
+      "//   iris - radial reveal",
+      "//   curtain - horiz sweep",
+      "//   flash - invert spike",
       "",
       "// each shot: random framing",
       "// camera Ken-Burns drifts",

@@ -1,5 +1,5 @@
 /**
- * VoidBloomScene — Scene 26
+ * VoidBloomScene - Scene 26
  *
  * A cosmic bloom that pulses to music.
  * Audio-driven petal arms radiate from a glowing core, surrounded by
@@ -319,7 +319,7 @@ class VoidBloomScene implements IScene {
   // ── Controller ────────────────────────────────────────────────────────────────
   void applyController(Controller c) {
     // Pan is applied to pg-space coords, so clamp to sceneBuffer dims (not
-    // window dims) — otherwise on capped-resolution stages the pan can push
+    // window dims) - otherwise on capped-resolution stages the pan can push
     // the bloom off the visible buffer area.
     panX = constrain(panX + (c.lx - width  / 2.0) * 0.04, -sceneBuffer.width  * 0.4, sceneBuffer.width  * 0.4);
     panY = constrain(panY + (c.ly - height / 2.0) * 0.04, -sceneBuffer.height * 0.4, sceneBuffer.height * 0.4);

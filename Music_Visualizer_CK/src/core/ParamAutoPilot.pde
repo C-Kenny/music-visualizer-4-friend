@@ -1,15 +1,15 @@
 /**
- * ParamAutoPilot — makes scenes carry themselves when nobody is driving.
+ * ParamAutoPilot - makes scenes carry themselves when nobody is driving.
  *
  * Operating a scene well means moving knobs slowly and hitting accents on
  * musical moments. This class encodes that skill generically: once every
  * input source (controller, keyboard, mouse, web) has been quiet for a
- * while, it gently drifts the active scene's SceneParam knobs — slow
+ * while, it gently drifts the active scene's SceneParam knobs - slow
  * Perlin-noise wander around where the operator left them, plus small
  * kicks on beat onsets so the motion follows the music.
  *
  * It writes the SAME SceneParam objects the operator does (the params are
- * the source of truth — see SceneParam.pde), so the moment any real input
+ * the source of truth - see SceneParam.pde), so the moment any real input
  * arrives the drift fades out and manual control wins with no handover
  * glitch. It never synthesises button events, so the held-state vs
  * rising-edge rules in CLAUDE.md are not at risk.
@@ -17,7 +17,7 @@
  * Scenes need zero extra code: anything that declares getParams() is
  * automatically autopilot-capable.
  *
- * Toggle with `:`  (enabled by default — sit-back venue experience).
+ * Toggle with `:`  (enabled by default - sit-back venue experience).
  */
 class ParamAutoPilot {
 

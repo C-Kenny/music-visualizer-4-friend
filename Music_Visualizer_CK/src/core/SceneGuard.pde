@@ -1,19 +1,19 @@
 /**
- * SceneGuard — crash resilience for scene rendering.
+ * SceneGuard - crash resilience for scene rendering.
  *
  * Each frame's scene draw is wrapped in try/catch by the main draw loop. When a
  * scene throws, SceneGuard:
  *   1. Logs the stack trace to data/crash_log.txt (rotated ~1MB).
- *   2. Enters a recovery window — a black card with the scene name and error
+ *   2. Enters a recovery window - a black card with the scene name and error
  *      message is shown for RECOVERY_FRAMES frames.
  *   3. Tracks per-scene failure counts. After MAX_FAILURES_PER_SCENE hits, the
  *      scene is blacklisted for the rest of the session and the dispatch skips
  *      it automatically.
  *
- * The guard itself never throws — any failure during logging or card rendering
+ * The guard itself never throws - any failure during logging or card rendering
  * is swallowed so the render loop always progresses.
  *
- * Blacklist state is in-memory only (session-scoped), by design — it does not
+ * Blacklist state is in-memory only (session-scoped), by design - it does not
  * persist across a restart. A restart is often itself the operator's recovery
  * action after something upstream went wrong (GL context reset, driver hiccup),
  * so carrying a blacklist forward could permanently disable a scene that only
@@ -59,7 +59,7 @@ class SceneGuard {
     recoveryFramesLeft = RECOVERY_FRAMES;
   }
 
-  // Advance recovery timer. Returns true when the window just ended — caller
+  // Advance recovery timer. Returns true when the window just ended - caller
   // should then decide whether to auto-skip (blacklisted) or retry.
   boolean tickRecovery() {
     if (recoveryFramesLeft <= 0) return false;

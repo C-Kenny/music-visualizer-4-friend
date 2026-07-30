@@ -1,7 +1,7 @@
 /**
- * MerkabaStarScene (scene 42) — v2 (3D)
+ * MerkabaStarScene (scene 42) - v2 (3D)
  *
- * The Merkaba (Stella Octangula) — two regular tetrahedra inscribed in the
+ * The Merkaba (Stella Octangula) - two regular tetrahedra inscribed in the
  * same cube, forming a 3D Star of David / Star Tetrahedron.
  *
  * Geometry: two tetrahedra use the alternating corners of a cube with
@@ -16,21 +16,21 @@
  * optional semi-transparent faces and circumsphere great circles.
  *
  * Audio:
- *   Bass     — circumradius pulse + vertex glow
- *   Mid      — auto-rotation speed
- *   High     — edge brightness + shimmer pass
- *   Beat     — vertex expansion burst + white flash
+ *   Bass - circumradius pulse + vertex glow
+ *   Mid - auto-rotation speed
+ *   High - edge brightness + shimmer pass
+ *   Beat - vertex expansion burst + white flash
  *
  * Controller:
- *   RStick ↔↕  — orbit camera
- *   LStick ↕   — zoom
- *   LT (hold)  — slow rotation
- *   RT (hold)  — fast rotation
- *   A          — toggle semi-transparent faces
- *   B          — cycle colour mode (blue/cyan → rainbow → gold)
- *   LB / RB    — geometry mode (merkaba → +octahedron → +great circles)
- *   X          — reset camera & speed
- *   Y          — trigger manual beat
+ *   RStick ↔↕ - orbit camera
+ *   LStick ↕ - zoom
+ *   LT (hold) - slow rotation
+ *   RT (hold) - fast rotation
+ *   A - toggle semi-transparent faces
+ *   B - cycle colour mode (blue/cyan → rainbow → gold)
+ *   LB / RB - geometry mode (merkaba → +octahedron → +great circles)
+ *   X - reset camera & speed
+ *   Y - trigger manual beat
  */
 class MerkabaStarScene implements IScene {
 
@@ -51,7 +51,7 @@ class MerkabaStarScene implements IScene {
   float rotSpeed       = 0.004;
   float targetRotSpeed = 0.004;
 
-  // Multi-axis rotation — 5 distinct paths.
+  // Multi-axis rotation - 5 distinct paths.
   // Each row: [X-rate, Y-orbit-rate, Z-rate] as multiples of rotSpeed.
   // Y-orbit-rate drives camAzim (camera circles the star).
   // X and Z rotate the world geometry so you see different faces over time.
@@ -63,7 +63,7 @@ class MerkabaStarScene implements IScene {
     { 0.0f,  1.0f,  0.0f },   // 0: classic orbit only
     { 0.6f,  1.0f,  0.0f },   // 1: orbit + strong forward tilt
     { 0.0f,  0.7f,  0.6f },   // 2: orbit + barrel roll
-    { 1.0f,  0.0f,  0.0f },   // 3: pure X tumble — camera frozen
+    { 1.0f,  0.0f,  0.0f },   // 3: pure X tumble - camera frozen
     { 0.4f,  0.8f,  0.5f },   // 4: all-axis compound tumble
   };
 
@@ -83,7 +83,7 @@ class MerkabaStarScene implements IScene {
   // 4 faces of a tetrahedron
   int[][] tetFaces = { {0,1,2},{0,1,3},{0,2,3},{1,2,3} };
 
-  // Octahedron (intersection of A ∩ B) — circumradius 1 (scale by R/√3 too)
+  // Octahedron (intersection of A ∩ B) - circumradius 1 (scale by R/√3 too)
   float[][] oct = {
     { 1, 0, 0},{-1, 0, 0},
     { 0, 1, 0},{ 0,-1, 0},
@@ -168,11 +168,11 @@ class MerkabaStarScene implements IScene {
 
     // Y-orbit rate varies per path (0 = camera frozen → pure geometric tumble)
     camAzim += spd * pr[1];
-    // World geometry tilt and roll — the visible "different direction" per path
+    // World geometry tilt and roll - the visible "different direction" per path
     rotX    += spd * pr[0];
     rotZ    += spd * pr[2];
 
-    // Advance path every ~500 frames (~8 s at 60fps) — distinct enough to notice
+    // Advance path every ~500 frames (~8 s at 60fps) - distinct enough to notice
     pathFrames++;
     if (pathFrames > 500) { pathFrames = 0; rotPath = (rotPath + 1) % 5; }
 
@@ -209,7 +209,7 @@ class MerkabaStarScene implements IScene {
     drawTetEdges(buf, tetA, sr, glow, true,  coreW, 0.88);
     drawTetEdges(buf, tetB, sr, glow, false, coreW, 0.88);
 
-    // ── High-energy shimmer — complementary hue, very thin ────────────────
+    // ── High-energy shimmer - complementary hue, very thin ────────────────
     if (sHigh > 0.35) {
       drawTetEdges(buf, tetA, sr, sHigh, true,  0.6, sHigh * 0.28);
       drawTetEdges(buf, tetB, sr, sHigh, false, 0.6, sHigh * 0.28);
@@ -225,7 +225,7 @@ class MerkabaStarScene implements IScene {
       }
     }
 
-    // ── Circumsphere great circles — always visible, brighter in geoMode 2 ──
+    // ── Circumsphere great circles - always visible, brighter in geoMode 2 ──
     {
       float gcScale = (geoMode == 0) ? 0.35f : (geoMode == 1) ? 0.62f : 1.0f;
       drawGreatCircles(buf, R, glow, ts, gcScale);

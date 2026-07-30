@@ -1,5 +1,5 @@
 /**
- * VignetteFX — Cinematic dark-edge vignette.
+ * VignetteFX - Cinematic dark-edge vignette.
  *
  * Uses fx_vignette.glsl. Near-zero GPU cost.
  * Bass slightly pulses the vignette radius inward on drops.

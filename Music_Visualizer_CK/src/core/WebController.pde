@@ -1,4 +1,4 @@
-// WebController — phone/web input merged across many simultaneous clients.
+// WebController - phone/web input merged across many simultaneous clients.
 //
 // Each client (identified by its handshake clientId) writes into its own slot.
 // applyTo() aggregates across all non-spectator, non-banned clients each frame:
@@ -8,12 +8,12 @@
 //   edges    → fires once if ANY client tapped that frame
 //
 // Button vocabulary (case-insensitive):
-//   A B X Y           — face buttons
-//   LB RB             — shoulder bumpers
-//   BACK START        — menu buttons
-//   DUP DDOWN DLEFT DRIGHT — D-pad
+//   A B X Y - face buttons
+//   LB RB - shoulder bumpers
+//   BACK START - menu buttons
+//   DUP DDOWN DLEFT DRIGHT - D-pad
 //
-// "down" both holds the button AND fires the rising edge once — matches
+// "down" both holds the button AND fires the rising edge once - matches
 // physical-controller semantics so scenes that only check `*JustPressed`
 // react to a phone tap.
 //
@@ -30,7 +30,7 @@ class PerClientInput {
   // Triggers (0..1)
   volatile float lt = 0, rt = 0;
 
-  // Buttons — parallel arrays indexed by BTN_NAMES.
+  // Buttons - parallel arrays indexed by BTN_NAMES.
   // held[i]  = currently down
   // edge[i]  = pending rising-edge event (consumed once on applyTo)
   volatile boolean[] held = new boolean[12];
@@ -40,7 +40,7 @@ class PerClientInput {
 class WebController {
   static final int STICK_TIMEOUT_MS = 500;
 
-  // Order matters — applyButtons() depends on these indices.
+  // Order matters - applyButtons() depends on these indices.
   final String[] BTN_NAMES = {
     "A", "B", "X", "Y",
     "LB", "RB",
@@ -137,7 +137,7 @@ class WebController {
 
   float clamp1(float v) { return v < -1 ? -1 : (v > 1 ? 1 : v); }
 
-  // Per-role aggregate — for scenes that want partial control assignments.
+  // Per-role aggregate - for scenes that want partial control assignments.
   float[] getRoleSticks(String role) {
     float lx = 0, ly = 0, rx = 0, ry = 0;
     long now = System.currentTimeMillis();

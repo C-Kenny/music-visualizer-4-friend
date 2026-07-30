@@ -1,5 +1,5 @@
 /**
- * SpatialOrbitScene — the showcase for the 8D-audio tracker (SpatialAudio).
+ * SpatialOrbitScene - the showcase for the 8D-audio tracker (SpatialAudio).
  *
  * You are looking DOWN at the listener's head from above. Front is up.
  * A comet marks where the sound currently sits around the head, exactly as
@@ -11,11 +11,11 @@
  * the orbit path, the head pulses with loudness, and beats fire shockwaves.
  *
  * Knobs (controller sticks / web sliders / autopilot):
- *   ring   — orbit radius
- *   trail  — comet trail length
- *   glow   — overall brightness of comet + bars
- *   tilt   — camera tilt: 0 flat top-down, 1 leaned-back 3D disc
- *   bars   — FFT bar height
+ *   ring - orbit radius
+ *   trail - comet trail length
+ *   glow - overall brightness of comet + bars
+ *   tilt - camera tilt: 0 flat top-down, 1 leaned-back 3D disc
+ *   bars - FFT bar height
  */
 class SpatialOrbitScene implements IScene {
 
@@ -26,7 +26,7 @@ class SpatialOrbitScene implements IScene {
   final float HEAD_RADIUS_FRACTION = 0.30; // head size as fraction of orbit radius
   final float SHOCK_DECAY         = 0.92;  // beat shockwave fade per frame
 
-  // Live knobs — driven by controller sticks, keyboard, web sliders, or the
+  // Live knobs - driven by controller sticks, keyboard, web sliders, or the
   // idle autopilot via the ParamRouter spine.
   SceneParam pRing  = new SceneParam("ring",  "Orbit Radius", 0.6, 1.4, 1);
   SceneParam pTrail = new SceneParam("trail", "Comet Trail",  0,   2.5, 1.2);
@@ -80,7 +80,7 @@ class SpatialOrbitScene implements IScene {
     pg.blendMode(ADD);
     pg.noFill();
 
-    // Orbit ring — brightens as the tracker gains confidence.
+    // Orbit ring - brightens as the tracker gains confidence.
     pg.stroke(60 + 120 * cometHeat, 90 + 80 * cometHeat, 140, 90 * glow);
     pg.strokeWeight(max(1, 1.5 * uiScale()));
     pg.ellipse(0, 0, orbitRadius * 2, orbitRadius * 2);
@@ -118,13 +118,13 @@ class SpatialOrbitScene implements IScene {
     pg.ellipse(0, 0, headRadius * 2, headRadius * 2);
     pg.line(-headRadius * 0.25, -headRadius * 0.95, 0, -headRadius * 1.35);
     pg.line( headRadius * 0.25, -headRadius * 0.95, 0, -headRadius * 1.35);
-    // ears — they're the two microphones this whole system listens with
+    // ears - they're the two microphones this whole system listens with
     pg.line(-headRadius, -headRadius * 0.2, -headRadius * 1.15, 0);
     pg.line(-headRadius * 1.15, 0, -headRadius, headRadius * 0.2);
     pg.line( headRadius, -headRadius * 0.2,  headRadius * 1.15, 0);
     pg.line( headRadius * 1.15, 0,  headRadius, headRadius * 0.2);
 
-    // Comet trail — newest segments brightest. Cold blue when just panning,
+    // Comet trail - newest segments brightest. Cold blue when just panning,
     // igniting to white-orange as orbit confidence rises.
     int segments = (int) (trailFilled * constrain(pTrail.value / 2.5, 0, 1));
     if (segments > 2) {
@@ -147,7 +147,7 @@ class SpatialOrbitScene implements IScene {
       pg.endShape();
     }
 
-    // The comet itself — layered discs for a soft glow.
+    // The comet itself - layered discs for a soft glow.
     float cx = sin(cometAngle) * orbitRadius * (1 + smoothBass * 0.08);
     float cy = -cos(cometAngle) * orbitRadius * (1 + smoothBass * 0.08);
     float cometSize = orbitRadius * (0.10 + 0.10 * smoothMaster + 0.06 * beatShock);
