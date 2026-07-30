@@ -90,3 +90,7 @@ tests/target/generated-test-sources/
 # Sim Lab evolved genome (generated at runtime)
 Music_Visualizer_CK/tt_genome.cfg
 tools/tt_sim/*.class
+
+# Python bytecode cache
+__pycache__/
+*.pyc

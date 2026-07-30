@@ -16,7 +16,7 @@ hr()   { printf -- "─%.0s" {1..70}; printf "\n"; }
 
 bold "=== Pulse / PipeWire ==="
 if ! command -v pactl >/dev/null 2>&1; then
-  echo "pactl not installed — install pulseaudio-utils or pipewire-pulse"
+  echo "pactl not installed - install pulseaudio-utils or pipewire-pulse"
 else
   echo "default sink:   $(pactl get-default-sink 2>/dev/null || echo '?')"
   echo "default source: $(pactl get-default-source 2>/dev/null || echo '?')"
@@ -62,7 +62,7 @@ if [[ -z "$JAVAC" || -z "$JAVA" ]]; then
   [[ -x "$PJDK/java"  ]] && JAVA="$PJDK/java"
 fi
 if [[ -z "$JAVAC" || -z "$JAVA" ]]; then
-  echo "  javac/java not found — install a JDK or run via Processing"
+  echo "  javac/java not found - install a JDK or run via Processing"
 else
   ( cd "$TMP" && "$JAVAC" Probe.java && "$JAVA" -cp . Probe )
 fi
@@ -83,5 +83,5 @@ To capture a mic / line-in:
   - Just pick the appropriate row in the picker; default routing handles it.
 
 Operator dashboard at  http://<lan-ip>:8080/operator.html  shows the live
-RMS level — easy way to confirm audio is actually flowing.
+RMS level - easy way to confirm audio is actually flowing.
 EOF

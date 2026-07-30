@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# smoketest.sh — run the smoke-test harness and report pass/fail
+# smoketest.sh - run the smoke-test harness and report pass/fail
 
 set -euo pipefail
 
@@ -99,9 +99,14 @@ echo "────────────────────────�
 
 if [[ "$STATUS" == "PASS" ]]; then
   echo "${GREEN}${BOLD}✓ SMOKE TEST PASSED${RESET}"
-  exit 0
+  echo
+  echo "─────────────────────────────────────────"
+  PERF_STATUS=0
+  python3 scripts/check_perf_regression.py --result "$RESULT" || PERF_STATUS=$?
+  echo "─────────────────────────────────────────"
+  exit $PERF_STATUS
 else
-  echo "${RED}${BOLD}✗ SMOKE TEST FAILED — $FAILURE_COUNT failure(s):${RESET}"
+  echo "${RED}${BOLD}✗ SMOKE TEST FAILED - $FAILURE_COUNT failure(s):${RESET}"
   grep '^\[FAIL\]' "$RESULT" | while IFS= read -r line; do
     echo "  ${RED}$line${RESET}"
   done

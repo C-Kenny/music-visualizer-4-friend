@@ -70,9 +70,9 @@ case "${1:-status}" in
       saved=$(cat "$STATE")
       echo "loopback: ACTIVE (saved prior: $saved)"
       if source_exists "$saved"; then
-        echo "  saved source still exists — \`off\` will restore cleanly."
+        echo "  saved source still exists - \`off\` will restore cleanly."
       else
-        echo "  saved source MISSING — \`off\` will fall back to first non-monitor."
+        echo "  saved source MISSING - \`off\` will fall back to first non-monitor."
       fi
     else
       echo "loopback: inactive (no saved state)"

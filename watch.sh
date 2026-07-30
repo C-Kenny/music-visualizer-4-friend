@@ -41,7 +41,7 @@ start
 inotifywait -m -e close_write,moved_to,create -r "$SKETCH_DIR" --include '.*\.pde' -q |
 while read -r dir events file; do
   [[ "$file" == *.tmp* ]] && continue
-  echo "Change detected: $file — restarting..."
+  echo "Change detected: $file - restarting..."
   stop
   start
 done

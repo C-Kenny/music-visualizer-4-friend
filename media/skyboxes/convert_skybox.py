@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-convert_skybox.py — Convert equirectangular skybox images to 6-face cubemap PNGs.
+convert_skybox.py - Convert equirectangular skybox images to 6-face cubemap PNGs.
 
 Supports: .exr, .hdr, .png, .jpg, .tiff
 

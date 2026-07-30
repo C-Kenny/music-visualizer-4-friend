@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ci-install-libs.sh — install bundled Processing libraries into the sketchbook.
+# ci-install-libs.sh - install bundled Processing libraries into the sketchbook.
 #
 # Libraries are bundled in Music_Visualizer_CK/libraries/*.zip (see that
 # directory's THIRD_PARTY_LICENSES.md for attribution). We bundle rather than

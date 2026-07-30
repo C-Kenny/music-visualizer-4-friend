@@ -22,7 +22,7 @@ if [[ ! -x "$LOOPBACK" || ! -x "$RUN" ]]; then
   exit 1
 fi
 
-# Refuse if loopback is already active — don't trample state another shell owns.
+# Refuse if loopback is already active - don't trample state another shell owns.
 if [[ -f "${XDG_CACHE_HOME:-$HOME/.cache}/music-visualizer/loopback_prev" ]]; then
   echo "loopback already active. Run './loopback.sh off' first, or use './run.sh' directly." >&2
   exit 1

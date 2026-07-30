@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# profile.sh — attach async-profiler to a running visualizer sketch, sample
+# profile.sh - attach async-profiler to a running visualizer sketch, sample
 # for N seconds, output an interactive flame graph (HTML).
 #
 # Usage:

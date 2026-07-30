@@ -20,7 +20,7 @@ TITLE_PATTERN="Music Visualizer CK"
 
 echo "==> Searching for window: '$TITLE_PATTERN'"
 
-# Find window ID — xdotool search --name uses regex
+# Find window ID - xdotool search --name uses regex
 WIN_IDS=$(xdotool search --name "$TITLE_PATTERN" 2>/dev/null || true)
 
 if [ -z "$WIN_IDS" ]; then
