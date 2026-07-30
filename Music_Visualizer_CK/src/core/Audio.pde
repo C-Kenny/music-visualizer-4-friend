@@ -27,6 +27,47 @@ class Audio {
   private float _recentPeak = 0;
   private float[] _scaled; // reused per-frame scratch buffer
 
+  // Master playback volume, linear 0..2.0 (1.0 = 100%, unchanged). Backed by
+  // a persistent DevVolumeEffect in the player's effect chain rather than
+  // player.setGain() — setGain() only works if the underlying JavaSound line
+  // exposes a MASTER_GAIN FloatControl, which PulseAudio's JavaSound bridge
+  // commonly doesn't expose, so setGain() silently no-ops on many Linux
+  // machines. The effect chain (AudioSource.stream.setAudioEffect) is wired
+  // completely separately from the SignalSplitter that feeds FFT/BeatDetect
+  // (AudioSource.stream.setAudioListener), so scenes stay just as
+  // audio-reactive at any volume. Read by the VOLUME HUD badge (toggle: V).
+  float volume = 1.0;
+  DevVolumeEffect volumeEffect;
+
+  void setVolume(float v) {
+    volume = constrain(v, 0.0, 2.0);
+    if (volumeEffect != null) volumeEffect.gain = volume;
+  }
+
+  // Steps by a flat percentage-point amount (e.g. +5/-5), snapped to the
+  // nearest whole percent so repeated presses land on clean numbers (5%,
+  // 10%, 15%...) instead of drifting into decimals.
+  void nudgeVolume(float deltaPercent) {
+    float pct = round(volume * 100 + deltaPercent);
+    setVolume(pct / 100.0);
+    println("[Audio] volume -> " + nf(volume * 100, 0, 0) + "%");
+  }
+
+  // Dev shortcut: if .devvolume exists in the sketch dir, start playback at
+  // that listening volume (0-100%) instead of full blast — handy for
+  // running locally at ~5% while you keep working.
+  //   echo 5 > Music_Visualizer_CK/.devvolume
+  void applyDevVolume() {
+    try {
+      java.io.File devVol = new java.io.File(sketchPath(".devvolume"));
+      if (!devVol.exists()) return;
+      String raw = join(loadStrings(devVol.getAbsolutePath()), "").trim();
+      float pct = Float.parseFloat(raw);
+      setVolume(pct / 100.0);
+      println("[Audio] DEVVOLUME: " + nf(pct, 0, 1) + "%");
+    } catch (Exception e) { /* ignore — missing or malformed file */ }
+  }
+
   void nudgeDeviceGain(float factor) {
     deviceInputGain = constrain(deviceInputGain * factor, 1.0f, 200.0f);
     manualGainLock = true;
@@ -60,6 +101,9 @@ class Audio {
       }
       if (player == null) return;
       player.play();
+      volumeEffect = new DevVolumeEffect(volume);
+      player.addEffect(volumeEffect);
+      applyDevVolume();
       beat = new BeatDetect();
       fft = new FFT(player.bufferSize(), player.sampleRate());
       fft.logAverages(22, bandsPerOctave);
@@ -320,5 +364,27 @@ class Audio {
       audioInput = null;
     }
     try { minim.stop(); } catch (Throwable ignored) {}
+  }
+}
+
+// Linear sample-scale gain effect backing Audio.volume. Plugs into
+// AudioSource's effect chain (which feeds the actual output line) rather
+// than player.setGain() (which requires JavaSound MASTER_GAIN line support
+// that PulseAudio's JavaSound bridge commonly doesn't expose). `gain` is
+// mutated live by Audio.setVolume() — one instance lives for the player's
+// whole lifetime.
+class DevVolumeEffect implements AudioEffect {
+  float gain;
+  DevVolumeEffect(float gain) { this.gain = gain; }
+
+  void process(float[] signal) {
+    for (int i = 0; i < signal.length; i++) signal[i] *= gain;
+  }
+
+  void process(float[] signalLeft, float[] signalRight) {
+    for (int i = 0; i < signalLeft.length; i++) {
+      signalLeft[i]  *= gain;
+      signalRight[i] *= gain;
+    }
   }
 }

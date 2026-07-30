@@ -25,13 +25,9 @@ class LissajousKnotScene implements IScene {
   // Skybox implementation
   Skybox skybox = new Skybox();
   int skyboxIndex = 0;
-  String[] SKYBOX_PATHS = {
-    "cloudy_01", "cloudy_02", "cloudy_03", "cloudy_04", "cloudy_05",
-    "cloudy_06", "cloudy_07", "cloudy_08", "cloudy_09", "cloudy_10",
-    "cloudy_11", "cloudy_12", "cloudy_13", "cloudy_14", "cloudy_15",
-    "cloudy_16", "cloudy_17", "cloudy_18", "cloudy_19", "cloudy_20",
-    "cloudy_21", "cloudy_22", "cloudy_23", "cloudy_24", "cloudy_25"
-  };
+  // Whatever is installed (generated auto_* always present; user/venue packs
+  // and dev-machine bundled packs discovered at construction).
+  String[] SKYBOX_PATHS = discoverSkyboxNames();
 
   // Camera Orbit
   float camRotX = 0;
@@ -60,7 +56,7 @@ class LissajousKnotScene implements IScene {
   void loadSkybox(int idx) {
     skyboxIndex = ((idx % SKYBOX_PATHS.length) + SKYBOX_PATHS.length) % SKYBOX_PATHS.length;
     skybox = new Skybox();
-    skybox.load(resourcePath("media/skyboxes/" + SKYBOX_PATHS[skyboxIndex]));
+    loadSkyboxByName(skybox, SKYBOX_PATHS[skyboxIndex]);
   }
 
   void onEnter() {
@@ -298,7 +294,7 @@ class LissajousKnotScene implements IScene {
       "y = sin(B * t) * ry;",
       "z = cos(C * t) * rz;",
       "Torus: r = cos(B * phi) + 2;",
-      "A:" + nf(A, 1, 1) + " B:" + nf(B, 1, 1) + " C:" + nf(C, 1, 1) + " Skybox:" + SKYBOX_PATHS[skyboxIndex].split("_")[0]
+      "A:" + nf(A, 1, 1) + " B:" + nf(B, 1, 1) + " C:" + nf(C, 1, 1) + " Skybox:" + SKYBOX_PATHS[skyboxIndex]
     };
   }
 

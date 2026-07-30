@@ -37,6 +37,13 @@ class SriYantraScene implements IScene, IForeground {
   // ── Audio smoothing ────────────────────────────────────────────────────────
   float sBass = 0, sMid = 0, sHigh = 0, sBeat = 0;
 
+  // A/B/RY already have jobs (rotate toggle / colour mode / zoom), so LStick
+  // + RX are mapped by hand in applyController for these instead.
+  SceneParam pRotSpeed = new SceneParam("rotSpeed", "Rotation Speed", 0,   3.0, 1);
+  SceneParam pBloom    = new SceneParam("bloom",    "Lotus Bloom",    0.3, 2.5, 1);
+  SceneParam pPulse    = new SceneParam("pulse",    "Triangle Pulse", 0.3, 2.5, 1);
+  SceneParam[] params = { pRotSpeed, pBloom, pPulse };
+
   // ── Prebuilt triangle PShapes (normalized S=1, rebuilt on onEnter) ────────
   PShape[] triShapes;
 
@@ -99,14 +106,25 @@ class SriYantraScene implements IScene, IForeground {
 
     float ry = 1.0 - (c.ry / (float) height);
     targetScale = lerp(0.4, 1.6, ry);
+
+    float dz = 0.12;
+    float lx = (c.lx - width  * 0.5) / (width  * 0.5);
+    float ly = (c.ly - height * 0.5) / (height * 0.5);
+    float rx = (c.rx - width  * 0.5) / (width  * 0.5);
+    if (abs(lx) > dz) pRotSpeed.nudgeNorm(lx * 0.02);
+    if (abs(ly) > dz) pBloom.nudgeNorm(-ly * 0.02);
+    if (abs(rx) > dz) pPulse.nudgeNorm(rx * 0.02);
   }
 
   void handleKey(char k) {
     switch (k) {
-      case 'r': case 'R': autoRotate = !autoRotate; break;
-      case 'c': case 'C': colorMode  = (colorMode + 1) % 3; break;
+      case 'r': case 'R': autoRotate = !autoRotate; return;
+      case 'c': case 'C': colorMode  = (colorMode + 1) % 3; return;
     }
+    handleParamKey(k);
   }
+
+  SceneParam[] getParams() { return params; }
 
   // ── Draw ──────────────────────────────────────────────────────────────────
 
@@ -140,7 +158,7 @@ class SriYantraScene implements IScene, IForeground {
     sBeat = lerp(sBeat, 0, 0.06);
 
     userScale = lerp(userScale, targetScale, 0.04);
-    if (autoRotate) rotation += analyzer.rotDir * (0.0015 + sMid * 0.008);
+    if (autoRotate) rotation += analyzer.rotDir * (0.0015 + sMid * 0.008) * pRotSpeed.value;
 
     float S  = min(pg.width, pg.height) * 0.42 * userScale * (1.0 + sBass * 0.06);
     float ts = uiScale();
@@ -150,18 +168,18 @@ class SriYantraScene implements IScene, IForeground {
     pg.rotate(rotation);
 
     drawBhupura(pg, S * 1.28, ts);
-    drawLotus(pg, S * 1.08, 16, sMid * 0.10, ts, 0);
-    drawLotus(pg, S * 0.88, 8,  sMid * 0.14, ts, PI/8);
+    drawLotus(pg, S * 1.08, 16, sMid * 0.10 * pBloom.value, ts, 0);
+    drawLotus(pg, S * 0.88, 8,  sMid * 0.14 * pBloom.value, ts, PI/8);
 
     for (int i = 0; i < downTri.length; i++) {
-      float pulse = (i == 0) ? sBass * 0.05 : (i < 3 ? sMid * 0.04 : sHigh * 0.03);
+      float pulse = ((i == 0) ? sBass * 0.05 : (i < 3 ? sMid * 0.04 : sHigh * 0.03)) * pPulse.value;
       pg.noFill();
       setYantraStroke(pg, i, 0.5 + sBass * 0.3 + sBeat * 0.4, 0.7, ts);
       pg.strokeWeight(ts * (1.2 + sHigh * 1.0));
       pg.pushMatrix(); pg.scale(S * (1 + pulse)); pg.shape(triShapes[i]); pg.popMatrix();
     }
     for (int i = 0; i < upTri.length; i++) {
-      float pulse = (i == 0) ? sBass * 0.04 : sMid * 0.03;
+      float pulse = ((i == 0) ? sBass * 0.04 : sMid * 0.03) * pPulse.value;
       pg.noFill();
       setYantraStroke(pg, i + 5, 0.5 + sBass * 0.3 + sBeat * 0.4, 0.9, ts);
       pg.strokeWeight(ts * (1.2 + sHigh * 1.0));
@@ -274,6 +292,7 @@ class SriYantraScene implements IScene, IForeground {
       "  Bindu     \u2192 beat flash",
       "",
       "A rotate   B colour mode",
+      "LStick: rotation speed / lotus bloom   RStick \u2194: triangle pulse",
     };
   }
 
@@ -282,6 +301,9 @@ class SriYantraScene implements IScene, IForeground {
       new ControllerLayout("RStick \u2195", "Zoom"),
       new ControllerLayout("A",            "Toggle rotation"),
       new ControllerLayout("B",            "Cycle colour mode"),
+      new ControllerLayout("LStick \u2194", "Rotation speed"),
+      new ControllerLayout("LStick \u2195", "Lotus bloom amount"),
+      new ControllerLayout("RStick \u2194", "Triangle pulse amount"),
     };
   }
 }

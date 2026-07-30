@@ -11,8 +11,15 @@ class BarnsleyFernRenderer implements FractalRenderer {
     pg.translate(0, -pg.height * 0.35);
     randomSeed(p.seed);
     pg.colorMode(HSB, 360, 255, 255, 255);
-    pg.noStroke();
+    // Dot radius only depends on this frame's `high`, not on i — constant
+    // across all points, so the whole cloud batches into one draw call via
+    // beginShape(POINTS) instead of one ellipse() call per point (was up to
+    // 20000 individual draw calls/frame).
+    pg.noFill();
+    pg.strokeCap(ROUND);
+    pg.strokeWeight(1.6 + p.high * 1.4);
     float x = 0, y = 0;
+    pg.beginShape(POINTS);
     for (int i = 0; i < pts; i++) {
       float r = random(1);
       float nx, ny;
@@ -22,9 +29,10 @@ class BarnsleyFernRenderer implements FractalRenderer {
       else               { nx = -0.15 * x + 0.28 * y; ny =  0.26 * x + 0.24 * y + 0.44; }
       x = nx; y = ny;
       float h = (p.hueShift + 110 + y * 6) % 360;
-      pg.fill(h, 200, 255, 180);
-      pg.ellipse(x * scale, y * scale, 1.6 + p.high * 1.4, 1.6 + p.high * 1.4);
+      pg.stroke(h, 200, 255, 180);
+      pg.vertex(x * scale, y * scale);
     }
+    pg.endShape();
     pg.popMatrix();
   }
 }

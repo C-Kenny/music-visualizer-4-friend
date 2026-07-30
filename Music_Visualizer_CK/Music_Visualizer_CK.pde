@@ -21,6 +21,7 @@ IScene[] scenes;
 SceneSwitcher sceneSwitcher;
 AudioSourceSwitcher audioSwitcher;
 AutoSwitcher   autoSwitcher;
+ParamAutoPilot paramAutoPilot;
 SceneGuard       sceneGuard;
 FrameWatchdog    frameWatchdog;
 KillSwitch       killSwitch;
@@ -35,11 +36,12 @@ HelpOverlay      helpOverlay;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
 FrameBudget      frameBudget;
-final int SCENE_COUNT = 55;
+final int SCENE_COUNT = 58;
 int previousState = -1;
 boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
 
 AudioAnalyser analyzer;
+SpatialAudio spatial;     // 8D-audio pan/orbit tracker — scenes read spatial.pan/azimuth
 DropPredictor dropPredictor;
 PFont monoFont;
 PGraphics sceneBuffer;
@@ -555,7 +557,16 @@ String getSongNameFromFilePath(String song_path, String osType) {
 }
 
 void settings() {
-  size(displayWidth, displayHeight - 80, P3D);
+  // Some sandboxed environments (e.g. Flatpak-packaged Processing blocking the
+  // AWT/X11 portal call) can't query the display at settings()-time and report
+  // 0x0 here. size() only works in settings() — if we let a 0 through, the OS
+  // clamps it to a tiny sliver window for the whole run. Fall back to a sane
+  // default so at least the window is usable; see documentation for the real
+  // fix (running a non-sandboxed Processing install).
+  int fallbackW = 1920, fallbackH = 1080;
+  int w = (displayWidth  > 0) ? displayWidth  : fallbackW;
+  int h = (displayHeight > 0) ? displayHeight : fallbackH;
+  size(w, h - 80, P3D);
   boolean useFancy = false;
   if (args != null) {
     for (String arg : args) {
@@ -594,6 +605,7 @@ void setup() {
   sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
   background(200);
   analyzer = new AudioAnalyser();
+  spatial = new SpatialAudio();
   logToStdout("canvas spawned");
   initializeGlobals();
   // Detect smoke test early so setSongToVisualize() skips the file picker
@@ -674,11 +686,15 @@ void setup() {
   scenes[52] = new HyperspaceBloomScene();
   scenes[53] = new TableTennisSimScene();
   scenes[54] = new SimCubeScene();
+  scenes[55] = new FableMurmurationScene();
+  scenes[56] = new SpatialOrbitScene();
+  scenes[57] = new ParalyzedScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
   audioSwitcher  = new AudioSourceSwitcher();
   autoSwitcher   = new AutoSwitcher();
+  paramAutoPilot = new ParamAutoPilot();
   featureFlagServer.loadFromDisk();  // after autoSwitcher so AUTO_SWITCH_MODE applies
   sceneGuard     = new SceneGuard();
   frameWatchdog  = new FrameWatchdog();
@@ -849,16 +865,21 @@ void toggleAudioInputMode() {
 }
 
 void mousePressed() {
+  if (paramAutoPilot != null) paramAutoPilot.noteActivity();
   scenes[config.STATE].handleKey(' '); // reuse handleKey for simple click-bursts if scene desires
 }
 
 void mouseWheel(MouseEvent event) {
+  if (paramAutoPilot != null) paramAutoPilot.noteActivity();
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
     scenes[config.STATE].handleMouseWheel(event.getCount());
   }
 }
 
 void keyPressed() {
+  // Any keystroke means a human is at the desk — pause autopilot drift.
+  if (paramAutoPilot != null) paramAutoPilot.noteActivity();
+
   // Tab always toggles scene switcher (checked before anything else)
   if (key == TAB) { sceneSwitcher.toggle(); return; }
 
@@ -980,6 +1001,14 @@ void keyPressed() {
     return;
   }
 
+  // `:` toggles knob autopilot (idle drift for sit-back, no-operator viewing)
+  if (key == ':') {
+    paramAutoPilot.toggleEnabled();
+    println("PILOT: " + (paramAutoPilot.enabled ? "ON (drifts after "
+            + (int) paramAutoPilot.IDLE_SECONDS_BEFORE_ENGAGE + "s idle)" : "OFF"));
+    return;
+  }
+
 // Ctrl+1..9 moves window to that display (1-indexed in UI, 0-indexed internally).
   if (keyEvent != null && keyEvent.isControlDown() && key >= '1' && key <= '9') {
     displayManager.moveTo(key - '1');
@@ -1008,6 +1037,7 @@ void keyPressed() {
   if (key == 'O') selectInput("Pick any song in the folder to shuffle", "folderSelected");
   if (key == 'l' || key == 'L') config.LOGGING_ENABLED = !config.LOGGING_ENABLED;
   if (key == 'm' || key == 'M') config.SHOW_METADATA = !config.SHOW_METADATA;
+  if (key == 'V') config.SHOW_VOLUME_HUD = !config.SHOW_VOLUME_HUD;
   if (key == '`') config.SHOW_CODE = !config.SHOW_CODE;
   if (key == 'i' || key == 'I') config.SHOW_CONTROLLER_GUIDE = !config.SHOW_CONTROLLER_GUIDE;  // Toggle controller guide
   // G cycles PostFX stack (enable next effect); Shift+G disables all
@@ -1078,14 +1108,10 @@ void keyPressed() {
   if (key == CODED) {
     if (keyCode == LEFT)  audio.skip(-10000);
     if (keyCode == RIGHT) audio.skip(10000);
-    if (keyCode == UP) {
-      float current_gain = audio.getGain();
-      audio.setGain(current_gain + 5);
-    }
-    if (keyCode == DOWN) {
-      float current_gain = audio.getGain();
-      audio.setGain(current_gain - 5);
-    }
+    // Volume via Audio.volume/DevVolumeEffect, not player.setGain() — see
+    // Audio.pde's volume field comment for why setGain() is unreliable here.
+    if (keyCode == UP)   audio.nudgeVolume(5);
+    if (keyCode == DOWN) audio.nudgeVolume(-5);
   }
 }
 
@@ -1255,6 +1281,9 @@ final int[] SCENE_ORDER = {
   // SCENE_CHLADNI_PLATE,       // disabled — chladni skybox, revisit later
   SCENE_STRANGE_ATTRACTOR,
   SCENE_HYPERSPACE_BLOOM,
+  SCENE_FABLE_MURMURATION,
+  SCENE_SPATIAL_ORBIT,
+  SCENE_PARALYZED,
   SCENE_SACRED_FRACTALS,
   // SCENE_EXPLAINER — hotkey-only ('v'), excluded from rotation
   // SCENE_THEY_DONT_KNOW,      // disabled, revisit later
@@ -1370,6 +1399,7 @@ void draw() {
     audio.forward();
     audio.beat.detect(audio.player.mix);
     analyzer.update(audio);
+    spatial.update(audio);
     smokeTestRunner.tick(sceneBuffer);
     blendMode(REPLACE);
     imageMode(CORNER);
@@ -1468,11 +1498,13 @@ void draw() {
     audio.forward();
     audio.detectBeat();
     analyzer.update(audio);
+    spatial.update(audio);
     if (frameBudget != null) frameBudget.end();
 
     if (frameBudget != null) frameBudget.begin(FrameBudget.P_INPUT);
     getUserInput();
     if (autoSwitcher != null) autoSwitcher.tick();
+    if (paramAutoPilot != null) paramAutoPilot.tick(controller);
     if (frameBudget != null) frameBudget.end();
 
     didRenderScene = true;
@@ -1569,8 +1601,23 @@ void draw() {
 
   // mp4 capture — pipes the post-FX composite to ffmpeg via worker thread.
   // Excludes HUDs and text overlay (they sit on top of the window blit).
-  if (recorder != null) recorder.tick(toDisplay);
-  if (streamer != null) streamer.tick(toDisplay);
+  // Guarded independently: a PGraphics/GL failure in either subsystem must
+  // disable that subsystem only, never crash the render loop mid-show.
+  if (recorder != null) {
+    try { recorder.tick(toDisplay); }
+    catch (Throwable t) {
+      logSubsystemCrash("recorder", t);
+      try { recorder.stop(); } catch (Throwable ignored) {}
+    }
+  }
+  if (streamer != null) {
+    try { streamer.tick(toDisplay); }
+    catch (Throwable t) {
+      logSubsystemCrash("streamer", t);
+      streamer.lastError = t.getClass().getSimpleName() + ": " + t.getMessage();
+      try { streamer.stop(); } catch (Throwable ignored) {}
+    }
+  }
 
   // Headache-free wash: dim brightness + soft warm tint to round off harshness.
   // Applied in window space so it covers anything in the scene chain. HUD/overlays
@@ -1601,6 +1648,7 @@ void draw() {
     float nextHudY = height - 10 * uiScale();
     nextHudY = drawAudioSourceBadge(nextHudY);
     if (autoSwitcher != null) nextHudY = drawAutoSwitcherBadge(nextHudY);
+    if (paramAutoPilot != null) nextHudY = drawAutoPilotBadge(nextHudY);
     if (postFX != null && postFX.anyEnabled()) nextHudY = drawPostFXBadge(nextHudY);
     if (strobeSafety != null && strobeSafety.enabled) nextHudY = drawStrobeSafetyBadge(nextHudY);
     if (tempoLock != null && (tempoLock.isLocked() || tempoLock.taps.size() > 0)) nextHudY = drawTempoLockBadge(nextHudY);
@@ -1977,6 +2025,12 @@ float drawAudioSourceBadge(float startY) {
   String l2 = src;
   String l3 = audio.isDeviceInput() ? "'  source    +/-  gain" : "'  open source picker";
 
+  // Volume icon row — toggle with 'V'. Folded into this badge rather than
+  // living as its own box (file-mode only; device-mode has no player gain).
+  boolean showVol  = config.SHOW_VOLUME_HUD && !audio.isDeviceInput();
+  float   iconH    = 20 * uiScale();
+  float   volRowH  = showVol ? (iconH + 14 * uiScale()) : 0;
+
   float pad   = 14 * uiScale();
   float lineH = 18 * uiScale();
   float[] b = hudWidthBounds();
@@ -1987,7 +2041,7 @@ float drawAudioSourceBadge(float startY) {
   for (String l : lines) { float w = textWidth(l); if (w > maxW) maxW = w; }
   float textW = constrain(maxW, b[0], b[1]);
   float boxW = textW + pad * 2;
-  float boxH = pad * 2 + lines.length * lineH + 12; // +12 for RMS bar
+  float boxH = pad * 2 + lines.length * lineH + 12 + volRowH; // +12 for RMS bar
   float boxX = width - boxW - 12 * uiScale();
   float boxY = startY - boxH;
 
@@ -2005,6 +2059,11 @@ float drawAudioSourceBadge(float startY) {
   for (int i = 0; i < lines.length; i++) {
     text(lines[i], boxX + pad, ty);
     ty += lineH;
+  }
+
+  if (showVol) {
+    float rowTop = ty - lineH * 0.8 + 5 * uiScale();
+    drawSpeakerVolumeIcon(boxX + pad, rowTop + iconH, iconH, audio.volume);
   }
 
   // Live RMS bar — pulled from FFT band energies (no extra audio touch needed).
@@ -2028,6 +2087,53 @@ float drawAudioSourceBadge(float startY) {
   return boxY - 10 * uiScale(); // Return Y position for next badge above
 }
 
+// Speaker glyph + a right-triangle "ramp" that fills in as volume rises —
+// a similar triangle scaled by volFrac, so it visibly grows rather than
+// just a bar/percentage. (x, yBottom) is the icon's bottom-left corner;
+// `h` is its full height. volume is linear 0..2.0 (1.0 = 100%), display
+// caps visual growth at 100% since the ramp reads as "full" there.
+void drawSpeakerVolumeIcon(float x, float yBottom, float h, float volume) {
+  pushStyle();
+  noStroke();
+  float bodyW = h * 0.30, bodyH = h * 0.62;
+  float midY  = yBottom - h * 0.5;
+
+  // Speaker body + cone (dim green when muted, bright otherwise).
+  boolean muted = volume < 0.02;
+  fill(muted ? color(90, 90, 90) : color(0, 220, 0));
+  rectMode(CORNER);
+  rect(x, midY - bodyH / 2, bodyW, bodyH, 1);
+  triangle(x + bodyW, midY - bodyH / 2, x + bodyW, midY + bodyH / 2, x + bodyW * 2.3, midY);
+
+  // Ramp: dim outline at full height, bright fill scaled by volume fraction
+  // (uniform scale keeps it a similar triangle — grows in both W and H).
+  // Gap after the cone tip keeps the two glyphs visually distinct.
+  float rampX0 = x + bodyW * 2.3 + h * 0.22;
+  float rampW  = h * 2.3;
+  float frac   = constrain(volume, 0, 1); // ramp reads "full" at 100%
+
+  noFill();
+  stroke(0, 110, 0);
+  strokeWeight(1);
+  triangle(rampX0, yBottom, rampX0 + rampW, yBottom, rampX0 + rampW, yBottom - h);
+
+  if (!muted) {
+    noStroke();
+    fill(0, 255, 0);
+    triangle(rampX0, yBottom, rampX0 + rampW * frac, yBottom, rampX0 + rampW * frac, yBottom - h * frac);
+  }
+
+  // Boost past 100% shown as a small overshoot mark above the ramp.
+  if (volume > 1.0) {
+    float boostFrac = constrain(volume - 1.0, 0, 1);
+    stroke(0, 255, 0);
+    strokeWeight(2);
+    line(rampX0 + rampW, yBottom - h, rampX0 + rampW, yBottom - h - h * 0.4 * boostFrac);
+  }
+
+  popStyle();
+}
+
 float drawAutoSwitcherBadge(float startY) {
   String line = autoSwitcher.hudLine();
   if (line == null) return startY;
@@ -2047,6 +2153,31 @@ float drawAutoSwitcherBadge(float startY) {
   fill(0, 180);
   rect(boxX, boxY, boxW, boxH, 4);
   fill(0, 255, 120);
+  text(line, boxX + 8, boxY + 5);
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+// Knob autopilot badge — visible only while drift is actually moving knobs,
+// so the operator can tell at a glance why params are changing on their own.
+float drawAutoPilotBadge(float startY) {
+  String line = paramAutoPilot.hudLine();
+  if (line == null) return startY;
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+  float tw    = textWidth("PILOT drifting 100%  ");
+  float boxH  = ts + 10;
+  float boxW  = tw + 16;
+  float pad   = 10 * uiScale();
+  float boxX  = width - pad - boxW;
+  float boxY  = startY - boxH;
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+  fill(120, 200, 255);
   text(line, boxX + 8, boxY + 5);
   popStyle();
   return boxY - 6 * uiScale();

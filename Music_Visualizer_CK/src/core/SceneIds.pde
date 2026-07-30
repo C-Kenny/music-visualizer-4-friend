@@ -62,3 +62,6 @@ static final int SCENE_SILHOUETTE_PAINTING = 51;
 static final int SCENE_HYPERSPACE_BLOOM    = 52;
 static final int SCENE_TT_SIM_LAB          = 53;
 static final int SCENE_SIM_CUBE            = 54;
+static final int SCENE_FABLE_MURMURATION   = 55;
+static final int SCENE_SPATIAL_ORBIT       = 56;
+static final int SCENE_PARALYZED           = 57;

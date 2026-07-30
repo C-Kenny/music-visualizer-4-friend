@@ -82,7 +82,30 @@ class RecursiveMandalaScene implements IScene {
   PGraphics glowBuf;
   PShape    petalShape;
 
-  RecursiveMandalaScene() {}
+  // Per-level color/stroke terms depend only on recursion level + this
+  // frame's smoothed audio, not on the individual arm — precomputed once
+  // per frame (levelTables()) instead of re-deriving via lerp()/map() on
+  // every one of up to ~960 drawArm() calls.
+  float[] levelHue, levelSat, levelAlpha, levelSw;
+  float   petalWFactor;
+
+  RecursiveMandalaScene() {
+    levelHue   = new float[HARD_MAX_DEPTH + 1];
+    levelSat   = new float[HARD_MAX_DEPTH + 1];
+    levelAlpha = new float[HARD_MAX_DEPTH + 1];
+    levelSw    = new float[HARD_MAX_DEPTH + 1];
+  }
+
+  void computeLevelTables() {
+    petalWFactor = 0.30 * (1.0 + sMid * 0.40);
+    for (int level = 0; level <= HARD_MAX_DEPTH; level++) {
+      float t = (float)level / max(1, maxDepth - 1);
+      levelHue[level]   = (paletteHues[paletteIdx] + level * 34 + sHigh * 75) % 360;
+      levelSat[level]   = lerp(235, 140, t);
+      levelAlpha[level] = lerp(220, 85, t);
+      levelSw[level]    = lerp(3.2, 0.5, t);
+    }
+  }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -159,6 +182,7 @@ class RecursiveMandalaScene implements IScene {
     glowBuf.scale(scl);
     glowBuf.rotate(globalRot + manualRotDelta);
 
+    computeLevelTables();
     for (int i = 0; i < symmetry; i++) {
       glowBuf.pushMatrix();
       glowBuf.rotate(TWO_PI * i / symmetry);
@@ -200,13 +224,13 @@ class RecursiveMandalaScene implements IScene {
   void drawArm(PGraphics pg, float len, int depth, int level) {
     if (depth <= 0 || len < 2.5) return;
 
-    float t      = (float)level / max(1, maxDepth - 1);
-    float hue    = (paletteHues[paletteIdx] + level * 34 + sHigh * 75) % 360;
-    float sat    = lerp(235, 140, t);
+    int   lvl    = min(level, HARD_MAX_DEPTH);
+    float hue    = levelHue[lvl];
+    float sat    = levelSat[lvl];
     float bri    = 255;
-    float alpha  = lerp(220, 85, t);
-    float sw     = lerp(3.2, 0.5, t);
-    float petalW = len * 0.30 * (1.0 + sMid * 0.40);
+    float alpha  = levelAlpha[lvl];
+    float sw     = levelSw[lvl];
+    float petalW = len * petalWFactor;
 
     // Filled petal — low alpha; ADD mode makes overlaps glow naturally
     pg.noStroke();

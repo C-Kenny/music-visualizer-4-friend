@@ -9,6 +9,7 @@ class SkyboxBackground implements IBackground {
   String displayName;
   float  camRotY = 0;
   float  camRotX = 0.15;  // gentle upward tilt
+  boolean loadAttempted = false;
 
   SkyboxBackground(String skyboxDirName) {
     skybox      = new Skybox();
@@ -18,9 +19,11 @@ class SkyboxBackground implements IBackground {
   }
 
   void drawBackground(PGraphics pg) {
-    // Load on first use so setup() doesn't block loading 150 PNGs at once
-    if (!skybox.loaded) {
-      skybox.load(resourcePath("media/skyboxes/" + dirName));
+    // Load on first use so setup() doesn't block loading 150 PNGs at once.
+    // One attempt only — a missing pack must not retry disk IO every frame.
+    if (!skybox.loaded && !loadAttempted) {
+      loadAttempted = true;
+      loadSkyboxByName(skybox, dirName);
     }
 
     pg.background(0);

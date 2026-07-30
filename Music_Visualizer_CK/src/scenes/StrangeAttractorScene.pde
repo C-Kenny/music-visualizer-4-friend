@@ -52,10 +52,17 @@
 class StrangeAttractorScene implements IScene {
 
   // ── Particle cloud ────────────────────────────────────────────────────────
-  static final int N = 25000;
+  static final int N = 25000;             // array capacity (max particles)
+  // Particles actually simulated/drawn each frame. Defaults to N (no
+  // behavior change) — a future perf/venue-conditions knob can lower this
+  // without touching array allocation, since the O(N) centroid+integrate
+  // passes are this scene's real cost driver.
+  int activeN = N;
   float[] px = new float[N], py = new float[N], pz = new float[N];
   float[] dx = new float[N], dy = new float[N], dz = new float[N];
   float[] phase = new float[N];           // static per-particle hue seed
+
+  void setActiveN(int n) { activeN = constrain(n, 1000, N); }
 
   // ── Attractor systems ─────────────────────────────────────────────────────
   static final int N_SYS = 6;
@@ -117,7 +124,7 @@ class StrangeAttractorScene implements IScene {
 
   void scatter() {
     float s = SYS_SCALE[activeIdx];
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < activeN; i++) {
       // Seed in a small cloud near origin, in the natural scale of the active
       // system. Chaos spreads them out within the first second.
       px[i] = (random(1) - 0.5) * s * 0.5;
@@ -293,7 +300,7 @@ class StrangeAttractorScene implements IScene {
     // center, not the world origin. Sampled across all N particles each
     // frame, lerp-smoothed so it doesn't jitter during morph transitions.
     float sx = 0, sy = 0, sz = 0;
-    for (int i = 0; i < N; i++) { sx += px[i]; sy += py[i]; sz += pz[i]; }
+    for (int i = 0; i < activeN; i++) { sx += px[i]; sy += py[i]; sz += pz[i]; }
     float meanX = sx / N, meanY = sy / N, meanZ = sz / N;
     centerX = lerp(centerX, meanX, 0.06);
     centerY = lerp(centerY, meanY, 0.06);
@@ -346,7 +353,7 @@ class StrangeAttractorScene implements IScene {
     // Integrate each particle in attractor-local coordinates. We divide
     // by the system scale going in and multiply on render, so particles
     // stay in numerically stable ranges.
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < activeN; i++) {
       // Convert world pos back to system-local.
       float xA = px[i] / scaleA, yA = py[i] / scaleA, zA = pz[i] / scaleA;
 
@@ -408,7 +415,7 @@ class StrangeAttractorScene implements IScene {
     // beginShape is honoured in P3D.
     pg.noFill();
     pg.beginShape(LINES);
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < activeN; i++) {
       float vx = dx[i], vy = dy[i], vz = dz[i];
       float spd = sqrt(vx*vx + vy*vy + vz*vz);
       float hue, sat, bri, alp;

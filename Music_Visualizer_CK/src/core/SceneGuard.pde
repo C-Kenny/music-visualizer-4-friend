@@ -12,6 +12,13 @@
  *
  * The guard itself never throws — any failure during logging or card rendering
  * is swallowed so the render loop always progresses.
+ *
+ * Blacklist state is in-memory only (session-scoped), by design — it does not
+ * persist across a restart. A restart is often itself the operator's recovery
+ * action after something upstream went wrong (GL context reset, driver hiccup),
+ * so carrying a blacklist forward could permanently disable a scene that only
+ * failed due to a transient issue. Live shows should recover a scene by
+ * restarting, not need a separate un-blacklist step.
  */
 class SceneGuard {
   static final int  MAX_FAILURES_PER_SCENE = 3;
@@ -130,5 +137,27 @@ class SceneGuard {
     } catch (Throwable ignored) {
       // Never let logging itself crash the recovery path.
     }
+  }
+}
+
+// Shared crash-log sink for non-scene subsystems (streamer, recorder, ...).
+// Mirrors SceneGuard.logException's rotation/never-throw contract so a
+// logging failure can never cascade into the render loop.
+void logSubsystemCrash(String tag, Throwable t) {
+  try {
+    String logPath = userDataPath("crash_log.txt");
+    java.io.File f = new java.io.File(logPath);
+    if (f.exists() && f.length() > SceneGuard.LOG_MAX_BYTES) {
+      f.renameTo(new java.io.File(logPath + ".old"));
+    }
+    java.io.FileWriter  fw = new java.io.FileWriter(logPath, true);
+    java.io.PrintWriter pw = new java.io.PrintWriter(fw);
+    pw.println("=== " + new java.util.Date() + "  subsystem=" + tag + " ===");
+    t.printStackTrace(pw);
+    pw.println();
+    pw.close();
+    fw.close();
+  } catch (Throwable ignored) {
+    // Never let logging itself crash the render loop.
   }
 }

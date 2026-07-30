@@ -14,24 +14,29 @@
  * Controller: dpad right = next, dpad left = prev
  */
 
-// ── Top-level helper — scan media/skyboxes/ for valid cubemap directories ────
-// Returns sorted array of directory names that contain px.png.
+// ── Top-level helper — list every available cubemap ─────────────────────────
+// Sources, in order:
+//   1. generated auto_* skyboxes (always present — pure code, no assets)
+//   2. user/venue packs in <userDataDir>/skyboxes/  (the licensing-safe path)
+//   3. bundled media/skyboxes/ (dev machines only — gitignored, never shipped)
+// User packs shadow bundled ones with the same name.
 String[] discoverSkyboxNames() {
-  String root = resourcePath("media/skyboxes/");
-  java.io.File dir = new java.io.File(root);
-  java.io.File[] entries = dir.listFiles();
-  if (entries == null) {
-    println("discoverSkyboxNames: skyboxes dir not found at " + root);
-    return new String[0];
-  }
-  java.util.ArrayList<String> names = new java.util.ArrayList<String>();
-  for (java.io.File f : entries) {
-    if (f.isDirectory() && new java.io.File(f, "px.png").exists()) {
-      names.add(f.getName());
+  java.util.TreeSet<String> onDisk = new java.util.TreeSet<String>();
+  String[] roots = { userSkyboxRoot(), resourcePath("media/skyboxes/") };
+  for (String root : roots) {
+    java.io.File[] entries = new java.io.File(root).listFiles();
+    if (entries == null) continue;
+    for (java.io.File f : entries) {
+      if (f.isDirectory() && new java.io.File(f, "px.png").exists()) {
+        onDisk.add(f.getName());
+      }
     }
   }
-  java.util.Collections.sort(names);
-  println("discoverSkyboxNames: found " + names.size() + " skyboxes in " + root);
+  java.util.ArrayList<String> names = new java.util.ArrayList<String>();
+  for (String auto : AUTO_SKYBOX_NAMES) names.add(auto);
+  names.addAll(onDisk);
+  println("discoverSkyboxNames: " + AUTO_SKYBOX_NAMES.length + " generated + "
+          + onDisk.size() + " on disk (user dir: " + userSkyboxRoot() + ")");
   return names.toArray(new String[0]);
 }
 
@@ -87,6 +92,6 @@ class SkyboxPicker {
     idx = newIdx;
     if (idx == 0) { box = null; return; }
     box = new Skybox();
-    box.load(resourcePath("media/skyboxes/" + NAMES[idx]));
+    loadSkyboxByName(box, NAMES[idx]);
   }
 }

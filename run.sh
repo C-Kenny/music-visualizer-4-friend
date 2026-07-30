@@ -63,6 +63,11 @@ if [[ -f "Music_Visualizer_CK/.devscene" ]]; then
   ln -s "$ORIGIN_DIR/.devscene" "$BUILD_DIR/.devscene"
 fi
 
+# Link .devvolume if it exists (local-dev listening volume override)
+if [[ -f "Music_Visualizer_CK/.devvolume" ]]; then
+  ln -s "$ORIGIN_DIR/.devvolume" "$BUILD_DIR/.devvolume"
+fi
+
 # Link .smoketest if it exists
 if [[ -f "Music_Visualizer_CK/.smoketest" ]]; then
   ln -s "$ORIGIN_DIR/.smoketest" "$BUILD_DIR/.smoketest"

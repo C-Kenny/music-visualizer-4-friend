@@ -23,7 +23,16 @@ class FluidSimScene implements IScene {
   float kill = 0.062;
   
   PImage display;
-  
+
+  // A/X are already reset/seed, so sticks map by hand in applyController
+  // rather than via routeParamsToSticks' default A-reset binding. Feed/kill
+  // are the Gray-Scott knobs where tiny shifts cause completely different
+  // emergent patterns (spots vs. mazes vs. worms) — genuinely fun to drive live.
+  SceneParam pFeedBias = new SceneParam("feedBias", "Feed Bias", -0.02, 0.02, 0);
+  SceneParam pKillBias = new SceneParam("killBias", "Kill Bias", -0.02, 0.02, 0);
+  SceneParam pSimSpeed = new SceneParam("simSpeed", "Sim Speed", 1, 4, 2);
+  SceneParam[] params = { pFeedBias, pKillBias, pSimSpeed };
+
   FluidSimScene() {
     gridA = new float[w][h];
     gridB = new float[w][h];
@@ -62,15 +71,16 @@ class FluidSimScene implements IScene {
     float high = analyzer.high;
     
     // Slight shifts in parameters create massive structural changes
-    feed = 0.04 + bass * 0.04;
-    kill = 0.06 + high * 0.01;
-    
+    feed = 0.04 + bass * 0.04 + pFeedBias.value;
+    kill = 0.06 + high * 0.01 + pKillBias.value;
+
     if (analyzer.isBeat) {
       seedRandom();
     }
-    
-    // Simulation steps (run twice per frame for faster evolution)
-    for (int step = 0; step < 2; step++) {
+
+    // Simulation steps per frame (faster = evolves quicker under the same feed/kill)
+    int steps = round(pSimSpeed.value);
+    for (int step = 0; step < steps; step++) {
       updateSimulation();
     }
     
@@ -177,26 +187,40 @@ class FluidSimScene implements IScene {
         if (c.aJustPressed) resetGrids();
         if (c.xJustPressed) seedRandom();
     }
+    float dz = 0.12;
+    float lx = (c.lx - width  * 0.5) / (width  * 0.5);
+    float ly = (c.ly - height * 0.5) / (height * 0.5);
+    float rx = (c.rx - width  * 0.5) / (width  * 0.5);
+    if (abs(lx) > dz) pFeedBias.nudgeNorm(lx * 0.02);
+    if (abs(ly) > dz) pKillBias.nudgeNorm(-ly * 0.02);
+    if (abs(rx) > dz) pSimSpeed.nudgeNorm(rx * 0.02);
   }
 
   void handleKey(char k) {
-    if (k == 'r') resetGrids();
-    if (k == ' ') seedRandom();
+    if (k == 'r') { resetGrids(); return; }
+    if (k == ' ') { seedRandom(); return; }
+    handleParamKey(k);
   }
+
+  SceneParam[] getParams() { return params; }
 
   String[] getCodeLines() {
     return new String[] {
       "// Reaction-Diffusion (Gray-Scott)",
       "dA:" + nf(dA, 1, 2) + " dB:" + nf(dB, 1, 2),
       "feed:" + nf(feed, 1, 3) + " kill:" + nf(kill, 1, 3),
-      "Grid: " + w + "x" + h
+      "Grid: " + w + "x" + h,
+      "LStick: feed bias / kill bias   RStick ↔: sim speed"
     };
   }
 
   ControllerLayout[] getControllerLayout() {
     return new ControllerLayout[] {
       new ControllerLayout("A Button", "Reset Sim"),
-      new ControllerLayout("X Button", "Random Seed")
+      new ControllerLayout("X Button", "Random Seed"),
+      new ControllerLayout("LStick ↔", "Feed bias (spots ↔ mazes ↔ chaos)"),
+      new ControllerLayout("LStick ↕", "Kill bias"),
+      new ControllerLayout("RStick ↔", "Simulation speed"),
     };
   }
 }
