@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build-deb.sh — wrap Processing's exported Linux app into a .deb.
+# build-deb.sh - wrap Processing's exported Linux app into a .deb.
 #
 # Usage:
 #   bash scripts/build-deb.sh <path-to-exported-app> [version]
@@ -37,19 +37,19 @@ install -d "$ROOT/usr/share/doc/$PKG"
 cp -a "$APP_SRC"/. "$ROOT/opt/$PKG/"
 
 # Identify the launcher binary that Processing produced.
-# It's named after the sketch — find the executable file with no extension.
+# It's named after the sketch - find the executable file with no extension.
 LAUNCHER=$(find "$ROOT/opt/$PKG" -maxdepth 1 -type f -executable ! -name "*.*" | head -1)
 [ -n "$LAUNCHER" ] || { echo "ERROR: no launcher found in $APP_SRC"; exit 1; }
 LAUNCHER_NAME=$(basename "$LAUNCHER")
 
-# /usr/bin shim — chdir into /opt/<pkg> so relative paths (data/, libraries/) work.
+# /usr/bin shim - chdir into /opt/<pkg> so relative paths (data/, libraries/) work.
 cat > "$ROOT/usr/bin/$PKG" <<EOF
 #!/bin/sh
 cd /opt/$PKG && exec ./$LAUNCHER_NAME "\$@"
 EOF
 chmod 755 "$ROOT/usr/bin/$PKG"
 
-# .desktop entry — picked up by GNOME/KDE/XFCE app menus.
+# .desktop entry - picked up by GNOME/KDE/XFCE app menus.
 cat > "$ROOT/usr/share/applications/$PKG.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -63,11 +63,11 @@ Categories=AudioVideo;Audio;Player;
 Keywords=music;audio;visualizer;fft;
 EOF
 
-# Icon (optional — drop a 256x256 PNG at media/icon.png to use)
+# Icon (optional - drop a 256x256 PNG at media/icon.png to use)
 if [ -f media/icon.png ]; then
   cp media/icon.png "$ROOT/usr/share/icons/hicolor/256x256/apps/$PKG.png"
 else
-  echo "[warn] media/icon.png missing — package builds, but no menu icon"
+  echo "[warn] media/icon.png missing - package builds, but no menu icon"
   # Strip Icon= line so .desktop doesn't reference a missing file
   sed -i "/^Icon=/d" "$ROOT/usr/share/applications/$PKG.desktop"
 fi
@@ -99,10 +99,10 @@ Homepage: https://github.com/slaughtrdestny/music-visualizer-4-friend
 Description: Audio-reactive visualizer with 40+ scenes
  Processing-based music visualizer driven by FFT + beat detection,
  Xbox controller input, and a phone web controller.
- Bundles its own Java runtime — no system Java required.
+ Bundles its own Java runtime - no system Java required.
 EOF
 
-# ── postinst — refresh icon + desktop caches ──────────────────────────────────
+# ── postinst - refresh icon + desktop caches ──────────────────────────────────
 cat > "$ROOT/DEBIAN/postinst" <<'EOF'
 #!/bin/sh
 set -e

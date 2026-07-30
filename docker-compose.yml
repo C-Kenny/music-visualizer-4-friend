@@ -1,4 +1,4 @@
-# docker-compose.yml — three profiles for different deploy scenarios.
+# docker-compose.yml - three profiles for different deploy scenarios.
 #
 # Pick one:
 #   docker compose --profile vnc   up    # remote view at vnc://localhost:5900
@@ -27,7 +27,7 @@ services:
     environment:
       MV_MODE: host
       DISPLAY: ${DISPLAY}
-      # share host pulse — needs `pactl load-module module-native-protocol-unix` on host
+      # share host pulse - needs `pactl load-module module-native-protocol-unix` on host
       PULSE_SERVER: unix:/run/user/1000/pulse/native
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix

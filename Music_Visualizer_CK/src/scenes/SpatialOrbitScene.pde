@@ -1,5 +1,6 @@
 /**
  * SpatialOrbitScene - the showcase for the 8D-audio tracker (SpatialAudio).
+ * See documentation/8d_audio.md for the azimuth convention and tuning knobs.
  *
  * You are looking DOWN at the listener's head from above. Front is up.
  * A comet marks where the sound currently sits around the head, exactly as

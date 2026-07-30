@@ -57,79 +57,93 @@ Pick the one that matches what you're doing:
 
 #### Keyboard
 
-**Scenes**
+Also shown in-app, live, by pressing **`?`** - that overlay and this table are
+generated from the same source (`HelpOverlay.pde`), so they can't drift apart.
 
-| Key | Action |
-|-----|--------|
-| `1`–`9`, `0` | Jump to scene at that slot in `SCENE_ORDER` |
-| `<` / `>` | Previous / next scene |
-| `Tab` | Scene switcher overlay |
-| `w` / `v` | Jump to hotkey-only scenes (Math Wave / Explainer) - not in the rotation |
+<!-- BEGIN GENERATED KEYBOARD CONTROLS (scripts/gen_readme_controls.py) -->
 
 **Stage**
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+Enter` | Showtime macro - fullscreen + strobe safety on, one shot |
-| `F11` | Toggle fullscreen on current display |
-| `Ctrl+1`..`Ctrl+9` | Move window to display N |
-| `Esc` | **Kill switch** - emergency fade-to-black (re-press to restore) |
-| `F12` | Toggle strobe safety cap |
-| `F3` / `Shift+F3` | Toggle live text overlay (DJ name / track title) / cycle layout |
+| `Ctrl+Enter` | showtime - fullscreen + strobe safety on |
+| `F11` | toggle fullscreen on current display |
+| `Ctrl+1..9` | move window to display N |
+| `Esc` | emergency fade-to-black (kill switch) |
+| `F12` | toggle strobe safety cap |
+| `F3` | text overlay  (Shift+F3 cycles layout) |
 | `F4` | MIDI bridge - scan + open inputs |
-| `F5` | Start / stop mp4 recording |
-| `F6` / `F7` | Toggle LAN stream (`F7` is the fallback if the WM eats `F6`); `Shift+F6`/`F7` cycles bandwidth profile |
-| `F8` | Toggle per-phase frame budget HUD |
-| `F9` / `Shift+F9` | Toggle auto-switcher / cycle mode |
-| `:` | Toggle knob autopilot - drifts scene params when idle |
+| `F5` | start / stop mp4 recording |
+| `F6` / `F7` | toggle LAN stream (F7 fallback if WM eats F6) |
+| `F9` | auto-switcher  (Shift+F9 cycles mode) |
+| `:` | knob autopilot - drifts scene params when idle |
 
-**Tempo & setlist**
-
-| Key | Action |
-|-----|--------|
-| `\` | Tap tempo (4 taps to lock) |
-| `\|` | Clear tempo lock |
-| `]` / `[` | Setlist: next / previous entry |
-| `}` | Setlist: toggle auto-advance |
-| `{` | Setlist: reload `setlist.txt` |
-
-**Audio**
+**Tempo + Setlist**
 
 | Key | Action |
 |-----|--------|
-| `'` (apostrophe) | Audio source switcher (file vs live device) |
-| `s` | Pause / resume song |
-| `n` / `N` | Next / shuffle song |
-| `o` / `O` | Open file picker / pick a folder to shuffle |
-| `↑` / `↓` | Master volume ±5% |
-| `←` / `→` | Skip ±10s |
-| `+` / `-` | Nudge live-input gain (DEVICE mode only) |
-| `V` | Toggle the volume icon in the AUDIO HUD badge |
+| `\` | tap tempo  (4 taps to lock) |
+| `\|` | clear tempo lock |
+| `]` | setlist: next entry |
+| `[` | setlist: previous entry |
+| `}` | setlist: toggle auto-advance |
+| `{` | setlist: reload setlist.txt |
 
-**Visuals & backgrounds**
+**Scenes**
 
 | Key | Action |
 |-----|--------|
-| `G` / `Shift+G` | Cycle PostFX stack / disable all (bloom, chroma, scanlines, vignette, pixel-sort) |
-| `t` / `p` / `P` | Toggle tunnel / plasma / polar-plasma background |
-| `h` / `H` | Cycle / toggle hand-drawn renderer |
+| `1..0` | jump to SCENE_ORDER[0..9] |
+| `<` / `>` | prev / next scene |
+| `Tab` | scene switcher overlay |
+| `w` / `v` | hotkey-only scenes (Math Wave / Explainer) |
+
+**Song + Audio**
+
+| Key | Action |
+|-----|--------|
+| `'` | audio source switcher |
+| `s` | pause / resume song |
+| `n` / `N` | next / shuffle song |
+| `o` / `O` | open file picker / pick folder to shuffle |
+| `↑ ↓` | master volume ±5% |
+| `← →` | skip ±10s |
+| `+` / `-` | nudge live-input gain (DEVICE mode only) |
+
+**Visuals**
+
+| Key | Action |
+|-----|--------|
+| `g` / `G` | cycle / clear post-FX |
+| `t` / `p` / `P` | toggle tunnel / plasma / polar-plasma background |
+| `h` / `H` | hand-drawn renderer cycle |
 
 **Info**
 
 | Key | Action |
 |-----|--------|
-| `?` | Toggle the stage hotkey help overlay |
-| `m` | Toggle metadata HUD |
-| `i` | Toggle controller-guide overlay |
-| `` ` `` | Toggle code/formula overlay |
+| `?` | toggle this help |
+| `i` | controller guide |
+| `m` | metadata HUD |
+| `V` | volume HUD |
+| `` ` `` | code overlay (when scene exposes it) |
 
 **System**
 
 | Key | Action |
 |-----|--------|
-| `c` | Calibrate controller stick centre |
-| `l` / `L` | Toggle verbose console logging |
-| `q` | Quit |
+| `c` | calibrate controller stick centre |
+| `l` / `L` | toggle verbose console logging |
+| `q` | quit |
+
+**Scene-Local**
+
+| Key | Action |
+|-----|--------|
+| `Y` | live Java console: force reload (scene 50) |
+| `R` | table tennis: reset scoreboard + serve order |
+
+<!-- END GENERATED KEYBOARD CONTROLS -->
 
 #### Xbox controller
 

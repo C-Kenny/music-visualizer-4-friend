@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fetch MediaMTX, the streaming sidecar used by Streamer (F6 in sketch).
 # Single static binary, runs locally, serves WebRTC + HLS + RTSP from a
-# single ffmpeg push. Linux x86_64 only — extend for arm64/mac as needed.
+# single ffmpeg push. Linux x86_64 only - extend for arm64/mac as needed.
 #
 # Installs into the user data dir so it's auto-located and survives upgrades.
 #
@@ -47,8 +47,8 @@ chmod +x "$USER_DATA_DIR/mediamtx"
 # the laptop. Default config binds to localhost in some releases.
 CFG="$USER_DATA_DIR/mediamtx.yml"
 if [[ -f "$CFG" ]]; then
-  # idempotent — just rewrite known knobs we care about
-  python3 - "$CFG" <<'PY' || echo "(skipped config patch — install python3-yaml or hand-edit $USER_DATA_DIR/mediamtx.yml)"
+  # idempotent - just rewrite known knobs we care about
+  python3 - "$CFG" <<'PY' || echo "(skipped config patch - install python3-yaml or hand-edit $USER_DATA_DIR/mediamtx.yml)"
 import sys, re
 p = sys.argv[1]
 s = open(p).read()

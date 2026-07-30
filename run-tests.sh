@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run-tests.sh — compile-check the sketch then run all unit tests
+# run-tests.sh - compile-check the sketch then run all unit tests
 # Usage: ./run-tests.sh
 set -euo pipefail
 
@@ -32,7 +32,7 @@ info() { echo -e "${YELLOW}▸ $1${NC}"; }
 # ── 1. Compile smoke test via processing CLI ──────────────────────────────────
 info "Compile check: processing cli --build ..."
 if run_processing --sketch="$SKETCH_DIR" --build 2>&1 | grep -qi "error"; then
-  fail "Sketch failed to compile — fix errors before running tests"
+  fail "Sketch failed to compile - fix errors before running tests"
 fi
 pass "Sketch compiles cleanly"
 
@@ -47,5 +47,5 @@ cd "$TESTS_DIR"
 if mvn --quiet test; then
   pass "All unit tests passed"
 else
-  fail "Unit tests failed — see output above"
+  fail "Unit tests failed - see output above"
 fi

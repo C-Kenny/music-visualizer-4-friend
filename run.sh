@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# run.sh — Stages a flattened build for Processing and runs it.
+# run.sh - Stages a flattened build for Processing and runs it.
 set -euo pipefail
 
 # Kill any lingering sketch processes so two visualizers don't fight over the
-# audio device / controller. Quiet — most runs have nothing to kill.
+# audio device / controller. Quiet - most runs have nothing to kill.
 pkill -f "Music_Visualizer_CK Music_Visualizer_CK" 2>/dev/null || true
 pkill -f "Processing cli --sketch=.build/Music_Visualizer_CK" 2>/dev/null || true
 
 run_processing() {
   # Prefer snap when the processing snap is actually installed (not just when
-  # `snap` is on PATH — many CI runners have snap but no processing snap).
+  # `snap` is on PATH - many CI runners have snap but no processing snap).
   if command -v snap >/dev/null 2>&1 && snap list processing >/dev/null 2>&1; then
     snap run processing cli "$@"
   elif [[ -x /snap/bin/processing ]]; then
@@ -82,7 +82,7 @@ fi
 
 # Persist runtime state across runs (.build is wiped each launch). UserPaths.pde
 # routes featureflags.json / pins.json / bans.json / .devadmintoken / crash_log
-# / prefs through userDataPath() — point it at the source dir in dev mode so
+# / prefs through userDataPath() - point it at the source dir in dev mode so
 # state lives with the project and `git status` still surfaces drift.
 export MV_USER_DATA_DIR="$ORIGIN_DIR"
 touch "$ORIGIN_DIR/featureflags.json"

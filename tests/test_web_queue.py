@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-test_web_queue.py — Integration tests for the WebQueueManager system.
+test_web_queue.py - Integration tests for the WebQueueManager system.
 
 Run AFTER the visualizer is started with ./run.sh.
 
@@ -72,7 +72,7 @@ def http_get(url):
 # Test suites
 
 def test_operator_json(base):
-    section("GET /operator.json — queue key present")
+    section("GET /operator.json - queue key present")
     try:
         r = http_get(f"{base}/operator.json")
         assert r.status_code == 200, f"HTTP {r.status_code}"
@@ -87,7 +87,7 @@ def test_operator_json(base):
 
 
 def test_param_gating_no_driver(base):
-    section("POST /param — allowed when no active driver")
+    section("POST /param - allowed when no active driver")
     try:
         body = {"id": "speed", "norm": 0.5}
         r = http_post(f"{base}/param", body, {"X-Client-Id": str(uuid.uuid4())})
@@ -112,14 +112,14 @@ def get_master_pin(base):
 
 def test_admin_queue_routes_localhost_bypass(base):
     """
-    adminAuthed() grants localhost (127.0.0.1) unrestricted access — this is the
+    adminAuthed() grants localhost (127.0.0.1) unrestricted access - this is the
     intended operator-console security model: trust the machine, not a token.
     From non-localhost a token/cookie is required (tested at the unit level).
     Here we verify the routes exist and return valid JSON from localhost.
     """
-    section("Admin queue routes — localhost bypass (expected 200 from 127.0.0.1)")
+    section("Admin queue routes - localhost bypass (expected 200 from 127.0.0.1)")
 
-    # rotate — idempotent, safe to call
+    # rotate - idempotent, safe to call
     try:
         r = requests.post(f"{base}/admin/queue/rotate", json={}, timeout=5)
         assert r.status_code == 200, f"expected 200 from localhost, got {r.status_code}"
@@ -129,7 +129,7 @@ def test_admin_queue_routes_localhost_bypass(base):
     except Exception as e:
         fail("queue/rotate localhost access", str(e))
 
-    # pause — toggle pause on then off
+    # pause - toggle pause on then off
     try:
         r = requests.post(f"{base}/admin/queue/pause", json={"paused": True}, timeout=5)
         assert r.status_code == 200, f"expected 200, got {r.status_code}"
@@ -140,7 +140,7 @@ def test_admin_queue_routes_localhost_bypass(base):
     except Exception as e:
         fail("queue/pause localhost access", str(e))
 
-    # pin — clear any existing pin (safe no-op)
+    # pin - clear any existing pin (safe no-op)
     try:
         r = requests.post(f"{base}/admin/queue/pin", json={"clientId": ""}, timeout=5)
         assert r.status_code == 200, f"expected 200, got {r.status_code}"
@@ -201,7 +201,7 @@ def test_ws_hello_ok_and_queue_status(ws_url, pin):
 
 
 def test_ws_vote_ignored_without_driver(ws_url, pin):
-    section("WS vote — silently ignored when no active driver")
+    section("WS vote - silently ignored when no active driver")
 
     async def run():
         hello, cid = make_hello(nickname="voter", pin=pin)
@@ -214,7 +214,7 @@ def test_ws_vote_ignored_without_driver(ws_url, pin):
                     except asyncio.TimeoutError: break
                 # send a vote
                 await ws.send(json.dumps({"type": "vote", "val": 1}))
-                # expect no error crash — just quiet
+                # expect no error crash - just quiet
                 try:
                     msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
                     parsed = json.loads(msg)
@@ -231,7 +231,7 @@ def test_ws_vote_ignored_without_driver(ws_url, pin):
 
 
 def test_ws_sticks_rejected_when_not_driver(ws_url, pin):
-    section("WS sticks — non-driver inputs: connection stays alive")
+    section("WS sticks - non-driver inputs: connection stays alive")
     # Gating is enforced in isContributing() / applyTo(), not the WS protocol layer.
 
     async def run():
@@ -242,7 +242,7 @@ def test_ws_sticks_rejected_when_not_driver(ws_url, pin):
                 for _ in range(3):
                     try: await asyncio.wait_for(ws.recv(), timeout=0.4)
                     except asyncio.TimeoutError: break
-                # send sticks — server should not crash or drop connection
+                # send sticks - server should not crash or drop connection
                 await ws.send(json.dumps({"type": "sticks", "lx": 0.5, "ly": 0.0, "rx": 0.0, "ry": 0.0}))
                 await asyncio.sleep(0.3)
                 # Verify connection is still alive by pinging (a closed conn raises here)
@@ -258,7 +258,7 @@ def test_ws_sticks_rejected_when_not_driver(ws_url, pin):
 
 
 def test_http_hello_join_queue(base, ws_url):
-    section("HTTP /input/hello — client joins queue, visible in operator.json")
+    section("HTTP /input/hello - client joins queue, visible in operator.json")
 
     cid = str(uuid.uuid4())
     hello_body = {
@@ -279,7 +279,7 @@ def test_http_hello_join_queue(base, ws_url):
             fail("HTTP hello response code", f"got {r.status_code}")
             return
         if r.status_code == 403:
-            print(f"    {YELLOW}⚠ PIN required — skipping queue join check (set --pin to test){RESET}")
+            print(f"    {YELLOW}⚠ PIN required - skipping queue join check (set --pin to test){RESET}")
             return
         ok("HTTP /input/hello returned 204")
 
@@ -317,7 +317,7 @@ def main():
     try:
         http_get(f"{base}/operator.json")
     except Exception as e:
-        print(f"\n{RED}✗ Cannot reach {base} — is the visualizer running? ({e}){RESET}")
+        print(f"\n{RED}✗ Cannot reach {base} - is the visualizer running? ({e}){RESET}")
         sys.exit(1)
 
     # Auto-discover PIN if not supplied
@@ -327,7 +327,7 @@ def main():
         if pin:
             print(f"  PIN:   {pin} (auto-fetched from /admin/pins)")
         else:
-            print(f"  {YELLOW}⚠ No PIN found — WS tests will be skipped if auth required{RESET}")
+            print(f"  {YELLOW}⚠ No PIN found - WS tests will be skipped if auth required{RESET}")
 
     # --- Run tests ---
     test_operator_json(base)

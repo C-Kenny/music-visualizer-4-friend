@@ -317,6 +317,20 @@ class SmokeTestRunner {
     // routes to ~/.config/music-visualizer instead.
     String resultPath = userDataPath(".smoketest_result");
 
+    // Precompute per-scene avg ms once so it can be both written to the
+    // result file (machine-readable, for scripts/check_perf_regression.py)
+    // and printed to console below.
+    ArrayList<int[]> perfData = new ArrayList<int[]>();
+    for (int i = 0; i < SCENE_ORDER.length; i++) {
+        int sceneIdx = SCENE_ORDER[i];
+        if (sceneFrameCount[sceneIdx] > 0) {
+            float avgMs = (sceneTimeTotalNs[sceneIdx] / (float)sceneFrameCount[sceneIdx]) / 1000000.0f;
+            perfData.add(new int[]{ sceneIdx, Float.floatToIntBits(avgMs) });
+        }
+    }
+    // Sort descending by avgMs
+    perfData.sort((a, b) -> Float.compare(Float.intBitsToFloat(b[1]), Float.intBitsToFloat(a[1])));
+
     // Write result file first so smoketest.sh can always read it even if
     // console output was partially lost
     try {
@@ -326,6 +340,13 @@ class SmokeTestRunner {
       pw.println("checks="   + passCount);
       pw.println("failures=" + failures.size());
       for (String f : failures) pw.println(f);
+      // perf=<SceneClassName>:<avgMs> - one line per scene, worst-first.
+      // Consumed by scripts/check_perf_regression.py; not read by
+      // smoketest.sh itself (only reads line 1 for PASS/FAIL).
+      for (int[] p : perfData) {
+        String sName = scenes[p[0]].getClass().getSimpleName();
+        pw.println("perf=" + sName + ":" + nf(Float.intBitsToFloat(p[1]), 0, 4));
+      }
       pw.close();
     } catch (Exception e) {
       println("[SMOKE] Warning: could not write result file: " + e.getMessage());
@@ -347,18 +368,8 @@ class SmokeTestRunner {
       for (String f : failures) println("  " + f);
     }
     println("╚══════════════════════════════════════════════════╝");
-    
+
     println("\n[SMOKE] Performance Leaderboard (worst to best):");
-    ArrayList<int[]> perfData = new ArrayList<int[]>();
-    for (int i = 0; i < SCENE_ORDER.length; i++) {
-        int sceneIdx = SCENE_ORDER[i];
-        if (sceneFrameCount[sceneIdx] > 0) {
-            float avgMs = (sceneTimeTotalNs[sceneIdx] / (float)sceneFrameCount[sceneIdx]) / 1000000.0f;
-            perfData.add(new int[]{ sceneIdx, Float.floatToIntBits(avgMs) });
-        }
-    }
-    // Sort descending by avgMs
-    perfData.sort((a, b) -> Float.compare(Float.intBitsToFloat(b[1]), Float.intBitsToFloat(a[1])));
     for (int[] p : perfData) {
         int idx = p[0];
         float ms = Float.intBitsToFloat(p[1]);
@@ -366,7 +377,7 @@ class SmokeTestRunner {
         String fps = ms > 0 ? nf(min(999, 1000.0f / ms), 0, 1) : "999";
         println(String.format("[SMOKE]   - %-25s : %6.2f ms / frame (~%s fps)", sName, ms, fps));
     }
-    
+
     println("\n[SMOKE] Result written to: " + resultPath);
     println();
   }

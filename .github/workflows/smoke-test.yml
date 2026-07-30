@@ -7,6 +7,16 @@ on:
     branches: [develop, master]
 
 jobs:
+  docs-sync-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check documentation/scene_list.md is up to date
+        run: python3 scripts/gen_scene_list.py --check
+      - name: Check README.md keyboard controls are up to date
+        run: python3 scripts/gen_readme_controls.py --check
+
   smoke-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -96,6 +106,16 @@ jobs:
           RESULT=$(head -1 Music_Visualizer_CK/.smoketest_result 2>/dev/null || echo "MISSING")
           echo "Result: $RESULT"
           grep -q "^PASS$" Music_Visualizer_CK/.smoketest_result
+
+      # Informational only, not blocking: CI runs SMOKETEST_QUICK (~10
+      # frames/scene) on a shared runner, both noisier than the full local
+      # run the baseline was captured from. The strict, blocking version of
+      # this check is smoketest.sh's job (runs the full local test via the
+      # pre-push hook). This still surfaces a real regression in the CI log
+      # without risking flaky failures from CI-only noise.
+      - name: Check perf regression (informational)
+        continue-on-error: true
+        run: python3 scripts/check_perf_regression.py --result Music_Visualizer_CK/.smoketest_result
 
       - name: Upload result
         if: always()

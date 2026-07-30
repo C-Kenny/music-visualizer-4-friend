@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# capture.sh — record per-scene preview videos for the README grid.
+# capture.sh - record per-scene preview videos for the README grid.
 #
 # For each scene ID, writes .devscene + .devsong, launches ./run.sh with
 # MV_DEMO_MODE=1 (synthetic controller input), waits for the window + beat
@@ -10,7 +10,7 @@
 # Deps: xdotool, ffmpeg, pactl, xrandr, gpu-screen-recorder (flatpak)
 #
 # x11grab can't read GPU-accelerated GL surfaces on Wayland (XWayland exposes a
-# placeholder window only) — captures came out black. We use gpu-screen-recorder
+# placeholder window only) - captures came out black. We use gpu-screen-recorder
 # to record the monitor the sketch lives on, then ffmpeg-crop to the window
 # rect. Audio still goes through pactl monitor source.
 set -euo pipefail
@@ -22,7 +22,7 @@ mkdir -p "$OUT_DIR"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 # Song path: override with --song or $MV_CAPTURE_SONG. No personal default
-# committed — pick any local audio file when running.
+# committed - pick any local audio file when running.
 SONG_DEFAULT="${MV_CAPTURE_SONG:-}"
 WARMUP_SEC=25         # let the beat kick in
 DURATION_SEC=15       # raw record length per scene (ffmpeg trims to TRIM_LEN below)
@@ -97,7 +97,7 @@ GSR=(flatpak run
      com.dec05eba.gpu_screen_recorder)
 
 # On Wayland (KDE/GNOME), GSR's DRM/KMS monitor capture is unavailable on
-# this host — only the xdg-desktop-portal path works. portal mode pops a
+# this host - only the xdg-desktop-portal path works. portal mode pops a
 # "share screen" dialog the first time; we persist the grant via a token file
 # so subsequent runs reuse it without prompting.
 USE_PORTAL=1
@@ -155,7 +155,7 @@ record_scene() {
   echo
   echo "==== scene $id ($label) ===="
 
-  # Stage flags. .devdemo activates DemoInputDriver inside the JVM —
+  # Stage flags. .devdemo activates DemoInputDriver inside the JVM - 
   # snap confinement strips MV_DEMO_MODE env, so use a flag file instead.
   echo "$id" > "$SKETCH_DIR/.devscene"
   echo "$SONG" > "$SKETCH_DIR/.devsong"
@@ -238,7 +238,7 @@ record_scene() {
     capture_target="portal"
     portal_args=(-restore-portal-session yes -portal-session-token-filepath "$GSR_TOKEN_FILE")
     if [[ ! -s "$GSR_TOKEN_FILE" ]]; then
-      echo "[capture] First run on Wayland — KDE will prompt to share a screen."
+      echo "[capture] First run on Wayland - KDE will prompt to share a screen."
       echo "[capture] Pick the monitor that has the sketch window and check 'remember'."
     fi
   else

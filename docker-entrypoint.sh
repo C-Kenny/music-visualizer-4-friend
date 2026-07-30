@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# docker-entrypoint.sh — boot display + audio, hand off to run.sh.
+# docker-entrypoint.sh - boot display + audio, hand off to run.sh.
 #
 # Modes (auto-detected, override with $MV_MODE):
-#   smoke   — Xvfb only, runs ./run.sh with .smoketest, exits with result code.
-#   vnc     — Xvfb + x11vnc on :5900, runs ./run.sh foregrounded. Watch with any VNC client.
-#   host    — host already provides $DISPLAY (X11 socket mounted). Skips Xvfb.
+#   smoke - Xvfb only, runs ./run.sh with .smoketest, exits with result code.
+#   vnc - Xvfb + x11vnc on :5900, runs ./run.sh foregrounded. Watch with any VNC client.
+#   host - host already provides $DISPLAY (X11 socket mounted). Skips Xvfb.
 set -euo pipefail
 
 MODE="${MV_MODE:-${1:-vnc}}"
