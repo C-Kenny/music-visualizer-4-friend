@@ -24,13 +24,17 @@ jobs:
             arch: amd64
             artifact: windows-amd64
             archive: zip
-          # macOS Intel (macos-13) dropped: Intel Macs EOL, runner queue
-          # routinely exceeded 24h. Apple Silicon covers all current macOS users.
-          - os: macos-latest      # Apple Silicon
-            platform: macos
-            arch: aarch64
-            artifact: macos-aarch64
-            archive: zip
+          # macOS dropped entirely (both Intel and Apple Silicon). Intel was
+          # dropped first (EOL, runner queue routinely exceeded 24h). Apple
+          # Silicon (macos-aarch64) started failing every release from 2.5.9
+          # onward with a Processing 4.5.2 CLI export bug, not a bug in this
+          # project: `JavaBuild.exportApplication` throws
+          # `NoSuchElementException: No value present` (Optional.orElseThrow)
+          # for the macos-aarch64 variant specifically — its internal
+          # platform lookup table comes back empty. No macOS hardware
+          # available to debug the exporter further. Re-add if a future
+          # Processing release fixes it, or if someone with a Mac wants to
+          # investigate/export locally in the meantime.
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -58,21 +62,8 @@ jobs:
           unzip -q p.zip -d "$HOME"
           echo "PROCESSING_BIN=$HOME/Processing/Processing.exe" >> $GITHUB_ENV
 
-      - name: Install Processing (macOS)
-        if: matrix.platform == 'macos'
-        shell: bash
-        run: |
-          if [ "${{ matrix.arch }}" = "aarch64" ]; then
-            URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-macos-aarch64-portable.zip
-          else
-            URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-macos-x64-portable.zip
-          fi
-          curl -fsSL "$URL" -o p.zip
-          # Fail fast if 404 returned an HTML body instead of a zip
-          file p.zip | grep -qi zip || { echo "Download is not a zip:"; head -c 200 p.zip; exit 1; }
-          unzip -q p.zip -d "$HOME"
-          # Portable zip extracts Processing.app flat at $HOME (no wrapper dir)
-          echo "PROCESSING_BIN=$HOME/Processing.app/Contents/MacOS/Processing" >> $GITHUB_ENV
+      # macOS install step removed along with the macos-aarch64 matrix entry
+      # above — see that comment for why. Re-add here too if macOS returns.
 
       # ── Libraries (same bundled zips CI uses for smoke) ──────────────────
       # Processing 4 default sketchbook is OS-specific:
