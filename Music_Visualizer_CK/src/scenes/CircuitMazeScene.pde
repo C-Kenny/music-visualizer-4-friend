@@ -33,6 +33,13 @@ class CircuitMazeScene implements IScene {
 
   float openBias = 0.72;
 
+  // A/X/Y already have jobs (regen/pulse/debug), so sticks map by hand in
+  // applyController rather than via routeParamsToSticks' default A-reset.
+  SceneParam pPulseSpeed = new SceneParam("speed", "Pulse Speed", 0.3, 3.0, 1);
+  SceneParam pChaos      = new SceneParam("chaos", "Beat Chaos",  0.3, 3.0, 1);
+  SceneParam pOpenBias   = new SceneParam("open",  "Open Bias (next regen)", 0.3, 0.95, 0.72);
+  SceneParam[] params = { pPulseSpeed, pChaos, pOpenBias };
+
   CircuitMazeScene() {
     buildCircuit();
   }
@@ -83,6 +90,7 @@ boolean isLetterGate(CircuitGate g) {
   }
 
   void buildCircuit() {
+    openBias = pOpenBias.value;
     updateLetterGrid(config.CIRCUIT_TEXT);
     
     rightGates = new CircuitGate[cols - 1][rows];
@@ -124,7 +132,7 @@ boolean isLetterGate(CircuitGate g) {
 
   void triggerBeatPulse(float bass, float high) {
     beatFlash = 1.0;
-    int toggles = 4 + (int) map(constrain(bass, 0, 25), 0, 25, 0, 9);
+    int toggles = round((4 + (int) map(constrain(bass, 0, 25), 0, 25, 0, 9)) * pChaos.value);
     for (int i = 0; i < toggles; i++) toggleRandomGate();
     if (high > 7.0) for (int i = 0; i < 2; i++) toggleRandomGate();
   }
@@ -264,7 +272,7 @@ void drawGridNodes(PGraphics pg, float originX, float originY, float stepX, floa
     if (abs(x2 - x1) > abs(y2 - y1)) {
       pg.line(x1, y1, cx - gap, cy); pg.line(cx + gap, cy, x2, y2);
       if (g.glow > 0.2) {
-        float base = frameCount * 0.12;
+        float base = frameCount * 0.12 * pPulseSpeed.value;
         int n = 3;
         for (int s = 0; s < n; s++) {
           float p = (base + s / (float)n) % 1.0;
@@ -284,7 +292,7 @@ void drawGridNodes(PGraphics pg, float originX, float originY, float stepX, floa
     } else {
       pg.line(x1, y1, cx, cy - gap); pg.line(cx, cy + gap, x2, y2);
       if (g.glow > 0.2) {
-        float base = frameCount * 0.12;
+        float base = frameCount * 0.12 * pPulseSpeed.value;
         int n = 3;
         for (int s = 0; s < n; s++) {
           float p = (base + s / (float)n) % 1.0;
@@ -319,37 +327,56 @@ void drawGridNodes(PGraphics pg, float originX, float originY, float stepX, floa
     sceneHUD(pg, "Circuit Maze: \"" + config.CIRCUIT_TEXT + "\"", new String[]{
       "Beat toggles random gates   Grid: " + cols + "x" + rows,
       "Complete path: " + (hasCompletePath ? "YES \u2014 lamp lit" : "NO"),
-      debugOverrideOpen ? "[FORCE ON OVERRIDE ACTIVE]" : "A rebuild  Y force-open toggle"
+      debugOverrideOpen ? "[FORCE ON OVERRIDE ACTIVE]" : "A rebuild  X pulse  Y force-open toggle",
+      "speed " + nf(pPulseSpeed.value,1,2) + "  chaos " + nf(pChaos.value,1,2)
+        + "  open-bias " + nf(pOpenBias.value,1,2)
     });
   }
 
   void onEnter() { buildCircuit(); }
   void onExit() {}
-  void applyController(Controller c) { 
-    if (c.aJustPressed) buildCircuit(); 
+  void applyController(Controller c) {
+    if (c.aJustPressed) buildCircuit();
+    if (c.xJustPressed) triggerBeatPulse(analyzer.bass, analyzer.high);
     if (c.yJustPressed) debugOverrideOpen = !debugOverrideOpen;
+    // A/X/Y are taken, so sticks are mapped by hand rather than via
+    // routeParamsToSticks (which would bind A to a knob reset).
+    float dz = 0.12;
+    float lx = (c.lx - width  * 0.5) / (width  * 0.5);
+    float ly = (c.ly - height * 0.5) / (height * 0.5);
+    float rx = (c.rx - width  * 0.5) / (width  * 0.5);
+    if (abs(lx) > dz) pPulseSpeed.nudgeNorm(lx * 0.02);
+    if (abs(ly) > dz) pChaos.nudgeNorm(-ly * 0.02);
+    if (abs(rx) > dz) pOpenBias.nudgeNorm(rx * 0.02);
   }
-  void handleKey(char k) { 
-    if (k == 'r' || k == 'R') buildCircuit(); 
-    if (k == 'f' || k == 'F') debugOverrideOpen = !debugOverrideOpen;
-    if (k == ' ') triggerBeatPulse(analyzer.bass, analyzer.high);
+  void handleKey(char k) {
+    if (k == 'r' || k == 'R') { buildCircuit(); return; }
+    if (k == 'f' || k == 'F') { debugOverrideOpen = !debugOverrideOpen; return; }
+    if (k == ' ') { triggerBeatPulse(analyzer.bass, analyzer.high); return; }
+    handleParamKey(k);
   }
 
-  String[] getCodeLines() { 
-    return new String[] { 
-      "=== Dynamic Circuit Maze ===", 
+  SceneParam[] getParams() { return params; }
+
+  String[] getCodeLines() {
+    return new String[] {
+      "=== Dynamic Circuit Maze ===",
       "Text: " + config.CIRCUIT_TEXT,
       "R: Regenerate Maze",
       "F: Force ON (Debug)",
-      "SPACE: Force Pulse"
-    }; 
+      "SPACE: Force Pulse",
+      "LStick: pulse speed / beat chaos   RStick \u2194: open-bias (next regen)"
+    };
   }
 
-  ControllerLayout[] getControllerLayout() { 
-    return new ControllerLayout[] { 
+  ControllerLayout[] getControllerLayout() {
+    return new ControllerLayout[] {
       new ControllerLayout("A", "Regenerate circuit"),
       new ControllerLayout("X", "Manual pulse"),
-      new ControllerLayout("Y", "Toggle Force ON")
-    }; 
+      new ControllerLayout("Y", "Toggle Force ON"),
+      new ControllerLayout("LStick \u2194", "Pulse animation speed"),
+      new ControllerLayout("LStick \u2195", "Beat chaos (gates toggled per beat)"),
+      new ControllerLayout("RStick \u2194", "Open bias for the next regenerate (A)"),
+    };
   }
 }

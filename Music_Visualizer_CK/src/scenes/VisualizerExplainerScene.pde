@@ -30,23 +30,33 @@ class VisualizerExplainerScene implements IScene {
   // Audio smoothing
   float sBass = 0, sMid = 0, sHigh = 0, sBeat = 0;
 
+  // Live knobs (ParamRouter spine — sticks, keyboard, web, idle autopilot).
+  SceneParam pSmooth = new SceneParam("smooth", "Meter Smoothing", 0.02, 0.4, 0.10);
+  SceneParam pSpin   = new SceneParam("spin",   "Demo Spin",       0,    3,   1);
+  SceneParam[] params = { pSmooth, pSpin };
+
   void onEnter()  { page = 0; beatCount = 0; }
   void onExit()   {}
 
   void applyController(Controller c) {
     if (c.dpadRightJustPressed) page = (page + 1) % PAGE_COUNT;
     if (c.dpadLeftJustPressed)  page = (page - 1 + PAGE_COUNT) % PAGE_COUNT;
+    routeParamsToSticks(c, params);
   }
 
   void handleKey(char k) {
+    // , . stay page-nav here (they predate the spine's knob-select keys).
     if (k == ' ' || k == '.') page = (page + 1) % PAGE_COUNT;
     if (k == ',')              page = (page - 1 + PAGE_COUNT) % PAGE_COUNT;
+    if (k == '-' || k == '+') handleParamKey(k);
   }
 
+  SceneParam[] getParams() { return params; }
+
   void drawScene(PGraphics pg) {
-    sBass = lerp(sBass, analyzer.bass, 0.10);
-    sMid  = lerp(sMid,  analyzer.mid,  0.10);
-    sHigh = lerp(sHigh, analyzer.high, 0.10);
+    sBass = lerp(sBass, analyzer.bass, pSmooth.value);
+    sMid  = lerp(sMid,  analyzer.mid,  pSmooth.value);
+    sHigh = lerp(sHigh, analyzer.high, pSmooth.value);
     if (audio.beat.isOnset()) { sBeat = 1.0; beatCount++; }
     sBeat = lerp(sBeat, 0, 0.08);
 
@@ -455,7 +465,7 @@ class VisualizerExplainerScene implements IScene {
     pg.text("rect(" + int(rx-ax) + ", " + int(ry-ay) + ", " + int(rw) + ", " + int(rh) + ")", rx + rw*0.5, ry - 2*ts);
 
     // ── Right panel: translated coordinate system ───────────────────────
-    demoAngle += 0.012 + sMid * 0.03;
+    demoAngle += (0.012 + sMid * 0.03) * pSpin.value;
     float bx = pad + halfW + 4 * ts;
     float by = top + 30 * ts;
     float bw = halfW - 8 * ts;
@@ -525,9 +535,9 @@ class VisualizerExplainerScene implements IScene {
     float boxUnit = min(panelW, bottom - top) * 0.22;
 
     // Axis rotations accumulate each frame
-    rot3DX += 0.018 + sMid  * 0.04;
-    rot3DY += 0.022 + sBass * 0.06;
-    rot3DZ += 0.011 + sHigh * 0.03;
+    rot3DX += (0.018 + sMid  * 0.04) * pSpin.value;
+    rot3DY += (0.022 + sBass * 0.06) * pSpin.value;
+    rot3DZ += (0.011 + sHigh * 0.03) * pSpin.value;
     beatScale3D = lerp(beatScale3D, 1.0, 0.08);
     if (audio.beat.isOnset()) beatScale3D = 1.5;
 

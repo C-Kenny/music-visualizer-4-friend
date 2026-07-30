@@ -29,7 +29,14 @@ class Halo2LogoScene implements IScene {
   // beat pulse
   float currentScale   = 1.0;
   float targetScale    = 1.0;
-  float pulseSens      = 0.35;   // how much a beat expands the scale
+
+  // A/Y/B already have jobs (manual pulse / cycle bg), so only the RStick is
+  // free for nudge-style knobs; the LStick keeps its existing absolute
+  // "push up = stronger pulse" feel by writing straight into pPulse.value.
+  SceneParam pPulse    = new SceneParam("pulse",    "Pulse Sensitivity", 0.05, 1.0, 0.35);
+  SceneParam pHueSpeed = new SceneParam("hueSpeed", "Hue Speed",         0,    2.0, 1);
+  SceneParam pGlow     = new SceneParam("glow",     "Beat Glow",         0.3,  2.0, 1);
+  SceneParam[] params = { pPulse, pHueSpeed, pGlow };
 
   // background mode: 0 = plasma color sweep, 1 = polar-style, 2 = solid pulse
   int bgMode = 0;
@@ -125,7 +132,8 @@ class Halo2LogoScene implements IScene {
       "hue shifts continuously with mid frequency",
       "",
       "// Controls: B = cycle bg mode",
-      "//           Up/Down = pulse sensitivity"
+      "//           Up/Down or LStick = pulse sensitivity",
+      "//           RStick = hue speed / beat glow"
     };
   }
 
@@ -162,13 +170,13 @@ class Halo2LogoScene implements IScene {
 
     // --- beat pulse -------------------------------------------------------
     if (isBeat) {
-      targetScale = 1.0 + pulseSens * constrain(bass / 5.0, 0.3, 1.0);
+      targetScale = 1.0 + pPulse.value * constrain(bass / 5.0, 0.3, 1.0);
     }
     currentScale += (targetScale - currentScale) * 0.18;
     targetScale  += (1.0 - targetScale) * 0.08;
 
     // --- hue shift driven by mids ----------------------------------------
-    hueShift = (hueShift + mid * 0.4 + 0.3) % 360;
+    hueShift = (hueShift + (mid * 0.4 + 0.3) * pHueSpeed.value) % 360;
 
     // --- render effect into off-screen canvas ----------------------------
     canvas.beginDraw();
@@ -194,7 +202,7 @@ class Halo2LogoScene implements IScene {
       pg.pushStyle();
         pg.colorMode(HSB, 360, 255, 255, 255);
         pg.noFill();
-        float glowAlpha = map(currentScale, 1.0, 1.0 + pulseSens, 0, 180);
+        float glowAlpha = map(currentScale, 1.0, 1.0 + pPulse.value, 0, 180) * pGlow.value;
         pg.stroke(hueShift, 200, 255, glowAlpha);
         pg.strokeWeight(6);
         pg.ellipse(pg.width / 2.0, pg.height / 2.0,
@@ -286,14 +294,15 @@ class Halo2LogoScene implements IScene {
       pg.fill(0, 140);
       pg.noStroke();
       pg.rectMode(CORNER);
-      pg.rect(8, 8, 250 * uiScale(), margin + lh * 4);
+      pg.rect(8, 8, 250 * uiScale(), margin + lh * 5);
       pg.fill(255);
       pg.textSize(ts);
       pg.textAlign(LEFT, TOP);
       pg.text("Scene: Halo 2 Logo",                              12, 8 + margin);
       pg.text("bg: "    + bgNames[bgMode] + "  (B to cycle)",   12, 8 + margin + lh);
-      pg.text("pulse: " + nf(pulseSens, 1, 2) + "  Up/Down",    12, 8 + margin + lh*2);
-      pg.text("bass/mid/high: " + nf(bass,1,1) + " / " + nf(mid,1,1) + " / " + nf(high,1,1), 12, 8 + margin + lh*3);
+      pg.text("pulse: " + nf(pPulse.value, 1, 2) + "  Up/Down or LStick",    12, 8 + margin + lh*2);
+      pg.text("hue speed: " + nf(pHueSpeed.value,1,2) + "  glow: " + nf(pGlow.value,1,2) + "  RStick", 12, 8 + margin + lh*3);
+      pg.text("bass/mid/high: " + nf(bass,1,1) + " / " + nf(mid,1,1) + " / " + nf(high,1,1), 12, 8 + margin + lh*4);
     pg.popStyle();
   }
 
@@ -304,19 +313,28 @@ class Halo2LogoScene implements IScene {
   }
 
   void adjustPulseSens(float delta) {
-    pulseSens = constrain(pulseSens + delta, 0.05, 1.0);
+    pPulse.set(constrain(pPulse.value + delta, 0.05, 1.0));
   }
 
+  SceneParam[] getParams() { return params; }
+
   void applyController(Controller c) {
-    // L Stick ↕ → pulse sensitivity (up = stronger pulse)
+    // L Stick ↕ → pulse sensitivity (up = stronger pulse) — absolute, not a nudge
     float ly = map(c.ly, 0, height, -1, 1);
-    pulseSens = map(ly, -1, 1, 1.0, 0.05);
+    pPulse.set(map(ly, -1, 1, 1.0, 0.05));
+
+    // R Stick → hue speed / beat glow (nudge-style)
+    float dz = 0.12;
+    float rx = (c.rx - width  * 0.5) / (width  * 0.5);
+    float ry = (c.ry - height * 0.5) / (height * 0.5);
+    if (abs(rx) > dz) pHueSpeed.nudgeNorm(rx * 0.02);
+    if (abs(ry) > dz) pGlow.nudgeNorm(-ry * 0.02);
 
     // Y button → cycle background mode (B is global blend mode, so use Y here)
     if (c.yJustPressed) cycleBgMode();
 
     // A button → trigger a manual scale pulse
-    if (c.aJustPressed) targetScale = 1.0 + pulseSens * 0.9;
+    if (c.aJustPressed) targetScale = 1.0 + pPulse.value * 0.9;
   }
 
   void onEnter() {
@@ -326,14 +344,21 @@ class Halo2LogoScene implements IScene {
   void onExit() {}
 
   void handleKey(char k) {
-    if (k == 'b' || k == 'B') cycleBgMode();
-    else if (k == CODED) {
-      if (keyCode == UP)   adjustPulseSens(0.05);
-      if (keyCode == DOWN) adjustPulseSens(-0.05);
+    if (k == 'b' || k == 'B') { cycleBgMode(); return; }
+    if (k == CODED) {
+      if (keyCode == UP)   { adjustPulseSens(0.05); return; }
+      if (keyCode == DOWN) { adjustPulseSens(-0.05); return; }
     }
+    handleParamKey(k);
   }
 
   ControllerLayout[] getControllerLayout() {
-    return new ControllerLayout[] {};
+    return new ControllerLayout[] {
+      new ControllerLayout("A", "Manual scale pulse"),
+      new ControllerLayout("Y", "Cycle background mode"),
+      new ControllerLayout("LStick ↕", "Pulse sensitivity"),
+      new ControllerLayout("RStick ↔", "Hue speed"),
+      new ControllerLayout("RStick ↕", "Beat glow intensity"),
+    };
   }
 }

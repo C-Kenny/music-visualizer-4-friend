@@ -29,9 +29,9 @@ class GravityStringsScene implements IScene {
   boolean tetheredSolids = false;    // small platonic at midpoints
   boolean skyboxOn       = false;
   int     skyboxIdx      = 0;
-  String[] SKYBOXES = {
-    "cloudy_01","cloudy_05","cloudy_10","cloudy_15","cloudy_20","cloudy_25"
-  };
+  // Whatever is installed (generated auto_* always present; user/venue packs
+  // and dev-machine bundled packs discovered at construction).
+  String[] SKYBOXES = discoverSkyboxNames();
   Skybox skybox;
   float camRotY = 0, camRotX = 0.1;
 
@@ -298,7 +298,7 @@ class GravityStringsScene implements IScene {
   void drawSkyboxBg(PGraphics pg) {
     if (skybox == null) {
       skybox = new Skybox();
-      skybox.load(resourcePath("media/skyboxes/" + SKYBOXES[skyboxIdx]));
+      loadSkyboxByName(skybox, SKYBOXES[skyboxIdx]);
     }
     pg.background(0);
     camRotY += 0.0008 + analyzer.bass * 0.002;

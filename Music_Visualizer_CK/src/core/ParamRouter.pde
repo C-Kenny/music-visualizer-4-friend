@@ -24,6 +24,7 @@ SceneParam[] activeParams() {
 
 // Set a knob by id from a normalized 0..1 position. Returns true if it existed.
 boolean setParamNorm(String id, float t) {
+  if (paramAutoPilot != null) paramAutoPilot.noteActivity(); // web slider = human driving
   for (SceneParam p : activeParams()) {
     if (p.id.equals(id)) { p.setNorm(t); return true; }
   }
@@ -32,6 +33,7 @@ boolean setParamNorm(String id, float t) {
 
 // Set a knob by id to an absolute value. Returns true if it existed.
 boolean setParamValue(String id, float v) {
+  if (paramAutoPilot != null) paramAutoPilot.noteActivity();
   for (SceneParam p : activeParams()) {
     if (p.id.equals(id)) { p.set(v); return true; }
   }

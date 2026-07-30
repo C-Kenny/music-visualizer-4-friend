@@ -23,6 +23,7 @@ class HelpOverlay {
     "F5\tstart / stop mp4 recording",
     "F6 / F7\ttoggle LAN stream (F7 fallback if WM eats F6)",
     "F9\tauto-switcher  (Shift+F9 cycles mode)",
+    ":\tknob autopilot — drifts scene params when idle",
     "",
     "TEMPO + SETLIST\t",
     "\\\ttap tempo  (4 taps to lock)",

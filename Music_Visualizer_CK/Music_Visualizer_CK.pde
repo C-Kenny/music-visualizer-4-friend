@@ -21,6 +21,7 @@ IScene[] scenes;
 SceneSwitcher sceneSwitcher;
 AudioSourceSwitcher audioSwitcher;
 AutoSwitcher   autoSwitcher;
+ParamAutoPilot paramAutoPilot;
 SceneGuard       sceneGuard;
 FrameWatchdog    frameWatchdog;
 KillSwitch       killSwitch;
@@ -35,11 +36,12 @@ HelpOverlay      helpOverlay;
 DisplayManager   displayManager;
 DemoInputDriver  demoInput;
 FrameBudget      frameBudget;
-final int SCENE_COUNT = 55;
+final int SCENE_COUNT = 58;
 int previousState = -1;
 boolean isProjecting = false; // Prevents HUD/text from rendering when a scene is projected off-screen
 
 AudioAnalyser analyzer;
+SpatialAudio spatial;     // 8D-audio pan/orbit tracker — scenes read spatial.pan/azimuth
 DropPredictor dropPredictor;
 PFont monoFont;
 PGraphics sceneBuffer;
@@ -555,7 +557,16 @@ String getSongNameFromFilePath(String song_path, String osType) {
 }
 
 void settings() {
-  size(displayWidth, displayHeight - 80, P3D);
+  // Some sandboxed environments (e.g. Flatpak-packaged Processing blocking the
+  // AWT/X11 portal call) can't query the display at settings()-time and report
+  // 0x0 here. size() only works in settings() — if we let a 0 through, the OS
+  // clamps it to a tiny sliver window for the whole run. Fall back to a sane
+  // default so at least the window is usable; see documentation for the real
+  // fix (running a non-sandboxed Processing install).
+  int fallbackW = 1920, fallbackH = 1080;
+  int w = (displayWidth  > 0) ? displayWidth  : fallbackW;
+  int h = (displayHeight > 0) ? displayHeight : fallbackH;
+  size(w, h - 80, P3D);
   boolean useFancy = false;
   if (args != null) {
     for (String arg : args) {
@@ -594,6 +605,7 @@ void setup() {
   sceneBuffer.beginDraw(); sceneBuffer.background(0); sceneBuffer.endDraw();
   background(200);
   analyzer = new AudioAnalyser();
+  spatial = new SpatialAudio();
   logToStdout("canvas spawned");
   initializeGlobals();
   // Detect smoke test early so setSongToVisualize() skips the file picker
@@ -674,11 +686,15 @@ void setup() {
   scenes[52] = new HyperspaceBloomScene();
   scenes[53] = new TableTennisSimScene();
   scenes[54] = new SimCubeScene();
+  scenes[55] = new FableMurmurationScene();
+  scenes[56] = new SpatialOrbitScene();
+  scenes[57] = new ParalyzedScene();
 
   // SceneSwitcher — must be created AFTER scenes[] is populated
   sceneSwitcher  = new SceneSwitcher(SCENE_ORDER);
   audioSwitcher  = new AudioSourceSwitcher();
   autoSwitcher   = new AutoSwitcher();
+  paramAutoPilot = new ParamAutoPilot();
   featureFlagServer.loadFromDisk();  // after autoSwitcher so AUTO_SWITCH_MODE applies
   sceneGuard     = new SceneGuard();
   frameWatchdog  = new FrameWatchdog();
@@ -849,16 +865,21 @@ void toggleAudioInputMode() {
 }
 
 void mousePressed() {
+  if (paramAutoPilot != null) paramAutoPilot.noteActivity();
   scenes[config.STATE].handleKey(' '); // reuse handleKey for simple click-bursts if scene desires
 }
 
 void mouseWheel(MouseEvent event) {
+  if (paramAutoPilot != null) paramAutoPilot.noteActivity();
   if (config.STATE >= 0 && config.STATE < SCENE_COUNT) {
     scenes[config.STATE].handleMouseWheel(event.getCount());
   }
 }
 
 void keyPressed() {
+  // Any keystroke means a human is at the desk — pause autopilot drift.
+  if (paramAutoPilot != null) paramAutoPilot.noteActivity();
+
   // Tab always toggles scene switcher (checked before anything else)
   if (key == TAB) { sceneSwitcher.toggle(); return; }
 
@@ -977,6 +998,14 @@ void keyPressed() {
       autoSwitcher.toggleEnabled();
       println("AUTO: " + (autoSwitcher.enabled ? "ON (" + autoSwitcher.MODE_LABELS[autoSwitcher.mode] + ")" : "OFF"));
     }
+    return;
+  }
+
+  // `:` toggles knob autopilot (idle drift for sit-back, no-operator viewing)
+  if (key == ':') {
+    paramAutoPilot.toggleEnabled();
+    println("PILOT: " + (paramAutoPilot.enabled ? "ON (drifts after "
+            + (int) paramAutoPilot.IDLE_SECONDS_BEFORE_ENGAGE + "s idle)" : "OFF"));
     return;
   }
 
@@ -1255,6 +1284,9 @@ final int[] SCENE_ORDER = {
   // SCENE_CHLADNI_PLATE,       // disabled — chladni skybox, revisit later
   SCENE_STRANGE_ATTRACTOR,
   SCENE_HYPERSPACE_BLOOM,
+  SCENE_FABLE_MURMURATION,
+  SCENE_SPATIAL_ORBIT,
+  SCENE_PARALYZED,
   SCENE_SACRED_FRACTALS,
   // SCENE_EXPLAINER — hotkey-only ('v'), excluded from rotation
   // SCENE_THEY_DONT_KNOW,      // disabled, revisit later
@@ -1370,6 +1402,7 @@ void draw() {
     audio.forward();
     audio.beat.detect(audio.player.mix);
     analyzer.update(audio);
+    spatial.update(audio);
     smokeTestRunner.tick(sceneBuffer);
     blendMode(REPLACE);
     imageMode(CORNER);
@@ -1468,11 +1501,13 @@ void draw() {
     audio.forward();
     audio.detectBeat();
     analyzer.update(audio);
+    spatial.update(audio);
     if (frameBudget != null) frameBudget.end();
 
     if (frameBudget != null) frameBudget.begin(FrameBudget.P_INPUT);
     getUserInput();
     if (autoSwitcher != null) autoSwitcher.tick();
+    if (paramAutoPilot != null) paramAutoPilot.tick(controller);
     if (frameBudget != null) frameBudget.end();
 
     didRenderScene = true;
@@ -1601,6 +1636,7 @@ void draw() {
     float nextHudY = height - 10 * uiScale();
     nextHudY = drawAudioSourceBadge(nextHudY);
     if (autoSwitcher != null) nextHudY = drawAutoSwitcherBadge(nextHudY);
+    if (paramAutoPilot != null) nextHudY = drawAutoPilotBadge(nextHudY);
     if (postFX != null && postFX.anyEnabled()) nextHudY = drawPostFXBadge(nextHudY);
     if (strobeSafety != null && strobeSafety.enabled) nextHudY = drawStrobeSafetyBadge(nextHudY);
     if (tempoLock != null && (tempoLock.isLocked() || tempoLock.taps.size() > 0)) nextHudY = drawTempoLockBadge(nextHudY);
@@ -2047,6 +2083,31 @@ float drawAutoSwitcherBadge(float startY) {
   fill(0, 180);
   rect(boxX, boxY, boxW, boxH, 4);
   fill(0, 255, 120);
+  text(line, boxX + 8, boxY + 5);
+  popStyle();
+  return boxY - 6 * uiScale();
+}
+
+// Knob autopilot badge — visible only while drift is actually moving knobs,
+// so the operator can tell at a glance why params are changing on their own.
+float drawAutoPilotBadge(float startY) {
+  String line = paramAutoPilot.hudLine();
+  if (line == null) return startY;
+  pushStyle();
+  textFont(monoFont);
+  float ts = 12 * uiScale();
+  textSize(ts);
+  textAlign(LEFT, TOP);
+  float tw    = textWidth("PILOT drifting 100%  ");
+  float boxH  = ts + 10;
+  float boxW  = tw + 16;
+  float pad   = 10 * uiScale();
+  float boxX  = width - pad - boxW;
+  float boxY  = startY - boxH;
+  noStroke();
+  fill(0, 180);
+  rect(boxX, boxY, boxW, boxH, 4);
+  fill(120, 200, 255);
   text(line, boxX + 8, boxY + 5);
   popStyle();
   return boxY - 6 * uiScale();

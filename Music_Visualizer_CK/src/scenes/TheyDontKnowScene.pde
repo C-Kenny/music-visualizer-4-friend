@@ -69,6 +69,13 @@ class TheyDontKnowScene implements IScene {
   int   thoughtIndex = 0;
   float thoughtTimer = 0;
 
+  // Live knobs (ParamRouter spine — sticks, keyboard, web, idle autopilot).
+  SceneParam pHype  = new SceneParam("hype",  "Crowd Hype",        0,   2.5, 1);
+  SceneParam pSway  = new SceneParam("sway",  "Crowd Sway",        0,   2.5, 1);
+  SceneParam pDance = new SceneParam("dance", "Move Hold (s)",     0.5, 4,   1.5);
+  SceneParam pThink = new SceneParam("think", "Thought Cycle (s)", 2,   10,  5.5);
+  SceneParam[] params = { pHype, pSway, pDance, pThink };
+
   int laidOutFor_w = -1, laidOutFor_h = -1;
 
   void onEnter() {
@@ -81,8 +88,9 @@ class TheyDontKnowScene implements IScene {
     dancerMove = 0;
   }
   void onExit() {}
-  void handleKey(char k) {}
-  void applyController(Controller c) {}
+  void handleKey(char k) { handleParamKey(k); }
+  void applyController(Controller c) { routeParamsToSticks(c, params); }
+  SceneParam[] getParams() { return params; }
   String[] getCodeLines() { return new String[]{ "they don't know" }; }
   ControllerLayout[] getControllerLayout() { return new ControllerLayout[0]; }
 
@@ -126,8 +134,8 @@ class TheyDontKnowScene implements IScene {
 
     float kick = analyzer != null ? analyzer.bass : 0;
     float mid  = analyzer != null ? analyzer.mid  : 0;
-    crowdEnergy = lerp(crowdEnergy, kick, 0.30);
-    crowdSway   = lerp(crowdSway,   mid,  0.18);
+    crowdEnergy = lerp(crowdEnergy, constrain(kick * pHype.value, 0, 1.5), 0.30);
+    crowdSway   = lerp(crowdSway,   constrain(mid  * pSway.value, 0, 1.5), 0.18);
 
     // Paper background — meme is pure white sketch.
     pg.background(245, 243, 238);
@@ -189,6 +197,7 @@ class TheyDontKnowScene implements IScene {
     // Foreground crouched dancer — drawn AFTER lonely guy because the dancer
     // is closer to the camera (would occlude any crowd member at this Y).
     if (dancerMoveLastMs == 0) dancerMoveLastMs = millis();
+    dancerMoveDurationMs = (int) (pDance.value * 1000);
     if (millis() - dancerMoveLastMs > dancerMoveDurationMs) {
       dancerMoveLastMs = millis();
       dancerMove = (dancerMove + 1) % MOVE_COUNT;
@@ -197,7 +206,7 @@ class TheyDontKnowScene implements IScene {
 
     // ── Thought bubble ──
     thoughtTimer += 1.0 / max(frameRate, 1);
-    if (thoughtTimer > 5.5) { thoughtTimer = 0; thoughtIndex = (thoughtIndex + 1) % THOUGHTS.length; }
+    if (thoughtTimer > pThink.value) { thoughtTimer = 0; thoughtIndex = (thoughtIndex + 1) % THOUGHTS.length; }
     String t = THOUGHTS[thoughtIndex];
     if (t.contains("[FPS]")) t = t.replace("[FPS]", nf(actualFps, 0, 0));
     drawThoughtBubble(pg, t,

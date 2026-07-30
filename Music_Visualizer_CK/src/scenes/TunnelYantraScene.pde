@@ -22,6 +22,12 @@ class TunnelYantraScene implements IScene {
   String[] blendModeNames = {"ADD", "SCREEN", "MULTIPLY", "EXCLUSION"};
   int      blendIdx       = 0;
 
+  // Stepped knobs (ParamRouter spine): value rounds to a layer index, so web
+  // sliders and the idle autopilot can slowly morph the bg/fg/blend combo.
+  // Created in the constructor — bg count isn't known until skyboxes are found.
+  SceneParam pBg, pFg, pBlend;
+  SceneParam[] params;
+
   TunnelYantraScene() {
     String[] skyboxDirs = discoverSkyboxNames();
     backgrounds = new IBackground[2 + skyboxDirs.length];
@@ -36,12 +42,27 @@ class TunnelYantraScene implements IScene {
       new DotMandalaScene(),
       new NetOfBeingScene(),
     };
+
+    pBg    = new SceneParam("bg",    "Background", 0, backgrounds.length - 1, 0);
+    pFg    = new SceneParam("fg",    "Foreground", 0, foregrounds.length - 1, 0);
+    pBlend = new SceneParam("blend", "Blend Mode", 0, blendModes.length - 1,  0);
+    params = new SceneParam[]{ pBg, pFg, pBlend };
+  }
+
+  // Keys/dpad step the index directly; knobs may also be dragged by web or
+  // autopilot. Indexes are re-derived from the knobs each frame, so the knob
+  // is the single source of truth and every input route stays in sync.
+  void syncIndexesFromParams() {
+    bgIndex  = constrain(round(pBg.value),    0, backgrounds.length - 1);
+    fgIndex  = constrain(round(pFg.value),    0, foregrounds.length - 1);
+    blendIdx = constrain(round(pBlend.value), 0, blendModes.length - 1);
   }
 
   void onEnter() {
-    bgIndex  = 0;
-    fgIndex  = 0;
-    blendIdx = 0;
+    pBg.reset();
+    pFg.reset();
+    pBlend.reset();
+    syncIndexesFromParams();
     for (IForeground fg : foregrounds) {
       if (fg instanceof IScene) ((IScene)fg).onEnter();
     }
@@ -55,10 +76,10 @@ class TunnelYantraScene implements IScene {
 
   void applyController(Controller c) {
     // D-pad: left/right = cycle background, up/down = cycle foreground
-    if (c.dpadRightJustPressed) bgIndex = (bgIndex + 1) % backgrounds.length;
-    if (c.dpadLeftJustPressed)  bgIndex = (bgIndex - 1 + backgrounds.length) % backgrounds.length;
-    if (c.dpadDownJustPressed)  fgIndex = (fgIndex + 1) % foregrounds.length;
-    if (c.dpadUpJustPressed)    fgIndex = (fgIndex - 1 + foregrounds.length) % foregrounds.length;
+    if (c.dpadRightJustPressed) pBg.set((bgIndex + 1) % backgrounds.length);
+    if (c.dpadLeftJustPressed)  pBg.set((bgIndex - 1 + backgrounds.length) % backgrounds.length);
+    if (c.dpadDownJustPressed)  pFg.set((fgIndex + 1) % foregrounds.length);
+    if (c.dpadUpJustPressed)    pFg.set((fgIndex - 1 + foregrounds.length) % foregrounds.length);
 
     // Delegate remaining input to active foreground
     IForeground fg = foregrounds[fgIndex];
@@ -67,18 +88,21 @@ class TunnelYantraScene implements IScene {
 
   void handleKey(char k) {
     switch (k) {
-      case '[': bgIndex = (bgIndex - 1 + backgrounds.length) % backgrounds.length; break;
-      case ']': bgIndex = (bgIndex + 1) % backgrounds.length;                      break;
-      case '{': fgIndex = (fgIndex - 1 + foregrounds.length) % foregrounds.length; break;
-      case '}': fgIndex = (fgIndex + 1) % foregrounds.length;                      break;
-      case '=': blendIdx = (blendIdx + 1) % blendModes.length;                     break;
+      case '[': pBg.set((bgIndex - 1 + backgrounds.length) % backgrounds.length); break;
+      case ']': pBg.set((bgIndex + 1) % backgrounds.length);                      break;
+      case '{': pFg.set((fgIndex - 1 + foregrounds.length) % foregrounds.length); break;
+      case '}': pFg.set((fgIndex + 1) % foregrounds.length);                      break;
+      case '=': pBlend.set((blendIdx + 1) % blendModes.length);                   break;
       default:
         IForeground fg = foregrounds[fgIndex];
         if (fg instanceof IScene) ((IScene)fg).handleKey(k);
     }
   }
 
+  SceneParam[] getParams() { return params; }
+
   void drawScene(PGraphics pg) {
+    syncIndexesFromParams();
     pg.background(0);
 
     // Layer 1: background

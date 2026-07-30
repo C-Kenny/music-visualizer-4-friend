@@ -13,9 +13,23 @@
  * Controls:
  *   Y  force reload
  *   `  toggle code overlay
+ *
+ * The snippet contract is fixed (fixed signature = every existing snippet
+ * keeps working), so the only knobs that make sense here are ones the
+ * console applies BEFORE handing off to the snippet: how hard the audio
+ * bands hit, and how fast its `t` clock runs. Both are exposed as normal
+ * SceneParam knobs (controller/keyboard/web), so a performer can punch up
+ * reactivity or slow/speed the animation without touching the code live.
  */
 class LiveCodeScene implements IScene {
   CodeConsole console;
+
+  SceneParam pBoost = new SceneParam("boost", "Audio Boost", 0.3, 3.0, 1);
+  SceneParam pSpeed = new SceneParam("speed", "Time Speed",  0.1, 3.0, 1);
+  SceneParam[] params = { pBoost, pSpeed };
+
+  float internalT = 0;
+  int   lastMillis = -1;
 
   LiveCodeScene() {
     console = new CodeConsole("live_code.java", "live_code.seed.java");
@@ -23,11 +37,19 @@ class LiveCodeScene implements IScene {
   }
 
   void applyController(Controller c) {
+    routeParamsToSticks(c, params);
     if (c.yJustPressed) console.forceReload();
   }
 
+  SceneParam[] getParams() { return params; }
+
   void drawScene(PGraphics pg) {
     console.reloadIfChanged();
+
+    int now = millis();
+    if (lastMillis < 0) lastMillis = now;
+    internalT += (now - lastMillis) / 1000.0 * pSpeed.value;
+    lastMillis = now;
 
     if (!console.hasInstance()) {
       pg.background(20, 0, 0);
@@ -36,12 +58,11 @@ class LiveCodeScene implements IScene {
       return;
     }
 
-    float bass = analyzer.bass, mid = analyzer.mid, high = analyzer.high;
-    float t = pg.parent.millis() / 1000.0;
+    float bass = analyzer.bass * pBoost.value, mid = analyzer.mid * pBoost.value, high = analyzer.high * pBoost.value;
 
     boolean ok = true;
     try {
-      console.invokeDraw(pg, t, bass, mid, high);
+      console.invokeDraw(pg, internalT, bass, mid, high);
     } catch (Throwable th) {
       ok = false;
       console.markRuntimeError(th);
@@ -132,7 +153,9 @@ class LiveCodeScene implements IScene {
       "//     public void draw(PGraphics pg, float t, float bass, float mid, float high) { ... }",
       "//   }",
       "//",
-      "// Watchdog stalls (>2s) blacklist the scene. Y = force reload."
+      "// Watchdog stalls (>2s) blacklist the scene. Y = force reload.",
+      "//",
+      "// LStick: audio boost (↔) / time speed (↕) — applied before the snippet"
     };
   }
 
@@ -143,7 +166,7 @@ class LiveCodeScene implements IScene {
     pg.fill(0, 125);
     pg.noStroke();
     pg.rectMode(CORNER);
-    pg.rect(8, 8, 480 * uiScale(), 8 + lh * 6);
+    pg.rect(8, 8, 480 * uiScale(), 8 + lh * 7);
     pg.fill(255);
     pg.textSize(ts);
     pg.textAlign(LEFT, TOP);
@@ -153,17 +176,24 @@ class LiveCodeScene implements IScene {
     pg.text("low / mid / high: " + nf(low, 1, 2) + " / " + nf(mid, 1, 2) + " / " + nf(high, 1, 2), 12, 12 + lh * 2);
     pg.text("Y force-reload  edit .java in any editor → autoreloads", 12, 12 + lh * 3);
     pg.text("` for code overlay", 12, 12 + lh * 4);
+    pg.text("boost: " + nf(pBoost.value, 1, 2) + "  speed: " + nf(pSpeed.value, 1, 2)
+            + "  (LStick, or < > - + on keyboard)", 12, 12 + lh * 5);
     pg.popStyle();
   }
 
-  void onEnter() { background(0); }
+  void onEnter() { background(0); lastMillis = -1; } // rebaseline so re-entry doesn't jump `t`
   void onExit()  { }
 
   void handleKey(char k) {
-    if (k == 'y' || k == 'Y') console.forceReload();
+    if (k == 'y' || k == 'Y') { console.forceReload(); return; }
+    handleParamKey(k);
   }
 
   ControllerLayout[] getControllerLayout() {
-    return new ControllerLayout[] {};
+    return new ControllerLayout[] {
+      new ControllerLayout("LStick ↔", "Audio boost (bass/mid/high before the snippet sees them)"),
+      new ControllerLayout("LStick ↕", "Time speed (snippet's `t` clock)"),
+      new ControllerLayout("Y", "Force reload"),
+    };
   }
 }

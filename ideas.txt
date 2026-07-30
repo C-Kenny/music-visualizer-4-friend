@@ -1,5 +1,6 @@
 Use audio device output instead of direct .mp3 that way can dynamically get YT/spotify/foobar etc
 
+"pipes 3d screensaver". Actually can we make this a screensaveer??
 
 3d Ball Maze Puzzle inspired visualizer
 

@@ -155,6 +155,26 @@ backlog memory). The queue is a layer over ClientRegistry, not new from zero.
 **Risk:** medium. Server-side state + WS protocol additions + web UI work. The
 input-gating change is small and high-value; the UI/voting is the bulk.
 
+## Status (2026-06-10)
+
+- #1 stream venue-mode + adaptive fps — **SHIPPED** (2.5.10)
+- #4 web control queue + voting — **SHIPPED** (2.5.10)
+- #2 param spine — **SHIPPED**; zero-input scene wave swept (DeepSpace, RIP,
+  TheyDontKnow, TunnelYantra, Explainer) + **ParamAutoPilot** added (`:` —
+  drifts knobs to the music when all input idle 30s, for sit-back viewing).
+  New flagships: **Fable Murmuration** (state 55), **Spatial Orbit** (state 56),
+  **Paralyzed** (state 57, ships its own scene-local 10s idle autopilot on top
+  of the spine — see `ParalyzedScene.pde`). Thin-scene wave **SHIPPED**:
+  LiveCode, SacredGeometry, CircuitMaze, FluidSim, Halo2Logo, HeartGrid,
+  SriYantra all now expose 2-4 real SceneParam knobs (controller+keyboard+web),
+  each mapped around whatever buttons/sticks the scene already used (custom
+  hand-mapping where A/B/X/Y were taken, `routeParamsToSticks` where free).
+  Next: long-tail audio-only scenes (~20 remaining, lower priority — least
+  shown).
+- #3 skyboxes — **RESOLVED via BYO**: no assets ship (copyright); venue drops
+  own packs in user dir, procedural `auto_*` skyboxes always available.
+  See `skybox_assets.md`. Flagship 2D depth-polish still open, deprioritised.
+
 ## Suggested sequencing
 
 1. **Stream venue-mode + double-buffer** — small, high impact, de-risks the

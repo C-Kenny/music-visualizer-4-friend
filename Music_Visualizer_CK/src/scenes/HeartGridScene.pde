@@ -6,8 +6,14 @@ class HeartGridScene implements IScene {
   float heartHue       = 0;    
   float heartTargetHue = 0;    
   float heartZoom      = 1.0;  
-  float heartFocusNX   = 0.0;  
-  float heartFocusNY   = 0.0;  
+  float heartFocusNX   = 0.0;
+  float heartFocusNY   = 0.0;
+
+  // Both sticks are already busy (grid density, zoom+pan), so these live on
+  // the triggers instead — still on the SceneParam spine for keyboard/web.
+  SceneParam pFlash  = new SceneParam("flash",  "Beat Flash",    0.3, 2.5, 1);
+  SceneParam pBreath = new SceneParam("breath", "Breath Amount", 0,   2.5, 1);
+  SceneParam[] params = { pFlash, pBreath };
 
   HeartGridScene() {
     primaryHeart = new BezierHeart(0.0, 0.25, 300);
@@ -33,6 +39,13 @@ class HeartGridScene implements IScene {
       heartFocusNX *= 0.95;
       heartFocusNY *= 0.95;
     }
+
+    if (c.lt > 0.15) pFlash.nudgeNorm(-0.02 * c.lt);
+    if (c.rt > 0.15) pFlash.nudgeNorm( 0.02 * c.rt);
+    // Held (not JustPressed) — a sustained modifier, per the held-vs-edge rule.
+    if (c.xButton) pBreath.nudgeNorm(-0.02);
+    if (c.yButton) pBreath.nudgeNorm( 0.02);
+    if (c.aJustPressed) for (SceneParam q : params) q.reset();
   }
 
   void drawScene(PGraphics pg) {
@@ -44,10 +57,10 @@ class HeartGridScene implements IScene {
     float cellH     = HEART_NATIVE_HEIGHT;
     int   rows      = ceil(pg.height / (cellH * baseScale)) + 1;
 
-    float breath = sin(config.logicalFrameCount * 0.03) * 12;
+    float breath = sin(config.logicalFrameCount * 0.03) * 12 * pBreath.value;
 
     if (analyzer.isBeat) {
-      heartBeatDecay = 35.0;
+      heartBeatDecay = 35.0 * pFlash.value;
       heartTargetHue = (heartTargetHue + random(60, 120)) % 360;
     }
     heartBeatDecay *= 0.95;
@@ -98,11 +111,12 @@ class HeartGridScene implements IScene {
     pg.pushStyle();
       float ts = 11 * uiScale(), lh = ts * 1.3, mg = 6 * uiScale();
       pg.fill(0, 140); pg.noStroke(); pg.rectMode(CORNER);
-      pg.rect(8, 8, 310 * uiScale(), mg * 2 + lh * 2);
+      pg.rect(8, 8, 310 * uiScale(), mg * 2 + lh * 3);
       pg.fill(255, 220, 120); pg.textSize(ts); pg.textAlign(LEFT, TOP);
       pg.text("Heart Grid  (cols: " + config.HEART_COLS + "  zoom: " + nf(heartZoom, 1, 2) + "x)", 12, 8 + mg);
       pg.fill(200, 200, 200);
       pg.text("L \u2194 columns   R stick zoom & pan", 12, 8 + mg + lh);
+      pg.text("flash " + nf(pFlash.value,1,2) + " (LT/RT)  breath " + nf(pBreath.value,1,2) + " (X/Y)", 12, 8 + mg + lh * 2);
     pg.popStyle();
   }
 
@@ -150,15 +164,23 @@ class HeartGridScene implements IScene {
   void handleKey(char k) {
     if (k == '[') {
       config.HEART_COLS = max(1, config.HEART_COLS - 1);
+      return;
     } else if (k == ']') {
       config.HEART_COLS = min(10, config.HEART_COLS + 1);
+      return;
     }
+    handleParamKey(k);
   }
+
+  SceneParam[] getParams() { return params; }
 
   ControllerLayout[] getControllerLayout() {
     return new ControllerLayout[] {
       new ControllerLayout("LStick ↔", "Grid columns (3–15)"),
       new ControllerLayout("RStick", "Zoom & pan focus point"),
+      new ControllerLayout("LT/RT", "Beat flash intensity"),
+      new ControllerLayout("X/Y (hold)", "Breath amount down/up"),
+      new ControllerLayout("A", "Reset flash/breath to default"),
       new ControllerLayout("[ ]", "Decrease/increase columns")
     };
   }
